@@ -130,12 +130,15 @@ stateDiagram-v2
 
 | פעולה | API | Snapshot לפני | ביטול | הפיכות |
 |---|---|---|---|---|
-| יצירה | `POST /v1/roles` `{name, management, resources?}` | - | `DELETE /v1/roles/{uid}` | ✅ |
+| יצירה | `POST /v1/roles` `{name, management, resources: [{type: db, uids: [DB]}]}` | - | `DELETE /v1/roles/{uid}` | ✅ |
 | עריכה | `PUT /v1/roles/{uid}` | `GET`: `name`, `management`, `resources` | `PUT` עם ה-snapshot | ✅ |
 | מחיקה | `DELETE /v1/roles/{uid}` | `GET`: כל השדות שאפשר לכתוב | `POST` עם ה-snapshot **כולל `uid`** | ✅ |
 
 - **יצירה מחדש עם אותו uid עובדת** (נבדק מול הקלאסטר). לכן `role_uids` של יוזרים ו-`roles_permissions` של DBs
   נשארים תקינים.
+- **`resources` מגביל את הגישה הניהולית (UI ו-REST API)** של role מסוג `db_member` או `db_viewer` ל-DBs
+  מסוימים. בלי השדה, ה-role חל על כל ה-DBs. לכן ה-role נוצר אחרי ה-DB, עם ה-uid שלו. זה נפרד מ-`roles_permissions`
+  (5.6), שקובע את הגישה לנתונים.
 - **role שיוזר משתמש בו לא נמחק:** הקלאסטר מחזיר `406 role_in_use` (נבדק). במחיקה, קודם מוחקים את היוזר,
   או מסירים ממנו את ה-role.
 
@@ -243,7 +246,7 @@ stateDiagram-v2
 | # | צעד | סוג |
 |---|---|---|
 | 1 | יצירת DB, המתנה ל-`active` | הפיך |
-| 2..N | לכל יוזר: יצירת ACL, יצירת role, יצירת user | הפיך |
+| 2..N | לכל יוזר: יצירת ACL, יצירת role עם `resources` של ה-DB, יצירת user עם `role_uids` | הפיך |
 | N+1 | לכל יוזר: הוספת זוג `role ↔ ACL` ל-`roles_permissions` | הפיך |
 
 אין בה pivot, ולכן כשל בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
@@ -254,7 +257,7 @@ stateDiagram-v2
 |---|---|---|
 | 1 | יצירת CRDB (`X-Task-ID`), המתנה ל-task | הפיך |
 | 2 | לכל קלאסטר: איתור ה-bdb המקומי, ושמירת ה-uid בהקשר | קריאה בלבד |
-| 3..N | לכל קלאסטר ולכל יוזר: ACL, role, user | הפיך |
+| 3..N | לכל קלאסטר ולכל יוזר: ACL, role עם `resources` של ה-bdb **המקומי**, user | הפיך |
 | N+1 | לכל קלאסטר ולכל יוזר: הרשאה על ה-bdb המקומי | הפיך |
 
 ### 7.3 יצירת DB בלי יוזרים / יצירת יוזר בלבד
@@ -352,6 +355,7 @@ stateDiagram-v2
 | # | שאלה | למה זה חשוב |
 |---|---|---|
 | V1b | אפשר למחוק role או ACL שמופיעים ב-`roles_permissions` של DB? | סדר הצעדים במחיקה |
+| V9 | מה קורה ל-`resources` של role כשה-DB שהוא מפנה אליו נמחק? | האם מחיקת DB משאירה roles עם הפניה מתה |
 | V2 | האם שם של DB חייב להיות ייחודי בקלאסטר? | `find_by_name` של DB מבוסס על כך |
 | V3 | האם `POST /v1/bdbs` מחזיר `action_uid`, או שבודקים רק לפי `status`? | אופן ההמתנה |
 | V4 | `X-Task-ID` שנשלח פעמיים: האם חוזר אותו task או נוצר CRDB נוסף? | idempotency של CRDB |
