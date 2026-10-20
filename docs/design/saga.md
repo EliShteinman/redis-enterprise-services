@@ -75,7 +75,7 @@ stateDiagram-v2
 - timeout אחרי שהבקשה נשלחה.
 - `response_rejected` של cluster-relay על פעולת כתיבה.
 
-**הפתרון:** לכל משאב יש שם דטרמיניסטי שנגזר מהבקשה, ולכל repository יש `find_by_name`. כשהתוצאה לא ידועה,
+**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם, email או tag), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה,
 המנוע מחפש את המשאב לפי השם:
 - **נמצא:** הצעד נחשב הצליח, וה-uid נלקח מהחיפוש.
 - **לא נמצא:** הצעד נחשב נכשל.
@@ -85,7 +85,7 @@ stateDiagram-v2
 | ACL | `name` | `GET /v1/redis_acls`, סינון לפי שם |
 | Role | `name` | `GET /v1/roles`, סינון לפי שם |
 | User | `email` (ייחודי, `email_already_exists`) | `GET /v1/users`, סינון לפי email |
-| DB | `name` | `GET /v1/bdbs?fields=uid,name`, סינון לפי שם |
+| DB | **tag** `saga_step` עם מזהה הצעד. שם DB **לא ייחודי** (V2). | `GET /v1/bdbs?fields=uid,tags`, סינון לפי tag |
 | CRDB | מזהה task שאנחנו קובעים (`X-Task-ID`), ובנוסף `name` | `GET /v1/crdb_tasks/{id}`, ואם הוא לא נמצא, `GET /v1/crdbs` לפי שם |
 
 **CRDB:** `X-Task-ID` מאפשר לנו לבחור את מזהה ה-task. בקשה חוזרת עם אותו מזהה מחזירה את אותו task, ולא
@@ -98,8 +98,8 @@ stateDiagram-v2
 
 | פעולה | איך יודעים שהסתיימה |
 |---|---|
-| יצירה ועדכון של DB | `status` חוזר ל-`active` (בזמן הפעולה: `pending`, `active-change-pending`), או `GET /v1/actions/{action_uid}` |
-| מחיקת DB | `status: delete-pending`, ואז `404` |
+| יצירה ועדכון של DB | `status` חוזר ל-`active` (בזמן הפעולה: `pending`, `active-change-pending`). התשובה כוללת גם `action_uid` (V3). נמדד: 2–6 שניות. |
+| מחיקת DB | `status: delete-pending`, ואז `404`. נמדד: כ-4 שניות. |
 | ACL, role | אם התשובה כוללת `action_uid`, ממתינים ב-`/v1/actions/{action_uid}` |
 | CRDB, כל פעולה | `GET /v1/crdb_tasks/{task_id}` עד `finished` או `failed`. ב-`failed` יש `errors` לכל קלאסטר. |
 
@@ -121,10 +121,12 @@ stateDiagram-v2
 |---|---|---|---|---|
 | יצירה | `POST /v1/redis_acls` `{name, acl}` | - | `DELETE /v1/redis_acls/{uid}` | ✅ |
 | עריכה | `PUT /v1/redis_acls/{uid}` | `GET`: `name`, `acl` (הכל קריא) | `PUT` עם ה-snapshot | ✅ |
-| מחיקה | `DELETE /v1/redis_acls/{uid}` | `GET`: `name`, `acl` | `POST` עם ה-snapshot **כולל `uid`** | ✅ |
+| מחיקה | `DELETE /v1/redis_acls/{uid}` | `GET`: `name`, `acl`, **וכל זוגות `roles_permissions` שמפנים אליו בכל DB** | `POST` עם ה-snapshot **כולל `uid`**, ואז החזרת הזוגות | ✅ |
 
 - ACLs מובנים (למשל `Full Access`) הם read-only: עריכה או מחיקה שלהם מחזירה `409`. המפרק לא בונה צעד כזה.
-- **יצירה מחדש עם אותו uid עובדת** (נבדק מול הקלאסטר). לכן ההפניות ב-`roles_permissions` נשארות תקינות.
+- **יצירה מחדש עם אותו uid עובדת** (נבדק מול הקלאסטר).
+- **מחיקה של ACL שמחובר ל-DB מצליחה, והקלאסטר מסיר בעצמו את הזוגות שלו מ-`roles_permissions`** (V1b). לכן
+  הביטול חייב להחזיר גם את הזוגות, ולא רק את ה-ACL.
 
 ### 5.2 Role
 
@@ -132,13 +134,17 @@ stateDiagram-v2
 |---|---|---|---|---|
 | יצירה | `POST /v1/roles` `{name, management, resources: [{type: db, uids: [DB]}]}` | - | `DELETE /v1/roles/{uid}` | ✅ |
 | עריכה | `PUT /v1/roles/{uid}` | `GET`: `name`, `management`, `resources` | `PUT` עם ה-snapshot | ✅ |
-| מחיקה | `DELETE /v1/roles/{uid}` | `GET`: כל השדות שאפשר לכתוב | `POST` עם ה-snapshot **כולל `uid`** | ✅ |
+| מחיקה | `DELETE /v1/roles/{uid}` | `GET`: כל השדות שאפשר לכתוב, **וכל זוגות `roles_permissions` שמפנים אליו** | `POST` עם ה-snapshot **כולל `uid`**, ואז החזרת הזוגות | ✅ |
 
 - **יצירה מחדש עם אותו uid עובדת** (נבדק מול הקלאסטר). לכן `role_uids` של יוזרים ו-`roles_permissions` של DBs
   נשארים תקינים.
 - **`resources` מגביל את הגישה הניהולית (UI ו-REST API)** של role מסוג `db_member` או `db_viewer` ל-DBs
   מסוימים. בלי השדה, ה-role חל על כל ה-DBs. לכן ה-role נוצר אחרי ה-DB, עם ה-uid שלו. זה נפרד מ-`roles_permissions`
   (5.6), שקובע את הגישה לנתונים.
+- **`resources` ריק מול חסר:** `uids: []` פירושו אף DB, ושדה שחסר לגמרי פירושו כל ה-DBs (נבדק). כשמוחקים DB,
+  הקלאסטר מסיר אותו בעצמו מ-`resources` של ה-roles, וה-role נשאר בלי גישה (V9).
+- **role עם `resources` של DB שלא קיים נדחה:** `404 db_not_found`. לכן ה-role נוצר רק אחרי שה-DB קיים.
+- **מחיקה של role שמחובר ל-DB מצליחה, והזוגות שלו נמחקים מ-`roles_permissions`** (V1b), כמו ב-ACL.
 - **role שיוזר משתמש בו לא נמחק:** הקלאסטר מחזיר `406 role_in_use` (נבדק). במחיקה, קודם מוחקים את היוזר,
   או מסירים ממנו את ה-role.
 
@@ -175,17 +181,34 @@ stateDiagram-v2
 
 - **ה-snapshot בעריכה כולל רק את השדות שמשתנים,** כי ה-bdb כולל שדות רבים שהם read-only. החזרה של אובייקט
   שלם הייתה נכשלת, או דורסת שינויים שמישהו אחר עשה במקביל.
-- **שדות שהשינוי שלהם לא הפיך** (רשימה ראשונית, לאמת):
-  - שינוי sharding או hashing policy: מחייב flush של הנתונים.
-  - הקטנת `memory_size` מתחת לנפח בשימוש.
-  - שינוי modules.
+- **הפיכות של שדות** (V7, נבדק על DB עם מפתח קיים):
 
-  צעד עריכה שכולל שדה כזה מסומן pivot. הרשימה נשמרת בקונפיגורציה.
+  | שינוי | תוצאה | נתונים נשמרו | הפיך |
+  |---|---|---|---|
+  | `memory_size` למעלה ולמטה | הצליח | כן | ✅ |
+  | `eviction_policy` | הצליח | כן | ✅ |
+  | `data_persistence` (`aof` וחזרה) | הצליח | כן | ✅ |
+  | הפעלת `sharding` (shard אחד) | הצליח | כן | ✅ |
+  | `shards_count` 1 ⇐ 2 | הצליח | כן | ⛔ החזרה נכשלת |
+  | `shards_count` 2 ⇐ 1 | `406`: "Scaling down requires asm_scaling" | - | - |
+  | כיבוי `sharding` עם 2 shards | `406 invalid_sharding` | - | - |
+  | `replication` | `406`: צריך לפחות 2 nodes | - | לא נבדק |
+
+  צעד עריכה שמגדיל `shards_count` מסומן pivot. הרשימה נשמרת בקונפיגורציה. `replication` ייבדק כשתהיה סביבה
+  עם כמה nodes.
 - **לא קובעים `uid` ביצירה רגילה.** לפי התיעוד, מי שקובע uid חייב לקבוע אותו בכל ה-DBs שאחריו, כי המספור
-  האוטומטי עלול להתנגש בו. מזהים את ה-DB לפי `name`.
+  האוטומטי עלול להתנגש בו.
+- **שם DB לא ייחודי:** הקלאסטר מקבל שני DBs עם אותו שם, וגם dry_run לא מתריע (V2). לכן:
+  - כל DB נוצר עם tag `saga_step` שמזהה את הצעד שיצר אותו, ו-`find_outcome` מחפש לפי ה-tag. מפתח tag
+    מתחיל באות או ב-underscore, ומכיל רק אותיות, ספרות ו-underscore (נבדק).
+  - אם השם צריך להיות ייחודי, הבדיקה המוקדמת שלנו היא שאוכפת את זה. **שאלה לאפיון.**
 - **ביצירה מחדש בתוך פיצוי כן קובעים `uid`.** ה-uid הזה כבר היה בשימוש, ולכן אין התנגשות. רלוונטי רק
   לעריכה ולמחיקה שעוד לא הגיעו ל-pivot.
-- **`default_user`:** כבוי ב-defaults שלנו.
+- **`default_user`:** כבוי ב-defaults שלנו. נבדק: כש-`default_user: true`, כל אחד מתחבר בלי סיסמה, גם אחרי
+  שההרשאות של היוזר הוסרו.
+- **סודות בתשובות:** תשובת `DELETE /v1/bdbs/{uid}` (וכנראה גם `GET`) כוללת את `authentication_admin_pass`.
+  חייבים להסתיר את השדה הזה בלוגים וב-saga record. זה רלוונטי גם ל-failure log של cluster-relay.
+- **Modules:** בגרסה 8.x כל DB נוצר עם `bf`, `ReJSON`, `timeseries` ו-`search` כברירת מחדל.
 
 ### 5.5 CRDB (Active-Active)
 
@@ -310,7 +333,7 @@ stateDiagram-v2
 | שגיאה זמנית | `409` עם `busy`, או שגיאה שמוגדרת בקונפיגורציה כזמנית | retry |
 | שגיאת קלאסטר | 4xx/5xx אחר מהקלאסטר, עם `error_code` | הצעד נכשל |
 | שגיאת relay | סימון של cluster-relay (דרישה R1) | timeout ⇐ תוצאה לא ידועה; כשל חיבור ⇐ הצעד נכשל |
-| תוצאה לא ידועה | timeout, או `response_rejected` על כתיבה | `find_by_name` (סעיף 3) |
+| תוצאה לא ידועה | timeout, או `response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
 
 ### כשל של הפיצוי עצמו
 
@@ -333,7 +356,7 @@ stateDiagram-v2
 | **סיסמאות** | **לא נשמרות אף פעם** ב-saga record |
 
 **המשך אחרי קריסה:** בעלייה, המנוע מחפש Sagas שלא הסתיימו.
-- **Saga שהיה לפני ה-pivot:** מבצעים rollback. הצעד שהיה `running` עובר דרך `find_by_name`. לא ממשיכים קדימה,
+- **Saga שהיה לפני ה-pivot:** מבצעים rollback. הצעד שהיה `running` עובר דרך `find_by_key`. לא ממשיכים קדימה,
   כי הסיסמאות שנדרשות ליצירת יוזרים לא נשמרו.
 - **Saga שעבר את ה-pivot:** ממשיכים קדימה. הצעדים שאחרי ה-pivot הם מחיקות, ולא צריכים סיסמאות.
 
@@ -348,20 +371,21 @@ stateDiagram-v2
 | # | שאלה | תשובה |
 |---|---|---|
 | V1a | אפשר למחוק role שיוזר משתמש בו? | **לא.** `406 role_in_use` |
+| V1b | אפשר למחוק role או ACL שמחוברים ל-DB? | **כן.** הקלאסטר מסיר את הזוגות שלהם מ-`roles_permissions`. |
+| V2 | שם DB ייחודי? | **לא.** מזהים DB לפי tag. |
+| V3 | `POST /v1/bdbs` מחזיר `action_uid`? | **כן,** וגם `status: pending` ⇐ `active` |
+| V7 | אילו שינויי DB הפיכים? | ראו הטבלה ב-5.4 |
 | V8 | יצירה מחדש עם אותו `uid` | role ו-ACL: **כן**. user: **לא**, ה-uid נבלע בשקט. |
+| V9 | מה קורה ל-`resources` של role כשה-DB נמחק? | ה-DB מוסר מ-`uids`. `uids: []` = אף DB (לא כולם). |
 
-### עוד לא נבדק
+### עוד לא נבדק (דורש קלאסטר שני או כמה nodes)
 
 | # | שאלה | למה זה חשוב |
 |---|---|---|
-| V1b | אפשר למחוק role או ACL שמופיעים ב-`roles_permissions` של DB? | סדר הצעדים במחיקה |
-| V9 | מה קורה ל-`resources` של role כשה-DB שהוא מפנה אליו נמחק? | האם מחיקת DB משאירה roles עם הפניה מתה |
-| V2 | האם שם של DB חייב להיות ייחודי בקלאסטר? | `find_by_name` של DB מבוסס על כך |
-| V3 | האם `POST /v1/bdbs` מחזיר `action_uid`, או שבודקים רק לפי `status`? | אופן ההמתנה |
 | V4 | `X-Task-ID` שנשלח פעמיים: האם חוזר אותו task או נוצר CRDB נוסף? | idempotency של CRDB |
 | V5 | CRDB task שנכשל באמצע: האם הקלאסטר מנקה בעצמו, או שנשארים bdbs מקומיים? | פיצוי של יצירת CRDB |
 | V6 | האם אפשר לקבוע `guid` של CRDB ביצירה? | פותר את התוצאה הלא ידועה גם בלי task |
-| V7 | אילו שינויי bdb נכשלים, ואילו מוחקים נתונים? | רשימת השדות הלא הפיכים |
+| V10 | `replication` הפעלה וכיבוי | דורש לפחות 2 nodes |
 
 ---
 
@@ -414,7 +438,7 @@ classDiagram
         <<interface>>
         +create(spec) Resource
         +get(uid) Resource
-        +find_by_name(name) Resource | None
+        +find_by_key(key) Resource | None
         +update(uid, changes) Resource
         +delete(uid) None
     }
