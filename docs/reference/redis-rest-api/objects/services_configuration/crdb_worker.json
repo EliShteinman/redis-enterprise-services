@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/crdb_worker",
+  "title": "CRDB worker object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/crdb_worker/",
+  "summary": "Documents the crdb_worker object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "71ac65174c561f2ed12caabec4713d0b9596f2a1c4db3352b63aa7e335baecdb",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the CRDB worker processes |"
+    }
+  ],
+  "examples": []
+}

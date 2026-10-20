@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/jwt_authorize",
+  "title": "JWT authorize object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/jwt_authorize/",
+  "summary": "An object for user authentication or a JW token refresh request",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2023-12-14T15:27:49+01:00",
+  "page_type": "content",
+  "content_hash": "6dc3caaf5db91551b41c06b9ef4527bf1b8f2b93f6126b0c7a64bc3554f3b78a",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An API object for user authentication or a JW token refresh request.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| password | string | The user’s password (required) |\n| ttl | integer (range: 1-86400) (default: 300) | Time to live - The amount of time in seconds the token will be valid |\n| username | string | The user’s username (required) |"
+    }
+  ],
+  "examples": []
+}

@@ -1,0 +1,271 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/nodes/actions",
+  "title": "Node actions requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/actions/",
+  "summary": "Node action requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "789ef8f69b35d201aa1a29a396991d56cee30b88416d88e14558aa0aa72b78b1",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-nodes-actions) | `/v1/nodes/actions` | Get status of all actions on all nodes|\n| [GET](#get-node-actions) | `/v1/nodes/{node_uid}/actions` | Get status of all actions on a specific node |\n| [GET](#get-node-action) | `/v1/nodes/{node_uid}/actions/{action}` | Get status of an action on a specific node |\n| [POST](#post-node-action) | `/v1/nodes/{node_uid}/actions/{action}` | Initiate node action |\n| [DELETE](#delete-node-action) | `/v1/nodes/{node_uid}/actions/{action}` | Cancel action or remove action status |"
+    },
+    {
+      "id": "get-all-nodes-actions",
+      "title": "Get all actions",
+      "role": "content",
+      "text": "[code example]\n\nGet the status of all currently executing, pending, or completed\nactions on all nodes."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_status_of_all_node_actions](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_status_of_all_node_actions) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a list of [action objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action)."
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error, response provides details about an ongoing action. |"
+    },
+    {
+      "id": "get-node-actions",
+      "title": "Get node actions statuses",
+      "role": "content",
+      "text": "[code example]\n\nGet the status of all actions on a specific node.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_status_of_node_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_status_of_node_action) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request-all-actions",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The action to check. |"
+    },
+    {
+      "id": "get-response-all-actions",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that includes a list of [action objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action) for the specified node.\n\nIf no actions are available, the response will include an empty array.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-error-codes-all-actions",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "| Code | Description |\n|------|-------------|\n| internal_error | An internal error that cannot be mapped to a more precise error code has been encountered. |\n| insufficient_resources | The cluster does not have sufficient resources to complete the required operation. |"
+    },
+    {
+      "id": "get-status-codes-all-actions",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error, response provides details about an ongoing action. |\n| [404&nbsp;Not&nbsp;Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Action does not exist (i.e. not currently running and no available status of last run). |"
+    },
+    {
+      "id": "get-node-action",
+      "title": "Get node action status",
+      "role": "content",
+      "text": "[code example]\n\nGet the status of a currently executing, queued, or completed action on a specific node."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [action object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action) for the specified node."
+    },
+    {
+      "id": "get-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "| Code | Description |\n|------|-------------|\n| internal_error | An internal error that cannot be mapped to a more precise error code has been encountered. |\n| insufficient_resources | The cluster does not have sufficient resources to complete the required operation. |"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error, response provides details about an ongoing action. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Action does not exist (i.e. not currently running and no available status of last run). |"
+    },
+    {
+      "id": "post-node-action",
+      "title": "Initiate node action",
+      "role": "content",
+      "text": "[code example]\n\nInitiate a node action.\n\nThe API allows only a single instance of any action type to be\ninvoked at the same time, and violations of this requirement will\nresult in a `409 CONFLICT` response.\n\nThe caller is expected to query and process the results of the\npreviously executed instance of the same action, which will be\nremoved as soon as the new one is submitted.\n\n#### Permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [start_node_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#start_node_action) | admin |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The name of the action required. |\n\nCurrently supported actions are:\n\n- `remove`: Removes the node from the cluster after migrating all bound resources to other nodes. As soon as a successful remove request is received, the cluster will no longer automatically migrate resources, such as shards and endpoints, to the node even if the remove task fails at some point.\n\n    - By default, the remove node action completes after all resources migrate off the removed node. Node removal does not wait for migrated shards' persistence files to be created on the new nodes.\n    \n        To change node removal to wait for the creation of new persistence files for all migrated shards, set `wait_for_persistence` to `true` in the request body or [update the cluster policy](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/policy#put-cluster-policy) `persistent_node_removal` to `true` to change the cluster's default behavior.\n\n        [code example]\n\n- `maintenance_on`: Creates a snapshot of the node, migrates shards to other nodes, and prepares the node for maintenance. See [maintenance mode](https://redis.io/docs/latest/operate/rs/clusters/maintenance-mode) for more information.\n\n    - As of Redis Software version 7.4.2, a new node snapshot is created only if no maintenance mode snapshots already exist or if you set `\"overwrite_snapshot\": true` in the request body.\n\n        [code example]\n\n    - If there aren't enough resources to migrate shards out of the maintained node, set `\"evict_ha_replica\": false` and `\"evict_active_active_replica\": false` in the request body to keep the replica shards in place but demote any master shards. Use these two parameters instead of `keep_slave_shards`, which is deprecated as of Redis Software version 7.4.2.\n\n        [code example]\n\n    - To specify databases whose shards should be evicted from the node when entering maintenance mode, set `\"evict_dbs\": [\"List of database ID strings\"]` in the request body.\n\n        [code example]\n\n- `maintenance_off`: Restores node to its previous state before maintenance started. See [maintenance mode](https://redis.io/docs/latest/operate/rs/clusters/maintenance-mode) for more information.\n\n    - By default, it uses the latest node snapshot.\n\n    - Use `\"snapshot_name\":`&nbsp;`\"...\"` in the request body to restore the state from a specific snapshot.\n\n    - To avoid restoring shards at the node, use `\"skip_shards_restore\":`&nbsp;`true`.\n\n- `enslave_node`: Turn node into a replica."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "The body content may provide additional action details."
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Action initiated successfully. |\n| [409 Conflict](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.10) | Only a single instance of any action type can be invoked at the same time. |"
+    },
+    {
+      "id": "example-requests",
+      "title": "Example requests",
+      "role": "example",
+      "text": "#### cURL\n\n[code example]\n\n#### Python\n\n[code example]"
+    },
+    {
+      "id": "delete-node-action",
+      "title": "Cancel action",
+      "role": "content",
+      "text": "[code example]\n\nCancel a queued or executing node action, or remove the status of a\npreviously executed and completed action."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name |\n|-----------------|\n| [cancel_node_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#cancel_node_action) |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The name of the action to cancel. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code.\n\n#### Status codes {#delete-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Action will be cancelled when possible. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Action unknown or not currently running. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-nodes-actions-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/actions",
+      "section_id": "get-all-nodes-actions"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/actions",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-node-actions-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/{node_uid}/actions",
+      "section_id": "get-node-actions"
+    },
+    {
+      "id": "get-request-all-actions-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/1/actions",
+      "section_id": "get-request-all-actions"
+    },
+    {
+      "id": "get-response-all-actions-ex0",
+      "language": "json",
+      "code": "{\n    \"actions\": [\n        {\n            \"name\": \"remove_node\",\n            \"node_uid\": \"1\",\n            \"status\": \"running\",\n            \"progress\": 10\n        }\n    ]\n}",
+      "section_id": "get-response-all-actions"
+    },
+    {
+      "id": "get-node-action-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/{node_uid}/actions/{action}",
+      "section_id": "get-node-action"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/1/actions/remove",
+      "section_id": "get-request"
+    },
+    {
+      "id": "post-node-action-ex0",
+      "language": "sh",
+      "code": "POST /v1/nodes/{node_uid}/actions/{action}",
+      "section_id": "post-node-action"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/nodes/1/actions/remove",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "sh",
+      "code": "POST /v1/nodes/<node_id>/actions/remove\n        {\n            \"wait_for_persistence\": true\n        }",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex2",
+      "language": "sh",
+      "code": "POST /v1/nodes/1/actions/maintenance_on\n        {\n            \"overwrite_snapshot\": true\n        }",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex3",
+      "language": "sh",
+      "code": "POST /v1/nodes/1/actions/maintenance_on\n        {\n            \"overwrite_snapshot\": true,\n            \"evict_ha_replica\": false,\n            \"evict_active_active_replica\": false\n        }",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex4",
+      "language": "sh",
+      "code": "POST /v1/nodes/1/actions/maintenance_on\n        {\n            \"overwrite_snapshot\": true,\n            \"evict_dbs\": [\"1\", \"3\"] \n        }",
+      "section_id": "post-request"
+    },
+    {
+      "id": "example-requests-ex0",
+      "language": "sh",
+      "code": "$ curl -k -X POST -u \"[username]:[password]\" -d \"{}\"\n            https://[host][:port]/v1/nodes/1/actions/remove",
+      "section_id": "example-requests"
+    },
+    {
+      "id": "example-requests-ex1",
+      "language": "python",
+      "code": "import requests\nimport json\n\nurl = \"https://[host][port]/v1/nodes/1/actions/remove\"\n\npayload = json.dumps({})\nheaders = {\n  'Content-Type': 'application/json',\n}\nauth = (\"[username]\", \"[password]\")\n\nresponse = requests.request(\"POST\", url, auth=auth, headers=headers, data=payload)\n\nprint(response.text)",
+      "section_id": "example-requests"
+    },
+    {
+      "id": "delete-node-action-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/nodes/{node_uid}/actions/{action}",
+      "section_id": "delete-node-action"
+    },
+    {
+      "id": "delete-request-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/nodes/1/actions/remove",
+      "section_id": "delete-request"
+    }
+  ]
+}

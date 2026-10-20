@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/modules/upgrade",
+  "title": "Database upgrade modules requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/modules/upgrade/",
+  "summary": "Upgrade Redis module requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "71a3c7e2635a04664b11e3ae6ab6f75a04cbe972974d57cc96be80d0333e9f4e",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-bdb-modules-upgrade) | `/v1/bdbs/{uid}/modules/upgrade` | Upgrade module |"
+    },
+    {
+      "id": "post-bdb-modules-upgrade",
+      "title": "Upgrade module",
+      "role": "content",
+      "text": "POST /v1/bdbs/{string: uid}/modules/upgrade\n\nUpgrades module version on a specific BDB.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [edit_bdb_module](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#edit_bdb_module) |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/bdbs/1/modules/upgrade\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Request body\n\n| Field | Type | Description |\n|-------|------|-------------|\n| modules | list | List of dicts representing the modules that will be upgraded. Each dict must include: <br></br> • **current_module**: uid of a module to upgrade <br></br> • **new_module**: UID of the module we want to upgrade to <br></br> • **new_module_args**: args list for the new module |\n| preserve_roles | boolean | Preserve shards’ master/replica roles (optional) |\n| may_discard_data | boolean | Discard data in a non-replicated non-persistent bdb (optional) |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the upgraded [module object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/module).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "When errors are reported, the server may return a JSON object with    `error_code` and `message` field that provide additional information.    The following are possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| missing_module | Module is not present in cluster.| \n| module_downgrade_unsupported | Module downgrade is not allowed.| \n| redis_incompatible_version | Module min_redis_version is bigger than the current Redis version.| \n| redis_pack_incompatible_version | Module min_redis_pack_version is bigger than the current Redis Software version.| \n| unsupported_module_capabilities | New version of module does support all the capabilities needed for the database configuration|"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, module updated on bdb. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | bdb or node not found. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The requested configuration is invalid. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-request-ex0",
+      "language": "json",
+      "code": "{\n     \"modules\": [\n         {\"module_name\": \"ReJson\",\n         \"current_semantic_version\": \"2.2.1\",\n         \"new_module\": \"aa3648d79bd4082d414587c42ea0b234\"}\n     ],\n     \"// Optional fields to fine-tune restart and failover behavior:\",\n     \"preserve_roles\": true,\n     \"may_discard_data\": false\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n    \"uid\": 1,\n    \"name\": \"name of database #1\",\n    \"module_id\": \"aa3648d79bd4082d414587c42ea0b234\",\n    \"module_name\": \"ReJson\",\n    \"semantic_version\": \"2.2.2\"\n    \"// additional fields...\"\n}",
+      "section_id": "post-response"
+    }
+  ]
+}

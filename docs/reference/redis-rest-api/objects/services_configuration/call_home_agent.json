@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/call_home_agent",
+  "title": "Call home agent object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/call_home_agent/",
+  "summary": "Documents the call_home_agent object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "cb387b649167087e458a6316ed77e0d04c8ca324d684152eb8d98be73d2517e1",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the call_home_agent process, which sends daily usage statistics to Redis |"
+    }
+  ],
+  "examples": []
+}

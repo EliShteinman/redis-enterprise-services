@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bootstrap/limits",
+  "title": "Limits object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/limits/",
+  "summary": "Documents the limits object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "1f89fc357db7cafe737f16e50cda02162cdb014fa8f60a937ef2636a98a2a684",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| max_listeners      | integer (default:&nbsp;100)    | Max allowed listeners on node |\n| max_redis_servers  | integer (default:&nbsp;100)    | Max allowed Redis servers on node |"
+    }
+  ],
+  "examples": []
+}

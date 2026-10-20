@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/nodes/debuginfo",
+  "title": "Node debug info requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/debuginfo/",
+  "summary": "Documents the Redis Software REST API /nodes/debuginfo requests.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "92f00bf17a0a67dac849729c1e45ca7fc31d02c7cc2fbcd0bf82d21cffe80c57",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-debuginfo-all-nodes) | `/v1/nodes/debuginfo` | Get debug info from all nodes |\n| [GET](#get-debuginfo-node) | `/v1/nodes/{node_uid}/debuginfo` | Get debug info from a specific node |"
+    },
+    {
+      "id": "get-debuginfo-all-nodes",
+      "title": "Get debug info from all nodes",
+      "role": "content",
+      "text": "GET /v1/nodes/debuginfo\n\nDownloads a tar file that contains debug info from all nodes.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_debugging_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_debugging_info) |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/debuginfo"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Downloads the debug info in a tar file called `filename.tar.gz`. Extract the files from the tar file to access the debug info.\n\n#### Response headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Content-Type | application/x-gzip | Media type of request/response body |\n| Content-Length | 653350 | Length of the response body in octets |\n| Content-Disposition | attachment; filename=debuginfo.tar.gz | Display response in browser or download as attachment |"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Failed to get debug info. |"
+    },
+    {
+      "id": "get-debuginfo-node",
+      "title": "Get node debug info",
+      "role": "content",
+      "text": "GET /v1/nodes/{int: node_uid}/debuginfo\n\nDownloads a tar file that contains debug info from a specific node.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_debugging_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_debugging_info) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/1/debuginfo"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Downloads the debug info in a tar file called `filename.tar.gz`. Extract the files from the tar file to access the debug info.\n\n#### Response headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Content-Type | application/x-gzip | Media type of request/response body |\n| Content-Length | 653350 | Length of the response body in octets |\n| Content-Disposition | attachment; filename=debuginfo.tar.gz | Display response in browser or download as attachment |"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Failed to get debug info. |"
+    }
+  ],
+  "examples": []
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration",
+  "title": "Services configuration object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/",
+  "summary": "An object for optional cluster services settings",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-09-29T16:51:25+03:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/alert_mgr",
+      "summary": "Documents the alert_mgr object used with Redis Software REST API calls.",
+      "title": "Alert manager object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/alert_mgr/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/call_home_agent",
+      "summary": "Documents the call_home_agent object used with Redis Software REST API calls.",
+      "title": "Call home agent object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/call_home_agent/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/cm_server",
+      "summary": "Documents the cm_server object used with Redis Software REST API calls.",
+      "title": "CM server object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/cm_server/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/crdb_coordinator",
+      "summary": "Documents the crdb_coordinator object used with Redis Software REST API calls.",
+      "title": "CRDB coordinator object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/crdb_coordinator/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/crdb_worker",
+      "summary": "Documents the crdb_worker object used with Redis Software REST API calls.",
+      "title": "CRDB worker object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/crdb_worker/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/entraid_agent_mgr",
+      "summary": "Documents the entraid_agent_mgr object used with Redis Software REST API calls.",
+      "title": "Entra ID agent manager object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/entraid_agent_mgr/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/ldap_agent_mgr",
+      "summary": "Documents the ldap_agent_mgr object used with Redis Software REST API calls.",
+      "title": "LDAP agent manager object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/ldap_agent_mgr/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/mdns_server",
+      "summary": "Documents the mdns_server object used with Redis Software REST API calls.",
+      "title": "MDNS server object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/mdns_server/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/metrics_local_storage_service",
+      "summary": "Documents the metrics_local_storage_service object used with Redis Software REST API calls.",
+      "title": "Metrics local storage service object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/metrics_local_storage_service/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/pdns_server",
+      "summary": "Documents the pdns_server object used with Redis Software REST API calls.",
+      "title": "PDNS server object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/pdns_server/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/sentinel_service",
+      "summary": "Documents the sentinel_service object used with Redis Software REST API calls.",
+      "title": "Sentinel service object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/sentinel_service/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/services_configuration/stats_archiver",
+      "summary": "Documents the stats_archiver object used with Redis Software REST API calls.",
+      "title": "Stats archiver object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/stats_archiver/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "b15f822f7de43ad21f786fed22a76bce74a13ae40107fe2eeea16e6d562880f4",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "Optional cluster services settings\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| alert_mgr | [alert_mgr](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/alert_mgr) object | Whether to enable/disable the alert manager processes |\n| call_home_agent | [call_home_agent](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/call_home_agent) object | Whether to enable/disable the call_home_agent process, which sends daily usage statistics to Redis |\n| cm_server | [cm_server](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/cm_server) object | Whether to enable/disable the CM server |\n| crdb_coordinator | [crdb_coordinator](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/crdb_coordinator) object | Whether to enable/disable the CRDB coordinator process |\n| crdb_worker | [crdb_worker](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/crdb_worker) object | Whether to enable/disable the CRDB worker processes |\n| entraid_agent_mgr | [entraid_agent_mgr](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/entraid_agent_mgr) object | Whether to enable/disable the Entra ID agent manager process |\n| ldap_agent_mgr | [ldap_agent_mgr](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/ldap_agent_mgr) object | Whether to enable/disable the LDAP agent manager processes |\n| mdns_server | [mdns_server](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/mdns_server) object | Whether to enable/disable the multicast DNS server |\n| metrics_local_storage_service | [metrics_local_storage_service](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/metrics_local_storage_service) object | Whether to enable/disable local metrics storage |\n| pdns_server | [pdns_server](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/pdns_server) object | Whether to enable/disable the PDNS server |\n| sentinel_service | [sentinel_service](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/sentinel_service) object | Whether to enable/disable the Sentinel service process |\n| stats_archiver | [stats_archiver](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/stats_archiver) object | Whether to enable/disable the stats archiver service |"
+    }
+  ],
+  "examples": []
+}

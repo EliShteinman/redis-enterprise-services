@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/ocsp",
+  "title": "OCSP object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/ocsp/",
+  "summary": "An object that represents the cluster's OCSP configuration",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2023-12-14T15:27:49+01:00",
+  "page_type": "content",
+  "content_hash": "b77803d0d366e6bee6590ff54786a16eeea901d705ac5bdd5bf77a492ffbda83",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An API object that represents the cluster's OCSP configuration.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| ocsp_functionality | boolean (default:&nbsp;false) | Enables or turns off OCSP for the cluster |\n| query_frequency | integer <nobr>(range: 60-86400)</nobr> (default:&nbsp;3600) | The time interval in seconds between OCSP queries to check the certificate’s status |\n| recovery_frequency | integer <nobr>(range: 60-86400)</nobr> (default:&nbsp;60) | The time interval in seconds between retries after the OCSP responder returns an invalid status for the certificate |\n| recovery_max_tries | integer <nobr>(range: 1-100)</nobr> (default:&nbsp;5) | The number of retries before the validation query fails and invalidates the certificate |\n| responder_url | string | The OCSP server URL embedded in the proxy certificate (if available) (read-only) |\n| response_timeout | integer <nobr>(range: 1-60)</nobr> (default:&nbsp;1) | The time interval in seconds to wait for a response before timing out |"
+    }
+  ],
+  "examples": []
+}

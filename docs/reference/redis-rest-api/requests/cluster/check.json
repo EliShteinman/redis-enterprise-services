@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/check",
+  "title": "Check all cluster nodes requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/check/",
+  "summary": "Requests that run checks on all cluster nodes.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "5527be5cc9bfee3c0dea387cbc59bb9e84b34ec9ef670788177f172fe8a8dfe1",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-check) | `/v1/cluster/check` | Runs checks on all cluster nodes |"
+    },
+    {
+      "id": "get-cluster-check",
+      "title": "Check all nodes",
+      "role": "content",
+      "text": "GET /v1/cluster/check\n\nRuns the following checks on all cluster nodes:\n\n| Check name | Description |\n|-----------|-------------|\n| bootstrap_status | Verifies the local node's bootstrap process completed without errors. |\n| services | Verifies all Redis Software services are running. |\n| port_range | Verifies the [`ip_local_port_range`](https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html) doesn't conflict with the ports Redis Software might assign to shards. |\n| pidfiles | Verifies all active local shards have PID files. |\n| capabilities | Verifies all binaries have the proper capability bits. |\n| existing_sockets | Verifies sockets exist for all processes that require them. |\n| host_settings | Verifies the following:<br />• Linux `overcommit_memory` setting is 1.<br />• `transparent_hugepage` is disabled.<br />• Socket maximum connections setting `somaxconn` is 1024. |\n| tcp_connectivity | Verifies this node can connect to all other alive nodes. |\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_all_nodes_checks](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_nodes_checks) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/check\n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array with results from all nodes.\n\nWhen errors occur, the server returns a JSON object with `result: false` and an `error` field that provides additional information for each node that had an error. If an error occurs during a check, the `error` field only includes a message for the first check that fails on each node.\n\nPossible `error` messages:\n\n- \"bootstrap request to cnm_http failed,resp_code: ...,resp_content: ...\"\n- \"process ... is not running or not responding (...)\"\n- \"could not communicate with 'supervisorctl': ...\"\n- \"connectivity check failed retrieving ports for testing\"\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"cluster_test_result\": false,\n  \"nodes\": [\n    {\n      \"node_uid\": \"1\",\n      \"result\": true\n    },\n    {\n      \"node_uid\": \"2\",\n      \"result\": true\n    },\n    {\n      \"node_uid\": \"3\",\n      \"result\": false,\n      \"error\": \"process alert_mgr is not running or not responding ([Errno 111] Connection refused)\"\n    }\n  ]\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

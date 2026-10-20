@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bdb/replica_sources_status",
+  "title": "BDB replica sources status field",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bdb/replica_sources_status/",
+  "summary": "Documents the bdb replica_sources status field used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-10-01T15:48:36+01:00",
+  "page_type": "content",
+  "content_hash": "5db4782897fbdab353a818f23ec806d2e8769a0d0e38bd439810b7742fd4ce54",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "The `replica_sources` status field relates to the [Replica Of](https://redis.io/docs/latest/operate/rs/databases/import-export/replica-of/create.md) feature, which enables the creation of a Redis database (single- or multi-shard) that synchronizes data from another Redis database (single- or multi-shard).\n\nThe status field represents the Replica Of sync status for a specific sync source.\n\nPossible status values:\n\n| Status | Description | Possible next status |\n|--------|-------------|----------------------|\n| 'out-of-sync' | Sync process is disconnected from source and trying to reconnect | 'syncing' |\n| 'syncing' | Sync process is in progress | 'in-sync' <br />'out-of-sync' |\n| 'in-sync' | Sync process finished successfully, and new commands are syncing on a regular basis | 'syncing' <br />'out-of-sync'\n\n![Replica sources status](https://redis.io/docs/latest/images/rs/rest-api-replica-sources-status.png#no-click)"
+    }
+  ],
+  "examples": []
+}

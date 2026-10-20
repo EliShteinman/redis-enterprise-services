@@ -1,0 +1,121 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/stats/last",
+  "title": "Latest database stats requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/stats/last/",
+  "summary": "Most recent database statistics requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "dafadde5d9edba3a91cd7a0409a7a7274e3cd70b389f2b468d23a0a1294eb7d6",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-bdbs-stats-last) | `/v1/bdbs/stats/last` | Get most recent stats for all databases |\n| [GET](#get-bdbs-stats-last) | `/v1/bdbs/stats/last/{uid}` | Get most recent stats for a specific database |"
+    },
+    {
+      "id": "get-all-bdbs-stats-last",
+      "title": "Get latest stats for all databases",
+      "role": "content",
+      "text": "[code example]\n\nGet the most recent statistics for all databases.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_all_bdb_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_bdb_stats) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n1. Without metrics filter (returns all metrics by default)\n    [code example]\n\n2. With metrics filter\n    [code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| metrics | string | Comma-separated list of metric names for which we want statistics (default is all). (optional) |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for all databases.\n\n#### Example JSON body\n\n1. Without metrics filter (returns all metrics by default)\n    [code example]\n\n2. With metrics filter\n    [code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | No bdbs exist |"
+    },
+    {
+      "id": "get-bdbs-stats-last",
+      "title": "Get latest database stats",
+      "role": "content",
+      "text": "[code example]\n\nGet the most recent statistics for a specific database.\n\n#### Permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_bdb_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_bdb_stats) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the requested BDB. |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| metrics | string | Comma-separated list of metric names for which we want statistics (default is all). (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the most recent [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for a specific database.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | bdb does not exist |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | bdb isn't currently active |\n| [503 Service Unavailable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.4) | bdb is in recovery state |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-bdbs-stats-last-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/stats/last",
+      "section_id": "get-all-bdbs-stats-last"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "plaintext",
+      "code": "GET /v1/bdbs/stats/last",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-all-request-ex1",
+      "language": "plaintext",
+      "code": "GET /v1/bdbs/stats/last?metrics=no_of_keys,used_memory",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "{\n    \"1\": {\n        \"stime\": \"2015-05-28T08:06:37Z\",\n        \"etime\": \"2015-05-28T08:06:44Z\",\n        \"conns\": 0.0,\n        \"egress_bytes\": 0.0,\n        \"etime\": \"2015-05-28T08:06:44Z\",\n        \"evicted_objects\": 0.0,\n        \"expired_objects\": 0.0,\n        \"ingress_bytes\": 0.0,\n        \"instantaneous_ops_per_sec\": 0.0,\n        \"last_req_time\": \"1970-01-01T00:00:00Z\",\n        \"last_res_time\": \"1970-01-01T00:00:00Z\",\n        \"used_memory\": 5651336.0,\n        \"mem_size_lua\": 35840.0,\n        \"monitor_sessions_count\": 0.0,\n        \"no_of_keys\": 0.0,\n        \"other_req\": 0.0,\n        \"other_res\": 0.0,\n        \"read_hits\": 0.0,\n        \"read_misses\": 0.0,\n        \"read_req\": 0.0,\n        \"read_res\": 0.0,\n        \"total_connections_received\": 0.0,\n        \"total_req\": 0.0,\n        \"total_res\": 0.0,\n        \"write_hits\": 0.0,\n        \"write_misses\": 0.0,\n        \"write_req\": 0.0,\n        \"write_res\": 0.0\n    },\n    \"2\": {\n        \"stime\": \"2015-05-28T08:06:37Z\",\n        \"etime\": \"2015-05-28T08:06:44Z\",\n\n        \"// additional fields...\"\n    },\n\n    \"// Additional BDBs...\"\n    }",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-all-response-ex1",
+      "language": "json",
+      "code": "{\n    \"1\": {\n      \"etime\": \"2015-05-28T08:06:44Z\",\n      \"used_memory\": 5651576.0,\n      \"no_of_keys\": 0.0,\n      \"stime\": \"2015-05-28T08:06:37Z\"\n    },\n    \"2\": {\n      \"etime\": \"2015-05-28T08:06:44ZZ\",\n      \"used_memory\": 5651440.0,\n      \"no_of_keys\": 0.0,\n      \"stime\": \"2015-05-28T08:06:37Z\"\n    },\n\n    \"// Additional BDBs..\"\n    }",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-bdbs-stats-last-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/stats/last/{int: uid}",
+      "section_id": "get-bdbs-stats-last"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/stats/last/1?metrics=no_of_keys,used_memory",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n   \"1\": {\n     \"etime\": \"2015-06-23T12:05:08Z\",\n     \"used_memory\": 5651576.0,\n     \"no_of_keys\": 0.0,\n     \"stime\": \"2015-06-23T12:05:03Z\"\n   }\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

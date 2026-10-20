@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/ldap",
+  "title": "Cluster LDAP requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/ldap/",
+  "summary": "LDAP configuration requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-06-03T12:45:59-05:00",
+  "page_type": "content",
+  "content_hash": "f357f77086ab9a6c898f3195ab90a7dcb9b12bfeb6c0994951e1e3b1dba40f1e",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-ldap) | `/v1/cluster/ldap` | Get LDAP configuration |\n| [PUT](#put-cluster-ldap) | `/v1/cluster/ldap` | Set/update LDAP configuration |\n| [DELETE](#delete-cluster-ldap) | `/v1/cluster/ldap` | Delete LDAP configuration |"
+    },
+    {
+      "id": "get-cluster-ldap",
+      "title": "Get LDAP configuration",
+      "role": "content",
+      "text": "GET /v1/cluster/ldap\n\nGet the LDAP configuration.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_ldap_config](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_ldap_config) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/ldap \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [LDAP object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/ldap).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success |"
+    },
+    {
+      "id": "put-cluster-ldap",
+      "title": "Update LDAP configuration",
+      "role": "content",
+      "text": "PUT /v1/cluster/ldap\n\nSet or update the cluster LDAP configuration.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [config_ldap](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#config_ldap) |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/cluster/ldap \n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Request body\n\nInclude an [LDAP object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/ldap) with updated fields in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code. If an error occurs, the response body may include an error code and message with more details."
+    },
+    {
+      "id": "put-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| illegal_fields_combination | An unacceptable combination of fields was specified for the configuration object (e.g.: two mutually-exclusive fields), or a required field is missing.|"
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, LDAP config has been set. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |"
+    },
+    {
+      "id": "delete-cluster-ldap",
+      "title": "Delete LDAP configuration",
+      "role": "content",
+      "text": "DELETE /v1/cluster/ldap\n\nClear the LDAP configuration.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [config_ldap](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#config_ldap) |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tDELETE /v1/cluster/ldap \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code."
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n   \"bind_dn\": \"rl_admin\",\n   \"bind_pass\": \"***\",\n   \"ca_cert\": \"\",\n   \"control_plane\": false,\n   \"data_plane\": false,\n   \"dn_group_attr\": \"MemberOf\",\n   \"dn_group_query\": {\n      \"base\": \"DC=windowsAD,DC=qa,DC=redislabs,DC=com\",\n      \"filter\": \"member=%D\",\n      \"scope\": \"subtree\"\n   },\n   \"starttls\": false,\n   \"uris\": [\"ldap://ldap.example.org:636\"],\n   \"user_dn_query\": {\n      \"base\": \"DC=windowsAD,DC=qa,DC=redislabs,DC=com\",\n      \"filter\": \"(&(objectClass=Person)(cn=%u))\",\n      \"scope\": \"subtree\"\n   },\n   \"user_dn_template\": \"cn=%u, ou=users,dc=example,dc=org\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "json",
+      "code": "{\n    \"uris\": [\n       \"ldap://ldap.redislabs.com:389\"\n    ],\n    \"bind_dn\": \"rl_admin\",\n    \"bind_pass\": \"secret\",\n    \"user_dn_template\": \"cn=%u,dc=example,dc=org\",\n    \"dn_group_attr\": \"MemberOf\",\n    \"directory_timeout_s\": 5\n}",
+      "section_id": "put-request"
+    }
+  ]
+}

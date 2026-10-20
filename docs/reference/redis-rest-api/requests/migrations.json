@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/migrations",
+  "title": "Migrations requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/migrations/",
+  "summary": "REST API request to get the migration status of a database in the cluster when using Replica Of.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-12-22T11:45:26-06:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "9c05a6aedd0c1fcc4a162d8315b9dfc4ddc92af8d0610ff563fee738c16dd8e5",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-migrations) | `/v1/migrations/<uid>` | Get database migration status |"
+    },
+    {
+      "id": "get-migrations",
+      "title": "Get migration status",
+      "role": "content",
+      "text": "[code example]\n\nGets the migration status of a database in the cluster when using Replica Of.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_bdb_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_bdb_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The database's unique ID |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array with all data required by the migration orchestrator.\n\n#### Example response body\n\n[code example]\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Database does not exist |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-migrations-ex0",
+      "language": "sh",
+      "code": "GET /v1/migrations/<uid>",
+      "section_id": "get-migrations"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/migrations/1",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"migration\": {\n    \"status\": \"string\",\n    \"lag\": 0,\n    \"rdb_size\": 0,\n    \"rdb_transferred\": 0,\n    \"run_id\": \"string\",\n    \"flush_counter\": 0,\n    \"source_shards\": [\n      {\n        \"replication_id\": \"string\",\n        \"replication_offset\": 0\n      }\n    ],\n    \"error\": {\n      \"error_code\": \"string\",\n      \"message\": \"string\",\n      \"timestamp\": \"2019-08-24T14:15:22Z\"\n    }\n  }\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

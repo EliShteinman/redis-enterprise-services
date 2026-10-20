@@ -1,0 +1,93 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/shards/stats",
+  "title": "Shards stats requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/shards/stats/",
+  "summary": "Shard statistics requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/requests/shards/stats/last",
+      "summary": "Most recent shard statistics requests",
+      "title": "Latest shards stats requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/shards/stats/last/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "e8ba4b21d00d9d2eda1ac8d2825e9c6f5ceeccf601d45d3712734eaf1abe5a3d",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "The v1 statistics REST API endpoints are deprecated as of Redis Software version 7.22. Use the [metrics stream engine for monitoring v2](https://redis.io/docs/latest/operate/rs/monitoring/metrics_stream_engine) instead for real-time monitoring and metrics collection.\n\n\n| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-shards-stats) | `/v1/shards/stats` | Get stats for all shards |\n| [GET](#get-shard-stats) | `/v1/shards/stats/{uid}` | Get stats for a specific shard |"
+    },
+    {
+      "id": "get-all-shards-stats",
+      "title": "Get all shards stats",
+      "role": "content",
+      "text": "GET /v1/shards/stats\n\nGet statistics for all shards.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_all_shard_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_shard_stats) |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/shards/stats?interval=1hour&stime=2014-08-28T10:00:00Z \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| parent_uid | integer | Only return shard from the given BDB ID (optional) |\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| metrics | list | Comma-separated list of [metric names](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/shard-metrics) for which we want statistics (default is all) (optional) |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for all shards.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | No shards exist |"
+    },
+    {
+      "id": "get-shard-stats",
+      "title": "Get shard stats",
+      "role": "content",
+      "text": "GET /v1/shards/stats/{int: uid}\n\nGet statistics for a specific shard.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_shard_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_shard_stats) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/shards/stats/1?interval=1hour&stime=2014-08-28T10:00:00Z \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the shard requested. |\n\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for the specified shard.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Shard does not exist |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Shard isn't currently active |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "[\n  {\n    \"status\": \"active\",\n    \"uid\": \"1\",\n    \"node_uid\": \"1\",\n    \"assigned_slots\": \"0-8191\",\n    \"intervals\": [\n    {\n      \"interval\": \"1sec\",\n      \"stime\": \"2015-05-28T08:27:35Z\",\n      \"etime\": \"2015-05-28T08:27:40Z\",\n      \"used_memory_peak\": 5888264.0,\n      \"used_memory_rss\": 5888264.0,\n      \"read_hits\": 0.0,\n      \"pubsub_patterns\": 0.0,\n      \"no_of_keys\": 0.0,\n      \"mem_size_lua\": 35840.0,\n      \"last_save_time\": 1432541051.0,\n      \"sync_partial_ok\": 0.0,\n      \"connected_clients\": 9.0,\n      \"avg_ttl\": 0.0,\n      \"write_misses\": 0.0,\n      \"used_memory\": 5651440.0,\n      \"sync_full\": 0.0,\n      \"expired_objects\": 0.0,\n      \"total_req\": 0.0,\n      \"blocked_clients\": 0.0,\n      \"pubsub_channels\": 0.0,\n      \"evicted_objects\": 0.0,\n      \"no_of_expires\": 0.0,\n      \"interval\": \"1sec\",\n      \"write_hits\": 0.0,\n      \"read_misses\": 0.0,\n      \"sync_partial_err\": 0.0,\n      \"rdb_changes_since_last_save\": 0.0\n    },\n    {\n      \"interval\": \"1sec\",\n      \"stime\": \"2015-05-28T08:27:40Z\",\n      \"etime\": \"2015-05-28T08:27:45Z\",\n      \"// additional fields...\"\n      }\n    ]\n  },\n  {\n    \"uid\": \"2\",\n    \"status\": \"active\",\n    \"node_uid\": \"1\",\n    \"assigned_slots\": \"8192-16383\",\n    \"intervals\": [\n      {\n        \"interval\": \"1sec\",\n        \"stime\": \"2015-05-28T08:27:35Z\",\n        \"etime\": \"2015-05-28T08:27:40Z\",\n        \"// additional fields...\"\n      },\n      {\n        \"interval\": \"1sec\",\n        \"stime\": \"2015-05-28T08:27:40Z\",\n        \"etime\": \"2015-05-28T08:27:45Z\",\n        \"// additional fields...\"\n      }\n    ]\n  }\n]",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"uid\": \"1\",\n  \"status\": \"active\",\n  \"node_uid\": \"1\",\n  \"role\": \"master\",\n  \"intervals\": [\n    {\n      \"interval\": \"1sec\",\n      \"stime\": \"2015-05-28T08:24:13Z\",\n      \"etime\": \"2015-05-28T08:24:18Z\",\n      \"avg_ttl\": 0.0,\n      \"blocked_clients\": 0.0,\n      \"connected_clients\": 9.0,\n      \"etime\": \"2015-05-28T08:24:18Z\",\n      \"evicted_objects\": 0.0,\n      \"expired_objects\": 0.0,\n      \"last_save_time\": 1432541051.0,\n      \"used_memory\": 5651440.0,\n      \"mem_size_lua\": 35840.0,\n      \"used_memory_peak\": 5888264.0,\n      \"used_memory_rss\": 5888264.0,\n      \"no_of_expires\": 0.0,\n      \"no_of_keys\": 0.0,\n      \"pubsub_channels\": 0.0,\n      \"pubsub_patterns\": 0.0,\n      \"rdb_changes_since_last_save\": 0.0,\n      \"read_hits\": 0.0,\n      \"read_misses\": 0.0,\n      \"stime\": \"2015-05-28T08:24:13Z\",\n      \"sync_full\": 0.0,\n      \"sync_partial_err\": 0.0,\n      \"sync_partial_ok\": 0.0,\n      \"total_req\": 0.0,\n      \"write_hits\": 0.0,\n      \"write_misses\": 0.0\n    },\n    {\n      \"interval\": \"1sec\",\n      \"stime\": \"2015-05-28T08:24:18Z\",\n      \"etime\": \"2015-05-28T08:24:23Z\",\n\n      \"// additional fields...\"\n    }\n  ]\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

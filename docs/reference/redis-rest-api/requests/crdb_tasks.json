@@ -1,0 +1,110 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/crdb_tasks",
+  "title": "CRDB tasks requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdb_tasks/",
+  "summary": "Active-Active database task status requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-06-30T08:24:08-05:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "338837eaaadc5c2107c0516eae28ffb714810556e5cc765871d5a53097018cab",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-crdb_tasks) | `/v1/crdb_tasks` | Get all running tasks |\n| [GET](#get-crdb_task) | `/v1/crdb_tasks/{task_id}` | Get the status of an executed task |\n| [POST](#post-crdb_task-cancel) | `/v1/crdb_tasks/{task_id}/actions/cancel` | Cancel a running or queued task |"
+    },
+    {
+      "id": "get-all-crdb_tasks",
+      "title": "Get all running tasks",
+      "role": "content",
+      "text": "[code example]\n\nGet all running tasks."
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [CRDB task objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task).\n\n#### Status codes {#get-all-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | A list of running tasks. |\n| [401 Unauthorized](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized) | Unauthorized request. Invalid credentials. |"
+    },
+    {
+      "id": "get-crdb_task",
+      "title": "Get task status",
+      "role": "content",
+      "text": "GET /v1/crdb_tasks/{task_id}\n\nGet the status of an executed task.\n\nThe status of a completed task is kept for 500 seconds by default."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    GET /v1/crdb_tasks/1\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Result-TTL | integer | Task time to live |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| task_id | string | Task ID |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| verbose | boolean | Return detailed task information (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task)."
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Task status. |\n| [401 Unauthorized](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized) | Unauthorized request. Invalid credentials |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Task not found. |"
+    },
+    {
+      "id": "post-crdb_task-cancel",
+      "title": "Cancel task",
+      "role": "content",
+      "text": "[code example]\n\nGracefully cancels a running or queued task.\n\nA task that already reached the commit phase cannot be canceled."
+    },
+    {
+      "id": "post-cancel-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| task_id | string | Task ID |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| force | boolean | Cancel even if the task is in the commit phase. **WARNING**: This can break the CRDB in the cluster configuration store (CCS), so use with caution. (optional) |"
+    },
+    {
+      "id": "post-cancel-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code.\n\n#### Status codes {#post-cancel-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | The request has been accepted. |\n| [401 Unauthorized](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized) | Unauthorized request. Invalid credentials. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Task not found. |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Task cannot be canceled. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Failed to cancel task. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-crdb_tasks-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdb_tasks",
+      "section_id": "get-all-crdb_tasks"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdb_tasks",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "post-crdb_task-cancel-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdb_tasks/{task_id}/actions/cancel",
+      "section_id": "post-crdb_task-cancel"
+    },
+    {
+      "id": "post-cancel-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdb_tasks/1/actions/cancel",
+      "section_id": "post-cancel-request"
+    }
+  ]
+}

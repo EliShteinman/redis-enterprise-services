@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/ldap_mapping",
+  "title": "LDAP mapping object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/ldap_mapping/",
+  "summary": "An object that represents a mapping between an LDAP group and roles",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2023-12-14T15:27:49+01:00",
+  "page_type": "content",
+  "content_hash": "d8a7ce193db0889035567e78230a3b13f6a33592504ebfd73842376d0b5bdd7c",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An API object that represents an [LDAP mapping](https://redis.io/docs/latest/operate/rs/security/access-control/ldap/map-ldap-groups-to-roles) between an LDAP group and [roles](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role).\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| uid | integer | LDAP mapping's unique ID |\n| account_id | integer | SM account ID |\n| action_uid | string | Action UID. If it exists, progress can be tracked by the `GET`&nbsp;`/actions/{uid}` API (read-only) |\n| bdbs_email_alerts | complex object | UIDs of databases that associated email addresses will receive alerts for |\n| cluster_email_alerts | boolean | Activate cluster email alerts for an associated email |\n| dn | string | An LDAP group's distinguished name |\n| email | string | Email address used for alerts (if set) |\n| email_alerts | boolean (default:&nbsp;true) | Activate email alerts for an associated email |\n| name | string | Role's name |\n| role_uids | array of integers | List of role UIDs associated with the LDAP group |"
+    }
+  ],
+  "examples": []
+}

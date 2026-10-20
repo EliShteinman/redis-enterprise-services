@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/crdbs/health_report",
+  "title": "CRDB health report requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/health_report/",
+  "summary": "Active-Active database health report requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "b0243427e08cb527ad9038f403b32fc5df2a1b3561f5920f9459b0021d50b0ba",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-crdbs-health) | `/v1/crdbs/{crdb_guid}/health_report` | Get a health report for an Active-Active database |"
+    },
+    {
+      "id": "get-crdbs-health",
+      "title": "Get health report",
+      "role": "content",
+      "text": "GET /v1/crdbs/{crdb_guid}/health_report\n\nGet a health report for an Active-Active database."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    GET /v1/crdbs/{crdb_guid}/health_report\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| instance_id | integer | The request retrieves information from the specified Active-Active database instance. If this instance doesn’t exist, the request retrieves information from all instances. (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [CRDB health report objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/health_report)."
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Action was successful. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Configuration or Active-Active database not found. |"
+    }
+  ],
+  "examples": []
+}

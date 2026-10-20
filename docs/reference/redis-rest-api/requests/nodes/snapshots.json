@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/nodes/snapshots",
+  "title": "Node snapshot requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/snapshots/",
+  "summary": "Node snapshot requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "4206b727aceaaf9993c6aaad98c898c09573cb37e877c1d6880c11ad02ec08b1",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-snapshots) | `/v1/nodes/{uid}/snapshots` | Get node snapshots |\n| [DELETE](#delete-snapshot) | `/v1/nodes/{uid}/snapshots/{snapshot_name}` | Delete a node snapshot |"
+    },
+    {
+      "id": "get-snapshots",
+      "title": "Get node snapshots",
+      "role": "content",
+      "text": "[code example]\n\nGet all cluster node snapshots of the specified node."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_node_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_node_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the node requested. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an array of node snapshot JSON objects.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Node UID does not exist |"
+    },
+    {
+      "id": "delete-snapshot",
+      "title": "Delete node snapshot",
+      "role": "content",
+      "text": "[code example]\n\nDelete a cluster node snapshot. Snapshots created by maintenance mode are not deleted."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [update_node](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_node) | admin |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the updated node. |\n| snapshot_name | string | The unique name of the snapshot to delete. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that represents the deleted node snapshot.\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#delete-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [403 Forbidden](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.4) | Node snapshot is a maintenance snapshot and cannot be deleted |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Node uid does not exist |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Snapshot name does not exist for this node uid |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-snapshots-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/{int: uid}/snapshots",
+      "section_id": "get-snapshots"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/nodes/1/snapshots",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n        \"created_time\": \"2024-01-10 20:55:54\",\n        \"name\": \"nightly_snapshot_1\",\n        \"node_uid\": \"1\"\n    },\n    {\n        \"created_time\": \"2024-01-11 20:55:54\",\n        \"name\": \"nightly_snapshot_2\",\n        \"node_uid\": \"1\"\n    }\n]",
+      "section_id": "get-response"
+    },
+    {
+      "id": "delete-snapshot-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/nodes/{int: uid}/snapshots/{snapshot_name}",
+      "section_id": "delete-snapshot"
+    },
+    {
+      "id": "delete-request-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/nodes/1/snapshots/nightly_snapshot_19",
+      "section_id": "delete-request"
+    },
+    {
+      "id": "delete-response-ex0",
+      "language": "json",
+      "code": "{\n    \"created_time\": \"2024-01-11 20:55:54\",\n    \"name\": \"nightly_snapshot_19\",\n    \"node_uid\": \"1\"\n}",
+      "section_id": "delete-response"
+    }
+  ]
+}

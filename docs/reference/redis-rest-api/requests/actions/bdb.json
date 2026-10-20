@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/actions/bdb",
+  "title": "Database actions requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/actions/bdb/",
+  "summary": "Database actions requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-10-18T15:40:08+03:00",
+  "page_type": "content",
+  "content_hash": "1e909e31ea93f2b8483925b6e19f6959b41e954292554a9abc01f25af2a7e430",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-db-actions) | `/v1/actions/bdb/{bdb_uid}` | Get the status of a specific database's actions |"
+    },
+    {
+      "id": "get-db-actions",
+      "title": "Get database actions",
+      "role": "content",
+      "text": "[code example]\n\nGet the status of all currently executing or pending state-machine-related actions for a specific database. Completed actions are not returned, so an empty array means no actions are running for the database. This API tracks short-lived API requests that return `action_uid`.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_status_of_cluster_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_status_of_cluster_action) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| bdb_uid | string | Unique database ID |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an array of JSON objects with attributes from [actions](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action) and [state machines](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/state-machine). Completed actions and state machines are not included.\n\nEach action contains the following attributes: `name`, `action_uid`, `status`, and `progress`.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error, response provides info about state-machine actions |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | bdb not found |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-db-actions-ex0",
+      "language": "plaintext",
+      "code": "GET /v1/actions/bdb/{bdb_uid}",
+      "section_id": "get-db-actions"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "plaintext",
+      "code": "GET /v1/actions/bdb/1",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n        \"action_uid\": \"8afc7f70-f3ae-4244-a5e9-5133e78b2e97\",\n        \"heartbeat\": 1703067908,\n        \"name\": \"SMUpdateBDB\",\n        \"object_name\": \"bdb:1\",\n        \"pending_ops\": {},\n        \"progress\": 50.0,\n        \"state\": \"proxy_policy\",\n        \"status\": \"active\"\n    }\n]",
+      "section_id": "get-response"
+    }
+  ]
+}

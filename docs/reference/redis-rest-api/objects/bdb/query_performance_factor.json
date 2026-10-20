@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bdb/query_performance_factor",
+  "title": "Query performance factor object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bdb/query_performance_factor/",
+  "summary": "Configuration object for query performance factor",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-10-30T12:00:21-05:00",
+  "page_type": "content",
+  "content_hash": "719394df0c26004c20447f3b0cb951d53b8b0137ec5e0cfb00baf3f7597e6377",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "Configures [query performance factor](https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/search/query-performance-factor) and related fields.\n\n| Field | Type/Value | Description |\n|-------|------------|-------------|\n| active | boolean (default: false) | If true, enables query performance factor for the database |\n| scaling_factor | integer (range: 0-16) (default: 0) | Scales the magnitude of the query performance factor |"
+    }
+  ],
+  "examples": []
+}

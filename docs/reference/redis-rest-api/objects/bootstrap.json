@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bootstrap",
+  "title": "Bootstrap object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/",
+  "summary": "An object for bootstrap configuration",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/cluster_identity",
+      "summary": "Documents the cluster_identity object used with Redis Software REST API calls.",
+      "title": "Cluster identity object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/cluster_identity/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/credentials",
+      "summary": "Documents the credentials object used with Redis Software REST API calls.",
+      "title": "Credentials object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/credentials/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/identity",
+      "summary": "Documents the identity object used with Redis Software REST API calls.",
+      "title": "Identity object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/identity/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/limits",
+      "summary": "Documents the limits object used with Redis Software REST API calls.",
+      "title": "Limits object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/limits/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/node_identity",
+      "summary": "Documents the node_identity object used with Redis Software REST API calls.",
+      "title": "Node identity object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/node_identity/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/paths",
+      "summary": "Documents the paths object used with Redis Software REST API calls.",
+      "title": "Paths object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/paths/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/policy",
+      "summary": "Documents the policy object used with Redis Software REST API calls.",
+      "title": "Policy object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/policy/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/bootstrap/user_defined_module",
+      "summary": "An object for user-defined module configuration during bootstrap",
+      "title": "user_defined_module object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/user_defined_module/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "29d784b6b5f019dd46f615b905262a01442833c8b5c8643eb3364605e23edecf",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "A bootstrap configuration object.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| action | 'create_cluster'<br />'join_cluster'<br />'recover_cluster' | Action to perform |\n| cluster | [cluster_identity](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/cluster_identity) object | Cluster to join or create |\n| cnm_https_port | integer | Port to join a cluster with non-default cnm_https port |\n| crdb_coordinator_port | integer, (range: 1024-65535) (default: 9081) | CRDB coordinator port |\n| credentials | [credentials](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/credentials) object | Cluster admin credentials |\n| dns_suffixes | object | Explicit configuration of DNS suffixes<br />\n[{\n  \"name\": string,\n  \"cluster_default\": boolean,\n  \"use_aaaa_ns\": boolean,\n  \"use_internal_addr\": boolean,\n  \"slaves\": array\n}, ...]\n<br />**name**: DNS suffix name<br />**cluster_default**: Should this suffix be the default cluster suffix<br />**use_aaaa_ns**: Should AAAA records be published for NS records<br />**use_internal_addr**: Should internal cluster IPs be published for databases<br />**slaves**: List of replica servers that should be published as NS and notified |\n| envoy_admin_port | integer, (range: 1024-65535) | Envoy admin port. Changing this port during runtime might result in an empty response because envoy serves as the cluster gateway.|\n| envoy_mgmt_server_port | integer, (range: 1024-65535) | Envoy management server port|\n| <span class=\"break-all\">gossip_envoy_admin_port</span> | integer, (range: 1024-65535) | Gossip envoy admin port (deprecated; this port is no longer used because gossip functionality is handled by the main envoy process on `envoy_admin_port`) |\n| license | string | License string. If not provided, a trial license is set by default. |\n| max_retries | integer | Max number of retries in case of recoverable errors |\n| node | [node_identity](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/node_identity) object | Node description |\n| policy | [policy](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/policy) object | Policy object (deprecated; use [`PUT /v1/cluster/policy`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/policy#put-cluster-policy) after cluster creation instead) |\n| recovery_filename | string | Name of backup file to recover from |\n| required_version | string | This node can only join the cluster if all nodes in the cluster have a version greater than the required_version (deprecated as of Redis Software v7.8.6) |\n| retry_time | integer | Max waiting time between retries (in seconds) |\n| user_defined_modules | array of [user_defined_module](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/user_defined_module) objects | List of custom modules to download and install during bootstrap. Each node downloads and installs the modules independently. |\n| witness_disk | object | An API object that represents the Witness Disk bootstrap configuration |"
+    }
+  ],
+  "examples": []
+}

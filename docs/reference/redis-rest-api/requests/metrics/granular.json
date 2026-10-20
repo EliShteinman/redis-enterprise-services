@@ -1,0 +1,151 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/metrics/granular",
+  "title": "Granular metrics requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/metrics/granular/",
+  "summary": "Granular metrics collection requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-09-29T16:51:25+03:00",
+  "page_type": "content",
+  "content_hash": "2c85c3bac1e1dbdaebc971c698c08dfdad861b92f996562e8db51a347be4215d",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-granular-status) | `/v1/metrics/granular/status` | Get the granular metrics collection status of cluster nodes |\n| [POST](#post-granular-start) | `/v1/metrics/granular/start` | Start granular metrics collection |\n| [POST](#post-granular-stop) | `/v1/metrics/granular/stop` | Stop granular metrics collection |\n| [DELETE](#delete-granular-data) | `/v1/metrics/granular/data` | Delete granular metrics data |\n\nThese requests manage the granular tier of [local metrics storage](https://redis.io/docs/latest/operate/rs/monitoring/metrics_stream_engine/local-metrics-storage#tiers). None of them take a request body."
+    },
+    {
+      "id": "get-granular-status",
+      "title": "Get granular metrics status",
+      "role": "content",
+      "text": "GET /v1/metrics/granular/status\n\nGet the granular metrics collection status of all nodes or of a specific node.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_cluster_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_info) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/metrics/granular/status\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| node_uid | integer | Optional. The ID of the node to get the status of. If omitted, returns the status of all nodes. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a `nodes` array with one object for each node in scope.\n\n#### Example JSON body\n\n[code example]\n\n#### Node status fields\n\nTimestamps are Unix epoch seconds.\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | string | The node ID |\n| state | string | Granular collection state on the node:<br />`running`<br />`stopped` |\n| started_at | integer | When collection started. Included only while `state` is `running`. |\n| expires_in_sec | integer | Seconds until collection stops automatically. Included only while `state` is `running`. |\n| stopped_at | integer | When collection stopped. Included only after collection stops, while granular data is still on disk. |\n| auto_cleanup_in_sec | integer | Seconds until the granular data is deleted automatically. Included only after collection stops, while granular data is still on disk. |\n| disk_usage_bytes | integer | Disk space used by granular data, in bytes |"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | The `node_uid` doesn't match a node in the cluster (`error_code`: `node_not_found`). |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error. |"
+    },
+    {
+      "id": "post-granular-start",
+      "title": "Start granular metrics collection",
+      "role": "content",
+      "text": "POST /v1/metrics/granular/start\n\nStart granular metrics collection on all nodes or on a specific node. Collection stops automatically after the maximum duration set in [`granular_metrics_job_settings`](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/granular_metrics_job_settings).\n\nThe request is idempotent. Starting collection on a node where it's already running returns `already_running`.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [update_cluster](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_cluster) |"
+    },
+    {
+      "id": "post-start-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/metrics/granular/start\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| node_uid | integer | Optional. The ID of the node to start collection on. If omitted, starts collection on all nodes. |"
+    },
+    {
+      "id": "post-start-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a `results` array with one object for each node in scope.\n\n#### Example JSON body\n\n[code example]\n\n#### Result fields\n\nTimestamps are Unix epoch seconds.\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | string | The node ID |\n| outcome | string | Result on the node:<br />`started`: collection started.<br />`already_running`: collection was already running.<br />`unknown`: the result couldn't be confirmed. [Get the granular status](#get-granular-status) of the node to check. |\n| started_at | integer | When collection started |\n| expires_at | integer | When collection stops automatically |"
+    },
+    {
+      "id": "post-start-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | The `node_uid` doesn't match a node in the cluster (`error_code`: `node_not_found`). |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error. |"
+    },
+    {
+      "id": "post-granular-stop",
+      "title": "Stop granular metrics collection",
+      "role": "content",
+      "text": "POST /v1/metrics/granular/stop\n\nStop granular metrics collection on all nodes or on a specific node. The collected data stays on disk until it's [deleted](#delete-granular-data) or the cleanup delay set in [`granular_metrics_job_settings`](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/granular_metrics_job_settings) passes.\n\nThe request is idempotent. Stopping collection on a node where it isn't running returns `already_stopped`.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [update_cluster](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_cluster) |"
+    },
+    {
+      "id": "post-stop-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/metrics/granular/stop\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| node_uid | integer | Optional. The ID of the node to stop collection on. If omitted, stops collection on all nodes. |"
+    },
+    {
+      "id": "post-stop-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a `results` array with one object for each node in scope.\n\n#### Example JSON body\n\n[code example]\n\n#### Result fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | string | The node ID |\n| outcome | string | Result on the node:<br />`stopped`: collection stopped.<br />`already_stopped`: collection wasn't running. |\n| stopped_at | integer | When collection stopped, in Unix epoch seconds |\n| ran_for_sec | integer | How long collection ran, in seconds |"
+    },
+    {
+      "id": "post-stop-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | The `node_uid` doesn't match a node in the cluster (`error_code`: `node_not_found`). |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error. |"
+    },
+    {
+      "id": "delete-granular-data",
+      "title": "Delete granular metrics data",
+      "role": "content",
+      "text": "DELETE /v1/metrics/granular/data\n\nDelete granular metrics data from all nodes or from a specific node.\n\nIf granular collection is still running on any node in scope, the request fails with `409 Conflict`. The cluster is checked before any node's data is deleted, so a failed request deletes nothing. [Stop collection](#post-granular-stop) on those nodes first.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [update_cluster](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_cluster) |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tDELETE /v1/metrics/granular/data\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| node_uid | integer | Optional. The ID of the node to delete granular data from. If omitted, deletes granular data from all nodes. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a `results` array with one object for each node in scope.\n\n#### Example JSON body\n\n[code example]\n\n#### Result fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | string | The node ID |\n| outcome | string | Result on the node:<br />`deleted`: granular data was deleted.<br />`no_data`: the node had no granular data to delete. |\n| freed_bytes | integer | Disk space freed, in bytes. Included with the `deleted` outcome. |\n\n#### Example error response\n\nIf granular collection is still running on any node in scope, the response lists those nodes:\n\n[code example]"
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | The `node_uid` doesn't match a node in the cluster (`error_code`: `node_not_found`). |\n| [409 Conflict](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.10) | Granular collection is still running on at least one node in scope (`error_code`: `granular_metrics_running`). No data was deleted. |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"nodes\": [\n    { \"uid\": \"1\", \"state\": \"running\", \"started_at\": 1771770600, \"expires_in_sec\": 2820 },\n    { \"uid\": \"2\", \"state\": \"stopped\", \"stopped_at\": 1771770600, \"auto_cleanup_in_sec\": 82800, \"disk_usage_bytes\": 131072000 }\n  ]\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "post-start-response-ex0",
+      "language": "json",
+      "code": "{\n  \"results\": [\n    { \"uid\": \"1\", \"outcome\": \"started\", \"started_at\": 1771770600, \"expires_at\": 1771774200 },\n    { \"uid\": \"2\", \"outcome\": \"already_running\", \"started_at\": 1771769000, \"expires_at\": 1771772600 },\n    { \"uid\": \"3\", \"outcome\": \"unknown\" }\n  ]\n}",
+      "section_id": "post-start-response"
+    },
+    {
+      "id": "post-stop-response-ex0",
+      "language": "json",
+      "code": "{\n  \"results\": [\n    { \"uid\": \"1\", \"outcome\": \"stopped\", \"stopped_at\": 1771774200, \"ran_for_sec\": 3600 },\n    { \"uid\": \"2\", \"outcome\": \"already_stopped\" }\n  ]\n}",
+      "section_id": "post-stop-response"
+    },
+    {
+      "id": "delete-response-ex0",
+      "language": "json",
+      "code": "{\n  \"results\": [\n    { \"uid\": \"1\", \"outcome\": \"deleted\", \"freed_bytes\": 131072000 },\n    { \"uid\": \"2\", \"outcome\": \"no_data\" }\n  ]\n}",
+      "section_id": "delete-response"
+    },
+    {
+      "id": "delete-response-ex1",
+      "language": "json",
+      "code": "{\n  \"error_code\": \"granular_metrics_running\",\n  \"description\": \"cannot cleanup granular metrics — still running on 1 node(s)\",\n  \"running_nodes\": [ { \"uid\": \"1\", \"started_at\": 1771770600 } ]\n}",
+      "section_id": "delete-response"
+    }
+  ]
+}

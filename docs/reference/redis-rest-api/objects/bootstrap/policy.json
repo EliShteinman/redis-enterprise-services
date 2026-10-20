@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bootstrap/policy",
+  "title": "Policy object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/policy/",
+  "summary": "Documents the policy object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "34be460d53a35bb56b6aca1249b5947722e1807b4901917ace1010cdb45991a5",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| default_fork_evict_ram | boolean (default:&nbsp;false) | If true, the databases should evict data from RAM to ensure successful replication or persistence |\n| default_non_sharded_proxy_policy | **'single'** <br />'all-master-shards'<br />'all-nodes' | Default proxy_policy for newly created non-sharded databases' endpoints |\n| default_sharded_proxy_policy | 'single'<br /> **'all-master-shards'** <br />'all-nodes' | Default proxy_policy for newly created sharded databases' endpoints |\n| default_shards_placement | 'dense'<br /> **'sparse'** | Default shards_placement for newly created databases |\n| rack_aware | boolean | Cluster rack awareness |\n| shards_overbooking | boolean (default:&nbsp;true) | If true, all databases' memory_size settings are ignored during shards placement |"
+    }
+  ],
+  "examples": []
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/stats",
+  "title": "Cluster stats requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/stats/",
+  "summary": "Cluster statistics requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/requests/cluster/stats/last",
+      "summary": "Most recent cluster statistics requests",
+      "title": "Cluster last stats requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/stats/last/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "f4d85750fb449c08ee5aeb399b4832f2d73a3e5c8791a8cef66093aacb84611b",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "The v1 statistics REST API endpoints are deprecated as of Redis Software version 7.22. Use the [metrics stream engine for monitoring v2](https://redis.io/docs/latest/operate/rs/monitoring/metrics_stream_engine) instead for real-time monitoring and metrics collection.\n\n\n| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-stats) | `/v1/cluster/stats` | Get cluster stats |"
+    },
+    {
+      "id": "get-cluster-stats",
+      "title": "Get cluster stats",
+      "role": "content",
+      "text": "[code example]\n\nGet cluster statistics."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_cluster_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_stats) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for the cluster.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "example-requests",
+      "title": "Example requests",
+      "role": "example",
+      "text": "#### cURL\n\n[code example]\n\n#### Python\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-cluster-stats-ex0",
+      "language": "sh",
+      "code": "GET /v1/cluster/stats",
+      "section_id": "get-cluster-stats"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/cluster/stats/1?interval=1hour&stime=2014-08-28T10:00:00Z",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"intervals\": [\n    {\n      \"interval\": \"1hour\",\n      \"stime\": \"2015-05-27T12:00:00Z\",\n      \"etime\": \"2015-05-28T12:59:59Z\",\n      \"conns\": 0.0,\n      \"cpu_idle\": 0.8533959401503577,\n      \"cpu_system\": 0.01602159448549579,\n      \"cpu_user\": 0.08721123782294203,\n      \"egress_bytes\": 1111.2184745131947,\n      \"ephemeral_storage_avail\": 3406676307.1449075,\n      \"ephemeral_storage_free\": 4455091440.360014,\n      \"free_memory\": 2745470765.673594,\n      \"ingress_bytes\": 220.84083194769272,\n      \"interval\": \"1week\",\n      \"persistent_storage_avail\": 3406676307.1533995,\n      \"persistent_storage_free\": 4455091440.088265,\n      \"total_req\": 0.0\n    },\n    {\n      \"interval\": \"1hour\",\n      \"stime\": \"2015-05-27T13:00:00Z\",\n      \"etime\": \"2015-05-28T13:59:59Z\",\n      \"// additional fields...\"\n    }\n  ]\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "example-requests-ex0",
+      "language": "sh",
+      "code": "$ curl -k -u \"[username]:[password]\" -X GET\n        https://[host][:port]/v1/cluster/stats?interval=1hour",
+      "section_id": "example-requests"
+    },
+    {
+      "id": "example-requests-ex1",
+      "language": "python",
+      "code": "import requests\n\nurl = \"https://[host][:port]/v1/cluster/stats?interval=1hour\"\nauth = (\"[username]\", \"[password]\")\n\nresponse = requests.request(\"GET\", url, auth=auth)\n\nprint(response.text)",
+      "section_id": "example-requests"
+    }
+  ]
+}

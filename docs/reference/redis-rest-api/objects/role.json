@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/role",
+  "title": "Role object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role/",
+  "summary": "An object that represents a role",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-07-21T11:19:25-05:00",
+  "page_type": "content",
+  "content_hash": "2281cc4acbea2e4a415c2a6463cd780d3b60c009b593185855259743df679e81",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An API object that represents a role.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| uid | integer | Role's unique ID |\n| account_id | integer | SM account ID |\n| action_uid | string | Action UID. If it exists, progress can be tracked by the GET /actions/{uid} API (read-only) |\n| management | 'admin'<br />'db_member'<br />'db_viewer'<br />'cluster_member'<br />'cluster_viewer'<br />'user_manager'<br />'none' | [Management role](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#roles) |\n| name | string | Role's name |\n| resources | array of objects | Optional list of resource scopes that limit a `db_member` or `db_viewer` management role to specific databases. Each scope has a `type` (currently only `db`) and a `uids` array of database IDs the role applies to. If omitted or empty, the role applies to all databases. Example: `[{\"type\": \"db\", \"uids\": [\"1\", \"2\"]}]` |"
+    }
+  ],
+  "examples": []
+}

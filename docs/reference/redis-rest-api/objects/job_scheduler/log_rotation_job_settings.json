@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/job_scheduler/log_rotation_job_settings",
+  "title": "Log rotation job settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/log_rotation_job_settings/",
+  "summary": "Documents the log_rotation_job_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "50c7fd7a064cb6e15ca1b92c0fe8639d05579529fe1653682fc9aaffd7b1a281",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| cron_expression | string | [CRON expression](https://en.wikipedia.org/wiki/Cron#CRON_expression) that defines the log rotation schedule |\n| enabled | boolean (default: true) | Indicates whether this job is enabled |"
+    }
+  ],
+  "examples": []
+}

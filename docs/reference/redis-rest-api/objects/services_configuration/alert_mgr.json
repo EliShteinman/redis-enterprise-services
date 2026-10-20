@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/alert_mgr",
+  "title": "Alert manager object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/alert_mgr/",
+  "summary": "Documents the alert_mgr object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "2dbb0e909387320966827b0978a75182dbce999d74d3c4d2b132b60a24e7a412",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the alert manager processes |"
+    }
+  ],
+  "examples": []
+}

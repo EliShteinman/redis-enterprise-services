@@ -1,0 +1,302 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/redis_acls",
+  "title": "Redis access control list (ACL) requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/redis_acls/",
+  "summary": "Redis access control list (ACL) requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "ad277164a9fbf9243664b24fd45d6db3d612c3d42af18b4c300c586a85f7e4c9",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-redis_acls) | `/v1/redis_acls` | Get all Redis ACLs |\n| [GET](#get-redis_acl) | `/v1/redis_acls/{uid}` | Get a single Redis ACL |\n| [PUT](#put-redis_acl) | `/v1/redis_acls/{uid}` | Update a Redis ACL |\n| [POST](#post-redis_acl) | `/v1/redis_acls` | Create a new Redis ACL |\n| [DELETE](#delete-redis_acl) | `/v1/redis_acls/{uid}` | Delete a Redis ACL |"
+    },
+    {
+      "id": "get-all-redis_acls",
+      "title": "Get all Redis ACLs",
+      "role": "content",
+      "text": "[code example]\n\nGet all Redis ACL objects."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_all_redis_acls_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_redis_acls_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [Redis ACL objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support redis_acl yet. |"
+    },
+    {
+      "id": "get-redis_acl",
+      "title": "Get Redis ACL",
+      "role": "content",
+      "text": "[code example]\n\nGet a single Redis ACL object."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_redis_acl_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_redis_acl_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The object's unique ID. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [403 Forbidden](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.4) | Operation is forbidden. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | redis_acl does not exist. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support redis_acl yet. |"
+    },
+    {
+      "id": "put-redis_acl",
+      "title": "Update Redis ACL",
+      "role": "content",
+      "text": "[code example]\n\nUpdate an existing Redis ACL object."
+    },
+    {
+      "id": "permissions-2",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [update_redis_acl](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_redis_acl) | admin<br />user_manager |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field   | Type | Description |\n|---------|------|---------------|\n| dry_run |  | Validate the updated [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl) but don't apply the update. |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The Redis ACL's unique ID. |\n\n#### Request body\n\nInclude a [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl) with updated fields in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the updated [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "put-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "| Code | Description |\n|------|-------------|\n| unsupported_resource | The cluster is not yet able to handle this resource type. This could happen in a partially upgraded cluster, where some of the nodes are still on a previous version.|\n| name_already_exists | An object of the same type and name exists|\n| invalid_param | A parameter has an illegal value|"
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, redis_acl was updated. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Attempting to change a non-existent redis_acl. |\n| [409 Conflict](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.10) | Cannot change a read-only object |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support redis_acl yet. |"
+    },
+    {
+      "id": "post-redis_acl",
+      "title": "Create Redis ACL",
+      "role": "content",
+      "text": "[code example]\n\nCreate a new Redis ACL object."
+    },
+    {
+      "id": "permissions-3",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [create_redis_acl](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#create_redis_acl) | admin<br />user_manager |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field   | Type | Description |\n|---------|------|---------------|\n| dry_run |  | Validate the new [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl) but don't apply the update. |\n\n#### Request body\n\nInclude a [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl) in the request body."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the newly created [Redis ACL object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/redis_acl).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| unsupported_resource | The cluster is not yet able to handle this resource type. This could happen in a partially upgraded cluster, where some of the nodes are still on a previous version. |\n| name_already_exists | An object of the same type and name exists |\n| missing_field | A needed field is missing |\n| invalid_param | A parameter has an illegal value |"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, redis_acl is created. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support redis_acl yet. |"
+    },
+    {
+      "id": "examples",
+      "title": "Examples",
+      "role": "example",
+      "text": "#### cURL\n\n[code example]\n\n#### Python\n\n[code example]"
+    },
+    {
+      "id": "delete-redis_acl",
+      "title": "Delete Redis ACL",
+      "role": "content",
+      "text": "[code example]\n\nDelete a Redis ACL object."
+    },
+    {
+      "id": "permissions-4",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [delete_redis_acl](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#delete_redis_acl) | admin<br />user_manager |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The redis_acl unique ID. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code that indicates the Redis ACL deletion success or failure."
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, the redis_acl is deleted. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The request is not acceptable. |\n| [409 Conflict](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.10) | Cannot delete a read-only object |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support redis_acl yet. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-redis_acls-ex0",
+      "language": "sh",
+      "code": "GET /v1/redis_acls",
+      "section_id": "get-all-redis_acls"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/redis_acls",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n     \"uid\": 1,\n     \"name\": \"Full Access\",\n     \"acl\": \"+@all ~*\"\n    },\n    {\n     \"uid\": 2,\n     \"name\": \"Read Only\",\n     \"acl\": \"+@read ~*\"\n    },\n    {\n     \"uid\": 3,\n     \"name\": \"Not Dangerous\",\n     \"acl\": \"+@all -@dangerous ~*\"\n    },\n    {\n     \"uid\": 17,\n     \"name\": \"Geo\",\n     \"acl\": \"~* +@geo\"\n    }\n]",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-redis_acl-ex0",
+      "language": "sh",
+      "code": "GET /v1/redis_acls/{int: uid}",
+      "section_id": "get-redis_acl"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/redis_acls/1",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"Geo\",\n     \"acl\": \"~* +@geo\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-redis_acl-ex0",
+      "language": "sh",
+      "code": "PUT /v1/redis_acls/{int: uid}",
+      "section_id": "put-redis_acl"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/redis_acls/17",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-request-ex1",
+      "language": "json",
+      "code": "{\n     \"acl\": \"~* +@geo -@dangerous\"\n}",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"Geo\",\n     \"acl\": \"~* +@geo -@dangerous\"\n}",
+      "section_id": "put-response"
+    },
+    {
+      "id": "post-redis_acl-ex0",
+      "language": "sh",
+      "code": "POST /v1/redis_acls",
+      "section_id": "post-redis_acl"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/redis_acls",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "json",
+      "code": "{\n     \"name\": \"Geo\",\n     \"acl\": \"~* +@geo\"\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"Geo\",\n     \"acl\": \"~* +@geo\"\n}",
+      "section_id": "post-response"
+    },
+    {
+      "id": "examples-ex0",
+      "language": "sh",
+      "code": "curl -k -u \"[username]:[password]\" -X POST \\\n     -H 'Content-Type: application/json' \\\n     -d '{ \"name\": \"Geo\", \"acl\": \"~* +@geo\" }' \\\n     https://[host][:port]/v1/redis_acls",
+      "section_id": "examples"
+    },
+    {
+      "id": "examples-ex1",
+      "language": "python",
+      "code": "import requests\nimport json\n\nurl = \"https://[host][:port]/v1/redis_acls\"\n\nheaders = {\n  'Content-Type': 'application/json'\n}\n\npayload = json.dumps({\n    \"name\": \"Geo\",\n    \"acl\": \"~* +@geo\"\n})\nauth=(\"[username]\", \"[password]\")\n\nresponse = requests.request(\"POST\", url,\n           auth=auth, headers=headers, payload=payload, verify=False)\n\nprint(response.text)",
+      "section_id": "examples"
+    },
+    {
+      "id": "delete-redis_acl-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/redis_acls/{int: uid}",
+      "section_id": "delete-redis_acl"
+    },
+    {
+      "id": "delete-request-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/redis_acls/1",
+      "section_id": "delete-request"
+    }
+  ]
+}

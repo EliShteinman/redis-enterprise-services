@@ -1,0 +1,97 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/actions/recover",
+  "title": "Recover database requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/actions/recover/",
+  "summary": "REST API requests for database recovery",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "b009a492d8c5f0bab0f385359bb837b36672b722a271e36a44abc0edbbb708fc",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-bdbs-actions-recover) | `/v1/bdbs/{uid}/actions/recover` | Get database recovery plan  |\n| [POST](#post-bdbs-actions-recover) | `/v1/bdbs/{uid}/actions/recover` | Recover database  |"
+    },
+    {
+      "id": "get-bdbs-actions-recover",
+      "title": "Get recovery plan",
+      "role": "content",
+      "text": "[code example]\n\nFetches the recovery plan for a database. The recovery plan provides information about the recovery status, such as whether recovery is possible, and details on available files to use for recovery.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_bdb_recovery_plan](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_bdb_recovery_plan) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the database. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that represents the database's recovery plan, including recovery files and status.\n\n#### Example response body\n\n[code example]\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Database UID does not exist. |"
+    },
+    {
+      "id": "post-bdbs-actions-recover",
+      "title": "Recover database",
+      "role": "content",
+      "text": "[code example]\n\nInitiates [recovery for a database](https://redis.io/docs/latest/operate/rs/databases/recover) in a recoverable state where all the database's files are available after [cluster recovery](https://redis.io/docs/latest/operate/rs/clusters/cluster-recovery).\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [start_bdb_recovery](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#start_bdb_recovery) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "The request body can either be empty or include a recovery plan.\n\nIf the request body is empty, the database will be recovered automatically:\n\n- Databases with no persistence are recovered with no data.\n\n- Persistent files such as AOF or RDB will be loaded from their expected storage locations where replica or primary shards were last active.\n\n- If persistent files are not found where expected but can be located on other cluster nodes, they will be used.\n\n#### Example HTTP request\n\n[code example]\n\n#### Example request body\n\n[code example]\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the database to recover. |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code. Also returns a JSON object with an `action_uid` in the request body if successful.\n\n#### Status codes {#post-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | The request is accepted and is being processed. When the database is recovered, its status will become `active`. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Attempting to perform an action on a nonexistent database. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Database is currently busy with another action, recovery is already in progress, or is not in a recoverable state. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-bdbs-actions-recover-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/{int: uid}/actions/recover",
+      "section_id": "get-bdbs-actions-recover"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/1/actions/recover",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"data_files\": [\n    {\n      \"filename\": \"appendonly-1.aof\",\n      \"last_modified\": 1721164863.8883622,\n      \"node_uid\": \"1\",\n      \"shard_role\": \"master\",\n      \"shard_slots\": \"1-2048\",\n      \"shard_uid\": \"1\",\n      \"size\": 88\n    },\n    {\n      \"filename\": \"appendonly-2.aof\",\n      \"last_modified\": 1721164863.8883622,\n      \"node_uid\": \"2\",\n      \"shard_role\": \"slave\",\n      \"shard_slots\": \"2049-4096\",\n      \"shard_uid\": \"2\",\n      \"size\": 88\n    }\n  ],\n  \"status\": \"ready\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "post-bdbs-actions-recover-ex0",
+      "language": "sh",
+      "code": "POST /v1/bdbs/{int: uid}/actions/recover",
+      "section_id": "post-bdbs-actions-recover"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/bdbs/1/actions/recover",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "json",
+      "code": "{\n  \"data_files\": [\n    {\n      \"filename\": \"appendonly-1.aof\",\n      \"node_uid\": \"1\",\n      \"shard_slots\": \"1-2048\"\n    },\n    {\n      \"filename\": \"appendonly-2.aof\",\n      \"node_uid\": \"2\",\n      \"shard_slots\": \"2049-4096\"\n    }\n  ],\n  \"ignore_errors\": false,\n  \"recover_without_data\": false\n}",
+      "section_id": "post-request"
+    }
+  ]
+}

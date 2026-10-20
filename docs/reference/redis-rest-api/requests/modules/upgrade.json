@@ -1,0 +1,8 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/modules/upgrade",
+  "title": "Moved",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/modules/upgrade/",
+  "page_type": "moved",
+  "moved_to": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/upgrade/"
+}

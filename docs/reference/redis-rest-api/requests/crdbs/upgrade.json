@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/crdbs/upgrade",
+  "title": "CRDB upgrade requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/upgrade/",
+  "summary": "Upgrade Active-Active database requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-10-05T17:53:21+03:00",
+  "page_type": "content",
+  "content_hash": "d0b7dceb932a3a37eb97d3de94354b319734971c73643ea138a0a0a5b2980240",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-crdbs-upgrade) | `/v1/crdbs/{crdb_guid}/upgrade` | Upgrade an Active-Active database |"
+    },
+    {
+      "id": "post-crdbs-upgrade",
+      "title": "Upgrade an Active-Active database",
+      "role": "content",
+      "text": "[code example]\n\nUpgrades an Active-Active database. Upgrades the Redis version and modules of all instances in the Active-Active database."
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |\n\n#### Request body\n\n| Field | Type | Description |\n|-------|------|-------------|\n| force_discard | boolean | Discard data even if the database is replicated and/or persistent (default: false) |\n| force_restart | boolean | Restart shards even if no version change (default: false) |\n| keep_crdt_featureset_version | boolean | Keep current CRDT feature set version (default: false) |\n| keep_crdt_protocol_version | boolean | Keep current CRDT protocol version (default: false) |\n| may_discard_data | boolean | Discard data in a non-replicated, non-persistent database (default: false) |\n| modules | array | List of modules to upgrade with optional new arguments. Each object includes:<br>• `current_module`: UID of module to upgrade (deprecated as of Redis Software v7.8.2)<br>• `new_module`: UID of the module to upgrade to (deprecated as of Redis Software v7.8.2)<br>• `new_module_args`: Arguments for the new module |\n| parallel_shards_upgrade | integer | Max number of shards to upgrade in parallel (default: all shards) |\n| preserve_roles | boolean | Preserve shards' primary/replica roles; requires an extra failover (default: false) |\n| redis_version | string | Upgrades the database to the specified Redis version instead of the latest version |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task).\n\n#### Status codes {#post-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Upgrade initiated successfully. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Request validation error. |\n| [401 Unauthorized](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized) | Unauthorized request. Invalid credentials. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Active-Active database not found. |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | New module version capabilities don't comply with the database configuration. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-crdbs-upgrade-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdbs/{crdb_guid}/upgrade",
+      "section_id": "post-crdbs-upgrade"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdbs/1/upgrade",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "json",
+      "code": "{\n    \"preserve_roles\": true,\n    \"may_discard_data\": false,\n    \"redis_version\": \"8.2\" //Uses the latest version if not specified\n}",
+      "section_id": "post-request"
+    }
+  ]
+}

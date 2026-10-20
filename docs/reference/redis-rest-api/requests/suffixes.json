@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/suffixes",
+  "title": "Suffixes requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/suffixes/",
+  "summary": "DNS suffixes requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "0b29e4b22cc0147e77ee9eb8138d1bfec95aa1030c3f7c34af04e56d3307cb07",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-suffixes) | `/v1/suffixes` | Get all DNS suffixes |"
+    },
+    {
+      "id": "get-all-suffixes",
+      "title": "Get all suffixes",
+      "role": "content",
+      "text": "GET /v1/suffixes\n\nGet all DNS suffixes in the cluster."
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/suffixes \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "The response body contains a JSON array with all suffixes, represented as [suffix objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/suffix).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n        \"name\": \"cluster.fqdn\",\n        \"// additional fields...\"\n    },\n    {\n        \"name\": \"internal.cluster.fqdn\",\n        \"// additional fields...\"\n    }\n]",
+      "section_id": "get-all-response"
+    }
+  ]
+}

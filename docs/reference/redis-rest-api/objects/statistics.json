@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/statistics",
+  "title": "Statistics",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/",
+  "summary": "An object that contains metrics for clusters, databases, nodes, or shards",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-10-05T16:11:44+01:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/objects/statistics/cluster-metrics",
+      "summary": "Documents the cluster metrics used with Redis Software REST API calls.",
+      "title": "Cluster metrics",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/cluster-metrics/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/statistics/db-metrics",
+      "summary": "Documents the DB metrics used with Redis Software REST API calls.",
+      "title": "DB metrics",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/db-metrics/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/statistics/node-metrics",
+      "summary": "Documents the node metrics used with Redis Software REST API calls.",
+      "title": "Node metrics",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/node-metrics/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/statistics/shard-metrics",
+      "summary": "Documents the shard metrics used with Redis Software REST API calls.",
+      "title": "Shard metrics",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/shard-metrics/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "18e93d5f08e9af03617cabbb4cffc3b9dfdabd7cce775688afbbf99b9380e4fc",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "The v1 statistics REST API endpoints are deprecated as of Redis Software version 7.22. Use the [metrics stream engine for monitoring v2](https://redis.io/docs/latest/operate/rs/monitoring/metrics_stream_engine) instead for real-time monitoring and metrics collection."
+    },
+    {
+      "id": "statistics-overview",
+      "title": "Statistics overview",
+      "role": "content",
+      "text": "Clusters, databases, nodes, and shards collect various statistics at regular time intervals. View the statistics for these objects using `GET stats` requests to their respective endpoints:\n- [Cluster stats](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/stats)\n- [Database stats](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/stats)\n- [Node stats](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/stats)\n- [Shard stats](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/shards/stats)\n\nView endpoint stats using `GET` requests, see:\n- [Endpoint stats](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/endpoints-stats)"
+    },
+    {
+      "id": "response-object",
+      "title": "Response object",
+      "role": "returns",
+      "text": "Statistics returned from API requests always contain the following fields:\n- `interval`: a string that represents the statistics time interval. Valid values include: \n    - 1sec\n    - 10sec\n    - 5min\n    - 15min\n    - 1hour\n    - 12hour\n    - 1week\n- `stime`: a timestamp that represents the beginning of the interval, in the format \"2015-05-27T12:00:00Z\"\n- `etime`: a timestamp that represents the end of the interval, in the format \"2015-05-27T12:00:00Z\"\n\nThe statistics returned by the API also contain fields that represent the values of different metrics for an object during the specified time interval.\n\nMore details about the metrics relevant to each object:\n- [Cluster metrics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/cluster-metrics)\n- [DB metrics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/db-metrics)\n- [Node metrics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/node-metrics)\n- [Shard metrics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics/shard-metrics)\n\n> [!NOTE]\n> Certain statistics are not documented because they are for internal use only and should be ignored. Some statistics will only appear in API responses when they are relevant."
+    },
+    {
+      "id": "optional-url-parameters",
+      "title": "Optional URL parameters",
+      "role": "parameters",
+      "text": "There are several optional URL parameters you can pass to the various `GET stats` requests to filter the returned statistics.\n\n- `stime`: limit the start of the time range of the returned statistics\n- `etime`: limit the end of the time range of the returned statistics\n- `metrics`: only return the statistics for the specified metrics (comma-separated list)"
+    },
+    {
+      "id": "maximum-number-of-samples-per-interval",
+      "title": "Maximum number of samples per interval",
+      "role": "content",
+      "text": "The system retains a maximum number of most recent samples for each interval.\n\n| Interval | Max samples |\n|----------|-------------|\n| 1sec     | 10 |\n| 10sec    | 30 |\n| 5min     | 12 |\n| 15min    | 96 |\n| 1hour    | 168 |\n| 12hour   | 62 |\n| 1week    | 53 |\n\nThe actual number of samples returned by a `GET stats` request depends on how many samples are available and any filters applied by the optional URL parameters. For example, newly created objects (clusters, nodes, databases, or shards) or a narrow time filter range will return fewer samples.\n\n> [!NOTE]\n> To reduce load generated by stats collection, relatively inactive databases or shards (less than 5 ops/sec) do not collect 1sec stats at one second intervals. Instead, they collect 1sec stats every 2-5 seconds but still retain the same maximum number of samples."
+    }
+  ],
+  "examples": []
+}

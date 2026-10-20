@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/sentinel_service",
+  "title": "Sentinel service object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/sentinel_service/",
+  "summary": "Documents the sentinel_service object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "fb45c4e6c55d0c160334fdb04b65cb479f80494bd0c46e903ebf88e7f7fc0923",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the Sentinel service process |"
+    }
+  ],
+  "examples": []
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/debuginfo",
+  "title": "Debug info requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/debuginfo/",
+  "summary": "Debug info requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/requests/debuginfo/all",
+      "summary": "Documents the Redis Software REST API debuginfo/all requests.",
+      "title": "All nodes debug info requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/debuginfo/all/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/requests/debuginfo/node",
+      "summary": "Documents the Redis Software REST API debuginfo/node requests.",
+      "title": "Current node debug info requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/debuginfo/node/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "27a1582b159ff1c6f94c0fbdcd3ee645d0045b70a2f723be218735fbfca9e6fa",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "These REST API paths are deprecated as of Redis Software version 7.4.2. Use the new paths [`/v1/cluster/debuginfo`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/debuginfo), [`/v1/nodes/debuginfo`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/debuginfo), and [`/v1/bdbs/debuginfo`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/debuginfo) instead.\n\n\nDownloads a support package, which includes logs and information about the cluster, nodes, databases, and shards, as a tar file called `filename.tar.gz`. Extract the files from the tar file to access the debug info."
+    },
+    {
+      "id": "get-debug-info-for-all-nodes-in-the-cluster",
+      "title": "Get debug info for all nodes in the cluster",
+      "role": "content",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](https://redis.io/docs/latest/./all#get-all-debuginfo) | `/v1/debuginfo/all` | Gets debug info for all nodes |\n| [GET](https://redis.io/docs/latest/./all/bdb#get-all-debuginfo-bdb) | `/v1/debuginfo/all/bdb/{bdb_uid}` | Gets debug info for a database from all nodes |"
+    },
+    {
+      "id": "get-debug-info-for-the-current-node",
+      "title": "Get debug info for the current node",
+      "role": "content",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](https://redis.io/docs/latest/./node#get-debuginfo-node) | `/v1/debuginfo/node` | Gets debug info for the current node |\n| [GET](https://redis.io/docs/latest/./node/bdb#get-debuginfo-node-bdb) | `/v1/debuginfo/node/bdb/{bdb_uid}` | Gets debug info for a database from the current node |"
+    }
+  ],
+  "examples": []
+}

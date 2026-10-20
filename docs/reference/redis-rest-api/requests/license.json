@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/license",
+  "title": "License requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/license/",
+  "summary": "License requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "d6e50dbe399625b91cdeab81e76a3d57d5ecbade45ab53d846697dbd796ee019",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-license) | `/v1/license` | Get license details |\n| [PUT](#put-license) | `/v1/license` | Update the license |"
+    },
+    {
+      "id": "get-license",
+      "title": "Get license",
+      "role": "content",
+      "text": "GET /v1/license\n\nReturns the license details, including license string, expiration,\nand supported features.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_license](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_license) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/license \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that contains the license details:\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| license | string | License data |\n| cluster_name | string | The cluster name (FQDN) |\n| expired | boolean | If the cluster key is expired (`true` or `false`) |\n| activation_date | string | The date of the cluster key activation |\n| expiration_date | string | The date of the cluster key expiration |\n| key | string | License key |\n| features | array of strings | Features supported by the cluster |\n| owner | string | License owner |\n| shards_limit | integer | The total number of shards allowed by the cluster key |\n| ram_shards_limit | integer | The number of RAM shards allowed by the cluster key (as of v7.2) |\n| ram_shards_in_use | integer | The number of RAM shards in use |\n| flash_shards_limit | integer | The number of flash shards (Auto Tiering) allowed by the cluster key (as of v7.2) |\n| flash_shards_in_use | integer | The number of flash shards in use |\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | License is returned in the response body. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | No license is installed. |"
+    },
+    {
+      "id": "put-license",
+      "title": "Update license",
+      "role": "content",
+      "text": "PUT /v1/license\n\nValidate and install a new license string.\n\nIf you do not provide a valid license, the cluster behaves as if the license was deleted. See [Expired cluster license](https://redis.io/docs/latest/operate/rs/clusters/configure/license-keys#expired-cluster-license) for a list of available actions and restrictions.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [install_new_license](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#install_new_license) |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "The request must be a JSON object with a single key named \"license\".\n\n#### Example HTTP request\n\n\tPUT /v1/license \n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Accept | application/json | Accepted media type |\n\n\n#### Request body\n\nInclude a JSON object that contains the new `license` string in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an error if the new license is not valid."
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | License installed successfully. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Invalid request, either bad JSON object or corrupted license was supplied. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | License violation. A response body provides more details on the specific cause. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"license\": \"----- LICENSE START -----\\\\ndi+iK...KniI9\\\\n----- LICENSE END -----\\\\n\",\n    \"expired\": true,\n    \"activation_date\":\"2018-12-31T00:00:00Z\",\n    \"expiration_date\":\"2019-12-31T00:00:00Z\",\n    \"ram_shards_in_use\": 0,\n    \"ram_shards_limit\": 300,\n    \"flash_shards_in_use\": 0,\n    \"flash_shards_limit\": 100,\n    \"shards_limit\": 400,\n    \"features\": [\"bigstore\"],\n    \"owner\": \"Redis\",\n    \"cluster_name\": \"mycluster.local\",\n    \"key\": \"----- LICENSE START -----\\\\ndi+iK...KniI9\\\\n----- LICENSE END -----\\\\n\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "json",
+      "code": "{\n    \"license\": \"----- LICENSE START -----\\ndi+iK...KniI9\\n----- LICENSE END -----\\n\"\n}",
+      "section_id": "put-request"
+    }
+  ]
+}

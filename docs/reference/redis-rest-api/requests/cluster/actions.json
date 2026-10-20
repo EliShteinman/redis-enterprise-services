@@ -1,0 +1,139 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/actions",
+  "title": "Cluster actions requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/actions/",
+  "summary": "Cluster action requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-10-30T12:00:21-05:00",
+  "page_type": "content",
+  "content_hash": "fd4f0493b80241241a80dd3f23de39673be1b52e9aef5e0fc41c4b49df018279",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-cluster-actions) | `/v1/cluster/actions` | Get the status of all actions  |\n| [GET](#get-cluster-action) | `/v1/cluster/actions/{action}` | Get the status of a specific action |\n| [POST](#post-cluster-action) | `/v1/cluster/actions/{action}` | Initiate a cluster-wide action |\n| [DELETE](#delete-cluster-action) | `/v1/cluster/actions/{action}` | Cancel action or remove action status |"
+    },
+    {
+      "id": "get-all-cluster-actions",
+      "title": "Get all cluster actions",
+      "role": "content",
+      "text": "GET /v1/cluster/actions\n\nGet the status of all currently executing, queued, or completed cluster actions.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_status_of_cluster_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_status_of_cluster_action) |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    GET /v1/cluster/actions"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [action objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action). \n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error, response provides info about an ongoing action. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Action does not exist (i.e. not currently running and no available status of last run). |"
+    },
+    {
+      "id": "get-cluster-action",
+      "title": "Get cluster action",
+      "role": "content",
+      "text": "GET /v1/cluster/actions/{action}\n\nGet the status of a currently executing, queued, or completed cluster action.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_status_of_cluster_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_status_of_cluster_action) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    GET /v1/cluster/actions/action_name\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The action to check. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [action object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/action). \n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error, response provides info about an ongoing action. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Action does not exist (i.e. not currently running and no available status of last run). |"
+    },
+    {
+      "id": "post-cluster-action",
+      "title": "Initiate cluster-wide action",
+      "role": "content",
+      "text": "POST /v1/cluster/actions/{action}\n\nInitiate a cluster-wide action.\n\nThe API allows only a single instance of any action type to be\ninvoked at the same time, and violations of this requirement will\nresult in a `409 CONFLICT` response.\n\nThe caller is expected to query and process the results of the\npreviously executed instance of the same action, which will be\nremoved as soon as the new one is submitted.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [start_cluster_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#start_cluster_action) |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    POST /v1/cluster/actions/action_name\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The name of the action required. |\n\nSupported cluster actions:\n\n- `change_master`: Promotes a specified node to become the primary node of the cluster, which coordinates cluster-wide operations. Include the `node_uid` of the node you want to promote in the request body.\n\n    [code example]"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "The body content may provide additional action details. Currently, it is not used."
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error, action was initiated. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Bad action or content provided. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Node does not exist. |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Node not bootstrapped. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | A conflicting action is already in progress. |"
+    },
+    {
+      "id": "delete-cluster-action",
+      "title": "Cancel action",
+      "role": "content",
+      "text": "DELETE /v1/cluster/actions/{action}\n\nCancel a queued or executing cluster action, or remove the status of\na previously executed and completed action.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [cancel_cluster_action](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#cancel_cluster_action) |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    DELETE /v1/cluster/actions/action_name\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| action | string | The name of the action to cancel, currently no actions are supported. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code."
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Action will be cancelled when possible. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Action unknown or not currently running. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "{\n    \"actions\": [\n        {\n            \"name\": \"action_name\",\n            \"status\": \"queued\",\n            \"progress\": 0.0\n        }\n    ]\n}",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"name\": \"action_name\",\n     \"status\": \"queued\",\n    \"progress\": 0.0\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/cluster/actions/change_master\n    {\n        \"node_uid\": \"2\"\n    }",
+      "section_id": "post-request"
+    }
+  ]
+}

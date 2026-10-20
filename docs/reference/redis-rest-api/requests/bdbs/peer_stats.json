@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/peer_stats",
+  "title": "CRDB peer stats requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/peer_stats/",
+  "summary": "Active-Active peer instance statistics requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "c7536371b982fe68b0d700f659f792fe2a0807c75942084f0884e6200e17a78a",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-bdbs-peer_stats) | `/v1/bdbs/{bdb_uid}/peer_stats` | Get stats for all CRDB peer instances |\n| [GET](#get-bdbs-peer_stats) | `/v1/bdbs/{bdb_uid}/peer_stats/{uid}` | Get stats for a specific CRDB peer instance |"
+    },
+    {
+      "id": "get-all-bdbs-peer_stats",
+      "title": "Get all CRDB peer stats",
+      "role": "content",
+      "text": "[code example]\n\nGet statistics for all peer instances of a local CRDB instance."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_bdb_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_bdb_stats) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| bdb_uid | integer | The unique ID of the local CRDB instance. |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for all CRDB peer instances.\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#get-all-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Database does not exist. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Database is not a CRDB. |"
+    },
+    {
+      "id": "get-bdbs-peer_stats",
+      "title": "Get CRDB peer stats",
+      "role": "content",
+      "text": "[code example]\n\nGet statistics for a specific CRDB peer instance."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_bdb_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_bdb_stats) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| bdb_uid | integer | The unique ID of the local CRDB instance. |\n| uid | integer | The peer instance uid, as specified in the CRDB instance list. |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for a specific CRDB peer instance.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Database or peer does not exist. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Database is not a CRDB. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-bdbs-peer_stats-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/{bdb_uid}/peer_stats",
+      "section_id": "get-all-bdbs-peer_stats"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/1/peer_stats?interval=5min",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "{ \"peer_stats\": [\n     {\n         \"intervals\": [\n             {\n                 \"egress_bytes\": 0.0,\n                 \"egress_bytes_decompressed\": 0.0,\n                 \"etime\": \"2017-10-22T19:30:00Z\",\n                 \"ingress_bytes\": 18528,\n                 \"ingress_bytes_decompressed\": 185992,\n                 \"interval\": \"5min\",\n                 \"local_ingress_lag_time\": 0.244,\n                 \"pending_local_writes_max\": 0.0,\n                 \"pending_local_writes_min\": 0.0,\n                 \"stime\": \"2017-10-22T19:25:00Z\"\n             },\n             {\n                 \"egress_bytes\": 0.0,\n                 \"egress_bytes_decompressed\": 0.0,\n                 \"etime\": \"2017-10-22T19:35:00Z\",\n                 \"ingress_bytes\": 18,\n                 \"ingress_bytes_decompressed\": 192,\n                 \"interval\": \"5min\",\n                 \"local_ingress_lag_time\": 0.0,\n                 \"pending_local_writes_max\": 0.0,\n                 \"pending_local_writes_min\": 0.0,\n                 \"stime\": \"2017-10-22T19:30:00Z\"\n             }\n         ],\n         \"uid\": \"3\"\n     }\n   ]\n }",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-bdbs-peer_stats-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/{bdb_uid}/peer_stats/{int: uid}",
+      "section_id": "get-bdbs-peer_stats"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/bdbs/1/peer_stats/3?interval=5min",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"intervals\": [\n        {\n            \"egress_bytes\": 0.0,\n            \"egress_bytes_decompressed\": 0.0,\n            \"etime\": \"2017-10-22T19:30:00Z\",\n            \"ingress_bytes\": 18528,\n            \"ingress_bytes_decompressed\": 185992,\n            \"interval\": \"5min\",\n            \"local_ingress_lag_time\": 0.244,\n            \"pending_local_writes_max\": 0.0,\n            \"pending_local_writes_min\": 0.0,\n            \"stime\": \"2017-10-22T19:25:00Z\"\n        },\n        {\n            \"egress_bytes\": 0.0,\n            \"egress_bytes_decompressed\": 0.0,\n            \"etime\": \"2017-10-22T19:35:00Z\",\n            \"ingress_bytes\": 18,\n            \"ingress_bytes_decompressed\": 192,\n            \"interval\": \"5min\",\n            \"local_ingress_lag_time\": 0.0,\n            \"pending_local_writes_max\": 0.0,\n            \"pending_local_writes_min\": 0.0,\n            \"stime\": \"2017-10-22T19:30:00Z\"\n        }\n    ],\n    \"uid\": \"3\"\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

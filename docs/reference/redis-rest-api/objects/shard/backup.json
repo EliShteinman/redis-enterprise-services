@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/shard/backup",
+  "title": "Backup object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/shard/backup/",
+  "summary": "Documents the backup object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "ae36f54a5ebbe9b7952bd5d108be350a0d2d3cfeee44fbbe8f1e2aef35a79d9b",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| progress  | number, (range: 0-100) | Shard backup progress (percentage) |\n| status    | 'exporting'<br />'succeeded'<br />'failed' | Status of scheduled periodic backup process |"
+    }
+  ],
+  "examples": []
+}

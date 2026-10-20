@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/actions/backup_reset_status",
+  "title": "Backup reset status database action requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/actions/backup_reset_status/",
+  "summary": "Reset database backup status requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "6cfa7c3d452a732adff9f372f1aa73252d76cd33dd48d73e4372bff7f8962c53",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [PUT](#put-bdbs-actions-backup-reset-status) | `/v1/bdbs/{uid}/actions/backup_reset_status` | Reset database backup status |"
+    },
+    {
+      "id": "put-bdbs-actions-backup-reset-status",
+      "title": "Reset database backup status",
+      "role": "content",
+      "text": "[code example]\n\nResets the database's `backup_status` to idle if a backup is not in progress and clears the value of the `backup_failure_reason` field."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [reset_bdb_current_backup_status](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#reset_bdb_current_backup_status) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the database |"
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code.\n\n#### Status codes {#put-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | The request is accepted and is being processed. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Attempting to perform an action on a nonexistent database. |\n| [406&nbsp;Not&nbsp;Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Not all the modules loaded to the database support 'backup_restore' capability |\n| [409 Conflict](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.10) | Database is currently busy with another action. In this context, this is a temporary condition and the request should be reattempted later. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "put-bdbs-actions-backup-reset-status-ex0",
+      "language": "sh",
+      "code": "PUT /v1/bdbs/{int: uid}/actions/backup_reset_status",
+      "section_id": "put-bdbs-actions-backup-reset-status"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/bdbs/1/actions/backup_reset_status",
+      "section_id": "put-request"
+    }
+  ]
+}

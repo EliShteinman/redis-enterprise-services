@@ -1,0 +1,272 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/roles",
+  "title": "Roles requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/roles/",
+  "summary": "Roles requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-27T11:22:53-05:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "4414e63163695d23d8a3cb6893d013b93b303d1c979c53fc342c30dddb3b63d9",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-roles) | `/v1/roles` | Get all roles |\n| [GET](#get-role) | `/v1/roles/{uid}` | Get a single role |\n| [PUT](#put-role) | `/v1/roles/{uid}` | Update an existing role |\n| [POST](#post-role) | `/v1/roles` | Create a new role |\n| [DELETE](#delete-role) | `/v1/roles/{uid}` | Delete a role |"
+    },
+    {
+      "id": "get-all-roles",
+      "title": "Get all roles",
+      "role": "content",
+      "text": "[code example]\n\nGet all roles' details."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_all_roles_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_roles_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [role objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role).\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#get-all-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support roles yet. |"
+    },
+    {
+      "id": "get-role",
+      "title": "Get role",
+      "role": "content",
+      "text": "[code example]\n\nGet the details of a single role."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_role_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_role_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The role's unique ID. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role).\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [403 Forbidden](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.4) | Operation is forbidden. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Role does not exist. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support roles yet. |"
+    },
+    {
+      "id": "put-role",
+      "title": "Update role",
+      "role": "content",
+      "text": "[code example]\n\nUpdate an existing role's details."
+    },
+    {
+      "id": "permissions-2",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [update_role](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_role) | admin<br />user_manager |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field   | Type | Description |\n|---------|------|---------------|\n| dry_run |  | Validate the updated [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role) but don't apply the update. |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The role's unique ID. |\n\n#### Body\n\nInclude a [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role) with updated fields in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role) with the updated fields.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "put-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| unsupported_resource | The cluster is not yet able to handle this resource type. This could happen in a partially upgraded cluster, where some of the nodes are still on a previous version.|\n| name_already_exists | An object of the same type and name exists.|\n| change_last_admin_role_not_allowed | At least one user with admin role should exist.|\n\n#### Status codes {#put-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, role is created. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Attempting to change a non-existant role. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support roles yet. |"
+    },
+    {
+      "id": "post-role",
+      "title": "Create role",
+      "role": "content",
+      "text": "[code example]\n\nCreate a new role."
+    },
+    {
+      "id": "permissions-3",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [create_role](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#create_role) | admin<br />user_manager |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field   | Type | Description |\n|---------|------|---------------|\n| dry_run |  | Validate the new [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role) but don't apply the update. |\n\n#### Body\n\nInclude a [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role) in the request body."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the newly created [role object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/role).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code`values:\n\n| Code | Description |\n|------|-------------|\n| unsupported_resource | The cluster is not yet able to handle this resource type. This could happen in a partially upgraded cluster, where some of the nodes are still on a previous version. |\n| name_already_exists | An object of the same type and name exists |\n| missing_field | A needed field is missing |\n\n#### Status codes {#post-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, role is created. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | Bad or missing configuration parameters. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support roles yet. |"
+    },
+    {
+      "id": "examples",
+      "title": "Examples",
+      "role": "example",
+      "text": "#### cURL\n\n[code example]\n\n#### Python\n\n[code example]"
+    },
+    {
+      "id": "delete-role",
+      "title": "Delete role",
+      "role": "content",
+      "text": "[code example]\n\nDelete a role object."
+    },
+    {
+      "id": "permissions-4",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [delete_role](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#delete_role) | admin<br />user_manager |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The role unique ID. |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code to indicate role deletion success or failure.\n\n#### Status codes {#delete-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success, the role is deleted. |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Role does not exist. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The request is not acceptable. |\n| [501 Not Implemented](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2) | Cluster doesn't support roles yet. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-roles-ex0",
+      "language": "sh",
+      "code": "GET /v1/roles",
+      "section_id": "get-all-roles"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/roles",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n        \"uid\": 1,\n        \"name\": \"Admin\",\n        \"management\": \"admin\"\n    },\n    {\n        \"uid\": 2,\n        \"name\": \"Cluster Member\",\n        \"management\": \"cluster_member\"\n    },\n    {\n        \"uid\": 3,\n        \"name\": \"Cluster Viewer\",\n        \"management\": \"cluster_viewer\"\n    },\n    {\n        \"uid\": 4,\n        \"name\": \"DB Member\",\n        \"management\": \"db_member\"\n    },\n    {\n        \"uid\": 5,\n        \"name\": \"DB Viewer\",\n        \"management\": \"db_viewer\"\n    },\n    {\n        \"uid\": 6,\n        \"name\": \"None\",\n        \"management\": \"none\"\n    },\n    {\n        \"uid\": 17,\n        \"name\": \"DBA\",\n        \"management\": \"admin\"\n    }\n]",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-role-ex0",
+      "language": "sh",
+      "code": "GET /v1/roles/{int: uid}",
+      "section_id": "get-role"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/roles/1",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"DBA\",\n     \"management\": \"admin\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-role-ex0",
+      "language": "sh",
+      "code": "PUT /v1/roles/{int: uid}",
+      "section_id": "put-role"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/roles/17",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-request-ex1",
+      "language": "json",
+      "code": "{\n     \"management\": \"cluster_member\"\n}",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"DBA\",\n     \"management\": \"cluster_member\"\n}",
+      "section_id": "put-response"
+    },
+    {
+      "id": "post-role-ex0",
+      "language": "sh",
+      "code": "POST /v1/roles",
+      "section_id": "post-role"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/roles",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "json",
+      "code": "{\n     \"name\": \"DBA\",\n     \"management\": \"admin\"\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n     \"uid\": 17,\n     \"name\": \"DBA\",\n     \"management\": \"admin\"\n}",
+      "section_id": "post-response"
+    },
+    {
+      "id": "examples-ex0",
+      "language": "sh",
+      "code": "curl -k -u \"[username]:[password]\" -X POST \\\n     -H 'Content-Type: application/json' \\\n     -d '{ \"name\": \"DBA\", \"management\": \"admin\" }' \\\n     https://[host][:port]/v1/roles",
+      "section_id": "examples"
+    },
+    {
+      "id": "examples-ex1",
+      "language": "python",
+      "code": "import requests\nimport json\n\nurl = \"https://[host][:port]/v1/roles\"\n\nheaders = {\n  'Content-Type': 'application/json'\n}\n\npayload = json.dumps({\n    \"name\": \"DBA\",\n    \"management\": \"admin\"\n})\nauth=(\"[username]\", \"[password]\")\n\nresponse = requests.request(\"POST\", url,\n           auth=auth, headers=headers, payload=payload, verify=False)\n\nprint(response.text)",
+      "section_id": "examples"
+    },
+    {
+      "id": "delete-role-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/roles/{int: uid}",
+      "section_id": "delete-role"
+    },
+    {
+      "id": "delete-request-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/roles/1",
+      "section_id": "delete-request"
+    }
+  ]
+}

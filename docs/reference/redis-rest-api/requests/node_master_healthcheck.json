@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/node_master_healthcheck",
+  "title": "Node master healthcheck requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/node_master_healthcheck/",
+  "summary": "REST API requests to check a node's connection to the cluster's primary node.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-06-24T08:51:54-05:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "e74bd58db15a8e78cc930ab6f6d5591463baad06a60c1ac1a0793f2f46297e3c",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-node-master-healthcheck) | `/v1/local/node/master_healthcheck` | Checks a node's connection to the primary node |"
+    },
+    {
+      "id": "get-node-master-healthcheck",
+      "title": "Get master healthcheck",
+      "role": "content",
+      "text": "[code example]\n\nChecks whether the current node has a valid connection to the cluster's primary node and the Cluster Configuration Store (CCS)."
+    },
+    {
+      "id": "required-permissions",
+      "title": "Required permissions",
+      "role": "content",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_cluster_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that includes the status of the current node's connection to the cluster's primary node and the CCS.\n\n- `active`: the current node has a valid connection.\n\n- `inactive`: the current node doesn't have a valid connection.\n\n#### Example JSON response body\n\n[code example]\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-node-master-healthcheck-ex0",
+      "language": "sh",
+      "code": "GET /v1/local/node/master_healthcheck",
+      "section_id": "get-node-master-healthcheck"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/local/node/master_healthcheck",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"status\": \"active\"\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/pdns_server",
+  "title": "PDNS server object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/pdns_server/",
+  "summary": "Documents the pdns_server object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "dde5794a04c63c1a3c5dd9febc909a7eea38206054524af2a8afb5858fcb4847",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the PDNS server |"
+    }
+  ],
+  "examples": []
+}

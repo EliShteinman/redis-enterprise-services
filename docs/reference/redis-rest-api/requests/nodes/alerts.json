@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/nodes/alerts",
+  "title": "Node alerts requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/alerts/",
+  "summary": "Node alert requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "d95f16ba76e80433f106030fe8351eac5749b665a148c29c53b236a2a5846cdb",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-nodes-alerts) | `/v1/nodes/alerts` | Get all alert states for all nodes |\n| [GET](#get-node-alerts) | `/v1/nodes/alerts/{uid}` | Get all alert states for a node |\n| [GET](#get-node-alert) | `/v1/nodes/alerts/{uid}/{alert}` | Get node alert state |"
+    },
+    {
+      "id": "get-all-nodes-alerts",
+      "title": "Get all alert states",
+      "role": "content",
+      "text": "GET /v1/nodes/alerts\n\nGet all alert states for all nodes.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_all_nodes_alerts](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_all_nodes_alerts) |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/alerts \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| ignore_settings | boolean | Retrieve updated alert state regardless of the cluster's alert_settings. When not present, a disabled alert will always be retrieved as disabled with a false state. (optional) |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a hash of node UIDs and the [alert states](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/alert) for each node.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |"
+    },
+    {
+      "id": "get-node-alerts",
+      "title": "Get node alert states",
+      "role": "content",
+      "text": "GET /v1/nodes/alerts/{int: uid}\n\nGet all alert states for a node.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_node_alerts](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_node_alerts) |"
+    },
+    {
+      "id": "get-request-all-alerts",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/alerts/1 \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| ignore_settings | boolean | Retrieve updated alert state regardless of the cluster's alert_settings. When not present, a disabled alert will always be retrieved as disabled with a false state. (optional) |"
+    },
+    {
+      "id": "get-response-all-alerts",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a hash of [alert objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/alert) and their states for a specific node.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes-all-alerts",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Specified node does not exist |"
+    },
+    {
+      "id": "get-node-alert",
+      "title": "Get node alert state",
+      "role": "content",
+      "text": "GET /v1/nodes/alerts/{int: uid}/{alert}\n\nGet a node alert state.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_node_alerts](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_node_alerts) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/alerts/1/node_cpu_utilization \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| ignore_settings | boolean | Retrieve updated alert state regardless of the cluster's alert_settings. When not present, a disabled alert will always be retrieved as disabled with a false state. (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [alert object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/alert).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Specified alert or node does not exist |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "{\n    \"1\": {\n        \"node_cpu_utilization\": {\n            \"change_time\": \"2014-12-22T10:42:00Z\",\n            \"change_value\": {\n                \"cpu_util\": 2.500000000145519,\n                \"global_threshold\": \"1\",\n                \"state\": true\n            },\n            \"enabled\": true,\n            \"state\": true,\n            \"severity\": \"WARNING\"\n        },\n        \"...\"\n    },\n    \"...\"\n}",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-response-all-alerts-ex0",
+      "language": "json",
+      "code": "{\n   \"node_cpu_utilization\": {\n        \"change_time\": \"2014-12-22T10:42:00Z\",\n        \"change_value\": {\n            \"cpu_util\": 2.500000000145519,\n            \"global_threshold\": \"1\",\n            \"state\": true\n        },\n        \"enabled\": true,\n        \"state\": true,\n        \"severity\": \"WARNING\",\n    },\n    \"...\"\n}",
+      "section_id": "get-response-all-alerts"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"change_time\": \"2014-12-22T10:42:00Z\",\n    \"change_value\": {\n        \"cpu_util\": 2.500000000145519,\n        \"global_threshold\": \"1\",\n        \"state\": true\n    },\n    \"enabled\": true,\n    \"state\": true,\n    \"severity\": \"WARNING\",\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

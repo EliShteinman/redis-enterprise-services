@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/check_result",
+  "title": "Check result object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/check_result/",
+  "summary": "An object that contains the results of a cluster check",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2023-12-14T15:27:49+01:00",
+  "page_type": "content",
+  "content_hash": "abad815d254fe4346761191e787d651ceda7a3ab7bf06f4cda8be2a19e20e304",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "Cluster check result\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| cluster_test_result | boolean | Indication if any of the tests failed |\n| nodes | \n[{\n  \"node_uid\": integer,\n  \"result\": boolean,\n  \"error\": string\n}, ...]\n | Nodes results |"
+    }
+  ],
+  "examples": []
+}

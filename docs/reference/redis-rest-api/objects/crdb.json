@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/crdb",
+  "title": "CRDB object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/",
+  "summary": "An object that represents an Active-Active database",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-07-06T14:48:53-05:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/cluster_info",
+      "summary": "An object that represents Active-Active cluster info",
+      "title": "CRDB cluster info object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/cluster_info/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/database_config",
+      "summary": "An object that represents the database configuration",
+      "title": "CRDB database config object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/database_config/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/health_report",
+      "summary": "An object that represents an Active-Active database health report.",
+      "title": "CRDB health report object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/health_report/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/instance_info",
+      "summary": "An object that represents Active-Active instance info",
+      "title": "CRDB instance info object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/instance_info/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/modify_request",
+      "summary": "An object to update an Active-Active database",
+      "title": "CRDB modify request object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/modify_request/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "ad6fd890fbe92b89ba32c1237aa7a537ed1d0a58f9a286b6c5aabc569b090f8b",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An object that represents an Active-Active database.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| guid | string | The global unique ID of the Active-Active database |\n| causal_consistency | boolean | Enables causal consistency across CRDT instances |\n| default_db_config| [CRDB database_config](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/database_config) object | Default database configuration applied to all instances in the CRDB object. In most cases, instances should use the same configuration. If you need to override `default_db_config` or add configuration values for specific instances, you can use `db_config` in individual [instance objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/instance_info). For a list of which settings must be identical across all instances and which to set per instance, see the [CRDB database config object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/database_config) reference. |\n| encryption | boolean | Encrypt communication |\n| featureset_version | integer | Active-Active database active FeatureSet version\n| instances | array of [CRDB instance_info](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/instance_info) objects | |\n| local_databases | object | Mapping of instance IDs for local databases to local BDB IDs<br />[{\n  \"bdb_uid\": string,\n  \"id\": integer\n}, ...]  |\n| managed_by | string | The component that manages the Active-Active database |\n| modules | object | Modules used by the Active-Active database<br />[{\n  \"featureset_version\": integer,\n  \"module_name\": string\n}, ...]  |\n| name | string | Name of Active-Active database |\n| protocol_version | integer | Active-Active database active protocol version |\n| <span class=\"break-all\">volatile_config_fields</span> | array of strings | A list of database configuration fields that will be set even if unchanged |"
+    }
+  ],
+  "examples": []
+}

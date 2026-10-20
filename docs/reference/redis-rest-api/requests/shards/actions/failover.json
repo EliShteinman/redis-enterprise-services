@@ -1,0 +1,109 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/shards/actions/failover",
+  "title": "Shard failover requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/shards/actions/failover/",
+  "summary": "REST API requests to fail over database shards",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "4ef99150ed4ff29ef1b8c17997dfc833e152fef8eced25d8c1547bb697b6cff9",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-multi-shards) | `/v1/shards/actions/failover` | Fail over multiple shards |\n| [POST](#post-shard) | `/v1/shards/{uid}/actions/failover` | Fail over a specific shard |"
+    },
+    {
+      "id": "post-multi-shards",
+      "title": "Fail over multiple shards",
+      "role": "content",
+      "text": "POST /v1/shards/actions/failover\n\nPerforms failover on the primary shards specified by `shard_uids` in the request body, and promotes their replicas to primary shards. This request is asynchronous.\n\nThe cluster automatically manages failover to ensure high availability. Use this failover REST API request only for testing and planned maintenance.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [failover_shard](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#failover_shard) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "post-multi-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/shards/actions/failover\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Request body {#post-multi-request-body}\n\nThe request body is a JSON object that can contain the following fields:\n\n| Field | Type | Description |\n|-------|------|-------------|\n| shard_uids | array of strings | List of primary shard UIDs to fail over. The shards must belong to the same database. |\n| dead_uids | array of strings | Primary shards to avoid stopping. Optional. |\n| dead_nodes | array of strings | Nodes that should not be drained or used for promoted replica shards. Optional. |\n| dry_run | boolean | Determines whether the failover is actually done. If true, will just do a dry run. If the dry run succeeds, the request returns a `200 OK` status code.  Otherwise, it returns a JSON object with an error code and description. Optional. |\n| force_rebind | boolean | Rebind after promotion. Optional. |\n| redis_version_upgrade | string | New version of the promoted primary shards. Optional. |"
+    },
+    {
+      "id": "post-multi-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object with an `action_uid`. You can track the action's progress with a [`GET /v1/actions/<action_uid>`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/actions#get-action) request.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-multi-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Shard is a replica or the specified failover shards are not in the same database. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | A list of shard UIDs is required and not given, or a specified shard does not exist. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Database is currently busy. |"
+    },
+    {
+      "id": "put-multi-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "When errors are reported, the server may return a JSON object with `error_code` and `message` field that provide additional information. The following are possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| db_busy | Database is currently busy. |\n| failover_shards_different_bdb | All failover shards should be in the same database. |\n| shard_is_slave | Shard is a replica. |\n| shard_not_exist | Shard does not exist. |\n| shard_uids_required | List of shard UIDs is required and not given. |"
+    },
+    {
+      "id": "post-shard",
+      "title": "Fail over shard",
+      "role": "content",
+      "text": "POST /v1/shards/{int: uid}/actions/failover\n\nPerforms failover on the primary shard with the specified `shard_uid`, and promotes its replica shard to a primary shard. This request is asynchronous.\n\nThe cluster automatically manages failover to ensure high availability. Use this failover REST API request only for testing and planned maintenance.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [failover_shard](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#failover_shard) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/shards/1/actions/failover\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the shard to fail over. |\n\n\n#### Request body {#post-request-body}\n\nThe request body is a JSON object that can contain the following fields:\n\n| Field | Type | Description |\n|-------|------|-------------|\n| dead_uid | string | Primary shard to avoid stopping. Optional. |\n| dead_nodes | array of strings | Nodes that should not be drained or used for promoted replica shards. Optional. |\n| dry_run | boolean | Determines whether the failover is actually done. If true, will just do a dry run. If the dry run succeeds, the request returns a `200 OK` status code.  Otherwise, it returns a JSON object with an error code and description. Optional. |\n| force_rebind | boolean | Rebind after promotion. Optional. |\n| redis_version_upgrade | string | New version of the promoted primary shards. Optional. |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object with an `action_uid`. You can track the action's progress with a [`GET /v1/actions/<action_uid>`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/actions#get-action) request.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Shard is a replica. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Specified shard does not exist. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Database is currently busy. |"
+    },
+    {
+      "id": "put-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "When errors are reported, the server may return a JSON object with `error_code` and `message` field that provide additional information. The following are possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| db_busy | Database is currently busy. |\n| shard_is_slave | Shard is a replica. |\n| shard_not_exist | Shard does not exist. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-multi-request-ex0",
+      "language": "json",
+      "code": "{\n    \"shard_uids\": [\"2\",\"4\",\"6\"]\n}",
+      "section_id": "post-multi-request"
+    },
+    {
+      "id": "post-multi-response-ex0",
+      "language": "json",
+      "code": "{\n    \"action_uid\": \"e5e24ddf-a456-4a7e-ad53-4463cd44880e\",\n    \"description\": \"Failover was triggered\"\n}",
+      "section_id": "post-multi-response"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "json",
+      "code": "{\n    \"force_rebind\": true\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n    \"action_uid\": \"e5e24ddf-a456-4a7e-ad53-4463cd44880e\",\n    \"description\": \"Failover was triggered\"\n}",
+      "section_id": "post-response"
+    }
+  ]
+}

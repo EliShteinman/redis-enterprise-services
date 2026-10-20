@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/bootstrap/identity",
+  "title": "Identity object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap/identity/",
+  "summary": "Documents the identity object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "ab033594978587eed62d78877877d6c6e850d0f87a1b9f2d1013d6925f4ee28d",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| uid | integer | Assumed node's UID to join cluster. Used to replace a dead node with a new one. |\n| accept_servers | boolean (default:&nbsp;true) | If true, no shards will be created on the node |\n| addr | string | Internal IP address of node |\n| external_addr | complex object | External IP addresses of node. `GET`&nbsp;`/jsonschema` to retrieve the object's structure. |\n| name | string | Node's name |\n| override_rack_id | boolean | When replacing an existing node in a rack-aware cluster, allows the new node to be located in a different rack |\n| rack_id | string | Rack ID, overrides cloud config |\n| second_rack_id | string | Second rack ID where node is installed |\n| use_internal_ipv6 | boolean (default:&nbsp;false) | Node uses IPv6 for internal communication |"
+    }
+  ],
+  "examples": []
+}

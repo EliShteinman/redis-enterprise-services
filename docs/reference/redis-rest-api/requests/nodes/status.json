@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/nodes/status",
+  "title": "Node status requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/nodes/status/",
+  "summary": "Requests that return a node's hostname and role.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "0cd3e08869d9f5df5ac53c927262f8ef2187e4d0ee50981e5ba8e7266b748862",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-nodes-status) | `/v1/nodes/status` | Get the status of all nodes |\n| [GET](#get-node-status) | `/v1/nodes/{uid}/status` | Get a node's status |"
+    },
+    {
+      "id": "get-all-nodes-status",
+      "title": "Get all node statuses",
+      "role": "content",
+      "text": "GET /v1/nodes/status\n\nGets the status of all nodes. Includes each node's hostname and role in the cluster:\n\n- Primary nodes return `\"role\": \"master\"`\n\n- Replica nodes return `\"role\": \"slave\"`\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_node_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_node_info) |"
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/status\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "For each node in the cluster, returns a JSON object that contains each node's hostname, role, and other status details.\n\nIf a maintenance snapshot exists due to an in-progress or improperly stopped [node maintenance](https://redis.io/docs/latest/operate/rs/clusters/maintenance-mode) process, the response includes a `maintenance_snapshot` field.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-all-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |"
+    },
+    {
+      "id": "get-node-status",
+      "title": "Get node status",
+      "role": "content",
+      "text": "GET /v1/nodes/{int: uid}/status\n\nGets the status of a node. Includes the node's hostname and role in the cluster:\n\n- Primary nodes return `\"role\": \"master\"`\n\n- Replica nodes return `\"role\": \"slave\"`\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_node_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_node_info) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/nodes/1/status\n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The node's unique ID. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that contains the node's hostname, role, and other status details.\n\nIf a maintenance snapshot exists due to an in-progress or improperly stopped [node maintenance](https://redis.io/docs/latest/operate/rs/clusters/maintenance-mode) process, the response includes a `maintenance_snapshot` field.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Node UID does not exist |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-response-ex0",
+      "language": "json",
+      "code": "{\n    \"1\": {\n        \"cores\": 8,\n        \"free_provisional_ram\": 0,\n        \"free_ram\": 3499368448,\n        \"hostname\": \"3d99db1fdf4b\",\n        \"maintenance_snapshot\": {\n            \"created_time\": \"2024-09-06 20:47:23\",\n            \"name\": \"maintenance_mode_2024-09-06_20-47-23\",\n            \"node_uid\": \"1\"\n        },\n        \"master_shards\": [],\n        \"node_overbooking_depth\": 0,\n        \"node_status\": \"active\",\n        \"role\": \"master\",\n        \"slave_shards\": [],\n        \"software_version\": \"7.4.6-22\",\n        \"software_version_sha\": \"6c37b1483b5fb6110c8055c1526aa58eec1d29d3519e92310859101419248831\",\n        \"total_memory\": 6219673600,\n        \"total_provisional_ram\": 0\n    },\n    \"2\": {\n        \"hostname\": \"fc7a3d332458\",\n        \"role\": \"slave\",\n        // additional fields\n    },\n    \"3\": {\n        \"hostname\": \"b87cc06c830f\",\n        \"role\": \"slave\",\n        // additional fields\n    }\n}",
+      "section_id": "get-all-response"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"cores\": 8,\n    \"free_provisional_ram\": 0,\n    \"free_ram\": 3504422912,\n    \"hostname\": \"3d99db1fdf4b\",\n    \"maintenance_snapshot\": {\n        \"created_time\": \"2024-09-06 20:47:23\",\n        \"name\": \"maintenance_mode_2024-09-06_20-47-23\",\n        \"node_uid\": \"1\"\n    },\n    \"master_shards\": [],\n    \"node_overbooking_depth\": 0,\n    \"node_status\": \"active\",\n    \"role\": \"master\",\n    \"slave_shards\": [],\n    \"software_version\": \"7.4.6-22\",\n    \"software_version_sha\": \"6c37b1483b5fb6110c8055c1526aa58eec1d29d3519e92310859101419248831\",\n    \"total_memory\": 6219673600,\n    \"total_provisional_ram\": 0\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

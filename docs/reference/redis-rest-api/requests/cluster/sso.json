@@ -1,0 +1,199 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/sso",
+  "title": "Single sign-on requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/sso/",
+  "summary": "Single sign-on (SSO) configuration requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-12-22T11:45:26-06:00",
+  "page_type": "content",
+  "content_hash": "1c5f322794f404dfcd2d56e920e4e935d2557e948c4b25f1bd44b4328662dd97",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-sso) | `/v1/cluster/sso` | Get SSO configuration |\n| [PUT](#put-cluster-sso) | `/v1/cluster/sso` | Set or update SSO configuration |\n| [DELETE](#delete-cluster-sso) | `/v1/cluster/sso` | Clear SSO configuration |\n| [GET](#get-cluster-sso-saml-metadata) | `/v1/cluster/sso/saml/metadata/sp` | Get SAML service provider metadata |\n| [POST](#post-cluster-sso-saml-metadata) | `/v1/cluster/sso/saml/metadata/idp` | Upload SAML identity provider metadata |"
+    },
+    {
+      "id": "get-cluster-sso",
+      "title": "Get SSO configuration",
+      "role": "content",
+      "text": "GET /v1/cluster/sso\n\nGet the single sign-on configuration as JSON.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_sso](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_sso) | admin<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/sso\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [SSO object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/sso).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Success |"
+    },
+    {
+      "id": "put-cluster-sso",
+      "title": "Update SSO configuration",
+      "role": "content",
+      "text": "PUT /v1/cluster/sso\n\nSet or update the cluster single sign-on configuration.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [config_sso](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#config_sso) | admin<br />user_manager |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPUT /v1/cluster/sso\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Request body\n\nInclude an [SSO object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/sso) with updated fields in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code. If an error occurs, the response body can include an error code and message with more details."
+    },
+    {
+      "id": "put-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| missing_param | A required parameter is missing while SSO is being enabled |\n| missing_certificate | SSO certificate is not found while SSO is being enabled |"
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Success, SSO config has been set |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Bad or missing configuration parameters |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Missing required certificate |"
+    },
+    {
+      "id": "delete-cluster-sso",
+      "title": "Delete SSO configuration",
+      "role": "content",
+      "text": "DELETE /v1/cluster/sso\n\nClear the single sign-on configuration.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [config_sso](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#config_sso) | admin<br />user_manager |"
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tDELETE /v1/cluster/sso\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code."
+    },
+    {
+      "id": "delete-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| delete_certificate_error | An error occurred during SSO certificate deletion |"
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Success |\n| [500 Internal Server Error](https://www.rfc-editor.org/rfc/rfc9110.html#name-500-internal-server-error) | Error during deletion |"
+    },
+    {
+      "id": "get-cluster-sso-saml-metadata",
+      "title": "Get SAML service provider metadata",
+      "role": "content",
+      "text": "GET /v1/cluster/sso/saml/metadata/sp\n\nGenerates and returns the SAML2 service provider metadata XML.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [view_sso](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_sso) | admin<br />user_manager |"
+    },
+    {
+      "id": "get-metadata-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/sso/saml/metadata/sp\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/samlmetadata+xml | Accepted media type |"
+    },
+    {
+      "id": "get-metadata-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns SAML2 service provider metadata as XML.\n\n#### Example response body\n\n[code example]"
+    },
+    {
+      "id": "get-metadata-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| missing_certificate | Service certificate is missing |\n| saml_metadata_generation_error | An error occurred while generating the XML metadata |"
+    },
+    {
+      "id": "get-metadata-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Success |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Missing required service certificate |\n| [500 Internal Server Error](https://www.rfc-editor.org/rfc/rfc9110.html#name-500-internal-server-error) | Unexpected error when generating metadata |"
+    },
+    {
+      "id": "post-cluster-sso-saml-metadata",
+      "title": "Upload SAML identity provider metadata",
+      "role": "content",
+      "text": "POST /v1/cluster/sso/saml/metadata/idp\n\nUploads and validates the SAML2 identity provider metadata XML.\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [config_sso](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#config_sso) | admin<br />user_manager |"
+    },
+    {
+      "id": "post-metadata-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/cluster/sso/saml/metadata/idp\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Request body\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| idp_metadata | string | Base64-encoded SAML2 identity provider metadata XML |"
+    },
+    {
+      "id": "post-metadata-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [SSO object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/sso) with the updated configuration.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-metadata-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "Possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| saml_metadata_validation_error | IdP metadata failed configuration validation checks |\n| saml_metadata_parsing_error | IdP metadata is not a valid base64-encoded XML |\n| missing_certificate | SSO certificate is not found while SSO is being enabled |"
+    },
+    {
+      "id": "post-metadata-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Success |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Bad or missing parameters |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Missing required service certificate |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n   \"control_plane\": true,\n   \"protocol\": \"saml2\",\n   \"enforce_control_plane\": false,\n   \"issuer\": {\n         \"id\": \"urn:sso:example:idp\",\n         \"login_url\": \"https://idp.example.com/sso/saml\",\n         \"logout_url\": \"https://idp.example.com/sso/slo\",\n         \"metadata\": \"<base64 encoded metadata>\"\n   },\n   \"service\": {\n         \"address\": \"https://hostname:port\",\n         \"saml2\": {\n             \"entity_id\": \"https://cnm.cluster.fqdn/sp\",\n             \"acs_url\": \"https://cnm.cluster.fqdn/v1/cluster/sso/saml/acs\",\n             \"slo_url\": \"https://cnm.cluster.fqdn/v1/cluster/sso/saml/slo\"\n         }\n   }\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "json",
+      "code": "{\n   \"control_plane\": false,\n   \"protocol\": \"saml2\",\n   \"enforce_control_plane\": false,\n   \"issuer\": {\n         \"id\": \"urn:sso:example:idp\",\n         \"login_url\": \"https://idp.example.com/sso/saml\",\n         \"logout_url\": \"https://idp.example.com/sso/slo\"\n   },\n   \"service\": {\n         \"address\": \"https://hostname:port\"\n   }\n}",
+      "section_id": "put-request"
+    },
+    {
+      "id": "get-metadata-response-ex0",
+      "language": "xml",
+      "code": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<md:EntityDescriptor\nxmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\">\n    ...\n</md:EntityDescriptor>",
+      "section_id": "get-metadata-response"
+    },
+    {
+      "id": "post-metadata-request-ex0",
+      "language": "json",
+      "code": "{\n   \"idp_metadata\": \"YWp3cjkwcHR1eWF3MHJ0eTkwYXc0eXQwOW4...\"\n}",
+      "section_id": "post-metadata-request"
+    },
+    {
+      "id": "post-metadata-response-ex0",
+      "language": "json",
+      "code": "{\n   \"control_plane\": true,\n   \"protocol\": \"saml2\",\n   \"enforce_control_plane\": false,\n   \"issuer\": {\n         \"id\": \"urn:sso:example:idp\",\n         \"login_url\": \"https://idp.example.com/sso/saml\",\n         \"logout_url\": \"https://idp.example.com/sso/slo\"\n   },\n   \"service\": {\n         \"saml2\": {\n             \"entity_id\": \"https://cnm.cluster.fqdn/sp\",\n             \"acs_url\": \"https://cnm.cluster.fqdn/v1/cluster/sso/saml/acs\",\n             \"slo_url\": \"https://cnm.cluster.fqdn/v1/cluster/sso/saml/slo\"\n         }\n   }\n}",
+      "section_id": "post-metadata-response"
+    }
+  ]
+}

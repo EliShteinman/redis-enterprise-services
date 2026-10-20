@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/ocsp/test",
+  "title": "OCSP test requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/ocsp/test/",
+  "summary": "OCSP test requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-09-03T12:06:34-05:00",
+  "page_type": "content",
+  "content_hash": "019a632467e986cf009d835cadefae07701914c4406f20770d7f95d8a224d7b0",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-test) | `/v1/ocsp/test` | Test OCSP |"
+    },
+    {
+      "id": "post-test",
+      "title": "Test OCSP",
+      "role": "content",
+      "text": "POST /v1/ocsp/test\n\nQueries the OCSP server for the proxy certificate’s latest status and returns the response as JSON. It caches the response if the OCSP feature is enabled.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [test_ocsp_status](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#test_ocsp_status) |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/ocsp/test \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns an [OCSP status object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/ocsp_status).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "When errors occur, the server returns a JSON object with `error_code` and `message` fields that provide additional information. The following are possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| no_responder_url | Tried to test OCSP status with no responder URL configured |\n| ocsp_unsupported_by_capability | Not all nodes support OCSP capability |\n| task_queued_for_too_long | OCSP polling task was in status \"queued\" for over 5 seconds |\n| invalid_ocsp_response | The server returned a response that is not compatible with OCSP |"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success querying the OCSP server |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Feature is not supported in all nodes |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | `responder_url` is not configured or polling task failed |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n    \"responder_url\": \"http://responder.ocsp.url.com\",\n    \"cert_status\": \"REVOKED\",\n    \"produced_at\": \"Wed, 22 Dec 2021 12:50:11 GMT\",\n    \"this_update\": \"Wed, 22 Dec 2021 12:50:11 GMT\",\n    \"next_update\": \"Wed, 22 Dec 2021 14:50:00 GMT\",\n    \"revocation_time\": \"Wed, 22 Dec 2021 12:50:04 GMT\"\n}",
+      "section_id": "post-response"
+    }
+  ]
+}

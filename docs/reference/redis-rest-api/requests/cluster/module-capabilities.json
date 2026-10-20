@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/module-capabilities",
+  "title": "Cluster module capabilities requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/module-capabilities/",
+  "summary": "Redis module capabilities requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "ebd888852a34b0e58dea9c858c10ee5609ebc2deaf7b29eb6aaefa438bcc7df7",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-module-capabilities) | `/v1/cluster/module-capabilities` | List possible Redis module capabilities |"
+    },
+    {
+      "id": "get-cluster-module-capabilities",
+      "title": "List Redis module capabilities",
+      "role": "content",
+      "text": "GET /v1/cluster/module-capabilities\n\nList possible Redis module capabilities.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_cluster_modules](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_modules) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/module-capabilities \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | \\*/\\* | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that contains a list of capability names and descriptions.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"all_capabilities\": [\n    {\"name\": \"types\", \"desc\": \"module has its own types and not only operate on existing redis types\"},\n    {\"name\": \"no_multi_key\", \"desc\": \"module has no methods that operate on multiple keys\"}\n    \"// additional capabilities...\"\n  ]\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

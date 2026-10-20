@@ -1,0 +1,97 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/shards/actions/migrate",
+  "title": "Migrate shards requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/shards/actions/migrate/",
+  "summary": "REST API requests to migrate database shards",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "402c6aab0c3221198c9e98a0400d62247baa9ca3c388e6ff5cab0c696230429a",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-multi-shards) | `/v1/shards/actions/migrate` | Migrate multiple shards |\n| [POST](#post-shard) | `/v1/shards/{uid}/actions/migrate` | Migrate a specific shard |"
+    },
+    {
+      "id": "post-multi-shards",
+      "title": "Migrate multiple shards",
+      "role": "content",
+      "text": "POST /v1/shards/actions/migrate\n\nMigrates the list of given shard UIDs to the node specified by `target_node_uid`. The shards can be from multiple databases. This request is asynchronous.\n\nFor more information about shard migration use cases and considerations, see [Migrate database shards](https://redis.io/docs/latest/operate/rs/databases/migrate-shards).\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [migrate_shard](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#migrate_shard) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "post-multi-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/shards/actions/migrate\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Request body {#post-multi-request-body}\n\nThe request body is a JSON object that can contain the following fields:\n\n| Field | Type | Description |\n|-------|------|-------------|\n| shard_uids | array of strings | List of shard UIDs to migrate. |\n| target_node_uid | integer | UID of the node to where the shards should migrate. |\n| override_rack_policy | boolean | If true, overrides and ignores rack-aware policy violations. |\n| dry_run | boolean | Determines whether the migration is actually done. If true, will just do a dry run. If the dry run succeeds, the request returns a `200 OK` status code.  Otherwise, it returns a JSON object with an error code and description. |\n| preserve_roles | boolean | If true, preserves the migrated shards' roles after migration. |\n| max_concurrent_bdb_migrations | integer | The number of concurrent databases that can migrate shards. |"
+    },
+    {
+      "id": "post-multi-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object with an `action_uid`. You can track the action's progress with a [`GET /v1/actions/<action_uid>`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/actions#get-action) request.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-multi-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Conflicting parameters. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | A list of shard UIDs is required and not given, a specified shard does not exist, or a node UID is required and not given. |\n| [500 Internal Server Error](https://www.rfc-editor.org/rfc/rfc9110.html#name-500-internal-server-error) | Migration failed. |"
+    },
+    {
+      "id": "post-shard",
+      "title": "Migrate shard",
+      "role": "content",
+      "text": "POST /v1/shards/{int: uid}/actions/migrate\n\nMigrates the shard with the given `shard_uid` to the node specified by `target_node_uid`. If the shard is already on the target node, nothing happens. This request is asynchronous.\n\nFor more information about shard migration use cases and considerations, see [Migrate database shards](https://redis.io/docs/latest/operate/rs/databases/migrate-shards).\n\n#### Required permissions\n\n| Permission name | Roles |\n|-----------------|-------|\n| [migrate_shard](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#migrate_shard) | admin<br />cluster_member<br />db_member |"
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tPOST /v1/shards/1/actions/migrate\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| uid | integer | The unique ID of the shard to migrate. |\n\n\n#### Request body {#post-request-body}\n\nThe request body is a JSON object that can contain the following fields:\n\n| Field | Type | Description |\n|-------|------|-------------|\n| target_node_uid | integer | UID of the node to where the shard should migrate. |\n| override_rack_policy | boolean | If true, overrides and ignores rack-aware policy violations. |\n| dry_run | boolean | Determines whether the migration is actually done. If true, will just do a dry run. If the dry run succeeds, the request returns a `200 OK` status code.  Otherwise, it returns a JSON object with an error code and description. |\n| preserve_roles | boolean | If true, preserves the migrated shards' roles after migration. |"
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object with an `action_uid`. You can track the action's progress with a [`GET /v1/actions/<action_uid>`](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/actions#get-action) request.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Shard does not exist, or node UID is required and not given. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Database is currently busy. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-multi-request-ex0",
+      "language": "json",
+      "code": "{\n  \"shard_uids\": [\"2\",\"4\",\"6\"],\n  \"target_node_uid\": 9,\n  \"override_rack_policy\": false,\n  \"preserve_roles\": false,\n  \"max_concurrent_bdb_migrations\": 3\n}",
+      "section_id": "post-multi-request"
+    },
+    {
+      "id": "post-multi-response-ex0",
+      "language": "json",
+      "code": "{\n    \"action_uid\": \"e5e24ddf-a456-4a7e-ad53-4463cd44880e\",\n    \"description\": \"Migrate was triggered\"\n}",
+      "section_id": "post-multi-response"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "json",
+      "code": "{\n    \"target_node_uid\": 9,\n    \"override_rack_policy\": false,\n    \"preserve_roles\": false\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n    \"action_uid\": \"e5e24ddf-a456-4a7e-ad53-4463cd44880e\",\n    \"description\": \"Migrate was triggered\"\n}",
+      "section_id": "post-response"
+    }
+  ]
+}

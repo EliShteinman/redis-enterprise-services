@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/job_scheduler/redis_cleanup_job_settings",
+  "title": "Redis cleanup job settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/redis_cleanup_job_settings/",
+  "summary": "Documents the redis_cleanup_job_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "bd382f4bd3b4a97010050acb974e06119f23501d06e9066007f87aab7f19b38e",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "Deprecated and replaced with `persistence_cleanup_scan_interval`.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| cron_expression | string | [CRON expression](https://en.wikipedia.org/wiki/Cron#CRON_expression) that defines the Redis cleanup schedule |"
+    }
+  ],
+  "examples": []
+}

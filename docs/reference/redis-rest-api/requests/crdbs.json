@@ -1,0 +1,213 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/crdbs",
+  "title": "CRDBs requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/",
+  "summary": "Active-Active database requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-07-06T14:48:53-05:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/requests/crdbs/flush",
+      "summary": "Flush Active-Active database requests",
+      "title": "CRDB flush requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/flush/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/requests/crdbs/health_report",
+      "summary": "Active-Active database health report requests",
+      "title": "CRDB health report requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/health_report/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/requests/crdbs/purge",
+      "summary": "Purge removed Active-Active database requests",
+      "title": "CRDB purge requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/purge/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/requests/crdbs/updates",
+      "summary": "Update Active-Active configuration requests",
+      "title": "CRDB updates requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/updates/"
+    },
+    {
+      "id": "operate/rs/references/rest-api/requests/crdbs/upgrade",
+      "summary": "Upgrade Active-Active database requests",
+      "title": "CRDB upgrade requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/upgrade/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "26e44ab7ac5104b968adc4a5912b706798cad6d4b010e6a67c309f6c8e043889",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-all-crdbs) | `/v1/crdbs` | Get all Active-Active databases |\n| [GET](#get-crdb) | `/v1/crdbs/{crdb_guid}` | Get a specific Active-Active database |\n| [PATCH](#patch-crdbs) | `/v1/crdbs/{crdb_guid}` | Update an Active-Active database |\n| [POST](#post-crdb) | `/v1/crdbs` | Create a new Active-Active database |\n| [DELETE](#delete-crdb) | `/v1/crdbs/{crdb_guid}` | Delete an Active-Active database |"
+    },
+    {
+      "id": "get-all-crdbs",
+      "title": "Get all Active-Active databases",
+      "role": "content",
+      "text": "[code example]\n\nGet a list of all Active-Active databases on the cluster."
+    },
+    {
+      "id": "get-all-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |"
+    },
+    {
+      "id": "get-all-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON array of [CRDB objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb).\n\n##### Status codes {#get-all-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | A list of Active-Active database. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |"
+    },
+    {
+      "id": "get-crdb",
+      "title": "Get an Active-Active database",
+      "role": "content",
+      "text": "[code example]\n\nGet a specific Active-Active database."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| instance_id | integer | Instance from which to get the Active-Active database information |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb).\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Active-Active database information is returned. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Database or configuration does not exist. |"
+    },
+    {
+      "id": "patch-crdbs",
+      "title": "Update an Active-Active database",
+      "role": "content",
+      "text": "[code example]\n\nUpdate an Active-Active database's configuration.\n\nUpdating `default_db_config` affects both existing and new instances.\n\nWhen you update `db_config`, it changes the configuration of the specified database instance. This field overrides any corresponding fields in `default_db_config`.\n\nFor a list of which settings must be identical across all instances and which to set per instance, see the [CRDB database config object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/database_config) reference.\n\nTo add or remove instances, use [<nobr>`POST crdbs/{crdb_guid}/updates`</nobr>](https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/updates#post-crdbs-updates) instead."
+    },
+    {
+      "id": "patch-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |\n\n#### Request body\n\nInclude a [CRDB object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb) with updated fields in the request body."
+    },
+    {
+      "id": "patch-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task).\n\n#### Status codes {#patch-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | The request has been accepted. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | The posted Active-Active database contains invalid parameters. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Configuration or Active-Active database not found. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The posted Active-Active database cannot be accepted. |"
+    },
+    {
+      "id": "post-crdb",
+      "title": "Create an Active-Active database",
+      "role": "content",
+      "text": "[code example]\n\nCreate a new Active-Active database.\n\nFor a list of which settings must be identical across all instances and which to set per instance, see the [CRDB database config object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/database_config) reference."
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| dry_run | boolean | Validate the request without creating the database (optional) |\n\n#### Request body\n\nInclude a [CRDB object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb), which defines the Active-Active database, in the request body.\n\n##### Example body\n\n[code example]\n\nThis JSON body creates an Active-Active database without TLS and with two participating clusters."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task).\n\n#### Status codes {#post-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | The request has been accepted. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | The request is invalid or malformed. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The posted Active-Active database cannot be accepted. |"
+    },
+    {
+      "id": "delete-crdb",
+      "title": "Delete an Active-Active database",
+      "role": "content",
+      "text": "[code example]\n\nDelete an Active-Active database."
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| X-Task-ID | string | Specified task ID |\n| X-Result-TTL | integer | Time (in seconds) to keep task result |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task).\n\n#### Status codes {#delete-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Action was successful. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Configuration or Active-Active database not found. |\n| [406&nbsp;Not&nbsp;Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | The Active-Active GUID is invalid or the Active-Active database was already deleted. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-all-crdbs-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdbs",
+      "section_id": "get-all-crdbs"
+    },
+    {
+      "id": "get-all-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdbs",
+      "section_id": "get-all-request"
+    },
+    {
+      "id": "get-crdb-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdbs/{crdb_guid}",
+      "section_id": "get-crdb"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/crdbs/552bbccb-99f3-4142-bd17-93d245f0bc79",
+      "section_id": "get-request"
+    },
+    {
+      "id": "patch-crdbs-ex0",
+      "language": "sh",
+      "code": "PATCH /v1/crdbs/{crdb_guid}",
+      "section_id": "patch-crdbs"
+    },
+    {
+      "id": "patch-request-ex0",
+      "language": "sh",
+      "code": "PATCH /v1/crdbs/552bbccb-99f3-4142-bd17-93d245f0bc79",
+      "section_id": "patch-request"
+    },
+    {
+      "id": "post-crdb-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdbs",
+      "section_id": "post-crdb"
+    },
+    {
+      "id": "post-request-ex0",
+      "language": "sh",
+      "code": "POST /v1/crdbs",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-request-ex1",
+      "language": "json",
+      "code": "{\n    \"default_db_config\":\n    {\n        \"name\": \"sample-crdb\",\n        \"memory_size\": 214748365\n    },\n    \"instances\":\n    [\n        {\n            \"cluster\":\n            {\n                \"url\": \"http://<cluster1_FQDN>:9443\",\n                \"credentials\":\n                {\n                    \"username\": \"<username>\",\n                    \"password\": \"<password>\"\n                },\n                \"name\": \"cluster-1\"\n            },\n            \"compression\": 6\n        },\n        {\n            \"cluster\":\n            {\n                \"url\": \"http://<cluster2_FQDN>:9443\",\n                \"credentials\":\n                {\n                    \"username\": \"<username>\",\n                    \"password\": \"<password>\"\n                },\n                \"name\": \"cluster-2\"\n            },\n            \"compression\": 6\n        }\n    ],\n    \"name\": \"sample-crdb\"\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "delete-crdb-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/crdbs/{crdb_guid}",
+      "section_id": "delete-crdb"
+    },
+    {
+      "id": "delete-request-ex0",
+      "language": "sh",
+      "code": "DELETE /v1/crdbs/552bbccb-99f3-4142-bd17-93d245f0bc79",
+      "section_id": "delete-request"
+    }
+  ]
+}

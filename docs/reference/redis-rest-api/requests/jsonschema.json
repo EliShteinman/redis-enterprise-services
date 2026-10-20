@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/jsonschema",
+  "title": "JSON schema requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/jsonschema/",
+  "summary": "API object JSON schema requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "75dc1866a4a46783a7fa36fd823868f4de6fe938997ee4cf8ab86c643b972eb3",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-jsonschema) | `/v1/jsonschema` | Get JSON schema of API objects |"
+    },
+    {
+      "id": "get-jsonschema",
+      "title": "Get object JSON schema",
+      "role": "content",
+      "text": "GET /v1/jsonschema\n\nGet the JSON schema of various [Redis Software REST API objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects)."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/jsonschema?object=bdb \n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| object | string | Optional. The API object name: 'cluster', 'node', 'bdb' etc. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the JSON schema of the specified API object.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Success. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Invalid object. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n     \"type\": \"object\",\n     \"description\": \"An API object that represents a managed database in the cluster.\",\n     \"properties\": {\n          \"....\"\n     },\n     \"....\"\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

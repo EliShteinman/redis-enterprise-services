@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/crdb/health_report",
+  "title": "CRDB health report object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/health_report/",
+  "summary": "An object that represents an Active-Active database health report.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2024-02-26T13:11:00+01:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/objects/crdb/health_report/health_report_configuration",
+      "summary": "An object that represents the database configuration to include in an Active-Active database health report.",
+      "title": "CRDB health report configuration object",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/health_report/health_report_configuration/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "72d3c587dd1c18cd93226c68c50396a6b870a10e0ff0920181d0e36ef44981e9",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An object that represents an Active-Active database health report.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| active_config_version | integer | Active configuration version |\n| cluster_name | string | Name of local Active-Active cluster |\n| configurations | array of [health_report_configuration](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/health_report/health_report_configuration) objects | Stored database configurations |\n| connection_error | string | Error string if remote cluster is not available |\n| connections | \n[{\n  \"name\": string,\n  \"replication_links\": [ \n    {\n      \"link_uid\": \"bdb_uid:replica_uid\", \n      \"status\": \"up | down\" \n    } ],\n  \"status\": string\n}, ...]  | Connections to other clusters and their statuses. A replication link's `bdb_uid` is the unique ID of a local database instance ([bdb](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bdb)) in the current cluster. The `replica_uid` is the unique ID of the database's remote replica, located in the connected cluster. |\n| name | string | Name of the Active-Active database |"
+    }
+  ],
+  "examples": []
+}

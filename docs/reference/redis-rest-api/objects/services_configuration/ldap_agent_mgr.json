@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/ldap_agent_mgr",
+  "title": "LDAP agent manager object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/ldap_agent_mgr/",
+  "summary": "Documents the ldap_agent_mgr object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "0c225fa6d9cb6416e3439c001f41de4f91cb2646785520fccafd3246863d3e7d",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the LDAP agent manager processes |"
+    }
+  ],
+  "examples": []
+}

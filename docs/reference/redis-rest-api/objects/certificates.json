@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/certificates",
+  "title": "Certificates object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/certificates/",
+  "summary": "An object that represents a certificate",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "8e3e327c9b203d077ce56a87ad8801e88fbbaf83f8ad2adddf5cd968872fe1a8",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "An API object that represents a certificate used by a Redis Software cluster.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| name | \"cm\"<br />\"api\"<br />\"mtls_trusted_ca\"<br />\"proxy\"<br />\"metrics_exporter\"<br />\"syncer\"<br />\"ldap_client\"<br />\"ccs_internode_encryption\"<br />\"data_internode_encryption\"<br />\"sso_service\"<br />\"sso_issuer\" | Certificate type.<br />See the [certificates table](https://redis.io/docs/latest/operate/rs/security/certificates) for the list of cluster certificates and their descriptions. |\n| certificate | string | The certificate in PEM format |\n| key | string | The private key in PEM format |"
+    }
+  ],
+  "examples": []
+}

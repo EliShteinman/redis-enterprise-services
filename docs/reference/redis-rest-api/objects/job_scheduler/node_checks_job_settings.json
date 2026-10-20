@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/job_scheduler/node_checks_job_settings",
+  "title": "Node checks job settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/node_checks_job_settings/",
+  "summary": "Documents the node_checks_job_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "329438e9d7a65191c256e1874d69475ba75d125e0581b0e960e84fe426ac8973",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| cron_expression | string | [CRON expression](https://en.wikipedia.org/wiki/Cron#CRON_expression) that defines the node checks schedule |\n| enabled | boolean (default: true) | Indicates whether this job is enabled |"
+    }
+  ],
+  "examples": []
+}

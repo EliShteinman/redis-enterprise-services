@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/cluster/cluster_alert_settings_with_threshold",
+  "title": "Cluster alert settings with threshold object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/cluster/cluster_alert_settings_with_threshold/",
+  "summary": "Documents the cluster_alert_settings_with_threshold object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "65d496b89e8c84e7aa0715372a666fec81d581f10ecd6a3d3c6960fcaac71a2e",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| enabled    | boolean (default:&nbsp;false)  | Alert enabled or disabled |\n| threshold  | string                    | Threshold for alert going on/off |"
+    }
+  ],
+  "examples": []
+}

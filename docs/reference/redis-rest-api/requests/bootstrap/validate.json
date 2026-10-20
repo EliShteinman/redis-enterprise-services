@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bootstrap/validate",
+  "title": "Bootstrap validation requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bootstrap/validate/",
+  "summary": "Boostrap validation requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "caaadd251fd093f9ebecb7ec93d5f81347564cd39c0ef428860bc055d6e71855",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-bootstrap-validate) | `/v1/bootstrap/validate/{action}` | Perform bootstrap validation |"
+    },
+    {
+      "id": "post-bootstrap-validate",
+      "title": "Bootstrap validation",
+      "role": "content",
+      "text": "POST /v1/bootstrap/validate/{action}\n\nPerform bootstrap validation.\n\nUnlike actual bootstrapping, this request blocks and immediately\nreturns with a response."
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    POST /v1/bootstrap/validate/join_cluster\n\n#### Request body\n\nThe request must contain a [bootstrap configuration object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/bootstrap), similar to the one used for actual bootstrapping."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "If an error occurs, the call returns a `bootstrap_status` JSON object that contains the following fields:\n\n| Field | Description |\n|-------|-------------|\n| state | Current bootstrap state.<br></br>`idle`: No bootstrapping started.<br></br>`initiated`: Bootstrap request received.<br></br>`creating_cluster`: In the process of creating a new cluster.<br></br>`joining_cluster`: In the process of joining an existing cluster.<br></br>`error`: The last bootstrap action failed.<br></br>`completed`: The last bootstrap action completed successfully.|\n| start_time | Bootstrap process start time |\n| end_time | Bootstrap process end time |\n| error_code | If state is `error`, this error code describes the type of error encountered. |\n| error_details | An error-specific object that may contain additional information about the error. A common field in use is `message` which provides a more verbose error message."
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error, validation was successful. |\n| [406 Not Acceptable](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.7) | Validation failed, bootstrap status is returned as body. |"
+    }
+  ],
+  "examples": []
+}

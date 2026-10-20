@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/cluster/logrotate_settings",
+  "title": "Logrotate settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/cluster/logrotate_settings/",
+  "summary": "Documents the logrotate_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "fff5464632d8a00eac41c0cf7336ae16c594b14c3a1e29d1a6c7b282a5ecded3",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| maxage | integer (default: 7) | Remove rotated logs older than the specified number of days |\n| maxsize | string (default: 200M) | The log will rotate after it reaches the specified size |\n| rotate | integer (default: 10) | Determines how many times the log will be rotated. If set to 0, old versions are removed rather than rotated. |"
+    }
+  ],
+  "examples": []
+}

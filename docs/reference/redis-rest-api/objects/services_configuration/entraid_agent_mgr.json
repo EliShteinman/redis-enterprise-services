@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/entraid_agent_mgr",
+  "title": "Entra ID agent manager object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/entraid_agent_mgr/",
+  "summary": "Documents the entraid_agent_mgr object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "60ae056d8e30ec9b8aca8930a636d9e661eb4a943e4ceaa80219a9959d7213aa",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the Entra ID agent manager processes |"
+    }
+  ],
+  "examples": []
+}

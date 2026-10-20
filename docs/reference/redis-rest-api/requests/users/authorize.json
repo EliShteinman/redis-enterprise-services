@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/users/authorize",
+  "title": "Authorize user requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/users/authorize/",
+  "summary": "Users authorization requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-05-16T16:04:15-05:00",
+  "page_type": "content",
+  "content_hash": "9f18acb73f59dc57d288ce26d351c4e53672d311432aff402f1896f2ab2ed6f4",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [POST](#post-authorize) | `/v1/users/authorize` | Generate a token to authorize an authenticated user |"
+    },
+    {
+      "id": "post-authorize",
+      "title": "Authorize user",
+      "role": "security",
+      "text": "POST /v1/users/authorize\n\nGenerates a JSON Web Token (JWT) for a user to use as authorization to access the REST API. The request authentication header must include the relevant username and password."
+    },
+    {
+      "id": "post-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    POST /v1/users/authorize\n\n#### Example JSON body\n\nThe request body is optional unless you want to specify the token's time to live:\n\n[code example]\n\n#### Request headers\n| Key    | Value            | Description         |\n|--------|------------------|---------------------|\n| Host   | cnm.cluster.fqdn | Domain name         |\n| Accept | application/json | Accepted media type |\n\n#### Request body\n\nOptionally include a JSON object in the request body to specify the time to live (`ttl`), which determines the amount of time in seconds the token will be valid. The default `ttl` is `300` seconds. The minimum `ttl` is `1` second and the maximum `ttl` is `86400` seconds."
+    },
+    {
+      "id": "post-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that contains the generated access token.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "post-error-codes",
+      "title": "Error codes",
+      "role": "errors",
+      "text": "When errors are reported, the server may return a JSON object with\n`error_code` and `message` fields that provide additional information.\nThe following are possible `error_code` values:\n\n| Code | Description |\n|------|-------------|\n| password_expired | The password has expired and must be changed. |"
+    },
+    {
+      "id": "post-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | The user is authorized. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | The request could not be understood by the server due to malformed syntax. |\n| [401 Unauthorized](https://www.rfc-editor.org/rfc/rfc9110.html#name-401-unauthorized) | The user is unauthorized. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "post-request-ex0",
+      "language": "json",
+      "code": "{\n  \"ttl\": <time_in_seconds>\n}",
+      "section_id": "post-request"
+    },
+    {
+      "id": "post-response-ex0",
+      "language": "json",
+      "code": "{\n  \"access_token\": \"eyJ5bGciOiKIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXViOjE0NjU0...\"\n}",
+      "section_id": "post-response"
+    }
+  ]
+}

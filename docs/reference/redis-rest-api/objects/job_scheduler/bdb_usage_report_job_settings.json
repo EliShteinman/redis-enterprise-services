@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/job_scheduler/bdb_usage_report_job_settings",
+  "title": "BDB usage report job settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/bdb_usage_report_job_settings/",
+  "summary": "Documents the bdb_usage_report_job_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "946d2525b69a878c268a1b0fa6ea0f4ba1b727c693a0265dd7c8e809fd6eae9a",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| cron_expression | string | [CRON expression](https://en.wikipedia.org/wiki/Cron#CRON_expression) that defines the database usage report schedule |\n| enabled | boolean (default: true) | Indicates whether this job is enabled |\n| file_retention_days | integer, 1-1000 (default: 365) | Number of days after a file is closed before it is deleted |"
+    }
+  ],
+  "examples": []
+}

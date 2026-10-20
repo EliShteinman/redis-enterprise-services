@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/services_configuration/stats_archiver",
+  "title": "Stats archiver object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/services_configuration/stats_archiver/",
+  "summary": "Documents the stats_archiver object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "c541cc247d3cbd44336857c6cfb79d8e69d518abddcd819464f4ea32723c2a5a",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| operating_mode | 'disabled'<br />'enabled' | Enable/disable the stats archiver service |"
+    }
+  ],
+  "examples": []
+}

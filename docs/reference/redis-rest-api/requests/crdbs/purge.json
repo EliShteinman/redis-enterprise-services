@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/crdbs/purge",
+  "title": "CRDB purge requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/crdbs/purge/",
+  "summary": "Purge removed Active-Active database requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "52a604b3dd7952f3346dc2e302117e62ba77e2646339fce0f28d0857741389f5",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [PUT](#put-crdbs-purge) | `/v1/crdbs/{crdb_guid}/purge` | Purge data from an instance that was forcibly removed from the Active-Active database |"
+    },
+    {
+      "id": "put-crdbs-purge",
+      "title": "Purge data from removed instance",
+      "role": "content",
+      "text": "PUT /v1/crdbs/{crdb_guid}/purge\n\nPurge the data from an instance that was removed from the\nActive-Active database by force.\n\nWhen you force the removal of an instance from an Active-Active\ndatabase, the removed instance keeps the data and configuration\naccording to the last successful synchronization.\n\nTo delete the data and configuration from the forcefully removed\ninstance you must use this API (Must be executed locally on the\nremoved instance)."
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n    PUT /v1/crdbs/1/purge\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| crdb_guid | string | Globally unique Active-Active database ID (GUID) |\n\n#### Request body\n\n| Field | Type | Description |\n|-------|------|-------------|\n| instances | array of integers | Array of unique instance IDs |"
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [CRDB task object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb_task)."
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | Action was successful. |\n| [400 Bad Request](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1) | The request is invalid or malformed. |\n| [401 Unauthorized](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2) | Unauthorized request. Invalid credentials |\n| [404 Not Found](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.5) | Configuration, instance, or Active-Active database not found. |"
+    }
+  ],
+  "examples": []
+}

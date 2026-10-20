@@ -1,0 +1,116 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/job_scheduler",
+  "title": "Job scheduler requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/job_scheduler/",
+  "summary": "REST API requests for the job scheduler",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-09-29T16:51:25+03:00",
+  "children": [],
+  "page_type": "content",
+  "content_hash": "5fb00374357d35d262f581a2dde31dbbe7405a903705914b33a1f27df32652b7",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-job-scheduler) | `/v1/job_scheduler` | Get job scheduler settings |\n| [PUT](#put-job-scheduler) | `/v1/job_scheduler` | Update job scheduler settings |"
+    },
+    {
+      "id": "get-job-scheduler",
+      "title": "Get job scheduler settings",
+      "role": "content",
+      "text": "[code example]\n\nGet job scheduler information."
+    },
+    {
+      "id": "permissions",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [view_cluster_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_info) | admin<br />cluster_member<br />cluster_viewer<br />db_member<br />db_viewer<br />user_manager |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [job_scheduler object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler).\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#get-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |"
+    },
+    {
+      "id": "put-job-scheduler",
+      "title": "Update job scheduler settings",
+      "role": "content",
+      "text": "[code example]\n\nUpdate job scheduler settings."
+    },
+    {
+      "id": "permissions-1",
+      "title": "Permissions",
+      "role": "security",
+      "text": "| Permission name | Roles |\n|-----------------|-------|\n| [update_cluster](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#update_cluster) | admin |"
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n\n#### Body\n\nInclude a [job_scheduler object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler) with updated fields in the request body."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a [job_scheduler object](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler) with the updated fields.\n\n#### Example JSON body\n\n[code example]\n\n#### Status codes {#put-status-codes}\n\n| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Bad content provided. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Attempting to configure the job_scheduler while it is busy with another configuration change. In this context, this is a temporary condition and the request should be re-attempted later. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-job-scheduler-ex0",
+      "language": "sh",
+      "code": "GET /v1/job_scheduler",
+      "section_id": "get-job-scheduler"
+    },
+    {
+      "id": "get-request-ex0",
+      "language": "sh",
+      "code": "GET /v1/job_scheduler",
+      "section_id": "get-request"
+    },
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n  \"backup_job_settings\": {\n    \"cron_expression\": \"*/5 * * * *\",\n    \"enabled\": true\n  },\n  \"bdb_usage_report_job_settings\": {\n    \"cron_expression\": \"0 */1 * * *\",\n    \"enabled\": false,\n    \"file_retention_days\": 365\n  },\n  \"cert_rotation_job_settings\": {\n    \"cron_expression\": \"0 * * * *\",\n    \"enabled\": true,\n    \"expiry_days_before_rotation\": 60\n  },\n  \"granular_metrics_job_settings\": {\n    \"cron_expression\": \"* * * * *\",\n    \"enabled\": true,\n    \"granular_cleanup_delay\": 86400,\n    \"granular_max_duration\": 3600\n  },\n  \"log_rotation_job_settings\": {\n    \"cron_expression\": \"*/5 * * * *\",\n    \"enabled\": true\n  },\n  \"node_checks_job_settings\": {\n    \"cron_expression\": \"0 * * * *\",\n    \"enabled\": true\n  },\n  \"redis_cleanup_job_settings\": {\n    \"cron_expression\": \"0 * * * *\"\n  },\n  \"rotate_ccs_job_settings\": {\n    \"cron_expression\": \"*/5 * * * *\",\n    \"enabled\": true,\n    \"file_suffix\": \"5min\",\n    \"rotate_max_num\": 24\n  }\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-job-scheduler-ex0",
+      "language": "sh",
+      "code": "PUT /v1/job_scheduler",
+      "section_id": "put-job-scheduler"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/job_scheduler",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-request-ex1",
+      "language": "json",
+      "code": "{\n   \"backup_job_settings\": {\n     \"cron_expression\": \"*/10 * * * *\"\n   }\n}",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-response-ex0",
+      "language": "json",
+      "code": "{\n    \"backup_job_settings\": {\n        \"cron_expression\": \"*/10 * * * *\",\n        \"enabled\": true\n    },\n    \"bdb_usage_report_job_settings\": {\n        \"cron_expression\": \"0 */1 * * *\",\n        \"enabled\": false,\n        \"file_retention_days\": 365\n    },\n    \"cert_rotation_job_settings\": {\n        \"cron_expression\": \"0 * * * *\",\n        \"enabled\": true,\n        \"expiry_days_before_rotation\": 60\n    },\n    \"log_rotation_job_settings\": {\n        \"cron_expression\": \"*/5 * * * *\",\n        \"enabled\": true\n    },\n    \"node_checks_job_settings\": {\n        \"cron_expression\": \"0 * * * *\",\n        \"enabled\": true\n    },\n    \"rotate_ccs_job_settings\": {\n        \"cron_expression\": \"*/5 * * * *\",\n        \"enabled\": true,\n        \"file_suffix\": \"5min\",\n        \"rotate_max_num\": 24\n    }\n}",
+      "section_id": "put-response"
+    }
+  ]
+}

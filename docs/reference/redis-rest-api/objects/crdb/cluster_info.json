@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/crdb/cluster_info",
+  "title": "CRDB cluster info object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/crdb/cluster_info/",
+  "summary": "An object that represents Active-Active cluster info",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-08-12T11:52:45-05:00",
+  "page_type": "content",
+  "content_hash": "91a739764456e020cc50eb1b7fc4abd7ce42a725561ea91c0e29ee507966efde",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "Configuration details for a cluster that is part of an Active-Active database.\n\n| Name | Type/Value | Description |\n|------|------------|-------------|\n| certificate_auth | \n{\n  \"client_cert\": string,\n  \"client_key\": string,\n  \"trusted_ca\": string\n}  | Certificate credentials for cluster access, as PEM strings. Required unless you use `credentials`; a request that includes both for the same cluster fails.<br />**client_cert**: Client certificate (required)<br />**client_key**: Client certificate's private key (required)<br />**trusted_ca**: CA that validates the API certificate the peer cluster presents. If omitted, the cluster uses the certificates in its `mtls_trusted_ca.pem` file.<br /><br />See [Certificate-based authentication for cluster management](https://redis.io/docs/latest/operate/rs/security/certificates/certificate-based-authentication#certificate-based-authentication-for-cluster-management). |\n| credentials | \n{\n  \"username\": string,\n  \"password\": string\n}  | Cluster access credentials. Required unless you use `certificate_auth`; a request that includes both for the same cluster fails. |\n| name | string | Cluster fully qualified name, used to uniquely identify the cluster. Typically this is the same as the hostname used in the URL, although in some configurations the URL may point to a different name/address. (required) |\n| replication_endpoint | string | Address to use for peer replication. If not specified, it is assumed that standard cluster naming conventions apply. |\n| replication_tls_sni | string | Cluster SNI for TLS connections |\n| url | string | Cluster access URL (required) |"
+    }
+  ],
+  "examples": []
+}

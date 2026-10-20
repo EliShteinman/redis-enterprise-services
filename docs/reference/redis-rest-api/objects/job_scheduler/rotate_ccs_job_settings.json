@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/objects/job_scheduler/rotate_ccs_job_settings",
+  "title": "Rotate CCS job settings object",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/objects/job_scheduler/rotate_ccs_job_settings/",
+  "summary": "Documents the rotate_ccs_job_settings object used with Redis Software REST API calls.",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-01-30T12:29:26-06:00",
+  "page_type": "content",
+  "content_hash": "24748cf5ac55149ab174bb35df547bce7b68913d92e22adf15fd46f3822d235b",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "role": "content",
+      "text": "| Name | Type/Value | Description |\n|------|------------|-------------|\n| cron_expression | string | [CRON expression](https://en.wikipedia.org/wiki/Cron#CRON_expression) that defines the CCS rotation schedule |\n| enabled | boolean (default: true) | Indicates whether this job is enabled |\n| file_suffix | string (default:&nbsp;5min) | String added to the end of the rotated RDB files |\n| rotate_max_num | integer, (range:&nbsp;1-100) (default:&nbsp;24) | The maximum number of saved RDB files |"
+    }
+  ],
+  "examples": []
+}

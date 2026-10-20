@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/stats/last",
+  "title": "Cluster last stats requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/stats/last/",
+  "summary": "Most recent cluster statistics requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "b7757c03e9175ed9110e15703e40f040decb817123393d32cbcc850f2892ef50",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-stats-last) | `/v1/cluster/stats/last` | Get most recent cluster stats |"
+    },
+    {
+      "id": "get-cluster-stats-last",
+      "title": "Get latest cluster stats",
+      "role": "content",
+      "text": "GET /v1/cluster/stats/last\n\nGet the most recent cluster statistics.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_cluster_stats](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_stats) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/stats/last?interval=1sec&stime=2015-10-14T06:44:00Z \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Query parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| interval | string | Time interval for which we want stats: 1sec/10sec/5min/15min/1hour/12hour/1week. Default: 1sec. (optional) |\n| stime | ISO_8601 | Start time from which we want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |\n| etime | ISO_8601 | End time after which we don't want the stats. Should comply with the [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601) format (optional) |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns the most recent [statistics](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/statistics) for the cluster.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) | No error |\n| [500 Internal Server Error](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.1) | Internal server error |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"conns\": 0.0,\n    \"cpu_idle\": 0.8424999999988358,\n    \"cpu_system\": 0.01749999999992724,\n    \"cpu_user\": 0.08374999999978172,\n    \"egress_bytes\": 7403.0,\n    \"ephemeral_storage_avail\": 151638712320.0,\n    \"ephemeral_storage_free\": 162375925760.0,\n    \"etime\": \"2015-10-14T06:44:01Z\",\n    \"free_memory\": 5862400000.0,\n    \"ingress_bytes\": 7469.0,\n    \"interval\": \"1sec\",\n    \"persistent_storage_avail\": 151638712320.0,\n    \"persistent_storage_free\": 162375925760.0,\n    \"stime\": \"2015-10-14T06:44:00Z\",\n    \"total_req\": 0.0\n}",
+      "section_id": "get-response"
+    }
+  ]
+}

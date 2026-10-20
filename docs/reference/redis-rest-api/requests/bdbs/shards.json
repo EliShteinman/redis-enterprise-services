@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/bdbs/shards",
+  "title": "Database shards requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/bdbs/shards/",
+  "summary": "REST API requests for database shards",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2025-03-10T13:08:54-04:00",
+  "page_type": "content",
+  "content_hash": "b50b78d7a3dfceaa8546ae1c55300ba7387f36ba7816162e50c05c24cbd20498",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-bdb-shards) | `/v1/bdbs/{bdb_uid}/shards` | Get the status of a database's shards |"
+    },
+    {
+      "id": "get-bdb-shards",
+      "title": "Get database shards",
+      "role": "content",
+      "text": "GET /v1/bdbs/{int: bdb_uid}/shards\n\nGets the status for all shards that belong to the specified database."
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/bdbs/1/shards?extra_info_keys=used_memory_rss&extra_info_keys=connected_clients\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### URL parameters\n\n| Field | Type | Description |\n|-------|------|-------------|\n| bdb_uid | integer | The unique ID of the database. |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "The response body contains a JSON array with all shards, represented as [shard objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/shard).\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | bdb uid does not exist. |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "[\n    {\n        \"uid\": \"1\",\n\t\t\"role\": \"master\",\n\t\t\"assigned_slots\": \"0-8191\",\n        \"bdb_uid\": 1,\n        \"detailed_status\": \"ok\",\n        \"loading\": {\n            \"status\": \"idle\"\n        },\n        \"node_uid\": \"1\",\n        \"redis_info\": {\n\t\t\t\"connected_clients\": 14,\n            \"used_memory_rss\": 12460032\n        },\n        \"report_timestamp\": \"2024-09-13T15:28:10Z\",\n        \"status\": \"active\"\n    },\n    {\n        \"uid\": 2,\n        \"role\": \"slave\",\n        // additional fields...\n    }\n]",
+      "section_id": "get-response"
+    }
+  ]
+}

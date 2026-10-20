@@ -1,0 +1,171 @@
+{
+  "schema_version": 2,
+  "id": "operate/rs/references/rest-api/requests/cluster/certificates",
+  "title": "Cluster certificates requests",
+  "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/certificates/",
+  "summary": "Cluster certificates requests",
+  "tags": [
+    "docs",
+    "operate",
+    "rs"
+  ],
+  "last_updated": "2026-10-05T16:11:44+01:00",
+  "children": [
+    {
+      "id": "operate/rs/references/rest-api/requests/cluster/certificates/rotate",
+      "summary": "Rotate cluster certificates requests",
+      "title": "Rotate cluster certificates requests",
+      "url": "https://redis.io/docs/latest/operate/rs/references/rest-api/requests/cluster/certificates/rotate/"
+    }
+  ],
+  "page_type": "content",
+  "content_hash": "3d766cb90098f1afeb757cc98aff0ee3ff3dcac84b41c309b0c2062749cdd261",
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "role": "overview",
+      "text": "| Method | Path | Description |\n|--------|------|-------------|\n| [GET](#get-cluster-certificates) | `/v1/cluster/certificates` | Get cluster certificates |\n| [PUT](#put-cluster-certificates) | `/v1/cluster/certificates` | Update cluster certificates |\n| [PUT](#put-cluster-update_cert) | `/v1/cluster/update_cert` | Update a cluster certificate (deprecated as of Redis Software version 7.22.2) |\n| [DELETE](#delete-cluster-certificate) | `/v1/cluster/certificates/{certificate_name}` | Delete cluster certificate |"
+    },
+    {
+      "id": "get-cluster-certificates",
+      "title": "Get cluster certificates",
+      "role": "content",
+      "text": "GET /v1/cluster/certificates\n\nGet the cluster's certificates.\n\n#### Required permissions\n\n| Permission name |\n|-----------------|\n| [view_cluster_info](https://redis.io/docs/latest/operate/rs/references/rest-api/permissions#view_cluster_info) |"
+    },
+    {
+      "id": "get-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tGET /v1/cluster/certificates \n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "get-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a JSON object that contains the cluster's certificates and keys.\n\n#### Example JSON body\n\n[code example]"
+    },
+    {
+      "id": "get-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |"
+    },
+    {
+      "id": "put-cluster-certificates",
+      "title": "Update cluster certificates",
+      "role": "content",
+      "text": "[code example]\n\nReplaces multiple cluster certificates with the provided certificates on all nodes within the cluster. This endpoint validates all provided certificates before actually updating the cluster.\n\nSee the [certificates table](https://redis.io/docs/latest/operate/rs/security/certificates) for the list of cluster certificates and their descriptions."
+    },
+    {
+      "id": "put-certificates-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |\n\n#### Request body\n\nInclude an array of [certificate objects](https://redis.io/docs/latest/operate/rs/references/rest-api/objects/certificates) in the request body."
+    },
+    {
+      "id": "put-certificates-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a `200 OK` status code if all certificates are successfully replaced across the entire cluster.\n\nIf the response returns a failed status code, you should retry updating the certificates in case the cluster is no longer in an optimal state."
+    },
+    {
+      "id": "put-certificates-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Failed, invalid certificate(s) |\n| [403 Forbidden](https://www.rfc-editor.org/rfc/rfc9110.html#name-403-forbidden) | Failed, unknown certificate(s) |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Failed, expired certificate(s) |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Failed, not all nodes have been updated |"
+    },
+    {
+      "id": "put-cluster-update_cert",
+      "title": "Update cluster certificate",
+      "role": "content",
+      "text": "[code example]\n\n> [!NOTE]\n> This REST API path is deprecated as of Redis Software 7.22.2 and will be removed in a future version. Use [`PUT /v1/cluster/certificates`](#put-cluster-certificates) instead.\n\nReplaces an existing certificate on all nodes within the cluster with a new certificate. The new certificate must pass validation before it can replace the old certificate.\n\nSee the [certificates table](https://redis.io/docs/latest/operate/rs/security/certificates) for the list of cluster certificates and their descriptions."
+    },
+    {
+      "id": "put-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n[code example]\n\n#### Example JSON body\n\n[code example]\n\nReplace `[key_content]` with the content of the private key and `[cert_content]` with the content of the certificate."
+    },
+    {
+      "id": "put-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Responds with the `200 OK` status code if the certificate replacement succeeds across the entire cluster.\n\nOtherwise, retry the certificate update in case the failure was due to a temporary issue in the cluster."
+    },
+    {
+      "id": "put-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | No error |\n| [400 Bad Request](https://www.rfc-editor.org/rfc/rfc9110.html#name-400-bad-request) | Failed, invalid certificate. |\n| [403 Forbidden](https://www.rfc-editor.org/rfc/rfc9110.html#name-403-forbidden) | Failed, unknown certificate. |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Failed, invalid certificate. |\n| [406 Not Acceptable](https://www.rfc-editor.org/rfc/rfc9110.html#name-406-not-acceptable) | Failed, expired certificate. |\n| [409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#name-409-conflict) | Failed, not all nodes have been updated. |"
+    },
+    {
+      "id": "delete-cluster-certificate",
+      "title": "Delete cluster certificate",
+      "role": "content",
+      "text": "DELETE /v1/cluster/certificates/{string: certificate_name}\n\nRemoves the specified cluster certificate from both CCS and disk\nacross all nodes. Only optional certificates can be deleted through\nthis endpoint. See the [certificates table](https://redis.io/docs/latest/operate/rs/security/certificates) for the list of cluster certificates and their descriptions."
+    },
+    {
+      "id": "delete-request",
+      "title": "Request",
+      "role": "content",
+      "text": "#### Example HTTP request\n\n\tDELETE /v1/cluster/certificates/<certificate_name>\n\n\n#### Request headers\n\n| Key | Value | Description |\n|-----|-------|-------------|\n| Host | cnm.cluster.fqdn | Domain name |\n| Accept | application/json | Accepted media type |"
+    },
+    {
+      "id": "delete-response",
+      "title": "Response",
+      "role": "returns",
+      "text": "Returns a status code that indicates the certificate deletion success or failure."
+    },
+    {
+      "id": "delete-status-codes",
+      "title": "Status codes",
+      "role": "content",
+      "text": "| Code | Description |\n|------|-------------|\n| [200 OK](https://www.rfc-editor.org/rfc/rfc9110.html#name-200-ok) | Operation successful |\n| [404 Not Found](https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found) | Failed, requested deletion of an unknown certificate |\n| [403 Forbidden](https://www.rfc-editor.org/rfc/rfc9110.html#name-403-forbidden) | Failed, requested deletion of a required certificate |\n| [500 Internal Server Error](https://www.rfc-editor.org/rfc/rfc9110.html#name-500-internal-server-error) | Failed, error while deleting certificate from disk |"
+    }
+  ],
+  "examples": [
+    {
+      "id": "get-response-ex0",
+      "language": "json",
+      "code": "{\n    \"api_cert\": \"-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----\",\n    \"api_key\": \"-----BEGIN RSA PRIVATE KEY-----...-----END RSA PRIVATE KEY-----\"\n    \"// additional certificates...\"\n}",
+      "section_id": "get-response"
+    },
+    {
+      "id": "put-cluster-certificates-ex0",
+      "language": "sh",
+      "code": "PUT /v1/cluster/certificates",
+      "section_id": "put-cluster-certificates"
+    },
+    {
+      "id": "put-certificates-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/cluster/certificates",
+      "section_id": "put-certificates-request"
+    },
+    {
+      "id": "put-certificates-request-ex1",
+      "language": "json",
+      "code": "{\n  \"certificates\": [\n    {\n      \"name\": \"proxy\",\n      \"certificate\": \"-----BEGIN CERTIFICATE-----\\n...\\n-----END CERTIFICATE-----\",\n      \"key\": \"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\"\n    },\n    {\n      \"name\": \"api\",\n      \"certificate\": \"-----BEGIN CERTIFICATE-----\\n...\\n-----END CERTIFICATE-----\",\n      \"key\": \"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\"\n    }\n  ]\n}",
+      "section_id": "put-certificates-request"
+    },
+    {
+      "id": "put-cluster-update_cert-ex0",
+      "language": "sh",
+      "code": "PUT /v1/cluster/update_cert",
+      "section_id": "put-cluster-update_cert"
+    },
+    {
+      "id": "put-request-ex0",
+      "language": "sh",
+      "code": "PUT /v1/cluster/update_cert",
+      "section_id": "put-request"
+    },
+    {
+      "id": "put-request-ex1",
+      "language": "json",
+      "code": "{\n    \"name\": \"certificate1\",\n    \"key\": \"-----BEGIN RSA PRIVATE KEY-----\\n[key_content]\\n-----END RSA PRIVATE KEY-----\",\n    \"certificate\": \"-----BEGIN CERTIFICATE-----\\n[cert_content]\\n-----END CERTIFICATE-----\",\n}",
+      "section_id": "put-request"
+    }
+  ]
+}
