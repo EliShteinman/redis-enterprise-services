@@ -31,15 +31,18 @@
   - יש מקום ⇐ `200`.
   - אין מספיק זיכרון ⇐ `406 insufficient_resources`.
   - חריגה ממספר ה-shards שהרישיון מתיר ⇐ `400 invalid_license`.
-- **שיטת בחירה** כשכמה קלאסטרים עברו את הבדיקה. נקבעת בקובץ הקונפיגורציה, לכל קוד קלאסטר:
+- **שיטת בחירה** כשכמה קלאסטרים עברו את הבדיקה. **ההחלטה עוד לא התקבלה (שאלה פתוחה 16).** התכנון תומך בכל
+  האפשרויות, והבחירה נעשית בקובץ הקונפיגורציה לכל קוד קלאסטר, בלי שינוי קוד:
 
-  | שיטה | איך בוחרים | מקור הנתון |
+  | שיטה | כיוון | איך בוחרים |
   |---|---|---|
-  | `priority` | הקלאסטר עם העדיפות הגבוהה ביותר מבין אלה שעברו | שדה `priority` של כל קלאסטר בקובץ |
-  | `least_loaded` | הקלאסטר עם הכי הרבה זיכרון פנוי להקצאה מבין אלה שעברו | `provisional_memory` מ-`GET /v1/cluster/stats/last`: הזיכרון שעוד אפשר להקצות ל-shards חדשים, אחרי overbooking ושמירות של הקלאסטר |
+  | `priority` | - | לפי שדה `priority` של כל קלאסטר בקובץ |
+  | `capacity` | `most_free` | הכי הרבה זיכרון פנוי להקצאה. העומס מתפזר בין הקלאסטרים. |
+  | `capacity` | `most_loaded` | הכי מעט זיכרון פנוי, מבין אלה שעדיין יש בהם מקום. קלאסטר מתמלא לפני שעוברים לבא, ונשארים קלאסטרים ריקים לבקשות גדולות. |
 
-  נבדק: `provisional_memory` הראה 7.52GB, ו-dry_run עבר ב-1GB ונכשל ב-8GB. שני הנתונים מתאימים זה לזה.
-  dry_run קובע אם קלאסטר **מתאים**, והשיטה קובעת **איזה** מהמתאימים נבחר.
+  הנתון של `capacity` הוא `provisional_memory` מ-`GET /v1/cluster/stats/last`, כלומר הזיכרון שעוד אפשר להקצות
+  ל-shards חדשים. נבדק: 7.52GB, ו-dry_run עבר ב-1GB ונכשל ב-8GB, כך ששני הנתונים מתאימים זה לזה. dry_run קובע אם
+  קלאסטר **מתאים**, והשיטה קובעת **איזה** מהמתאימים נבחר.
 - **מרוץ:** בין הבדיקה ליצירה, בקשה אחרת יכולה לתפוס את המקום. במקרה כזה צעד היצירה נכשל ב-`insufficient_resources`,
   וה-Saga מתבטל כרגיל.
 - **CRDB:** לכל אתר נבחר קלאסטר אחד מהרשימה שלו, עם dry_run של **DB בודד** בגודל המבוקש. לפי הבעלים, dry_run
@@ -567,7 +570,9 @@ classDiagram
         +choose(candidates, spec) ClusterTarget
     }
     class PriorityPlacement
-    class LeastLoadedPlacement
+    class CapacityPlacement {
+        +direction: most_free | most_loaded
+    }
     class CapacityProbe {
         +fits(target, spec) bool
     }
@@ -608,11 +613,11 @@ classDiagram
     RedisAclRepository --> RelayClient
     RelayClient --> ClusterRegistry
     PlacementStrategy <|.. PriorityPlacement
-    PlacementStrategy <|.. LeastLoadedPlacement
+    PlacementStrategy <|.. CapacityPlacement
     PlacementStrategy --> CapacityProbe
     PlacementStrategy --> ClusterRegistry
     CapacityProbe --> RelayClient
-    LeastLoadedPlacement --> RelayClient
+    CapacityPlacement --> RelayClient
     RelayClient --> ReplyClassifier
 ```
 
