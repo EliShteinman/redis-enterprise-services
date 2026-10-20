@@ -1,0 +1,473 @@
+# תכנון: שכבת ה-Saga ומה שמתחתיה
+
+**סטטוס:** טיוטה לדיון
+**תאריך:** 2026-10-20
+**מקור הנתונים:** `docs/reference/redis-rest-api/` (Redis Software, גרסת latest)
+
+המסמך מתאר איך כל פעולה על כל משאב מתבצעת, ואיך מבטלים אותה. הוא לא עוסק בשכבת הכניסה (routes) ולא
+בשדות שה-UI שולח. אלה ייקבעו במסמך האפיון.
+
+---
+
+## 1. איך בקשה עוברת במערכת
+
+```
+בקשה
+ └─ 1. תרגום    : קוד קלאסטר ⇐ כתובת API, שירות קצה, FQDN, פרטי גישה
+ └─ 2. גילוי     : קריאת המצב הקיים בקלאסטר (GET), רק בעריכה ובמחיקה
+ └─ 3. פירוק     : המפרק בונה תוכנית: רשימת צעדים מסודרת
+ └─ 4. בדיקה מוקדמת: התנגשויות שמות ו-dry_run, בלי שום שינוי בקלאסטר
+ └─ 5. הרצה      : מנוע ה-Saga מריץ את הצעדים, ובכשל מבטל או ממשיך קדימה
+```
+
+שלבים 2 ו-4 לא משנים כלום בקלאסטר. רוב הכשלים הצפויים, כמו שם תפוס או קונפיגורציה לא חוקית, נתפסים בהם,
+עוד לפני שנוצר משהו שצריך לבטל.
+
+**dry_run:** קיים ביצירה ובעריכה של `bdbs`, `users`, `roles`, `redis_acls` ו-`crdbs`. הוא בודק את הבקשה מול
+הקלאסטר בלי לבצע אותה. מגבלה: צעד שתלוי בתוצאה של צעד קודם (למשל יוזר שמקבל `role_uids` של role שעוד לא
+נוצר) לא ניתן לבדיקה ב-dry_run מראש.
+
+---
+
+## 2. מושגים
+
+| מושג | הגדרה |
+|---|---|
+| **תוכנית (Plan)** | רשימה מסודרת של צעדים שהמפרק בונה מבקשה אחת |
+| **צעד (Step)** | פעולה אחת מול קלאסטר אחד, ויחד איתה הדרך לבטל אותה |
+| **הקשר (Context)** | מקום שבו צעד שומר תוצאות (uid, guid, snapshot) לצעדים שאחריו ולפיצוי שלו |
+| **Snapshot** | המצב של משאב לפני שצעד שינה אותו. נלקח ב-GET בתוך הצעד, ממש לפני השינוי. |
+| **Saga record** | הרישום של ריצה: הבקשה (בלי סיסמאות), הצעדים, הסטטוס של כל צעד, ה-snapshots וה-uids שנוצרו |
+
+### שלושה סוגי צעדים
+
+| סוג | מה מאפיין אותו | מה עושים בכשל |
+|---|---|---|
+| **הפיך (Compensatable)** | יש לו פיצוי שמחזיר את המצב הקודם | מבטלים אותו בסדר הפוך |
+| **נקודת אל-חזור (Pivot)** | אי אפשר לבטל אותו: מחיקת נתונים, החלפת סיסמה שלא ידועה | אין פיצוי. אחריו ה-Saga רק ממשיך קדימה. |
+| **ניתן לחזרה (Retriable)** | בא אחרי ה-pivot, ומובטח שיצליח אם מנסים שוב (idempotent) | חוזרים עליו עד שמצליח. אם הניסיונות נגמרו, הפעולה מסומנת להתערבות ידנית. |
+
+**כלל הסדר:** כל הצעדים ההפיכים קודם, אחריהם לכל היותר pivot אחד, ובסוף צעדים שניתנים לחזרה. המנוע בודק
+את הכלל הזה כשהוא מקבל תוכנית, ודוחה תוכנית שלא עומדת בו.
+
+### מחזור החיים של צעד
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+    pending --> running
+    running --> done
+    running --> failed
+    running --> unknown : timeout / response_rejected
+    unknown --> done : נמצא בקלאסטר
+    unknown --> failed : לא נמצא
+    done --> compensating : צעד מאוחר יותר נכשל
+    compensating --> compensated
+    compensating --> compensation_failed : נגמרו הניסיונות
+    compensation_failed --> [*] : התערבות ידנית
+```
+
+---
+
+## 3. תוצאה לא ידועה
+
+ייתכן שצעד נכשל מבחינתנו, אבל בוצע בפועל בקלאסטר:
+- timeout אחרי שהבקשה נשלחה.
+- `response_rejected` של cluster-relay על פעולת כתיבה.
+
+**הפתרון:** לכל משאב יש שם דטרמיניסטי שנגזר מהבקשה, ולכל repository יש `find_by_name`. כשהתוצאה לא ידועה,
+המנוע מחפש את המשאב לפי השם:
+- **נמצא:** הצעד נחשב הצליח, וה-uid נלקח מהחיפוש.
+- **לא נמצא:** הצעד נחשב נכשל.
+
+| משאב | מפתח החיפוש | איך מחפשים |
+|---|---|---|
+| ACL | `name` | `GET /v1/redis_acls`, סינון לפי שם |
+| Role | `name` | `GET /v1/roles`, סינון לפי שם |
+| User | `email` (ייחודי, `email_already_exists`) | `GET /v1/users`, סינון לפי email |
+| DB | `name` | `GET /v1/bdbs?fields=uid,name`, סינון לפי שם |
+| CRDB | מזהה task שאנחנו קובעים (`X-Task-ID`), ובנוסף `name` | `GET /v1/crdb_tasks/{id}`, ואם הוא לא נמצא, `GET /v1/crdbs` לפי שם |
+
+**CRDB:** `X-Task-ID` מאפשר לנו לבחור את מזהה ה-task. בקשה חוזרת עם אותו מזהה מחזירה את אותו task, ולא
+יוצרת CRDB שני (לאמת, ראו סעיף 10). ברירת המחדל לשמירת תוצאת task היא 500 שניות, ולכן נשלח
+`X-Result-TTL` ארוך יותר.
+
+---
+
+## 4. פעולות אסינכרוניות
+
+| פעולה | איך יודעים שהסתיימה |
+|---|---|
+| יצירה ועדכון של DB | `status` חוזר ל-`active` (בזמן הפעולה: `pending`, `active-change-pending`), או `GET /v1/actions/{action_uid}` |
+| מחיקת DB | `status: delete-pending`, ואז `404` |
+| ACL, role | אם התשובה כוללת `action_uid`, ממתינים ב-`/v1/actions/{action_uid}` |
+| CRDB, כל פעולה | `GET /v1/crdb_tasks/{task_id}` עד `finished` או `failed`. ב-`failed` יש `errors` לכל קלאסטר. |
+
+ההמתנה היא חלק מהצעד: צעד לא נחשב `done` לפני שהפעולה הסתיימה בקלאסטר. הזמנים (מרווח בדיקה, timeout)
+מוגדרים בקונפיגורציה.
+
+**409 busy:** DB שנמצא באמצע שינוי אחר מחזיר `409`. זה מצב זמני, ולכן הצעד מנסה שוב לפי מדיניות ה-retry,
+ולא נכשל מיד.
+
+---
+
+## 5. כל משאב, כל פעולה, ואיך מבטלים
+
+סימונים: ✅ הפיך במלואו · ⚠️ הפיך חלקית · ⛔ לא הפיך (pivot)
+
+### 5.1 Redis ACL
+
+| פעולה | API | Snapshot לפני | ביטול | הפיכות |
+|---|---|---|---|---|
+| יצירה | `POST /v1/redis_acls` `{name, acl}` | - | `DELETE /v1/redis_acls/{uid}` | ✅ |
+| עריכה | `PUT /v1/redis_acls/{uid}` | `GET`: `name`, `acl` (הכל קריא) | `PUT` עם ה-snapshot | ✅ |
+| מחיקה | `DELETE /v1/redis_acls/{uid}` | `GET`: `name`, `acl` | `POST` עם ה-snapshot | ⚠️ ה-uid משתנה |
+
+- ACLs מובנים (למשל `Full Access`) הם read-only: עריכה או מחיקה שלהם מחזירה `409`. המפרק לא בונה צעד כזה.
+- **ה-uid משתנה ביצירה מחדש.** כל `roles_permissions` שהפנה ל-uid הישן צריך להצביע על החדש. ראו 5.6.
+
+### 5.2 Role
+
+| פעולה | API | Snapshot לפני | ביטול | הפיכות |
+|---|---|---|---|---|
+| יצירה | `POST /v1/roles` `{name, management, resources?}` | - | `DELETE /v1/roles/{uid}` | ✅ |
+| עריכה | `PUT /v1/roles/{uid}` | `GET`: `name`, `management`, `resources` | `PUT` עם ה-snapshot | ✅ |
+| מחיקה | `DELETE /v1/roles/{uid}` | `GET`: כל השדות שאפשר לכתוב | `POST` עם ה-snapshot | ⚠️ ה-uid משתנה |
+
+- **ה-uid משתנה ביצירה מחדש.** צריך לעדכן גם את `role_uids` של יוזרים וגם את `roles_permissions` של DBs.
+
+### 5.3 User
+
+| פעולה | API | Snapshot לפני | ביטול | הפיכות |
+|---|---|---|---|---|
+| יצירה | `POST /v1/users` `{email, name, password, role_uids, auth_method}` | - | `DELETE /v1/users/{uid}` | ✅ |
+| עריכה (בלי סיסמה) | `PUT /v1/users/{uid}` | `GET`: `name`, `email`, `role_uids`, `email_alerts`, `bdbs_email_alerts`, `auth_method` | `PUT` עם ה-snapshot | ✅ |
+| החלפת סיסמה | ראו למטה | **הסיסמה הישנה לא קריאה מה-API** | - | ⛔ / ✅ בשיטה של שני צעדים |
+| מחיקה | `DELETE /v1/users/{uid}` | `GET`: כל השדות שאפשר לכתוב | יצירה מחדש **בלי הסיסמה המקורית** | ⛔ |
+
+**החלפת סיסמה בשני צעדים** בעזרת התמיכה בכמה סיסמאות ליוזר (`/v1/users/password`):
+
+| # | צעד | סוג | ביטול |
+|---|---|---|---|
+| 1 | `POST /v1/users/password`: הוספת הסיסמה החדשה. הישנה עדיין עובדת. | הפיך | `DELETE /v1/users/password` עם הסיסמה החדשה, שידועה לנו |
+| 2 | `PUT /v1/users/password`: החלפת כל הסיסמאות בחדשה בלבד | pivot | - |
+
+אם צעד 2 נכשל, היוזר נשאר במצב תקין: גם הישנה וגם החדשה עובדות. הצעד ניתן לחזרה.
+
+**מחיקת יוזר היא pivot.** הסיבה: GET לא מחזיר את הסיסמה, ולכן יוזר שנמחק לא חוזר עם אותה סיסמה.
+
+### 5.4 Database (bdb)
+
+| פעולה | API | Snapshot לפני | ביטול | הפיכות |
+|---|---|---|---|---|
+| יצירה | `POST /v1/bdbs`, ואז המתנה ל-`active` | - | `DELETE /v1/bdbs/{uid}`, ואז המתנה ל-`404` | ✅ |
+| עריכה | `PUT /v1/bdbs/{uid}` (רק השדות שמשתנים), ואז המתנה ל-`active` | `GET`: **רק השדות שהצעד משנה** | `PUT` עם הערכים הישנים של אותם שדות | ✅ / ⛔ תלוי בשדה |
+| מחיקה | `DELETE /v1/bdbs/{uid}`, ואז המתנה ל-`404` | `GET` מלא, לתיעוד בלבד | - | ⛔ הנתונים נמחקים |
+
+- **ה-snapshot בעריכה כולל רק את השדות שמשתנים,** כי ה-bdb כולל שדות רבים שהם read-only. החזרה של אובייקט
+  שלם הייתה נכשלת, או דורסת שינויים שמישהו אחר עשה במקביל.
+- **שדות שהשינוי שלהם לא הפיך** (רשימה ראשונית, לאמת):
+  - שינוי sharding או hashing policy: מחייב flush של הנתונים.
+  - הקטנת `memory_size` מתחת לנפח בשימוש.
+  - שינוי modules.
+
+  צעד עריכה שכולל שדה כזה מסומן pivot. הרשימה נשמרת בקונפיגורציה.
+- **לא קובעים `uid` ביצירה.** לפי התיעוד, מי שקובע uid פעם אחת חייב לקבוע אותו בכל ה-DBs שאחריו.
+  מזהים את ה-DB לפי `name`.
+- **`default_user`:** כבוי ב-defaults שלנו.
+
+### 5.5 CRDB (Active-Active)
+
+| פעולה | API | Snapshot לפני | ביטול | הפיכות |
+|---|---|---|---|---|
+| יצירה | `POST /v1/crdbs` + `X-Task-ID`, ואז המתנה ל-task | - | `DELETE /v1/crdbs/{guid}` + task | ✅ |
+| עריכה | `PATCH /v1/crdbs/{guid}` + task | `GET /v1/crdbs/{guid}`: השדות שמשתנים ב-`default_db_config` / `db_config` | `PATCH` עם הערכים הישנים | ✅ / ⛔ כמו ב-bdb |
+| הוספה או הסרה של קלאסטר | `POST /v1/crdbs/{guid}/updates` | `instances` | הפעולה ההפוכה | ⚠️ מחוץ לשלבים 1–4 |
+| מחיקה | `DELETE /v1/crdbs/{guid}` + task | `GET` מלא, לתיעוד | - | ⛔ |
+
+- **הבקשה ליצירה כוללת לכל קלאסטר משתתף** URL, FQDN (`name`) ופרטי גישה. ה-registry מספק את כולם. הבקשה
+  מכילה סיסמאות, ולכן אסור לרשום את ה-body שלה ללוג או ל-saga record.
+- **ביטול task שעוד לא הגיע ל-commit:** `POST /v1/crdb_tasks/{id}/actions/cancel`. במקרה של timeout
+  ביצירה, עדיף לנסות ביטול לפני `DELETE`. **לא משתמשים ב-`force`,** כי הוא עלול לשבור את ה-CRDB.
+- **ACL, roles ו-users הם מקומיים לכל קלאסטר.** ראו סעיף 6.
+
+### 5.6 הרשאות DB (`roles_permissions`)
+
+הן לא משאב נפרד. זו רשימה בתוך ה-bdb: `[{role_uid, redis_acl_uid}]`.
+
+| פעולה | API | ביטול | הפיכות |
+|---|---|---|---|
+| הוספת זוג | `GET` לרשימה הנוכחית, ואז `PUT /v1/bdbs/{uid}` עם הרשימה והזוג החדש | `GET` לרשימה הנוכחית, ואז `PUT` בלי הזוג **שהוספנו** | ✅ |
+| הסרת זוג | `GET`, ואז `PUT` בלי הזוג | `GET`, ואז `PUT` עם הזוג | ✅ |
+
+- **הביטול מסיר או מחזיר רק את מה שהצעד שינה,** ולא משחזר את כל הרשימה מ-snapshot. כך שינוי שמישהו אחר
+  עשה במקביל לא נדרס.
+- **ב-AA** אין `roles_permissions` בקונפיגורציה של CRDB. לכל קלאסטר יש bdb מקומי משלו: ה-uid שלו נמצא
+  ב-`local_databases` (או ב-`instances[].db_uid`) של `GET /v1/crdbs/{guid}` באותו קלאסטר. מעדכנים כל אחד מהם
+  בנפרד.
+- **החלפת uid** (אחרי שביטול של מחיקה יצר מחדש role או ACL): הצעד שיוצר מחדש שומר בהקשר את המיפוי
+  `uid ישן ⇐ uid חדש`, והצעד שמחזיר את ההרשאה משתמש ב-uid החדש.
+
+---
+
+## 6. Active-Active: אותם צעדים על כמה קלאסטרים
+
+המנוע לא יודע מה זה AA. המפרק פורש כל צעד מקומי לצעד נפרד לכל קלאסטר:
+
+```
+צור ACL "app-rw"   ⇒   צור ACL "app-rw" @ cluster-a
+                       צור ACL "app-rw" @ cluster-b
+```
+
+- **כשל חלקי:** כל צעד כזה הוא צעד רגיל עם פיצוי משלו. אם `@ cluster-b` נכשל, הפיצוי של `@ cluster-a` רץ
+  כרגיל. לא צריך מנגנון מיוחד.
+- **מפתחות בהקשר מקבלים קידומת של קלאסטר,** למשל `cluster-a/acl/app-rw/uid`, כי לאותו משאב יש uid שונה בכל
+  קלאסטר.
+- **בלי קוד כפול:** צעד ה-ACL של אתר בודד וצעד ה-ACL של AA הם אותה מחלקה, עם פרמטר קלאסטר שונה.
+
+---
+
+## 7. תרחישים: מה כל פקודה מריצה
+
+ב-AA כל צעד מקומי (ACL, role, user, הרשאה) מוכפל לכל קלאסטר, לפי סעיף 6.
+
+### 7.1 יצירת DB עם N יוזרים (אתר בודד)
+
+| # | צעד | סוג |
+|---|---|---|
+| 1 | יצירת DB, המתנה ל-`active` | הפיך |
+| 2..N | לכל יוזר: יצירת ACL, יצירת role, יצירת user | הפיך |
+| N+1 | לכל יוזר: הוספת זוג `role ↔ ACL` ל-`roles_permissions` | הפיך |
+
+אין בה pivot, ולכן כשל בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
+
+### 7.2 יצירת CRDB עם N יוזרים
+
+| # | צעד | סוג |
+|---|---|---|
+| 1 | יצירת CRDB (`X-Task-ID`), המתנה ל-task | הפיך |
+| 2 | לכל קלאסטר: איתור ה-bdb המקומי, ושמירת ה-uid בהקשר | קריאה בלבד |
+| 3..N | לכל קלאסטר ולכל יוזר: ACL, role, user | הפיך |
+| N+1 | לכל קלאסטר ולכל יוזר: הרשאה על ה-bdb המקומי | הפיך |
+
+### 7.3 יצירת DB בלי יוזרים / יצירת יוזר בלבד
+
+שתיהן תת-קבוצה של 7.1. יוזר בלבד מוסיף ACL, role, user והרשאה ל-DB קיים, והמפרק מקבל את ה-uid של ה-DB
+בשלב הגילוי.
+
+### 7.4 עריכת יוזר, role או ACL
+
+צעד עריכה אחד, עם snapshot וביטול (5.1–5.3). בעריכת יוזר שכוללת סיסמה, השיטה של שני צעדים מ-5.3 באה אחרון.
+
+### 7.5 עריכת DB / CRDB
+
+| # | צעד | סוג |
+|---|---|---|
+| 1 | עריכת שדות הפיכים | הפיך |
+| 2 | עריכת שדות לא הפיכים, אם יש | pivot |
+
+### 7.6 מחיקת יוזר
+
+| # | צעד | סוג |
+|---|---|---|
+| 1 | הסרת ההרשאה (`roles_permissions`) מכל DB | הפיך |
+| 2 | מחיקת user | pivot |
+| 3 | מחיקת role ו-ACL, אם הם שייכים רק לו | ניתן לחזרה |
+
+### 7.7 מחיקת DB / CRDB עם היוזרים שלו
+
+| # | צעד | סוג |
+|---|---|---|
+| 1 | snapshot מלא של ה-DB, היוזרים, ה-roles וה-ACLs (לתיעוד) | קריאה בלבד |
+| 2 | מחיקת DB / CRDB | pivot |
+| 3 | לכל יוזר: מחיקת user, role ו-ACL | ניתן לחזרה. `404` נחשב הצלחה. |
+
+**מחיקה מתבצעת קדימה (forward recovery), לא ב-rollback.** הנתונים אובדים כבר במחיקת ה-DB, ולכן אין טעם לשחזר
+יוזרים בלי ה-DB. זו התשובה המוצעת לשאלה פתוחה 9.
+
+**שאלה לאפיון:** מה זה "היוזרים של ה-DB"? הצעה: יוזר נמחק רק אם אין לו הרשאה על DB אחר. אחרת מסירים ממנו
+רק את ההרשאה.
+
+---
+
+## 8. מיון תשובות וכשל של פיצוי
+
+### מיון של כל תשובה (ב-transport)
+
+| מצב | איך מזהים | מה המנוע עושה |
+|---|---|---|
+| הצלחה | 2xx מהקלאסטר | ממשיך |
+| שגיאה זמנית | `409` עם `busy`, או שגיאה שמוגדרת בקונפיגורציה כזמנית | retry |
+| שגיאת קלאסטר | 4xx/5xx אחר מהקלאסטר, עם `error_code` | הצעד נכשל |
+| שגיאת relay | סימון של cluster-relay (דרישה R1) | timeout ⇐ תוצאה לא ידועה; כשל חיבור ⇐ הצעד נכשל |
+| תוצאה לא ידועה | timeout, או `response_rejected` על כתיבה | `find_by_name` (סעיף 3) |
+
+### כשל של הפיצוי עצמו
+
+1. retry לפי מדיניות שמוגדרת בקונפיגורציה, עם backoff.
+2. אם הניסיונות נגמרו: הצעד עובר ל-`compensation_failed`, וה-Saga ממשיך לפצות את שאר הצעדים. לא עוצרים
+   באמצע, כי כל פיצוי נוסף שמצליח מצמצם את מה שנשאר "יתום".
+3. בסוף, ה-Saga מסומן `requires_manual_intervention`. נרשם לוג `CRITICAL`, ו-saga record מלא מאפשר לדעת
+   בדיוק מה נשאר בקלאסטר.
+
+---
+
+## 9. מצב ה-Saga ומה קורה כשהשירות קורס
+
+| | המלצה |
+|---|---|
+| **ממשק** | `SagaStateRepository`: שמירה ועדכון של saga record |
+| **שלב 1** | מימוש בזיכרון. מספיק כדי לבנות ולבדוק את המנוע. |
+| **לפני production** | מימוש מתמשך (Redis או DB, החלטה פתוחה) |
+| **מתי כותבים** | לפני כל צעד (`running`) ואחריו (`done` + תוצאות). כך אחרי קריסה ידוע בדיוק איזה צעד היה באוויר. |
+| **סיסמאות** | **לא נשמרות אף פעם** ב-saga record |
+
+**המשך אחרי קריסה:** בעלייה, המנוע מחפש Sagas שלא הסתיימו.
+- **Saga שהיה לפני ה-pivot:** מבצעים rollback. הצעד שהיה `running` עובר דרך `find_by_name`. לא ממשיכים קדימה,
+  כי הסיסמאות שנדרשות ליצירת יוזרים לא נשמרו.
+- **Saga שעבר את ה-pivot:** ממשיכים קדימה. הצעדים שאחרי ה-pivot הם מחיקות, ולא צריכים סיסמאות.
+
+---
+
+## 10. לאמת מול הקלאסטר לפני המימוש
+
+התיעוד לא עונה על השאלות האלה. כל אחת היא בדיקה קצרה מול הקונטיינר `RE`:
+
+| # | שאלה | למה זה חשוב |
+|---|---|---|
+| V1 | האם אפשר למחוק role או ACL שעדיין מופיעים ב-`roles_permissions` או ב-`role_uids`? (`406`?) | קובע את סדר הצעדים במחיקה |
+| V2 | האם שם של DB חייב להיות ייחודי בקלאסטר? | `find_by_name` של DB מבוסס על כך |
+| V3 | האם `POST /v1/bdbs` מחזיר `action_uid`, או שבודקים רק לפי `status`? | אופן ההמתנה |
+| V4 | `X-Task-ID` שנשלח פעמיים: האם חוזר אותו task או נוצר CRDB נוסף? | idempotency של CRDB |
+| V5 | CRDB task שנכשל באמצע: האם הקלאסטר מנקה בעצמו, או שנשארים bdbs מקומיים? | פיצוי של יצירת CRDB |
+| V6 | האם אפשר לקבוע `guid` של CRDB ביצירה? | פותר את התוצאה הלא ידועה גם בלי task |
+| V7 | אילו שינויי bdb נכשלים, ואילו מוחקים נתונים? | רשימת השדות הלא הפיכים |
+
+---
+
+## 11. מבנה המחלקות
+
+```mermaid
+classDiagram
+    direction TB
+
+    class SagaStep {
+        <<abstract>>
+        +kind: StepKind
+        +execute(context) None
+        +compensate(context) None
+        +find_outcome(context) StepOutcome
+    }
+    class StepKind {
+        <<enum>>
+        COMPENSATABLE
+        PIVOT
+        RETRIABLE
+    }
+    class SagaPlan {
+        +steps: list~SagaStep~
+        +validate_order() None
+    }
+    class SagaContext {
+        +put(key, value) None
+        +get(key) Any
+    }
+    class SagaExecutor {
+        +run(plan) SagaRecord
+        -compensate_completed(record) None
+        -retry_forward(record) None
+    }
+    class RetryPolicy
+    class SagaStateRepository {
+        <<interface>>
+        +save(record) None
+        +find_unfinished() list~SagaRecord~
+    }
+
+    class CreateResourceStep
+    class UpdateResourceStep
+    class DeleteResourceStep
+    class AddDatabasePermissionStep
+    class RemoveDatabasePermissionStep
+
+    class ResourceRepository~TSpec~ {
+        <<interface>>
+        +create(spec) Resource
+        +get(uid) Resource
+        +find_by_name(name) Resource | None
+        +update(uid, changes) Resource
+        +delete(uid) None
+    }
+    class DatabaseRepository
+    class CrdbRepository
+    class UserRepository
+    class RoleRepository
+    class RedisAclRepository
+    class OperationWaiter {
+        <<interface>>
+        +wait(reference) None
+    }
+
+    class ClusterRegistry {
+        <<interface>>
+        +resolve(cluster_code) ClusterTarget
+    }
+    class RelayClient {
+        +send(call) ClusterReply
+    }
+    class ReplyClassifier {
+        +classify(reply) ReplyOutcome
+    }
+
+    SagaExecutor --> SagaPlan
+    SagaExecutor --> SagaStateRepository
+    SagaExecutor --> RetryPolicy
+    SagaPlan o-- SagaStep
+    SagaStep --> SagaContext
+    SagaStep --> StepKind
+    SagaStep <|-- CreateResourceStep
+    SagaStep <|-- UpdateResourceStep
+    SagaStep <|-- DeleteResourceStep
+    SagaStep <|-- AddDatabasePermissionStep
+    SagaStep <|-- RemoveDatabasePermissionStep
+    CreateResourceStep --> ResourceRepository
+    UpdateResourceStep --> ResourceRepository
+    DeleteResourceStep --> ResourceRepository
+    AddDatabasePermissionStep --> DatabaseRepository
+    RemoveDatabasePermissionStep --> DatabaseRepository
+    ResourceRepository <|.. DatabaseRepository
+    ResourceRepository <|.. CrdbRepository
+    ResourceRepository <|.. UserRepository
+    ResourceRepository <|.. RoleRepository
+    ResourceRepository <|.. RedisAclRepository
+    DatabaseRepository --> OperationWaiter
+    CrdbRepository --> OperationWaiter
+    DatabaseRepository --> RelayClient
+    CrdbRepository --> RelayClient
+    UserRepository --> RelayClient
+    RoleRepository --> RelayClient
+    RedisAclRepository --> RelayClient
+    RelayClient --> ClusterRegistry
+    RelayClient --> ReplyClassifier
+```
+
+**איך זה מונע קוד כפול:**
+- **שלושה צעדים גנריים מכסים את כל המשאבים.** `CreateResourceStep`, `UpdateResourceStep` ו-`DeleteResourceStep`
+  עובדים על כל `ResourceRepository`. ACL, role, user, DB ו-CRDB לא צריכים מחלקות צעד משלהם.
+- **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
+- **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
+- **הקריאה הישירה ששמה בתוכנית** משתמשת ישירות ב-`ClusterRegistry` וב-`RelayClient`, בלי Saga.
+
+---
+
+## 12. החלטות שמחכות לך
+
+| # | החלטה | המלצה |
+|---|---|---|
+| D1 | מחיקה: forward recovery במקום rollback | כן (סעיף 7.7) |
+| D2 | החלפת סיסמה בשני צעדים (הוספה ואז החלפה) | כן (סעיף 5.3) |
+| D3 | הסרת הרשאה בביטול: רק מה שהצעד שינה, ולא שחזור של כל הרשימה | כן (סעיף 5.6) |
+| D4 | מצב Saga: ממשק מהיום הראשון, בזיכרון בשלב 1, מתמשך לפני production | כן (סעיף 9) |
+| D5 | אחרי קריסה: rollback לפני ה-pivot, קדימה אחריו | כן (סעיף 9) |
+| D6 | כשל של פיצוי: ממשיכים לפצות את השאר, ומסמנים להתערבות ידנית | כן (סעיף 8) |
+| D7 | רשימת השדות הלא הפיכים של DB נשמרת בקונפיגורציה | כן, אחרי V7 |
