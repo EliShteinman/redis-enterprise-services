@@ -31,6 +31,17 @@
   - יש מקום ⇐ `200`.
   - אין מספיק זיכרון ⇐ `406 insufficient_resources`.
   - חריגה ממספר ה-shards שהרישיון מתיר ⇐ `400 invalid_license`.
+- **שיטת בחירה** כשכמה קלאסטרים עברו את הבדיקה. נקבעת בקובץ הקונפיגורציה, לכל קוד קלאסטר:
+
+  | שיטה | איך בוחרים | מקור הנתון |
+  |---|---|---|
+  | `priority` | הקלאסטר עם העדיפות הגבוהה ביותר מבין אלה שעברו | שדה `priority` של כל קלאסטר בקובץ |
+  | `least_loaded` | הקלאסטר עם הכי הרבה זיכרון פנוי להקצאה מבין אלה שעברו | `provisional_memory` מ-`GET /v1/cluster/stats/last`: הזיכרון שעוד אפשר להקצות ל-shards חדשים, אחרי overbooking ושמירות של הקלאסטר |
+
+  נבדק: `provisional_memory` הראה 7.52GB, ו-dry_run עבר ב-1GB ונכשל ב-8GB. שני הנתונים מתאימים זה לזה.
+  dry_run קובע אם קלאסטר **מתאים**, והשיטה קובעת **איזה** מהמתאימים נבחר.
+- **מרוץ:** בין הבדיקה ליצירה, בקשה אחרת יכולה לתפוס את המקום. במקרה כזה צעד היצירה נכשל ב-`insufficient_resources`,
+  וה-Saga מתבטל כרגיל.
 - **CRDB:** לכל אתר נבחר קלאסטר אחד מהרשימה שלו, עם dry_run של **DB בודד** בגודל המבוקש. לפי הבעלים, dry_run
   של CRDB לא בודק גודל (V12).
 
@@ -549,7 +560,16 @@ classDiagram
 
     class ClusterRegistry {
         <<interface>>
-        +resolve(cluster_code) ClusterTarget
+        +candidates(cluster_code) list~ClusterTarget~
+    }
+    class PlacementStrategy {
+        <<interface>>
+        +choose(candidates, spec) ClusterTarget
+    }
+    class PriorityPlacement
+    class LeastLoadedPlacement
+    class CapacityProbe {
+        +fits(target, spec) bool
     }
     class RelayClient {
         +send(call) ClusterReply
@@ -587,6 +607,12 @@ classDiagram
     RoleRepository --> RelayClient
     RedisAclRepository --> RelayClient
     RelayClient --> ClusterRegistry
+    PlacementStrategy <|.. PriorityPlacement
+    PlacementStrategy <|.. LeastLoadedPlacement
+    PlacementStrategy --> CapacityProbe
+    PlacementStrategy --> ClusterRegistry
+    CapacityProbe --> RelayClient
+    LeastLoadedPlacement --> RelayClient
     RelayClient --> ReplyClassifier
 ```
 
