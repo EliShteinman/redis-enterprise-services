@@ -1,0 +1,38 @@
+name: redis-enterprise-services
+
+x-cluster-node: &cluster-node
+  image: ${REDIS_ENTERPRISE_IMAGE}
+  cap_add:
+    - SYS_RESOURCE
+
+x-cluster-bootstrap: &cluster-bootstrap
+  image: ${BOOTSTRAP_IMAGE}
+  entrypoint: ["/bin/sh", "/bootstrap/create-cluster.sh"]
+  volumes:
+    - ./bootstrap:/bootstrap:ro
+  restart: "no"
+  environment: &bootstrap-environment
+    ADMIN_USERNAME: ${ADMIN_USERNAME}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    API_PORT: ${CLUSTER_API_PORT}
+    PERSISTENT_PATH: ${PERSISTENT_PATH}
+    EPHEMERAL_PATH: ${EPHEMERAL_PATH}
+    POLL_INTERVAL_SECONDS: ${BOOTSTRAP_POLL_INTERVAL_SECONDS}
+
+services:
+  cluster1:
+    <<: *cluster-node
+    hostname: ${CLUSTER1_NAME}
+    ports:
+      - "${CLUSTER1_UI_PORT}:8443"
+      - "${CLUSTER1_API_PORT}:${CLUSTER_API_PORT}"
+      - "${CLUSTER1_DB_PORTS}:${CLUSTER1_DB_PORTS}"
+
+  cluster1-bootstrap:
+    <<: *cluster-bootstrap
+    depends_on:
+      - cluster1
+    environment:
+      <<: *bootstrap-environment
+      CLUSTER_HOST: cluster1
+      CLUSTER_NAME: ${CLUSTER1_NAME}
