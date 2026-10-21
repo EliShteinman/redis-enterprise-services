@@ -42,6 +42,22 @@ services:
       CLUSTER_HOST: cluster1
       CLUSTER_NAME: ${CLUSTER1_NAME}
 
+  cluster1-node2:
+    <<: *cluster-node
+    hostname: ${CLUSTER1_NODE2_NAME}
+    profiles: [multinode]
+
+  cluster1-node2-join:
+    <<: *cluster-bootstrap
+    entrypoint: ["/bin/sh", "/bootstrap/join-cluster.sh"]
+    profiles: [multinode]
+    depends_on:
+      - cluster1-node2
+    environment:
+      <<: *bootstrap-environment
+      NODE_HOST: cluster1-node2
+      CLUSTER_HOST: cluster1
+
   cluster2:
     <<: *cluster-node
     hostname: ${CLUSTER2_NAME}

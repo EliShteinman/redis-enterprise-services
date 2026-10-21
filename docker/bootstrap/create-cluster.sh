@@ -44,7 +44,7 @@ state="$(read_state)"
 while [ "${state}" != "completed" ]; do
     if [ "${state}" = "error" ]; then
         echo "Bootstrap of ${CLUSTER_NAME} failed" >&2
-        curl --silent --insecure "${bootstrap_url}" >&2
+        curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" >&2
         exit 1
     fi
     sleep "${POLL_INTERVAL_SECONDS}"
