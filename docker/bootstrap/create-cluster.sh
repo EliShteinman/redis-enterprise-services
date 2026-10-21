@@ -4,7 +4,7 @@ set -eu
 bootstrap_url="https://${CLUSTER_HOST}:${API_PORT}/v1/bootstrap"
 
 read_state() {
-    curl --silent --insecure "${bootstrap_url}" \
+    curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" \
         | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
 }
 

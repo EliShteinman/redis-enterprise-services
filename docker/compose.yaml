@@ -26,7 +26,12 @@ services:
     ports:
       - "${CLUSTER1_UI_PORT}:8443"
       - "${CLUSTER1_API_PORT}:${CLUSTER_API_PORT}"
-      - "${CLUSTER1_DB_PORTS}:${CLUSTER1_DB_PORTS}"
+      - "${CLUSTER1_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
+    networks:
+      default:
+        aliases:
+          - ${CLUSTER1_NAME}
+          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER1_NAME}
 
   cluster1-bootstrap:
     <<: *cluster-bootstrap
@@ -36,3 +41,25 @@ services:
       <<: *bootstrap-environment
       CLUSTER_HOST: cluster1
       CLUSTER_NAME: ${CLUSTER1_NAME}
+
+  cluster2:
+    <<: *cluster-node
+    hostname: ${CLUSTER2_NAME}
+    ports:
+      - "${CLUSTER2_UI_PORT}:8443"
+      - "${CLUSTER2_API_PORT}:${CLUSTER_API_PORT}"
+      - "${CLUSTER2_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
+    networks:
+      default:
+        aliases:
+          - ${CLUSTER2_NAME}
+          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER2_NAME}
+
+  cluster2-bootstrap:
+    <<: *cluster-bootstrap
+    depends_on:
+      - cluster2
+    environment:
+      <<: *bootstrap-environment
+      CLUSTER_HOST: cluster2
+      CLUSTER_NAME: ${CLUSTER2_NAME}
