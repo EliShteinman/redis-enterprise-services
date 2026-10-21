@@ -279,7 +279,7 @@ stateDiagram-v2
 - **ביצירה מחדש בתוך פיצוי כן קובעים `uid`.** ה-uid הזה כבר היה בשימוש, ולכן אין התנגשות. רלוונטי רק
   לעריכה ולמחיקה שעוד לא הגיעו ל-pivot.
 - **`default_user`:** דלוק, עם סיסמה קבועה מ-Secret (`authentication_redis_pass` ביצירה). בלי סיסמה, כל אחד
-  מתחבר ל-DB (נבדק). ראו `db-model.md` סעיף 5.
+  מתחבר ל-DB (נבדק). ראו `db-model.md` סעיף 2.
 - **סודות בתשובות:** תשובות `GET` ו-`DELETE` של bdb כוללות את `authentication_admin_pass` ואת `authentication_redis_pass`, בטקסט גלוי (נבדק).
   חייבים להסתיר את השדה הזה בלוגים וב-saga record. זה רלוונטי גם ל-failure log של cluster-relay.
 - **Modules:** בגרסה 8.x כל DB נוצר עם `bf`, `ReJSON`, `timeseries` ו-`search` כברירת מחדל.
