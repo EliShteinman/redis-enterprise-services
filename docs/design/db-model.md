@@ -17,22 +17,26 @@
 
 ## 2. השדות במודל
 
-| שדה | חובה | ברירת מחדל בקונפיג | עריכה | הערה |
-|---|---|---|---|---|
-| `name` | ✅ | - | ⛔ | המפתח של `find_by_key` ושל שמות ה-ACL וה-role |
-| `memory_size` | ✅ | - | ✅ | |
-| `version` | | `8.4` | ⛔ | |
-| `replication` | | | ✅ | הפיך (V10) |
-| `sharding` | | | ⛔ ב-AA | ב-AA לא ניתן להפעלה או לכיבוי אחרי היצירה |
-| `shards_count` | | | הגדלה בלבד | הגדלה היא pivot |
-| `shard_key_regex` | | כללי ברירת המחדל של Redis | ⛔ ב-AA | נשלח רק כש-`sharding` דלוק |
-| `data_persistence` | | `aof` | ✅ | |
-| `aof_policy` | | `appendfsync-every-sec` | ✅ | |
-| `snapshot_policy` | | | ✅ | רלוונטי רק כש-`data_persistence` הוא `snapshot` |
-| `eviction_policy` | | | ✅ | ב-AA, eviction מתחיל ב-80% מהזיכרון (תיעוד) |
-| `shards_placement` | | `dense` | ✅ | |
-| `proxy_policy` | | `all-master-shards` | ✅ | |
-| `slave_ha` | | | ✅ | |
+| שדה | חובה | ברירת מחדל בקונפיג | הערה |
+|---|---|---|---|
+| `name` | ✅ | - | |
+| `memory_size` | ✅ | - | |
+| `version` | | `8.4` | |
+| `replication` | | | |
+| `sharding` | | | |
+| `shards_count` | | | |
+| `shard_key_regex` | | כללי ברירת המחדל של Redis | נשלח רק כש-`sharding` דלוק |
+| `data_persistence` | | `aof` | |
+| `aof_policy` | | `appendfsync-every-sec` | |
+| `snapshot_policy` | | | רלוונטי רק כש-`data_persistence` הוא `snapshot` |
+| `eviction_policy` | | | ב-AA, eviction מתחיל ב-80% מהזיכרון (תיעוד) |
+| `shards_placement` | | `dense` | |
+| `proxy_policy` | | `all-master-shards` | |
+| `slave_ha` | | | |
+
+**עריכה:** כל שדה במודל יכול להגיע בבקשת עריכה. מגבלות של התשתית, כמו הקטנת `shards_count` או שינוי `sharding`
+ב-AA, הן לא אחריות של הקוד. הקלאסטר דוחה את הבקשה, והשגיאה שלו מוחזרת. רשימת השדות שאי אפשר להחזיר אחורה
+(D7) נשארת בקונפיג, כי היא קובעת אם צעד העריכה הוא pivot.
 
 **לא נשלחים, ולא במודל:**
 - **`port`:** הקלאסטר מקצה פורט אוטומטית.
