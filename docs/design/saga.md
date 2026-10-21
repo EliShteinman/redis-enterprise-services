@@ -278,9 +278,9 @@ stateDiagram-v2
   ידנית. כך ביטול לא ימחק DB של מישהו אחר.
 - **ביצירה מחדש בתוך פיצוי כן קובעים `uid`.** ה-uid הזה כבר היה בשימוש, ולכן אין התנגשות. רלוונטי רק
   לעריכה ולמחיקה שעוד לא הגיעו ל-pivot.
-- **`default_user`:** כבוי ב-defaults שלנו. נבדק: כש-`default_user: true`, כל אחד מתחבר בלי סיסמה, גם אחרי
-  שההרשאות של היוזר הוסרו.
-- **סודות בתשובות:** תשובת `DELETE /v1/bdbs/{uid}` (וכנראה גם `GET`) כוללת את `authentication_admin_pass`.
+- **`default_user`:** דלוק, עם סיסמה קבועה מ-Secret (`authentication_redis_pass` ביצירה). בלי סיסמה, כל אחד
+  מתחבר ל-DB (נבדק). ראו `db-model.md` סעיף 5.
+- **סודות בתשובות:** תשובות `GET` ו-`DELETE` של bdb כוללות את `authentication_admin_pass` ואת `authentication_redis_pass`, בטקסט גלוי (נבדק).
   חייבים להסתיר את השדה הזה בלוגים וב-saga record. זה רלוונטי גם ל-failure log של cluster-relay.
 - **Modules:** בגרסה 8.x כל DB נוצר עם `bf`, `ReJSON`, `timeseries` ו-`search` כברירת מחדל.
 
@@ -301,7 +301,7 @@ stateDiagram-v2
 - **`GET /v1/crdbs` מחזיר `{"crdbs": [...]}`,** ולא מערך כמו ב-endpoints האחרים.
 - **ה-uid של ה-bdb המקומי ידוע רק לקלאסטר עצמו:** `local_databases` ו-`instances[].db_uid` מכילים רק את ה-uid
   המקומי. לכן שואלים כל קלאסטר בנפרד (נבדק: 1 ב-cluster1 ו-2 ב-cluster2).
-- **סודות:** התשובה כוללת `authentication_admin_pass` לכל instance. מסתירים אותו כמו ב-bdb.
+- **סודות:** התשובה כוללת `authentication_admin_pass` לכל instance, ו-`authentication_redis_pass` ב-bdb המקומי. מסתירים אותם כמו ב-bdb.
 - **Modules:** ה-CRDB נוצר עם `search` ו-`ReJSON` בלבד.
 - **ביטול task שעוד לא הגיע ל-commit:** `POST /v1/crdb_tasks/{id}/actions/cancel`. במקרה של timeout
   ביצירה, עדיף לנסות ביטול לפני `DELETE`. **לא משתמשים ב-`force`,** כי הוא עלול לשבור את ה-CRDB.

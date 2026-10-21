@@ -115,7 +115,7 @@ x-result-ttl: 3600             (אופציונלי)
 | # | דרישה | למה |
 |---|---|---|
 | C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
-| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, ובכלל זה ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` (נבדק) |
+| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, ובכלל זה ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי (נבדק) |
 | C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/crdbs`, `POST/PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות של קלאסטרים ושל יוזרים |
 
 **מצב נוכחי ב-cluster-relay:** ה-failure log כותב את התשובה המלאה של הקלאסטר. C13 לא מתקיים.

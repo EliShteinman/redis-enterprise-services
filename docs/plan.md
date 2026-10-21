@@ -123,7 +123,7 @@ x-cluster-authorization: Basic <credentials>
 | מעקב אחרי פעולות ארוכות | `crdb_tasks`, `actions` | ב-`crdbs` אפשר לקבוע את מזהה ה-task (`X-Task-ID`), וכך לברר מה קרה אחרי timeout |
 | פרטי קלאסטר | `cluster` | FQDN של הקלאסטר, נדרש ליצירת CRDB |
 
-- **`default_user`:** ברירת המחדל של Redis היא `true`, כלומר DB חדש פתוח ליוזר `default`. ב-defaults שלנו הוא כבוי.
+- **`default_user`:** דלוק, עם סיסמה קבועה מ-Secret. בלי סיסמה, DB חדש פתוח לכל אחד.
 - **סנכרון AA:** הבקשות עוברות דרך שירות הקצה, אבל הסנכרון בין הקלאסטרים רץ ישירות ביניהם.
 
 ## סביבת הבדיקות (docker compose, זמני)
