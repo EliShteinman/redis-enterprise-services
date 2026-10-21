@@ -100,7 +100,7 @@ x-result-ttl: 3600             (אופציונלי)
 | `/v1/roles[/{uid}]` | GET, POST, PUT, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/users[/{uid}]` | GET, POST, PUT, DELETE | user או רשימה |
 | `/v1/users/password` | POST, PUT, DELETE | גוף ריק או הודעה |
-| `/v1/crdbs[/{guid}]` | GET, POST, PATCH, DELETE | crdb, או crdb task |
+| `/v1/crdbs[/{guid}]` | GET, POST (כולל `dry_run`), PATCH, DELETE | crdb, `{"crdbs": [...]}` ברשימה, או crdb task |
 | `/v1/crdb_tasks/{id}` | GET, POST `actions/cancel` | crdb task |
 | `/v1/actions/{uid}` | GET | action |
 | `/v1/cluster` | GET | אובייקט cluster (FQDN) |
@@ -115,7 +115,7 @@ x-result-ttl: 3600             (אופציונלי)
 | # | דרישה | למה |
 |---|---|---|
 | C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
-| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, ובכלל זה ב-failure log | תשובות bdb כוללות `authentication_admin_pass` (נבדק) |
+| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, ובכלל זה ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` (נבדק) |
 | C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/crdbs`, `POST/PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות של קלאסטרים ושל יוזרים |
 
 **מצב נוכחי ב-cluster-relay:** ה-failure log כותב את התשובה המלאה של הקלאסטר. C13 לא מתקיים.
