@@ -50,7 +50,7 @@ x-result-ttl: 3600             (אופציונלי)
 | C4 | **`cluster-state-id` מועבר לקלאסטר** כ-request header, אם נשלח | עדכון מותנה של DB. בלעדיו עדכון במקביל דורס שינויים (design סעיף 10) |
 | C5 | **`x-task-id` ו-`x-result-ttl` מועברים לקלאסטר**, אם נשלחו | מזהה task של CRDB שאנחנו קובעים, כדי לברר מה קרה אחרי timeout (design סעיף 3) |
 
-**מצב נוכחי ב-cluster-relay:** `outgoing_headers` מעביר רק `authorization`, `content-type` ו-`traceparent`. C4 ו-C5 חסרים.
+**מצב נוכחי ב-cluster-relay:** C1–C5 מתקיימים. ה-headers של C4 ו-C5 מועברים כמו שהם, לפי רשימה בקונפיג. ה-`authorization`, ה-`content-type` וה-`traceparent` של ה-relay גוברים על header באותו שם.
 
 ---
 
@@ -62,8 +62,7 @@ x-result-ttl: 3600             (אופציונלי)
 | C7 | **`cluster-state-id`** מוחזר כ-response header | נדרש לעדכון המותנה הבא |
 | C8 | ה-schema וה-ignored fields מאפשרים את כל התשובות שהשירות שלנו צריך | אחרת תשובה תקינה נחסמת. הרשימה בסעיף 4 |
 
-**מצב נוכחי ב-cluster-relay:** C6 ו-C7 מתקיימים, כי כל ה-headers חוזרים חוץ מ-content-length ודומיו. C8 תלוי בקובץ
-ה-schema שיוגדר.
+**מצב נוכחי ב-cluster-relay:** C6–C8 מתקיימים. C6 ו-C7: כל ה-headers חוזרים חוץ מ-content-length ודומיו. C8: ב-`config/examples/` יש schema ו-ignored fields לדוגמה, שעוברים על כל התשובות בסעיף 4. הם נבדקו מול 43 תשובות אמיתיות מהקלאסטרים (2026-10-25).
 
 ---
 
@@ -84,10 +83,14 @@ x-result-ttl: 3600             (אופציונלי)
 | `timeout` | הבקשה נשלחה, ולא חזרה תשובה בזמן | **לא ידוע** | `find_by_key` (design סעיף 3) |
 | `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | **כן**. ה-status המקורי ב-`x-edge-cluster-status` | 2xx מקורי על כתיבה ⇐ הפעולה בוצעה, `find_by_key` מביא את ה-uid |
 
-**מצב נוכחי ב-cluster-relay:**
-- **C9:** אין header שמסמן שגיאה של שירות הקצה.
-- **C10:** `cluster_unreachable` מאחד את `connection_failed` ואת `timeout`.
-- **C11:** ה-status המקורי לא מוחזר ב-`response_rejected`.
+**מצב נוכחי ב-cluster-relay:** C9–C11 מתקיימים.
+
+| `x-edge-error` | status | מה מסווג כך (נבדק מול חיבורים אמיתיים) |
+|---|---|---|
+| `invalid_request` | `400` | |
+| `connection_failed` | `502` | connection refused, DNS, connect timeout |
+| `timeout` | `504` | read timeout, חיבור שנסגר אחרי השליחה, תשובה חתוכה |
+| `response_rejected` | `502` | עם `x-edge-cluster-status` |
 
 ---
 
@@ -120,18 +123,19 @@ x-result-ttl: 3600             (אופציונלי)
 
 הדרישות חלות על כל רמות הלוג חוץ מ-DEBUG. ב-DEBUG הכל נרשם בכוונה.
 
-**מצב נוכחי ב-cluster-relay:** ה-failure log כותב את התשובה המלאה של הקלאסטר. C13 לא מתקיים.
+**מצב נוכחי ב-cluster-relay:** C12–C14 מתקיימים. ה-failure log כותב את תשובת הקלאסטר בלי השדות שב-`config/redacted-fields.json`: הסיסמאות שמופיעות בתשובות bdb ו-crdb, ו-`credentials` של הקלאסטרים בתוך crdb (נבדק מול הקלאסטרים).
 
 ---
 
-## 6. סיכום: מה חסר ב-cluster-relay
+## 6. סיכום: מצב cluster-relay
 
-| # | מה | חומרה |
+כל הדרישות C1–C14 מתקיימות (2026-10-25).
+
+| # | מה נוסף | איך |
 |---|---|---|
-| C4 | העברת `cluster-state-id` לקלאסטר | גבוהה: בלי זה אין עדכון מותנה |
-| C5 | העברת `x-task-id` ו-`x-result-ttl` | גבוהה ל-AA |
-| C9 | header שמסמן שגיאה של שירות הקצה | גבוהה |
-| C10 | פיצול `cluster_unreachable` ל-`connection_failed` ו-`timeout` | גבוהה |
-| C11 | ה-status המקורי ב-`response_rejected` | בינונית |
-| C13 | הסתרת סודות ב-failure log | גבוהה (אבטחה) |
-| C8 | schema שמאפשר את כל התשובות בסעיף 4 | תלוי בקובץ ה-schema |
+| C4, C5 | העברת `cluster-state-id`, `x-task-id` ו-`x-result-ttl` | רשימת headers בקונפיג |
+| C9 | `x-edge-error` על כל תשובה ששירות הקצה יצר | |
+| C10 | פיצול ל-`connection_failed` ול-`timeout` | לפי השלב שבו הבקשה נכשלה |
+| C11 | `x-edge-cluster-status` ב-`response_rejected` | |
+| C13 | הסתרת סודות ב-failure log | `config/redacted-fields.json` |
+| C8 | schema ו-ignored fields לדוגמה | `config/examples/`, עם טסט מול תשובות אמיתיות |
