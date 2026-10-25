@@ -292,7 +292,7 @@ stateDiagram-v2
 | פעולה | API | Snapshot לפני | ביטול | הפיכות |
 |---|---|---|---|---|
 | יצירה | `POST /v1/crdbs` + `X-Task-ID`, ואז המתנה ל-task | - | `DELETE /v1/crdbs/{guid}` + task | ✅ |
-| עריכה | `PATCH /v1/crdbs/{guid}` + task | `GET /v1/crdbs/{guid}`: השדות שמשתנים ב-`default_db_config` / `db_config` | `PATCH` עם הערכים הישנים | ✅ / ⛔ כמו ב-bdb |
+| עריכה | `PATCH /v1/crdbs/{guid}` + task: השדה ב-`default_db_config`, וגם ב-`instances[].db_config` של כל instance עם override לאותו שדה (V17) | `GET /v1/crdbs/{guid}`: השדות שמשתנים ב-`default_db_config` וב-`db_config` של כל instance | `PATCH` עם הערכים הישנים בשתי הרמות | ✅ / ⛔ כמו ב-bdb |
 | הוספה או הסרה של קלאסטר | `POST /v1/crdbs/{guid}/updates` | `instances` | הפעולה ההפוכה | ⚠️ מחוץ לשלבים 1–4 |
 | מחיקה | `DELETE /v1/crdbs/{guid}` + task | `GET` מלא, לתיעוד | - | ⛔ |
 
@@ -582,6 +582,7 @@ stateDiagram-v2
 | V6 | קביעת `guid` ביצירה | **עובד.** UUID תקני בגרסאות 1 עד 5. |
 | V12 | dry_run של CRDB בודק מקום? | **כן, בכל אתר.** התוצאה רק ב-task, וה-HTTP status תמיד `200`. |
 | V15 | הגדרות שונות לכל instance ב-CRDB | **עובד.** `instances[].db_config` דורס את `default_db_config` רק באותו קלאסטר. נבדק: `memory_size` ו-`eviction_policy` שונים ב-cluster2, ו-cluster1 קיבל את ה-default. |
+| V17 | `PATCH` על `default_db_config` כשלאתר יש override לאותו שדה | **ה-override נשאר.** נבדק: `eviction_policy` עם override ב-cluster2. `PATCH` ל-default שינה רק את cluster1. `PATCH` עם `instances: [{id, db_config}]` של cluster2 שינה גם אותו. נבדק 2026-10-25. |
 | V10 | `replication` הפעלה וכיבוי | **הפיך.** עם 2 nodes: הפעלה מוסיפה shard `slave` ב-node השני, כיבוי מסיר אותו. הנתונים נשמרו בשני הכיוונים. |
 | V13 | CRDB שאתר נפל באמצע היצירה שלו | **ה-task נתקע ב-`started` עד שהאתר חוזר.** cancel מנקה את ה-bdb החלקי כשהאתר חוזר. בלי cancel היצירה מסתיימת. ראו 5.5. |
 | V16 | ייחודיות של `name` ביוזר, בלי `email` | **נאכפת.** שם קיים נדחה ב-`409 name_already_exists`, גם כשנשלח `email`. ההשוואה תלוית רישיות: `UNIQ-TEST` נוצר לצד `uniq-test`. `email` לא חובה, וכמה יוזרים בלי `email` מתקיימים יחד. נבדק 2026-10-25. |

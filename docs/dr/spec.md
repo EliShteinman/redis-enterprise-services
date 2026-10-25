@@ -60,18 +60,21 @@
 
 | חלק | מה בו | משתנה לפי הפעולה? |
 |---|---|---|
-| `target` | איפה הבקשה רצה, והאם ה-DB הוא AA | רק בין יצירה לשאר הפעולות |
+| `target` | איפה הבקשה רצה, ובעריכה ובמחיקה גם איזה DB | רק בין יצירה לשאר הפעולות |
 | `body` | תוכן הפעולה: יצירה, עריכת DB או רשימת יוזרים | כן. לא יודע כלום על אתרים |
 
-ל-`target` יש שתי צורות. **ביצירה** מגיע יעד לוגי, והשירות בונה ממנו את כתובת הקלאסטר. **בכל השאר** מגיעות
-כתובות הקלאסטרים שחזרו בתשובה ליצירה.
+ל-`target` יש שתי צורות. **ביצירה** מגיע יעד לוגי, והשירות בונה ממנו את כתובת הקלאסטר. **בכל השאר** מגיעים
+ה-`db_id` וכתובות הקלאסטרים שחזרו בתשובה ליצירה (4.4).
 
 #### יצירה: יעד לוגי
 
-```
+```json
 "target": {
   "active_active": true,
-  "sites": [ {"network": …, "site": …, "environment": …, "cluster": …}, … ]
+  "sites": [
+    {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}},
+    {"network": "net-b", "site": "dc2", "environment": "PROD", "cluster": {"type": "dedicated", "name": "orders-c2"}}
+  ]
 }
 ```
 
@@ -80,39 +83,39 @@
 | `network` | מזהה חד-ערכי של רשת |
 | `site` | אתר |
 | `environment` | `DEV` / `PROD` / `TEST` |
-| `cluster` | `dedicated` + שם הקלאסטר, או `generic` (השירות בוחר, 5.1) |
+| `cluster` | `{"type": "dedicated", "name": …}`, או `{"type": "generic"}` (השירות בוחר, 5.1) |
 
 הצירוף `network + site + environment` הוא מפתח בקונפיג. תחתיו רשומים הקלאסטרים של היעד, ולכל קלאסטר: URL,
 FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי הגישה ב-Secret.
 
-**התשובה ליצירה** מחזירה את מה שהקלאסטר יצר ואת המקום שבו זה נוצר:
+#### עריכה ומחיקה: זהות ה-DB וכתובות
 
-```
-{
-  "db_id": …,
-  "active_active": true,
-  "clusters": [ {"url": "https://…", "db_uid": …}, … ]
-}
-```
-
-`db_id` הוא ה-`uid` של ה-DB באתר בודד, וה-`crdb_guid` ב-AA. השירות שמעל שומר את `db_id` ואת ה-`url`-ים.
-
-#### עריכה ומחיקה: כתובות
-
-```
+```json
 "target": {
   "active_active": true,
-  "clusters": [ "https://…", "https://…" ]
+  "db_id": "b89590d5-b17f-4047-b9c0-debeaa6a744c",
+  "clusters": ["https://cluster-a.net-a:9443", "https://cluster-b.net-b:9443"]
 }
 ```
 
-ה-`db_id` מגיע ב-path (4.2).
+| שדה | ערך |
+|---|---|
+| `active_active` | בוליאני |
+| `db_id` | ה-`uid` של ה-DB באתר בודד (מספר), ה-`crdb_guid` ב-AA (UUID). מה שחזר ביצירה |
+| `clusters` | הכתובות המלאות של הקלאסטרים, כמו שחזרו ביצירה |
 
+- **`db_id` הוא חלק מה-`target`, ולא ב-path.** באתר בודד ה-`uid` ייחודי רק בתוך קלאסטר, ולכן רק הצירוף שלו עם
+  הכתובת מזהה DB. כשהשניים באותו מודל, הולידציה של הסוג מול `active_active` נעשית במקום אחד, וכל השכבות (תרגום,
+  נעילה, saga record, לוגים) מקבלות את אותו אובייקט זהות.
 - **בלי רשת, אתר וסביבה.** השירות מחפש כל כתובת ברשימת הקלאסטרים בקונפיג. הרשומה שנמצאה כבר שייכת לרשת, לאתר
   ולסביבה, ומשם השירות לוקח את שירות הקצה ואת פרטי הגישה.
 - **כתובת שלא רשומה בקונפיג נדחית**, כדי שפרטי גישה לא יישלחו לכתובת שלא מוכרת.
-- **ב-AA, `clusters` כולל תמיד את כל הקלאסטרים של ה-CRDB.** אין עריכה של חלק מהאתרים.
+- **ב-AA, `clusters` כולל תמיד את כל הקלאסטרים של ה-CRDB.** אין עריכה של חלק מהאתרים. בשלב הגילוי השירות משווה
+  את הרשימה ל-`instances` של ה-CRDB, ואי-התאמה נדחית (`409 clusters_mismatch`).
 - **אין בחירת קלאסטר.** היא קיימת רק ביצירה.
+- **כל מה שמתחת ל-DB מאותר בשלב הגילוי, ולא נשלח:** ה-uid המקומי של ה-DB בכל אתר (`GET /v1/crdbs/{guid}` בכל
+  קלאסטר), והיוזרים, ה-roles וה-ACLs לפי השם (V16, `saga.md` סעיף 10). ה-uid של יוזר משתנה כשהוא נוצר מחדש (V8),
+  ושינוי מחוץ לשירות משנה את מה שבקלאסטר. לכן עץ ששמור אצל השירות שמעל לא משמש לעריכה, והקלאסטר הוא מקור האמת.
 
 #### ולידציה במודל
 
@@ -123,6 +126,7 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 | `active_active: true`, פחות משני איברים | נדחה |
 | `active_active: false` ו-`db_id` שאינו מספר | נדחה |
 | `active_active: true` ו-`db_id` שאינו UUID | נדחה |
+| אותה כתובת או אותו אתר פעמיים | נדחה |
 
 **היעד הוא באחריות השירות שמעל.** אתר בודד ו-AA זהים מבחינת ה-UI: אותם routes ואותו `body`. השירות שמעל אומר מה
 לערוך ואיפה, והשירות שלנו לא מגלה אתרים בעצמו.
@@ -136,7 +140,7 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 |---|---|---|---|
 | 1 | יצירת DB (אתר בודד), עם 0..N יוזרים | DB ⇐ לכל יוזר ACL, role, user ⇐ הרשאות | אין |
 | 2 | יצירת DB ב-AA, עם 0..N יוזרים | CRDB ⇐ איתור bdb מקומי בכל אתר ⇐ אותם צעדים בכל אתר | אין |
-| 3 | עריכת DB / CRDB | שדות הפיכים ⇐ שדות לא הפיכים | שדה לא הפיך (רשימה בקונפיג) |
+| 3 | עריכת DB / CRDB | שדות הפיכים ⇐ שדות לא הפיכים. ב-AA גם ה-overrides של האתרים (V17) | שדה לא הפיך (רשימה בקונפיג) |
 | 4 | עריכת רשימת היוזרים: הוספה, מחיקה ועריכה בכל צירוף | השוואה מול הקלאסטר ⇐ כל הצעדים ההפיכים ⇐ מחיקות user | אין. מחיקת user באה אחרונה וניתנת לחזרה |
 | 5 | מחיקת DB / CRDB עם היוזרים | הסרת roles ⇐ מחיקת roles ⇐ מחיקת ACLs ⇐ **מחיקת DB** ⇐ מחיקת users | מחיקת DB |
 | 6 | שאילתת סטטוס לפי trace ID | קריאה מ-saga record | - |
@@ -209,37 +213,195 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ### 4.2 routes (D10)
 
+שירות הביניים נבנה לפי החוזה הזה, ולכן ה-methods נבחרו לפי מה שנכון לשירות: `POST` לכל פקודה, `GET` לקריאה.
+
 | פעולה | route | `target` | `body` |
 |---|---|---|---|
-| יצירה | `POST /v1/databases` | יעד לוגי | DB ו-0..N יוזרים |
-| עריכת DB | `PATCH /v1/databases/{db_id}` | כתובות | שדות של ה-DB בלבד |
-| עריכת יוזרים | `PUT /v1/databases/{db_id}/users` | כתובות | הרשימה המלאה של היוזרים אחרי העריכה |
-| מחיקה | `DELETE /v1/databases/{db_id}` | כתובות | - |
+| יצירה | `POST /v1/databases/create` | יעד לוגי | DB ו-0..N יוזרים |
+| עריכת DB | `POST /v1/databases/update` | זהות וכתובות | שדות של ה-DB בלבד |
+| עריכת יוזרים | `POST /v1/databases/users` | זהות וכתובות | הרשימה המלאה של היוזרים אחרי העריכה |
+| מחיקה | `POST /v1/databases/delete` | זהות וכתובות | - |
 | שאילתת סטטוס | `GET /v1/operations/{trace_id}` | - | - |
 | קריאה ישירה לקלאסטר | `POST /v1/cluster-requests` | כתובת אחת | `method`, `path` ו-`body` כמו שהם |
 
-- **`db_id`** הוא מה שחזר בתשובה ליצירה: `uid` באתר בודד, `crdb_guid` ב-AA.
-- **`DELETE` עם גוף:** ה-`target` של המחיקה נשלח בגוף הבקשה. שירות הביניים צריך להעביר גוף גם ב-`DELETE`.
+- **כל פקודה היא `POST` עם גוף.** כל בקשה מריצה Saga ונושאת `target`, כולל מחיקה. כך אין `DELETE` עם גוף.
+- **ה-routes בלי פרמטרים.** הזהות של ה-DB נמצאת ב-`target` (3.1), וכל route הוא שם של פעולה.
+- **שאילתת הסטטוס היא `GET`,** כי היא קריאה בלבד. ה-`trace_id` מזהה שלם בפני עצמו, ולכן הוא ב-path.
 - **כל route ממיר את הבקשה לפקודה אחת.** ה-Planner וה-Saga משותפים לכולם, ולכן route חדש לא משנה אותם.
 
-### 4.3 idempotency ונעילה
+### 4.3 בקשות
 
-![Idempotency and lock](diagrams/14-flow-idempotency.drawio.svg)
+כל בקשה נושאת header של `traceparent` (4.5) ושל ההזדהות (4.1).
+
+**יצירה: `POST /v1/databases/create`**
+
+```json
+{
+  "target": { "active_active": …, "sites": [ … ] },
+  "body": {
+    "database": {"name": "orders", "memory_size": 1073741824, "replication": true},
+    "users": [
+      {"name": "app", "password": "…", "acl": "+@all ~orders:*"}
+    ]
+  }
+}
+```
+
+- `database`: מודל ה-DB (3.3). חובה רק `name` ו-`memory_size`. כל שדה אחר מקבל ברירת מחדל מעץ הקונפיג (3.5).
+- `users`: 0..N יוזרים. לכל יוזר `name`, `password` ו-`acl` (מחרוזת ACL גולמית). כולם חובה.
+- ב-AA אותם `database` ו-`users` נוצרים בכל האתרים. הבדלים בין אתרים מגיעים רק מעץ הקונפיג (3.5), ולא מהבקשה.
+
+**עריכת DB: `POST /v1/databases/update`**
+
+```json
+{
+  "target": { "active_active": …, "db_id": …, "clusters": [ … ] },
+  "body": {"memory_size": 2147483648, "eviction_policy": "volatile-lru"}
+}
+```
+
+- כל שדה במודל ה-DB, חוץ מ-`name` (שינוי שם עוד פתוח, סעיף 11). לפחות שדה אחד.
+- רק השדות שנשלחו משתנים. שדה שלא נשלח לא נוגעים בו.
+- **ב-AA הערך החדש חל על כל האתרים.** `PATCH` על `default_db_config` לא דורס override של אתר ב-`instances[].db_config`
+  (V17). לכן השירות שולח את השדה ב-`default_db_config`, וגם ב-`db_config` של כל instance שיש לו override לאותו
+  שדה. ה-snapshot לביטול שומר את שתי הרמות.
+
+**עריכת יוזרים: `POST /v1/databases/users`**
+
+```json
+{
+  "target": { "active_active": …, "db_id": …, "clusters": [ … ] },
+  "body": {
+    "users": [
+      {"name": "app", "acl": "+@all ~orders:*"},
+      {"name": "reporter", "acl": "+@read ~*", "password": "…", "old_password": "…"},
+      {"name": "etl", "acl": "+@all ~*", "password": "…"}
+    ]
+  }
+}
+```
+
+- **הרשימה המלאה אחרי העריכה.** יוזר שחסר בה נמחק (פירוט ב-`saga.md` סעיף 7.4).
+- לכל יוזר `name` ו-`acl` חובה. `password` רק כשמחליפים סיסמה או ליוזר חדש.
+- הכללים לסיסמה נבדקים אחרי הגילוי, כי רק אז ידוע אם היוזר קיים:
+
+| יוזר | `password` | `old_password` |
+|---|---|---|
+| חדש | חובה | אסור |
+| קיים, הסיסמה לא משתנה | אסור | אסור |
+| קיים, הסיסמה משתנה | חובה | חובה (D2) |
+
+- ב-AA, ההשוואה נעשית בכל קלאסטר בנפרד מול מה שיש בו, ואותה רשימה מוחלת על כל האתרים.
+
+**מחיקה: `POST /v1/databases/delete`**
+
+```json
+{ "target": { "active_active": …, "db_id": …, "clusters": [ … ] } }
+```
+
+**קריאה ישירה: `POST /v1/cluster-requests`**
+
+```json
+{ "cluster": "https://cluster-a.net-a:9443", "method": "GET", "path": "/v1/bdbs", "body": null }
+```
+
+הכתובת עוברת את אותה בדיקה מול הקונפיג (3.1). הבקשה עוברת כמו שהיא, בלי Saga ובלי rollback.
 
 ### 4.4 תשובות
 
-| מצב | HTTP | תוכן |
-|---|---|---|
-| הצליח | `200` / `201` | המשאבים שנוצרו או השתנו (uid לכל קלאסטר) |
-| בקשה לא תקינה | `422` | שגיאות ולידציה |
-| לא מזוהה | `401` | |
-| DB נעול אחרי timeout | `409` | |
-| נדחה בבדיקה המוקדמת (שם תפוס, אין מקום) | `409` / `422` | הסיבה, ומהקלאסטר: `error_code` |
-| נכשל, הכל בוטל | `4xx/5xx` לפי הסיבה | `rolled_back`: שום דבר לא השתנה |
-| נכשל, הביטול לא הושלם | `500` | `requires_manual_intervention`, ולכל ביטול שנכשל: סוג, שם, uid, קלאסטר ושגיאה |
-| timeout ביצירת CRDB | `504` | `pending_cleanup` + task id. שאילתת הסטטוס מראה אם הניקוי הסתיים (D8) |
+#### הצלחה: עץ ה-DB
 
-הקודים המדויקים ייסגרו עם שירות הביניים.
+כל פקודה שהצליחה מחזירה את ה-DB כעץ, כמו שהוא אחרי הפעולה:
+
+```json
+{
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "status": "succeeded",
+  "database": {
+    "name": "orders",
+    "active_active": true,
+    "db_id": "b89590d5-b17f-4047-b9c0-debeaa6a744c",
+    "clusters": [
+      {
+        "url": "https://cluster-a.net-a:9443",
+        "network": "net-a", "site": "dc1", "environment": "PROD",
+        "db_uid": 7,
+        "users": [ {"name": "app", "user_uid": 12, "role_uid": 4, "acl_uid": 9} ]
+      },
+      {
+        "url": "https://cluster-b.net-b:9443",
+        "network": "net-b", "site": "dc2", "environment": "PROD",
+        "db_uid": 3,
+        "users": [ {"name": "app", "user_uid": 20, "role_uid": 6, "acl_uid": 2} ]
+      }
+    ]
+  }
+}
+```
+
+- **שורש:** ה-DB. `db_id` הוא ה-`uid` באתר בודד וה-`crdb_guid` ב-AA. זה הערך שנשלח ב-`target` בבקשות הבאות.
+- **עלה לכל קלאסטר:** הכתובת, הרשת, האתר והסביבה, וה-uid המקומי של ה-DB. ב-AA לכל אתר uid משלו.
+- **מתחת לכל עלה:** היוזרים באותו קלאסטר, עם ה-uids שלהם שם. אותו יוזר מקבל uids שונים בכל אתר.
+- **באתר בודד** זה אותו עץ, עם עלה אחד. מודל תשובה אחד לשני המקרים.
+- **השירות שמעל שומר את העץ לתצוגה ולתיעוד.** לעריכה הוא שולח רק את `db_id` ואת ה-`url`-ים (3.1).
+- **סיסמאות לא מוחזרות אף פעם.**
+- **מחיקה שהצליחה** מחזירה `status: succeeded` ואת `db_id`, בלי עץ.
+
+#### כישלון
+
+```json
+{
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "status": "rolled_back",
+  "error": {
+    "code": "step_rejected",
+    "message": "…",
+    "cluster": "https://cluster-b.net-b:9443",
+    "cluster_error_code": "insufficient_resources"
+  },
+  "not_rolled_back": []
+}
+```
+
+| `status` | מה קרה | HTTP |
+|---|---|---|
+| `rejected` | נדחה לפני שמשהו השתנה: ולידציה, גילוי או בדיקה מוקדמת | לפי הסיבה, בטבלה הבאה |
+| `rolled_back` | צעד נכשל, והכל בוטל. שום דבר לא השתנה | `422` כשהקלאסטר דחה את הצעד, `502` כשהוא לא זמין |
+| `requires_manual_intervention` | הביטול לא הושלם (D6), או שהשירות קרס באמצע (D5) | `500` |
+| `pending_cleanup` | timeout ביצירת CRDB. נשלח cancel, והניקוי עוד לא אושר (D8) | `504` |
+
+- **`not_rolled_back`** ממולא רק ב-`requires_manual_intervention`. לכל פריט: `cluster`, `type`, `name`, `uid` ו-`error`.
+- **`error.cluster` ו-`error.cluster_error_code`** מופיעים כשהכשל הגיע מקלאסטר מסוים.
+- **`pending_cleanup`** נפתר בשאילתת הסטטוס. מזהה ה-task הפנימי (`X-Task-ID`) לא יוצא מהשירות.
+
+**`error.code` ב-`rejected`:**
+
+| `code` | HTTP |
+|---|---|
+| `validation_error`, עם `details` לכל שדה | `422` |
+| `unknown_cluster`: כתובת או יעד שלא בקונפיג | `422` |
+| `unauthenticated` | `401` |
+| `database_not_found`: `db_id` לא נמצא בקלאסטר | `404` |
+| `clusters_mismatch`: `clusters` לא תואם ל-`instances` של ה-CRDB | `409` |
+| `name_taken`: שם DB או יוזר תפוס | `409` |
+| `insufficient_resources`: אין מקום באף קלאסטר מתאים (dry_run) | `409` |
+| `database_locked`: ה-DB נעול גם אחרי ה-timeout | `409` |
+| `operation_in_progress`: אותו `trace_id` עוד רץ | `409` |
+| `password_rules`: הפרה של כללי הסיסמה (4.3) | `422` |
+
+#### שאילתת סטטוס: `GET /v1/operations/{trace_id}`
+
+מחזירה את אותה תשובה שהפקודה החזירה או תחזיר, ואת `status` הנוכחי. בזמן ריצה `status` הוא `running`. ב-`pending_cleanup`
+השאילתה קוראת את ה-task: `canceled` ⇐ `rolled_back`, `finished` ⇐ `requires_manual_intervention` (D8). `trace_id`
+לא מוכר ⇐ `404`.
+
+### 4.5 idempotency ונעילה
+
+![Idempotency and lock](diagrams/14-flow-idempotency.drawio.svg)
+
+- **בקשה חוזרת עם אותו `traceparent`** מקבלת את התשובה של הריצה הקיימת. אם הריצה עוד רצה: `409 operation_in_progress`,
+  והתשובה הסופית זמינה בשאילתת הסטטוס.
+- **נעילה:** ראו 6.6.
 
 ---
 
@@ -417,7 +579,7 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 | D7 | שדות DB שאי אפשר להחזיר: ברשימה בקונפיג. |
 | D8 | timeout ביצירת CRDB: cancel, וסטטוס `pending_cleanup`. |
 | D9 | שתי בקשות מכילות כמה אובייקטים: היצירה הראשונה, ועריכת רשימת היוזרים. עריכת DB נוגעת רק באובייקט ה-DB. |
-| D10 | routes: `POST /v1/databases` עם יעד לוגי. עריכה ומחיקה ב-`/v1/databases/{db_id}` עם כתובות הקלאסטרים. ראו 4.2. |
+| D10 | API: `POST` לכל פקודה ו-`GET` לסטטוס. routes בלי פרמטרים. ביצירה יעד לוגי, ובשאר `target` עם `db_id` וכתובות. כל פקודה מחזירה את עץ ה-DB. ראו 4.2–4.4. |
 
 ### פתוחות
 | # | שאלה | חוסם? |
@@ -450,5 +612,6 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 | V12, V14 | dry_run של CRDB בודק כל אתר. התוצאה רק ב-task. |
 | V13 | אתר שנופל באמצע יצירת CRDB: ה-task תקוע, cancel מנקה |
 | V15 | `db_config` לכל instance דורס את ה-default |
+| V17 | `PATCH` על `default_db_config` של CRDB לא דורס override של אתר. כדי לשנות בכל האתרים, שולחים גם `instances[].db_config` |
 | V16 | `name` של יוזר ייחודי (`409 name_already_exists`), תלוי רישיות. `email` לא חובה. |
 | - | סיסמת `default_user` דרך `authentication_redis_pass` ב-bdb וב-CRDB, ומוחזרת בטקסט גלוי ב-GET |
