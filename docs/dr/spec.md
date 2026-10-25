@@ -205,6 +205,9 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ## 4. API
 
+החוזה שמוצג לשירות הביניים, רק מה נכנס ומה יוצא: `docs/contracts/service-api.md`. הסעיף כאן כולל גם את
+ההתנהגות שמאחורי כל route.
+
 ![API contract](diagrams/15-api-contract.drawio.svg)
 
 ### 4.1 עקרונות
