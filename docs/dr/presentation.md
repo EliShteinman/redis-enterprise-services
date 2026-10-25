@@ -57,6 +57,25 @@
 
 ---
 
+## 4א. המודלים: מה חובה ומה ברירת מחדל
+
+**יצירה.** חובה רק היעד, `name` ו-`memory_size`, ולכל יוזר `name`, `password` ו-`acl`. כל שדה אחר של ה-DB מקבל
+ברירת מחדל מעץ הקונפיג (global, סביבה, רשת, אתר, קלאסטר), וכל שדה בבקשה דורס אותה. חלק מהשדות השירות קובע
+תמיד, והם לא בבקשה בכלל: פורט, סיסמת ה-default, שמות ה-ACL וה-role וההרשאות.
+
+![Create models](diagrams/19-api-models-create.drawio.svg)
+
+**עריכה ומחיקה.** תמיד `DatabaseRef`: `active_active`, `db_id` וכתובות. בעריכת DB נשלחים רק השדות שמשתנים, ולא
+מוחלות ברירות מחדל. בעריכת יוזרים נשלחת הרשימה המלאה, והסיסמה רק ליוזר חדש או בהחלפה.
+
+![Edit models](diagrams/20-api-models-edit.drawio.svg)
+
+**התשובה.** אותו מבנה לכל פקודה: סטטוס, עץ ה-DB, ובכישלון השגיאה ומה שלא בוטל.
+
+![Response models](diagrams/21-api-models-response.drawio.svg)
+
+---
+
 ## 5. איך בקשה מעובדת
 
 ![Components](diagrams/03-components.drawio.svg)

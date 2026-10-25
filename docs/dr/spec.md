@@ -518,8 +518,13 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ![Classes](diagrams/04-classes.drawio.svg)
 
-**מודלי ה-API** (Pydantic), לפי סעיפים 3.1 ו-4.3–4.4:
-![API models](diagrams/19-api-models.drawio.svg)
+**מודלי ה-API** (Pydantic), לפי סעיפים 3.1 ו-4.3–4.4, עם מה חובה ומה ברירת מחדל:
+
+![Create models](diagrams/19-api-models-create.drawio.svg)
+
+![Edit models](diagrams/20-api-models-edit.drawio.svg)
+
+![Response models](diagrams/21-api-models-response.drawio.svg)
 
 - **שלושה צעדים גנריים** (`Create`, `Update`, `DeleteResourceStep`) על כל `ResourceRepository`.
 - **פיצוי בלי קוד חדש:** הפיצוי של יצירה הוא אותו `delete`, והפיצוי של עדכון הוא אותו `update`.
