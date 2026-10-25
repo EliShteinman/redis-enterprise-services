@@ -205,6 +205,8 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ## 4. API
 
+![API contract](diagrams/15-api-contract.drawio.svg)
+
 ### 4.1 עקרונות
 - **הזדהות חובה בכל route.** פונקציה אחת שמוחלת על כל ה-routes. השיטה (טוקן או שם משתמש וסיסמה) תיקבע בהמשך
   (שאלה 14).
@@ -342,6 +344,8 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 }
 ```
 
+![Response tree](diagrams/16-response-tree.drawio.svg)
+
 - **שורש:** ה-DB. `db_id` הוא ה-`uid` באתר בודד וה-`crdb_guid` ב-AA. זה הערך שנשלח ב-`target` בבקשות הבאות.
 - **עלה לכל קלאסטר:** הכתובת, הרשת, האתר והסביבה, וה-uid המקומי של ה-DB. ב-AA לכל אתר uid משלו.
 - **מתחת לכל עלה:** היוזרים באותו קלאסטר, עם ה-uids שלהם שם. אותו יוזר מקבל uids שונים בכל אתר.
@@ -470,6 +474,12 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 **עריכת DB ועדכון מותנה:**
 ![Edit DB](diagrams/09-seq-edit-db.drawio.svg)
+
+**עריכת DB ב-AA.** קריאה אחת ל-CRDB, ולפניה בדיקה שאין override באתר (V17):
+![Edit AA](diagrams/18-seq-edit-aa.drawio.svg)
+
+**עריכת רשימת היוזרים.** כל הצעדים ההפיכים קודם, ומחיקות ה-user בסוף:
+![Edit users](diagrams/17-seq-edit-users.drawio.svg)
 
 ### 6.3 תוצאה לא ידועה ומיון תשובות
 
