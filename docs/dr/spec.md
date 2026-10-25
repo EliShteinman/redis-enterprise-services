@@ -114,8 +114,9 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
   - `management`: מהקונפיג, `db_viewer`.
   - `resources`: ה-DB של היוזר בלבד.
 - **user:**
-  - `email`: המפתח.
-  - `name` ו-`password`: מה-UI.
+  - `name`: המפתח, מה-UI. הקלאסטר אוכף ייחודיות, תלוית רישיות (V16).
+  - `password`: מה-UI.
+  - `email`: לא נשלח. אין מיילים ליוזרים.
   - `auth_method`: `regular`.
   - `role_uids`: נקבע על ידי ה-Saga.
 - **שיתוף:** ACL ו-role אף פעם לא משותפים בין DBs או בין יוזרים.
@@ -247,7 +248,7 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 - **מפתח זיהוי לכל משאב:**
   - ACL ו-role: `name`.
-  - user: `email`.
+  - user: `name`.
   - DB: `name`.
   - CRDB: `guid` ו-`X-Task-ID` שאנחנו קובעים.
 - **איך מאתרים משאב:** ל-API אין חיפוש לפי שם. `find_by_key` שולף את הרשימה ומסנן אותה בקוד.
@@ -386,4 +387,5 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 | V12, V14 | dry_run של CRDB בודק כל אתר. התוצאה רק ב-task. |
 | V13 | אתר שנופל באמצע יצירת CRDB: ה-task תקוע, cancel מנקה |
 | V15 | `db_config` לכל instance דורס את ה-default |
+| V16 | `name` של יוזר ייחודי (`409 name_already_exists`), תלוי רישיות. `email` לא חובה. |
 | - | סיסמת `default_user` דרך `authentication_redis_pass` ב-bdb וב-CRDB, ומוחזרת בטקסט גלוי ב-GET |

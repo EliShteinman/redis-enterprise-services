@@ -92,8 +92,8 @@
 | role | `name` | נגזר: `{db}-{user}-role` | |
 | role | `management` | קונפיג, ברירת מחדל `db_viewer` | |
 | role | `resources` | נגזר: `[{type: db, uids: [ה-DB]}]` | מגביל את ה-role ל-DB של היוזר בלבד |
-| user | `email` | ה-UI, חובה | המפתח של היוזר |
-| user | `name` | ה-UI, חובה | מדיניות שמות: שאלה 15 ב-plan |
+| user | `name` | ה-UI, חובה | המפתח של היוזר. הקלאסטר אוכף ייחודיות, תלוית רישיות (V16). מדיניות שמות: שאלה 15 ב-plan |
+| user | `email` | לא נשלח | אין מיילים ליוזרים |
 | user | `password` | ה-UI, חובה | |
 | user | `auth_method` | קבוע: `regular` | |
 | user | `role_uids` | ה-Saga | |

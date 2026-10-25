@@ -140,7 +140,7 @@ stateDiagram-v2
 - timeout אחרי שהבקשה נשלחה.
 - `response_rejected` של cluster-relay על פעולת כתיבה.
 
-**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם או email), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה,
+**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה,
 המנוע מאתר את המשאב לפי המפתח:
 - **נמצא:** הצעד נחשב הצליח, וה-uid נלקח מהרשומה שנמצאה.
 - **לא נמצא:** הצעד נחשב נכשל.
@@ -153,7 +153,7 @@ stateDiagram-v2
 |---|---|---|---|
 | ACL | `name` | `GET /v1/redis_acls` | `name` שווה למפתח |
 | Role | `name` | `GET /v1/roles` | `name` שווה למפתח |
-| User | `email` (הקלאסטר אוכף ייחודיות: `email_already_exists`) | `GET /v1/users` | `email` שווה למפתח |
+| User | `name` (הקלאסטר אוכף ייחודיות: `409 name_already_exists`, V16) | `GET /v1/users` | `name` שווה למפתח |
 | DB | `name` (הפונה אחראי לייחודיות, ראו 5.4) | `GET /v1/bdbs?fields=uid,name` | `name` שווה למפתח |
 | CRDB | **`guid` שאנחנו קובעים ביצירה** (V6), ומזהה task שאנחנו קובעים (`X-Task-ID`) | `GET /v1/crdb_tasks/{id}`, ואם ה-task כבר לא שמור: `GET /v1/crdbs/{guid}`. שתיהן שליפה ישירה לפי מזהה. | - |
 
@@ -223,7 +223,7 @@ stateDiagram-v2
 
 | פעולה | API | Snapshot לפני | ביטול | הפיכות |
 |---|---|---|---|---|
-| יצירה | `POST /v1/users` `{email, name, password, role_uids, auth_method}` | - | `DELETE /v1/users/{uid}` | ✅ |
+| יצירה | `POST /v1/users` `{name, password, role_uids, auth_method}` | - | `DELETE /v1/users/{uid}` | ✅ |
 | עריכה (בלי סיסמה) | `PUT /v1/users/{uid}` | `GET`: `name`, `email`, `role_uids`, `email_alerts`, `bdbs_email_alerts`, `auth_method` | `PUT` עם ה-snapshot | ✅ |
 | החלפת סיסמה | `PUT /v1/users/password` | **הסיסמה הישנה לא קריאה מה-API.** ה-UI שולח אותה בבקשה. | `PUT /v1/users/password` עם הסיסמה הישנה | ✅ |
 | מחיקה | `DELETE /v1/users/{uid}` | `GET`: כל השדות שאפשר לכתוב. הסיסמה מגיעה מה-UI. | `POST` עם ה-snapshot והסיסמה | ✅ (ה-uid משתנה) |
@@ -391,7 +391,7 @@ stateDiagram-v2
 הפעולה. מה שידוע הוא שהבקשה לא נוגעת באובייקט ה-DB עצמו.
 
 ה-UI שולח את **הרשימה המלאה** של היוזרים אחרי העריכה. בשלב הגילוי המפרק קורא את היוזרים של ה-DB (בשיטה של 7.7)
-ומשווה לפי המפתח של היוזר (`email`):
+ומשווה לפי המפתח של היוזר (`name`):
 
 | מה נמצא בהשוואה | צעדים | סוג |
 |---|---|---|
@@ -580,6 +580,7 @@ stateDiagram-v2
 | V15 | הגדרות שונות לכל instance ב-CRDB | **עובד.** `instances[].db_config` דורס את `default_db_config` רק באותו קלאסטר. נבדק: `memory_size` ו-`eviction_policy` שונים ב-cluster2, ו-cluster1 קיבל את ה-default. |
 | V10 | `replication` הפעלה וכיבוי | **הפיך.** עם 2 nodes: הפעלה מוסיפה shard `slave` ב-node השני, כיבוי מסיר אותו. הנתונים נשמרו בשני הכיוונים. |
 | V13 | CRDB שאתר נפל באמצע היצירה שלו | **ה-task נתקע ב-`started` עד שהאתר חוזר.** cancel מנקה את ה-bdb החלקי כשהאתר חוזר. בלי cancel היצירה מסתיימת. ראו 5.5. |
+| V16 | ייחודיות של `name` ביוזר, בלי `email` | **נאכפת.** שם קיים נדחה ב-`409 name_already_exists`, גם כשנשלח `email`. ההשוואה תלוית רישיות: `UNIQ-TEST` נוצר לצד `uniq-test`. `email` לא חובה, וכמה יוזרים בלי `email` מתקיימים יחד. נבדק 2026-10-25. |
 | V14 | dry_run של CRDB כשרק אתר אחד בעייתי | **נכשל, והשגיאה מציינת את האתר.** נבדק: פורט תפוס רק ב-cluster2, סיסמה שגויה רק ל-cluster2, סיסמה שגויה רק ל-cluster1. כששני האתרים בעייתיים מדווח רק cluster1. בשום מקרה לא נוצר כלום. |
 
 ### עוד לא נבדק
