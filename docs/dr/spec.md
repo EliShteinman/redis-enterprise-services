@@ -389,7 +389,6 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 | `name_taken`: שם DB או יוזר תפוס | `409` |
 | `insufficient_resources`: אין מקום באף קלאסטר מתאים (dry_run) | `409` |
 | `database_locked`: ה-DB נעול גם אחרי ה-timeout | `409` |
-| `operation_in_progress`: אותו `trace_id` עוד רץ | `409` |
 | `sites_diverged`: לאתר ב-AA יש override לשדה שבעריכה (4.3, V17) | `409` |
 | `configuration_error`: עץ ברירות המחדל נותן ערכים שונים לאתרים של AA (3.5) | `500` |
 | `password_rules`: הפרה של כללי הסיסמה (4.3) | `422` |
@@ -404,8 +403,8 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ![Idempotency and lock](diagrams/14-flow-idempotency.drawio.svg)
 
-- **בקשה חוזרת עם אותו `traceparent`** מקבלת את התשובה של הריצה הקיימת. אם הריצה עוד רצה: `409 operation_in_progress`,
-  והתשובה הסופית זמינה בשאילתת הסטטוס.
+- **בקשה חוזרת עם אותו `traceparent`** מקבלת את התשובה של הריצה הקיימת. אם הריצה עוד רצה, הבקשה מחכה לסיום
+  ומקבלת את אותה תשובה, כמו כל בקשה סינכרונית (שאלה 5).
 - **נעילה:** ראו 6.6.
 
 ---
