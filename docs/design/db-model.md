@@ -61,10 +61,10 @@
 |---|---|---|
 | חייבים להיות זהים, אחרת הסנכרון נכשל | `version`, `sharding`, `shard_key_regex` | חוסם ערך שונה בין קלאסטרים בצירוף |
 | מומלץ שיהיו זהים | `memory_size`, `eviction_policy`, `shards_count`, `shards_placement`, `proxy_policy` | מזהיר |
-| מותר שיהיו שונים | `data_persistence`, `aof_policy`, `snapshot_policy`, `replication` | נשלחים ב-`instances[].db_config` כשהם שונים |
+| מותר שיהיו שונים | `data_persistence`, `aof_policy`, `snapshot_policy`, `replication` | לא בשימוש. אצלנו הם זהים |
 
-ערך משותף לכל האתרים נשלח ב-`default_db_config`. ערך שונה באתר מסוים נשלח ב-`instances[].db_config` של
-אותו אתר (V15).
+**אצלנו אין הבדל בין אתרים, חוץ מהיוזרים.** כל הבדל אחר הוא תקלה. כל הערכים נשלחים ב-`default_db_config`,
+ו-`instances[].db_config` לא נשלח אף פעם. Redis מאפשר הבדלים (V15), אבל השירות לא משתמש בזה.
 
 ---
 
