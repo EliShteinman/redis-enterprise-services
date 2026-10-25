@@ -539,16 +539,16 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 
 ## 8. החוזה מול שירות הקצה (תקציר)
 
-פירוט מלא ב-`docs/contracts/edge-service.md`.
+פירוט מלא ב-`docs/contracts/edge-service.md`. cluster-relay עומד בכל הדרישות (C1–C14).
 
 | נושא | דרישה |
 |---|---|
 | בקשה | `POST /<route>` עם `x-cluster-method`, `x-cluster-url`, `x-cluster-authorization`, `traceparent` ו-body כמו שהוא |
 | חומת אש | header אימות לכל רשת, מהקונפיג. נפרד מ-`x-cluster-authorization`. |
-| headers נוספים | `cluster-state-id`, `x-task-id`, `x-result-ttl` (חסרים היום: C4, C5) |
+| headers נוספים | `cluster-state-id`, `x-task-id`, `x-result-ttl` |
 | תשובה | status, headers ו-body של הקלאסטר בלי שינוי, גם בשגיאה |
-| שגיאה של שירות הקצה | `x-edge-error`: `invalid_request` / `connection_failed` / `timeout` / `response_rejected` (חסר היום: C9–C11) |
-| סודות | לא לרשום ללוג סודות מגוף התשובה (חסר היום: C13) |
+| שגיאה של שירות הקצה | `x-edge-error`: `invalid_request` / `connection_failed` / `timeout` / `response_rejected` |
+| סודות | לא לרשום ללוג סודות מגוף התשובה |
 
 ---
 
