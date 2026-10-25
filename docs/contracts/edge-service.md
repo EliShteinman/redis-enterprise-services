@@ -49,8 +49,9 @@ x-result-ttl: 3600             (אופציונלי)
 | C3 | `traceparent` ממשיך לקלאסטר ומוחזר בתשובה | מעקב. גם מזהה הבקשה אצלנו |
 | C4 | **`cluster-state-id` מועבר לקלאסטר** כ-request header, אם נשלח | עדכון מותנה של DB. בלעדיו עדכון במקביל דורס שינויים (design סעיף 10) |
 | C5 | **`x-task-id` ו-`x-result-ttl` מועברים לקלאסטר**, אם נשלחו | מזהה task של CRDB שאנחנו קובעים, כדי לברר מה קרה אחרי timeout (design סעיף 3) |
+| C15 | ה-timeout של שירות הקצה מול הקלאסטר קצר מה-timeout שלנו מול שירות הקצה: 30 שניות אצלו (`CLUSTER_CLIENT_FORWARDING__TIMEOUT_SECONDS`), 35 אצלנו | שירות הקצה עונה ראשון, ואנחנו מקבלים את הקוד שלו (`connection_failed` או `timeout`) |
 
-**מצב נוכחי ב-cluster-relay:** C1–C5 מתקיימים. ה-headers של C4 ו-C5 מועברים כמו שהם, לפי רשימה בקונפיג. ה-`authorization`, ה-`content-type` וה-`traceparent` של ה-relay גוברים על header באותו שם.
+**מצב נוכחי ב-cluster-relay:** C1–C5 ו-C15 מתקיימים (ברירת המחדל שלו 30 שניות). ה-headers של C4 ו-C5 מועברים כמו שהם, לפי רשימה בקונפיג. ה-`authorization`, ה-`content-type` וה-`traceparent` של ה-relay גוברים על header באותו שם.
 
 ---
 
@@ -129,7 +130,7 @@ x-result-ttl: 3600             (אופציונלי)
 
 ## 6. סיכום: מצב cluster-relay
 
-כל הדרישות C1–C14 מתקיימות (2026-10-25).
+כל הדרישות C1–C15 מתקיימות (2026-10-25).
 
 | # | מה נוסף | איך |
 |---|---|---|
