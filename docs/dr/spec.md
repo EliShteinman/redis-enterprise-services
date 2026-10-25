@@ -352,7 +352,7 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 - **באתר בודד** זה אותו עץ, עם עלה אחד. מודל תשובה אחד לשני המקרים.
 - **השירות שמעל שומר את העץ לתצוגה ולתיעוד.** לעריכה הוא שולח רק את `db_id` ואת ה-`url`-ים (3.1).
 - **סיסמאות לא מוחזרות אף פעם.**
-- **מחיקה שהצליחה** מחזירה `status: succeeded` ואת `db_id`, בלי עץ.
+- **מחיקה שהצליחה** מחזירה `trace_id` ו-`status: succeeded`, בלי עץ (`database: null`).
 
 #### כישלון
 
@@ -517,6 +517,9 @@ FQDN, סוג (dedicated או generic), עדיפות, והפניה לפרטי ה�
 ## 7. מבנה המחלקות
 
 ![Classes](diagrams/04-classes.drawio.svg)
+
+**מודלי ה-API** (Pydantic), לפי סעיפים 3.1 ו-4.3–4.4:
+![API models](diagrams/19-api-models.drawio.svg)
 
 - **שלושה צעדים גנריים** (`Create`, `Update`, `DeleteResourceStep`) על כל `ResourceRepository`.
 - **פיצוי בלי קוד חדש:** הפיצוי של יצירה הוא אותו `delete`, והפיצוי של עדכון הוא אותו `update`.
