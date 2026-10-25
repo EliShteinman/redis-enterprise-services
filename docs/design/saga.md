@@ -206,7 +206,7 @@ stateDiagram-v2
 
 | פעולה | API | Snapshot לפני | ביטול | הפיכות |
 |---|---|---|---|---|
-| יצירה | `POST /v1/roles` `{name, management, resources: [{type: db, uids: [DB]}]}` | - | `DELETE /v1/roles/{uid}` | ✅ |
+| יצירה | `POST /v1/roles` `{name, management, resources: [{type: db, uids: ["DB"]}]}` (ה-uids כמחרוזות, מספר נדחה ב-`400 invalid_schema`) | - | `DELETE /v1/roles/{uid}` | ✅ |
 | עריכה | `PUT /v1/roles/{uid}` | `GET`: `name`, `management`, `resources` | `PUT` עם ה-snapshot | ✅ |
 | מחיקה | `DELETE /v1/roles/{uid}` | `GET`: כל השדות שאפשר לכתוב, **וכל זוגות `roles_permissions` שמפנים אליו** | `POST` עם ה-snapshot **כולל `uid`**, ואז החזרת הזוגות | ✅ |
 
