@@ -10,6 +10,7 @@ x-cluster-bootstrap: &cluster-bootstrap
   entrypoint: ["/bin/sh", "/bootstrap/create-cluster.sh"]
   volumes:
     - ./bootstrap:/bootstrap:ro
+    - ./license:/license:ro
   restart: "no"
   environment: &bootstrap-environment
     ADMIN_USERNAME: ${ADMIN_USERNAME}
@@ -18,6 +19,7 @@ x-cluster-bootstrap: &cluster-bootstrap
     PERSISTENT_PATH: ${PERSISTENT_PATH}
     EPHEMERAL_PATH: ${EPHEMERAL_PATH}
     POLL_INTERVAL_SECONDS: ${BOOTSTRAP_POLL_INTERVAL_SECONDS}
+    LICENSE_FILE: ${LICENSE_FILE}
 
 services:
   cluster1:

@@ -29,26 +29,44 @@ create_cluster() {
 EOF
 }
 
+install_license() {
+    awk 'BEGIN { printf "{\"license\": \"" } { printf "%s\\n", $0 } END { printf "\"}" }' "${LICENSE_FILE}" \
+        | curl --silent --insecure --fail-with-body --output /dev/null \
+            --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
+            --request PUT "https://${CLUSTER_HOST}:${API_PORT}/v1/license" \
+            --header "Content-Type: application/json" \
+            --data @-
+}
+
+wait_for_bootstrap() {
+    state="$(read_state)"
+    while [ "${state}" != "completed" ]; do
+        if [ "${state}" = "error" ]; then
+            echo "Bootstrap of ${CLUSTER_NAME} failed" >&2
+            curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" >&2
+            exit 1
+        fi
+        sleep "${POLL_INTERVAL_SECONDS}"
+        state="$(read_state)"
+    done
+}
+
 echo "Waiting for ${CLUSTER_HOST} to accept bootstrap requests"
 state="$(wait_for_state "")"
 
 if [ "${state}" = "completed" ]; then
     echo "${CLUSTER_NAME} is already bootstrapped"
-    exit 0
+else
+    echo "Creating cluster ${CLUSTER_NAME}"
+    create_cluster
+    wait_for_bootstrap
 fi
 
-echo "Creating cluster ${CLUSTER_NAME}"
-create_cluster
-
-state="$(read_state)"
-while [ "${state}" != "completed" ]; do
-    if [ "${state}" = "error" ]; then
-        echo "Bootstrap of ${CLUSTER_NAME} failed" >&2
-        curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" >&2
-        exit 1
-    fi
-    sleep "${POLL_INTERVAL_SECONDS}"
-    state="$(read_state)"
-done
+if [ -f "${LICENSE_FILE}" ]; then
+    echo "Installing license on ${CLUSTER_NAME}"
+    install_license
+else
+    echo "No license at ${LICENSE_FILE}, ${CLUSTER_NAME} stays on the trial license"
+fi
 
 echo "${CLUSTER_NAME} is ready"

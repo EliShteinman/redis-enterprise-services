@@ -31,4 +31,5 @@ logs/
 .DS_Store
 
 # Redis Software license
-docker/license.txt
+docker/license/*
+!docker/license/.gitkeep
