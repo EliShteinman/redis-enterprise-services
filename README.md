@@ -11,11 +11,17 @@ uv run pre-commit install
 
 ## Running
 
-From the project root:
+Locally, from the project root:
+
+```bash
+uv run python run.py
+curl localhost:8000/health
+```
+
+In a deployment, uvicorn builds the app through the factory:
 
 ```bash
 uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0 --port 8000
-curl localhost:8000/health
 ```
 
 ## Configuration
