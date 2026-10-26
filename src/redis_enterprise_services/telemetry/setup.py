@@ -2,6 +2,7 @@ from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.propagators import TraceResponsePropagator, set_global_response_propagator
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import MetricReader, PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
@@ -37,6 +38,7 @@ class Telemetry:
         trace.set_tracer_provider(tracer_provider=self._tracer_provider)
         metrics.set_meter_provider(meter_provider=self._meter_provider)
         LoggingInstrumentor().instrument(tracer_provider=self._tracer_provider, inject_trace_context=True)
+        set_global_response_propagator(propagator=TraceResponsePropagator())
 
     def shutdown(self) -> None:
         self._tracer_provider.shutdown()
