@@ -1,8 +1,10 @@
 import logging
+from http import HTTPStatus
 
 from fastapi import Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from opentelemetry import trace
+from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from redis_enterprise_services.api.error_response import ErrorDetail, FieldError, error_response
@@ -44,3 +46,13 @@ async def validation_error_handler(request: Request, error: RequestValidationErr
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         error=ErrorDetail(code=VALIDATION_ERROR_CODE, message=VALIDATION_ERROR_MESSAGE, details=details),
     )
+
+
+async def http_error_handler(request: Request, error: HTTPException) -> Response:
+    code: str = HTTPStatus(value=error.status_code).name.lower()
+    logger.info(msg=f"{code}: {request.method} {request.url.path}")
+    response: Response = error_response(
+        status_code=error.status_code, error=ErrorDetail(code=code, message=str(error.detail))
+    )
+    response.headers.update(error.headers or {})
+    return response
