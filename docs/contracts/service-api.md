@@ -277,6 +277,7 @@
 | `password_rules` | מיד, `422` | הפרה של טבלת הסיסמאות (סעיף 6) |
 | `unknown_cluster` | מיד, `422` | כתובת או יעד לא מוכרים |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות |
+| `internal_error` | מיד, `500` | שגיאה לא צפויה בשירות. הפרטים בלוג, לפי `trace_id` |
 | `database_not_found` | בסטטוס, `rejected` | `db_id` לא נמצא |
 | `clusters_mismatch` | בסטטוס, `rejected` | `clusters` לא תואם לאתרים של ה-DB |
 | `sites_diverged` | בסטטוס, `rejected` | ב-AA, אתר שונה מהאחרים בשדה שבעריכה |
