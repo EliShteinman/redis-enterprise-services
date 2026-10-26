@@ -36,5 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     telemetry: Telemetry = Telemetry(settings=settings.telemetry)
     telemetry.start()
     configure_logging(settings=settings.log)
-    yield
-    telemetry.shutdown()
+    try:
+        yield
+    finally:
+        telemetry.shutdown()
