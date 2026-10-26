@@ -26,25 +26,21 @@ class Telemetry:
     @staticmethod
     def _build_tracer_provider(*, settings: TelemetrySettings, resource: Resource) -> TracerProvider:
         provider: TracerProvider = TracerProvider(resource=resource)
-        if settings.export_enabled:
-            provider.add_span_processor(
-                span_processor=BatchSpanProcessor(
-                    span_exporter=OTLPSpanExporter(endpoint=settings.otlp_endpoint + OTLP_TRACES_PATH)
-                )
-            )
+        if not settings.export_enabled:
+            return provider
+        exporter: OTLPSpanExporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint + OTLP_TRACES_PATH)
+        provider.add_span_processor(span_processor=BatchSpanProcessor(span_exporter=exporter))
         return provider
 
     @staticmethod
     def _build_meter_provider(*, settings: TelemetrySettings, resource: Resource) -> MeterProvider:
-        readers: list[MetricReader] = []
-        if settings.export_enabled:
-            readers.append(
-                PeriodicExportingMetricReader(
-                    exporter=OTLPMetricExporter(endpoint=settings.otlp_endpoint + OTLP_METRICS_PATH),
-                    export_interval_millis=settings.metrics_export_interval_ms,
-                )
-            )
-        return MeterProvider(resource=resource, metric_readers=readers)
+        if not settings.export_enabled:
+            return MeterProvider(resource=resource)
+        exporter: OTLPMetricExporter = OTLPMetricExporter(endpoint=settings.otlp_endpoint + OTLP_METRICS_PATH)
+        reader: MetricReader = PeriodicExportingMetricReader(
+            exporter=exporter, export_interval_millis=settings.metrics_export_interval_ms
+        )
+        return MeterProvider(resource=resource, metric_readers=[reader])
 
     def start(self) -> None:
         trace.set_tracer_provider(tracer_provider=self._tracer_provider)
