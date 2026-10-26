@@ -8,6 +8,8 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
+from redis_enterprise_services.config.edge_settings import EdgeSettings
+
 
 class LoggingSettings(BaseModel):
     level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
@@ -29,6 +31,7 @@ class Settings(BaseSettings):
 
     log: LoggingSettings
     telemetry: TelemetrySettings
+    edge: EdgeSettings
 
     @classmethod
     def settings_customise_sources(
