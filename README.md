@@ -14,7 +14,7 @@ uv run pre-commit install
 From the project root:
 
 ```bash
-uv run python -m redis_enterprise_services
+uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0 --port 8000
 curl localhost:8000/health
 ```
 
@@ -25,7 +25,6 @@ environment variable with the `RES_` prefix and `__` between levels, for example
 
 ```bash
 RES_LOG__LEVEL=DEBUG
-RES_SERVER__PORT=9000
 ```
 
 Secrets are passed only through environment variables.

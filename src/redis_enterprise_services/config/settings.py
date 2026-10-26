@@ -15,18 +15,12 @@ class LoggingSettings(BaseModel):
     date_format: str
 
 
-class ServerSettings(BaseModel):
-    host: str
-    port: int
-
-
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         yaml_file="config/settings.yaml", env_prefix="RES_", env_nested_delimiter="__", extra="forbid"
     )
 
     log: LoggingSettings
-    server: ServerSettings
 
     @classmethod
     def settings_customise_sources(

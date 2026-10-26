@@ -2,6 +2,3 @@ log:
   level: INFO
   line_pattern: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
-server:
-  host: 0.0.0.0
-  port: 8000
