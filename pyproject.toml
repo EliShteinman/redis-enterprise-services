@@ -13,7 +13,6 @@ dependencies = [
     "opentelemetry-instrumentation>=0.66b1",
     "opentelemetry-instrumentation-fastapi>=0.66b1",
     "opentelemetry-instrumentation-logging>=0.66b1",
-    "opentelemetry-instrumentation-openai>=0.62.4",
     "opentelemetry-sdk>=1.45.1",
     "pydantic>=2.14.1",
     "pydantic-settings[yaml]>=2.16.1",
