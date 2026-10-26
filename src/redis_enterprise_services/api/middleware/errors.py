@@ -14,6 +14,7 @@ VALIDATION_ERROR_CODE: str = "validation_error"
 VALIDATION_ERROR_MESSAGE: str = "the request does not match the contract"
 INTERNAL_ERROR_CODE: str = "internal_error"
 INTERNAL_ERROR_MESSAGE: str = "internal error"
+SERVER_ERROR_STATUS: int = status.HTTP_500_INTERNAL_SERVER_ERROR
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -23,7 +24,8 @@ class ErrorMiddleware(BaseHTTPMiddleware):
         try:
             return await call_next(request)
         except RedisEnterpriseServicesError as error:
-            logger.warning(msg=f"{error.code}: {error.message}")
+            level: int = logging.ERROR if error.status_code >= SERVER_ERROR_STATUS else logging.WARNING
+            logger.log(level=level, msg=f"{error.code}: {error.message}")
             return error_response(
                 status_code=error.status_code, error=ErrorDetail(code=error.code, message=error.message)
             )
