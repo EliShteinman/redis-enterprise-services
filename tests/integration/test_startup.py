@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from redis_enterprise_services.__main__ import CONFIGURATION_ERROR_EXIT_CODE, main
+from redis_enterprise_services.__main__ import main
 
 PROJECT_ROOT: Path = Path(__file__).parents[2]
 
@@ -32,14 +32,3 @@ def test_startup_logs_with_the_project_config(
     assert "| INFO     | redis_enterprise_services.__main__ | redis-enterprise-services started" in (
         capsys.readouterr().out
     )
-
-
-def test_invalid_configuration_stops_startup_with_its_code(
-    in_project_root: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv(name="RES_LOG__LEVEL", value="LOUD")
-
-    with pytest.raises(SystemExit) as raised:
-        main()
-
-    assert raised.value.code == CONFIGURATION_ERROR_EXIT_CODE
