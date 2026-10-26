@@ -1,8 +1,9 @@
 from typing import Literal
 
 from fastapi.responses import JSONResponse
-from opentelemetry import trace
 from pydantic import BaseModel, Field
+
+from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 
 class FieldError(BaseModel):
@@ -21,10 +22,6 @@ class ErrorResponse(BaseModel):
     status: Literal["rejected"] = "rejected"
     database: None = None
     error: ErrorDetail
-
-
-def current_trace_id() -> str:
-    return format(trace.get_current_span().get_span_context().trace_id, "032x")
 
 
 def error_response(*, status_code: int, error: ErrorDetail) -> JSONResponse:
