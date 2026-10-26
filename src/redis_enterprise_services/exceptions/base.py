@@ -1,0 +1,2 @@
+class RedisEnterpriseServicesError(Exception):
+    pass
