@@ -35,6 +35,8 @@ RES_LOG__LEVEL=DEBUG
 
 Secrets are passed only through environment variables.
 
+Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
+
 ## Lint
 
 ```bash

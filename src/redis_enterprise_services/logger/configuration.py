@@ -2,7 +2,7 @@ import logging.config
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.config import LoggingSettings
+from redis_enterprise_services.config.settings import LoggingSettings
 
 SERVER_LOGGERS: tuple[str, ...] = ("uvicorn", "uvicorn.error", "uvicorn.access")
 

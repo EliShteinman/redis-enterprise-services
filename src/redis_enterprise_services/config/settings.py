@@ -15,12 +15,20 @@ class LoggingSettings(BaseModel):
     date_format: str
 
 
+class TelemetrySettings(BaseModel):
+    service_name: str
+    export_enabled: bool
+    otlp_endpoint: str
+    metrics_export_interval_ms: int
+
+
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         yaml_file="config/settings.yaml", env_prefix="RES_", env_nested_delimiter="__", extra="forbid"
     )
 
     log: LoggingSettings
+    telemetry: TelemetrySettings
 
     @classmethod
     def settings_customise_sources(
