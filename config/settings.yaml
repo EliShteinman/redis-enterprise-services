@@ -1,4 +1,9 @@
 log:
   level: INFO
-  line_pattern: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  line_pattern: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
+telemetry:
+  service_name: redis-enterprise-services
+  export_enabled: false
+  otlp_endpoint: http://localhost:4318
+  metrics_export_interval_ms: 60000
