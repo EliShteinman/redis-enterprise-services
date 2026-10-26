@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from redis_enterprise_services.config import load_settings
+from redis_enterprise_services.config import LoggingSettings, Settings, load_settings
 from redis_enterprise_services.exceptions import ConfigurationError
 
 VALID_FILE: str = (
@@ -54,3 +54,11 @@ def test_broken_yaml_is_reported(config_file: Path) -> None:
 
     with pytest.raises(ConfigurationError):
         load_settings()
+
+
+def test_constructor_arguments_override_the_file(config_file: Path) -> None:
+    log: LoggingSettings = LoggingSettings(
+        level="DEBUG", stream="stdout", line_pattern="%(message)s", date_format="%H"
+    )
+
+    assert Settings(log=log).log.level == "DEBUG"
