@@ -1,12 +1,16 @@
+from pathlib import Path
+
 import yaml
 from pydantic import ValidationError
 from pydantic_settings import SettingsError
 
-from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.config.settings import CONFIG_FILE, Settings
 from redis_enterprise_services.exceptions import ConfigurationError
 
 
 def load_settings() -> Settings:
+    if not Path(CONFIG_FILE).is_file():
+        raise ConfigurationError(reason=f"{CONFIG_FILE} not found in {Path.cwd()}")
     try:
         return Settings()
     except ValidationError as error:

@@ -62,3 +62,10 @@ def test_constructor_arguments_override_the_file(config_file: Path) -> None:
     )
 
     assert Settings(log=log).log.level == "DEBUG"
+
+
+def test_missing_file_is_reported_by_its_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ConfigurationError, match=r"config/settings\.yaml not found"):
+        load_settings()
