@@ -2,9 +2,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from redis_enterprise_services.api import health
+from redis_enterprise_services.api.middleware.errors import ErrorMiddleware, validation_error_handler
 from redis_enterprise_services.config import Settings
 from redis_enterprise_services.logger import configure_logging
 from redis_enterprise_services.telemetry import Telemetry
@@ -13,6 +15,10 @@ from redis_enterprise_services.telemetry import Telemetry
 def create_app() -> FastAPI:
     app: FastAPI = FastAPI(title="redis-enterprise-services", lifespan=lifespan)
     app.state.settings = Settings()
+    app.add_middleware(middleware_class=ErrorMiddleware)
+    app.add_exception_handler(
+        exc_class_or_status_code=RequestValidationError, handler=validation_error_handler
+    )
     app.include_router(router=health.router)
     FastAPIInstrumentor.instrument_app(app=app)
     return app
