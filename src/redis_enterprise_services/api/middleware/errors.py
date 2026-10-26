@@ -8,7 +8,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from redis_enterprise_services.api.error_response import ErrorDetail, FieldError, error_response
-from redis_enterprise_services.exceptions import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 VALIDATION_ERROR_CODE: str = "validation_error"
 VALIDATION_ERROR_MESSAGE: str = "the request does not match the contract"

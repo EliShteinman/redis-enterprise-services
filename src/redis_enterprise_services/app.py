@@ -12,9 +12,9 @@ from redis_enterprise_services.api.middleware.errors import (
     http_error_handler,
     validation_error_handler,
 )
-from redis_enterprise_services.config import Settings
-from redis_enterprise_services.logger import configure_logging
-from redis_enterprise_services.telemetry import Telemetry
+from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.logger.configuration import configure_logging
+from redis_enterprise_services.telemetry.setup import Telemetry
 
 
 def create_app() -> FastAPI:
