@@ -20,5 +20,7 @@ def logging_config(*, settings: LoggingSettings) -> dict[str, JsonValue]:
             "console": {"class": "logging.StreamHandler", "formatter": "line", "stream": "ext://sys.stdout"}
         },
         "root": {"level": settings.level, "handlers": ["console"]},
-        "loggers": {name: {"handlers": [], "propagate": True} for name in SERVER_LOGGERS},
+        "loggers": {
+            name: {"level": settings.level, "handlers": [], "propagate": True} for name in SERVER_LOGGERS
+        },
     }
