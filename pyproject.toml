@@ -9,6 +9,7 @@ description = "Creates, edits and deletes Redis Enterprise databases as one oper
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.162.0",
+    "pydantic>=2.14.1",
     "pydantic-settings[yaml]>=2.16.1",
     "uvicorn[standard]>=0.54.0",
 ]
