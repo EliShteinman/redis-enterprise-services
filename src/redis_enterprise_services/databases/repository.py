@@ -27,7 +27,9 @@ class DatabaseRepository:
         response: ClusterResponse = self._api.send(
             target=target, method="GET", path=self._settings.path.format(uid=uid), query=query
         )
-        return DatabaseFields(values=response.body, cluster_state_id=response.cluster_state_id)
+        return DatabaseFields.model_validate(
+            obj={"values": response.body, "cluster_state_id": response.cluster_state_id}
+        )
 
     def update(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int

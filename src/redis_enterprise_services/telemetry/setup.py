@@ -2,7 +2,10 @@ from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.instrumentation.propagators import TraceResponsePropagator, set_global_response_propagator
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    set_global_response_propagator,  # pyright: ignore[reportUnknownVariableType]
+)
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import MetricReader, PeriodicExportingMetricReader

@@ -11,3 +11,9 @@ repos:
         entry: uv run --frozen ruff format
         language: system
         types: [python]
+      - id: basedpyright
+        name: basedpyright
+        entry: uv run --frozen basedpyright
+        language: system
+        types: [python]
+        pass_filenames: false

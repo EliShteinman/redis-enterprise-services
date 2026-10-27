@@ -50,3 +50,7 @@ class Settings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return init_settings, env_settings, YamlConfigSettingsSource(settings_cls=settings_cls)
+
+
+def load_settings() -> Settings:
+    return Settings()  # pyright: ignore[reportCallIssue]
