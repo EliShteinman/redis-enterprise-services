@@ -7,9 +7,9 @@ from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.user_settings import UserSettings
-from redis_enterprise_services.users.models import CreatedUser, NewUser, User
+from redis_enterprise_services.users.models import CreatedUser, NewUser, User, UserCreationBody
 
-USERS: TypeAdapter[list[User]] = TypeAdapter(type=list[User])
+USER_LIST_ADAPTER: TypeAdapter[list[User]] = TypeAdapter(type=list[User])
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -38,11 +38,11 @@ class UserRepository:
         body: JsonValue = self._api.send(
             target=target, method="GET", path=self._settings.collection_path
         ).body
-        return next((user for user in USERS.validate_python(body) if user.name == name), None)
+        return next((user for user in USER_LIST_ADAPTER.validate_python(body) if user.name == name), None)
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
         return string_field(body=body, name=self._cluster.fields.action_uid)
 
 
 def creation_body(*, user: NewUser) -> dict[str, JsonValue]:
-    return {"name": user.name, "password": user.password.get_secret_value(), "role_uids": user.role_uids}
+    return UserCreationBody(name=user.name, password=user.password, role_uids=user.role_uids).model_dump()
