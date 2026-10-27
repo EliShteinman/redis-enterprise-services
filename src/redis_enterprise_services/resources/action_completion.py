@@ -1,9 +1,10 @@
 from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource
 
 
-class ActionCompletionWaiter:
+class ActionCompletionWaiter(CompletionWaiter):
     def __init__(self, *, action_waiter: ActionWaiter) -> None:
         self._action_waiter: ActionWaiter = action_waiter
 

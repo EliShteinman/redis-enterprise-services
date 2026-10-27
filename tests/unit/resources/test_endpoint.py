@@ -21,12 +21,16 @@ USERS: list[JsonValue] = [
 ]
 
 
-@pytest.fixture
-def endpoint() -> ResourceEndpoint:
+def endpoint_answering(*, answer: JsonValue) -> ResourceEndpoint:
     api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
-    api.send.return_value = ClusterResponse(status_code=200, headers={}, body=USERS, cluster_state_id=None)
+    api.send.return_value = ClusterResponse(status_code=200, headers={}, body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
     return ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
+
+
+@pytest.fixture
+def endpoint() -> ResourceEndpoint:
+    return endpoint_answering(answer=USERS)
 
 
 def test_find_by_name_returns_the_resource_with_that_name(endpoint: ResourceEndpoint) -> None:
@@ -39,15 +43,9 @@ def test_find_by_name_returns_none_without_an_exact_match(endpoint: ResourceEndp
 
 
 def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
-    api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
-    api.send.return_value = ClusterResponse(
-        status_code=200,
-        headers={},
-        body={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"},
-        cluster_state_id=None,
+    endpoint: ResourceEndpoint = endpoint_answering(
+        answer={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
     )
-    settings: Settings = load_settings()
-    endpoint: ResourceEndpoint = ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
 
     created: CreatedResource = endpoint.create(target=TARGET, body={"name": "app-user"})
 

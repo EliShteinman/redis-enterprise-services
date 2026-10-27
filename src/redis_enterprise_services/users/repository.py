@@ -1,10 +1,11 @@
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
+from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.users.models import NewUser
 
 
-class UserRepository:
+class UserRepository(ResourceRepository[NewUser]):
     def __init__(self, *, endpoint: ResourceEndpoint) -> None:
         self._endpoint: ResourceEndpoint = endpoint
 
