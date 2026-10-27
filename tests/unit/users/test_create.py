@@ -1,0 +1,79 @@
+from unittest.mock import MagicMock, create_autospec
+
+import pytest
+from pydantic import SecretStr
+
+from redis_enterprise_services.cluster.actions import ActionWaiter
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.exceptions.cluster import ClusterActionTimeoutError, ClusterRequestError
+from redis_enterprise_services.users.create import UserCreate
+from redis_enterprise_services.users.models import CreatedUser, NewUser, User
+from redis_enterprise_services.users.repository import UserRepository
+
+TARGET: ClusterTarget = ClusterTarget(
+    network="local",
+    api_url="https://cluster.local:9443",
+    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
+)
+NEW_USER: NewUser = NewUser(name="app-user", password="Aa1!password", role_uids=[5])
+CREATED: User = User(uid=6, name="app-user", role_uids=[5])
+ACTION_UID: str = "c7d4bccf-9462-4924-8c8f-345bd94fe89c"
+
+
+@pytest.fixture
+def repository() -> MagicMock:
+    repository: MagicMock = create_autospec(spec=UserRepository, instance=True)
+    repository.create.return_value = CreatedUser(user=CREATED, action_uid=ACTION_UID)
+    return repository
+
+
+@pytest.fixture
+def action_waiter() -> MagicMock:
+    return create_autospec(spec=ActionWaiter, instance=True)
+
+
+@pytest.fixture
+def step(repository: MagicMock, action_waiter: MagicMock) -> UserCreate:
+    return UserCreate(repository=repository, action_waiter=action_waiter, target=TARGET, user=NEW_USER)
+
+
+def test_execute_keeps_the_created_user(step: UserCreate) -> None:
+    step.execute()
+
+    assert step.created == CREATED
+
+
+def test_compensate_deletes_the_created_user(repository: MagicMock, step: UserCreate) -> None:
+    step.execute()
+
+    step.compensate()
+
+    repository.delete.assert_called_once_with(target=TARGET, uid=CREATED.uid)
+
+
+def test_compensate_without_a_created_user_deletes_nothing(repository: MagicMock, step: UserCreate) -> None:
+    step.compensate()
+
+    repository.delete.assert_not_called()
+
+
+def test_a_user_whose_action_did_not_finish_is_still_compensated(
+    repository: MagicMock, action_waiter: MagicMock, step: UserCreate
+) -> None:
+    action_waiter.wait.side_effect = [ClusterActionTimeoutError(message="action did not complete"), None]
+    with pytest.raises(expected_exception=ClusterActionTimeoutError):
+        step.execute()
+
+    step.compensate()
+
+    repository.delete.assert_called_once_with(target=TARGET, uid=CREATED.uid)
+
+
+def test_compensate_accepts_a_user_that_is_already_gone(repository: MagicMock, step: UserCreate) -> None:
+    repository.delete.side_effect = ClusterRequestError(
+        message="cluster answered 404", cluster_status_code=404, error_code="user_not_exist"
+    )
+    step.execute()
+
+    step.compensate()

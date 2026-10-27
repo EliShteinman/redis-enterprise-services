@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.databases.update import DatabaseUpdate
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterTarget
+from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 UID: int = 1
@@ -32,8 +34,15 @@ def repository() -> MagicMock:
 
 
 @pytest.fixture
-def update(repository: MagicMock) -> DatabaseUpdate:
-    return DatabaseUpdate(repository=repository, target=TARGET, uid=UID, values=NEW_VALUES)
+def active_waiter() -> MagicMock:
+    return create_autospec(spec=DatabaseActiveWaiter, instance=True)
+
+
+@pytest.fixture
+def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
+    return DatabaseUpdate(
+        repository=repository, active_waiter=active_waiter, target=TARGET, uid=UID, values=NEW_VALUES
+    )
 
 
 def test_execute_snapshots_only_the_fields_it_changes(repository: MagicMock, update: DatabaseUpdate) -> None:
@@ -52,18 +61,30 @@ def test_execute_puts_the_new_values_with_the_snapshot_state_id(
     )
 
 
-def test_execute_waits_for_active_after_the_put(repository: MagicMock, update: DatabaseUpdate) -> None:
+def test_execute_waits_for_active_after_the_put(
+    repository: MagicMock, active_waiter: MagicMock, update: DatabaseUpdate
+) -> None:
+    steps: MagicMock = MagicMock()
+    steps.attach_mock(mock=repository.update, attribute="update")
+    steps.attach_mock(mock=active_waiter.wait, attribute="wait")
+
     update.execute()
 
-    assert repository.mock_calls[-2:] == [
+    assert steps.mock_calls == [
         call.update(target=TARGET, uid=UID, values=NEW_VALUES, cluster_state_id=SNAPSHOT_STATE_ID),
-        call.wait_until_active(target=TARGET, uid=UID),
+        call.wait(target=TARGET, uid=UID),
     ]
 
 
 def test_execute_refuses_a_field_missing_from_the_snapshot(repository: MagicMock) -> None:
     repository.get_fields.side_effect = [DatabaseFields(values={"memory_size": 100}, cluster_state_id=1)]
-    update: DatabaseUpdate = DatabaseUpdate(repository=repository, target=TARGET, uid=UID, values=NEW_VALUES)
+    update: DatabaseUpdate = DatabaseUpdate(
+        repository=repository,
+        active_waiter=create_autospec(spec=DatabaseActiveWaiter, instance=True),
+        target=TARGET,
+        uid=UID,
+        values=NEW_VALUES,
+    )
 
     with pytest.raises(expected_exception=UnrestorableFieldsError):
         update.execute()

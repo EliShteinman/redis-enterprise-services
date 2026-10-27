@@ -10,8 +10,13 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 VALIDATION_ERROR_CODE: str = "validation_error"
 VALIDATION_ERROR_MESSAGE: str = "the request does not match the contract"
+FIELD_PATH_SEPARATOR: str = "."
 
 logger: logging.Logger = logging.getLogger(name=__name__)
+
+
+def field_path(*, location: tuple[int | str, ...]) -> str:
+    return FIELD_PATH_SEPARATOR.join(str(part) for part in location)
 
 
 async def project_error_handler(request: Request, error: RedisEnterpriseServicesError) -> Response:
@@ -24,7 +29,7 @@ async def project_error_handler(request: Request, error: RedisEnterpriseServices
 
 async def validation_error_handler(request: Request, error: RequestValidationError) -> Response:
     details: list[FieldError] = [
-        FieldError(field=".".join(str(part) for part in detail["loc"]), message=detail["msg"])
+        FieldError(field=field_path(location=detail["loc"]), message=detail["msg"])
         for detail in error.errors()
     ]
     logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in details]}")

@@ -2,9 +2,10 @@ import logging
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.edge.models import ClusterTarget
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -15,11 +16,13 @@ class DatabaseUpdate:
         self,
         *,
         repository: DatabaseRepository,
+        active_waiter: DatabaseActiveWaiter,
         target: ClusterTarget,
         uid: int,
         values: dict[str, JsonValue],
     ) -> None:
         self._repository: DatabaseRepository = repository
+        self._active_waiter: DatabaseActiveWaiter = active_waiter
         self._target: ClusterTarget = target
         self._uid: int = uid
         self._values: dict[str, JsonValue] = values
@@ -29,11 +32,7 @@ class DatabaseUpdate:
         snapshot: DatabaseFields = self._repository.get_fields(
             target=self._target, uid=self._uid, fields=list(self._values)
         )
-        missing: set[str] = set(self._values) - set(snapshot.values)
-        if missing:
-            raise UnrestorableFieldsError(
-                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
-            )
+        self._ensure_restorable(snapshot=snapshot)
         self._snapshot = snapshot
         self._apply(values=self._values, cluster_state_id=snapshot.cluster_state_id)
 
@@ -46,8 +45,15 @@ class DatabaseUpdate:
         )
         self._apply(values=self._snapshot.values, cluster_state_id=current.cluster_state_id)
 
+    def _ensure_restorable(self, *, snapshot: DatabaseFields) -> None:
+        missing: set[str] = set(self._values) - set(snapshot.values)
+        if missing:
+            raise UnrestorableFieldsError(
+                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
+            )
+
     def _apply(self, *, values: dict[str, JsonValue], cluster_state_id: int) -> None:
         self._repository.update(
             target=self._target, uid=self._uid, values=values, cluster_state_id=cluster_state_id
         )
-        self._repository.wait_until_active(target=self._target, uid=self._uid)
+        self._active_waiter.wait(target=self._target, uid=self._uid)

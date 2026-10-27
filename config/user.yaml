@@ -1,0 +1,3 @@
+user:
+  collection_path: /v1/users
+  path: /v1/users/{uid}

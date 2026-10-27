@@ -21,8 +21,9 @@ from redis_enterprise_services.telemetry.setup import Telemetry
 
 
 def create_app() -> FastAPI:
-    app: FastAPI = FastAPI(title="redis-enterprise-services", lifespan=lifespan)
-    app.state.settings = Settings()
+    settings: Settings = Settings()
+    app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
+    app.state.settings = settings
     app.add_middleware(middleware_class=UnexpectedErrorMiddleware)
     app.add_exception_handler(
         exc_class_or_status_code=RedisEnterpriseServicesError, handler=project_error_handler
