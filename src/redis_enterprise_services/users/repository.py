@@ -2,44 +2,37 @@ import logging
 
 from pydantic import JsonValue, TypeAdapter
 
-from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.json_body import string_field
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.user_settings import UserSettings
-from redis_enterprise_services.edge.models import ClusterTarget
 from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 
-ACTION_UID_FIELD: str = "action_uid"
 USERS: TypeAdapter[list[User]] = TypeAdapter(type=list[User])
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class UserRepository:
-    def __init__(self, *, api: ClusterApi, action_waiter: ActionWaiter, settings: UserSettings) -> None:
+    def __init__(self, *, api: ClusterApi, settings: UserSettings, cluster: ClusterSettings) -> None:
         self._api: ClusterApi = api
-        self._action_waiter: ActionWaiter = action_waiter
         self._settings: UserSettings = settings
+        self._cluster: ClusterSettings = cluster
 
     def create(self, *, target: ClusterTarget, user: NewUser) -> CreatedUser:
         logger.info(msg=f"creating user {user.name} with roles {user.role_uids}")
         body: JsonValue = self._api.send(
-            target=target,
-            method="POST",
-            path=self._settings.collection_path,
-            body={
-                "name": user.name,
-                "password": user.password.get_secret_value(),
-                "role_uids": user.role_uids,
-            },
+            target=target, method="POST", path=self._settings.collection_path, body=creation_body(user=user)
         ).body
-        return CreatedUser(user=User.model_validate(obj=body), action_uid=action_uid_of(body=body))
+        return CreatedUser(user=User.model_validate(obj=body), action_uid=self._action_uid(body=body))
 
-    def delete(self, *, target: ClusterTarget, uid: int) -> None:
+    def delete(self, *, target: ClusterTarget, uid: int) -> str | None:
         logger.info(msg=f"deleting user {uid}")
         body: JsonValue = self._api.send(
             target=target, method="DELETE", path=self._settings.path.format(uid=uid)
         ).body
-        self.wait_for_action(target=target, action_uid=action_uid_of(body=body))
+        return self._action_uid(body=body)
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> User | None:
         body: JsonValue = self._api.send(
@@ -47,11 +40,9 @@ class UserRepository:
         ).body
         return next((user for user in USERS.validate_python(body) if user.name == name), None)
 
-    def wait_for_action(self, *, target: ClusterTarget, action_uid: str | None) -> None:
-        if action_uid is not None:
-            self._action_waiter.wait(target=target, action_uid=action_uid)
+    def _action_uid(self, *, body: JsonValue) -> str | None:
+        return string_field(body=body, name=self._cluster.fields.action_uid)
 
 
-def action_uid_of(*, body: JsonValue) -> str | None:
-    action_uid: JsonValue = body.get(ACTION_UID_FIELD) if isinstance(body, dict) else None
-    return action_uid if isinstance(action_uid, str) else None
+def creation_body(*, user: NewUser) -> dict[str, JsonValue]:
+    return {"name": user.name, "password": user.password.get_secret_value(), "role_uids": user.role_uids}

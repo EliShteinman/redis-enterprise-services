@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class ClusterFieldSettings(BaseModel):
     status: str
     error_code: str
+    action_uid: str
 
 
 class FieldsQuerySettings(BaseModel):
