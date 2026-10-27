@@ -179,10 +179,11 @@ stateDiagram-v2
 |---|---|
 | יצירה ועדכון של DB | `status` חוזר ל-`active` (בזמן הפעולה: `pending`, `active-change-pending`). התשובה כוללת גם `action_uid` (V3). נמדד: 2–6 שניות. |
 | מחיקת DB | `status: delete-pending`, ואז `404`. נמדד: כ-4 שניות. |
-| ACL, role | אם התשובה כוללת `action_uid`, ממתינים ב-`/v1/actions/{action_uid}` |
+| ACL, role, user | אם התשובה כוללת `action_uid`, ממתינים ב-`/v1/actions/{action_uid}` עד `completed` (V21) |
 | CRDB, כל פעולה | `GET /v1/crdb_tasks/{task_id}` עד `finished` או `failed`. ב-`failed` יש `errors` לכל קלאסטר. |
 
-ההמתנה היא חלק מהצעד: צעד לא נחשב `done` לפני שהפעולה הסתיימה בקלאסטר. הזמנים (מרווח בדיקה, timeout)
+ההמתנה היא חלק מהצעד: צעד לא נחשב `done` לפני שהפעולה הסתיימה בקלאסטר. בלי ההמתנה הצעד הבא עלול להידחות:
+`PUT` ל-bdb מיד אחרי מחיקת role נדחה ב-`409 busy` ("Cluster is being modified"), ואחרי שה-action הסתיים הוא עובר (V21). הזמנים (מרווח בדיקה, timeout)
 מוגדרים בקונפיגורציה.
 
 **409 busy:** DB שנמצא באמצע שינוי אחר מחזיר `409`. זה מצב זמני, ולכן הצעד מנסה שוב לפי מדיניות ה-retry,
@@ -633,6 +634,7 @@ stateDiagram-v2
 | V18 | עריכת bdb דרך ה-relay (`GET ?fields=`, `PUT`, המתנה ל-`active`, החזרת snapshot) | **עובד.** שדה שלא מוגדר ב-DB לא חוזר ב-`GET ?fields=`. `PUT` בזמן `active-change-pending` נדחה ב-`409 db_busy`. ראו 5.4. נבדק 2026-10-27. |
 | V19 | `tags` ב-AA | **שייכים ל-CRDB.** `PATCH` ל-`default_db_config.tags` מגיע לשני הקלאסטרים. `PUT` ל-bdb מקומי נשאר רק בו. ראו 5.5. נבדק 2026-10-27. |
 | V20 | `roles_permissions` לשני הקלאסטרים ב-`PATCH` אחד | **עובד.** `instances[].db_config.roles_permissions`, רשימה לכל instance. ראו 5.6. נבדק 2026-10-27. |
+| V21 | user דרך ה-relay | **יצירה:** התשובה היא היוזר המלא עם `uid` ו-`action_uid` (`update_redis_acls`). היוזר קיים מיד, וה-action מסתיים תוך כ-3 שניות. שם קיים: `409 name_already_exists`. role שלא קיים: `404 role_not_exist`. סיסמה חלשה (`a`) מתקבלת. **מחיקה:** `action_uid`, והיוזר נעלם מיד (`404 user_not_exist`). **רשימה:** `GET /v1/users?fields=` לא מצמצם, וחוזר הכל. **role:** יצירה בלי `action_uid`, מחיקה עם. role שיש לו יוזר לא נמחק: `406 role_in_use`. נבדק 2026-10-27. |
 
 ### עוד לא נבדק
 
