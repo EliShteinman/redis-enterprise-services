@@ -1,6 +1,5 @@
-from typing import ClassVar, Literal
+from typing import ClassVar
 
-from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -9,24 +8,16 @@ from pydantic_settings import (
 )
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings
-
-
-class LoggingSettings(BaseModel):
-    level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
-    line_pattern: str
-    date_format: str
-
-
-class TelemetrySettings(BaseModel):
-    service_name: str
-    export_enabled: bool
-    otlp_endpoint: str
-    metrics_export_interval_ms: int
+from redis_enterprise_services.config.log_settings import LoggingSettings
+from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
 
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        yaml_file="config/settings.yaml", env_prefix="RES_", env_nested_delimiter="__", extra="forbid"
+        yaml_file=("config/log.yaml", "config/telemetry.yaml", "config/edge.yaml"),
+        env_prefix="RES_",
+        env_nested_delimiter="__",
+        extra="forbid",
     )
 
     log: LoggingSettings

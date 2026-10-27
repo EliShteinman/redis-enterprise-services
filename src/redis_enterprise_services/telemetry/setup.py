@@ -10,7 +10,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from redis_enterprise_services.config.settings import TelemetrySettings
+from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
 OTLP_TRACES_PATH: str = "/v1/traces"
 OTLP_METRICS_PATH: str = "/v1/metrics"
