@@ -3,7 +3,8 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
+from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
@@ -12,16 +13,16 @@ from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 UID: int = 1
+CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
+ADDRESS: ClusterAddress = ClusterAddress(network="local", api_url="https://cluster.local:9443")
 TARGET: ClusterTarget = ClusterTarget(
-    network="local",
-    api_url="https://cluster.local:9443",
-    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
+    network=ADDRESS.network, api_url=ADDRESS.api_url, credentials=CREDENTIALS
 )
 NEW_VALUES: dict[str, JsonValue] = {"memory_size": 200, "eviction_policy": "noeviction"}
 OLD_VALUES: dict[str, JsonValue] = {"memory_size": 100, "eviction_policy": "volatile-lru"}
 SNAPSHOT: DatabaseFields = DatabaseFields(values=OLD_VALUES, cluster_state_id=7)
 CURRENT: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
-STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(target=TARGET, uid=UID, values=NEW_VALUES)
+STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(cluster=ADDRESS, uid=UID, values=NEW_VALUES)
 
 
 @pytest.fixture
@@ -38,7 +39,11 @@ def active_waiter() -> MagicMock:
 
 @pytest.fixture
 def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
-    return DatabaseUpdate(repository=repository, active_waiter=active_waiter)
+    return DatabaseUpdate(
+        repository=repository,
+        active_waiter=active_waiter,
+        credentials=SharedCredentialsProvider(credentials=CREDENTIALS),
+    )
 
 
 def run(*, update: DatabaseUpdate) -> list[DatabaseFields]:

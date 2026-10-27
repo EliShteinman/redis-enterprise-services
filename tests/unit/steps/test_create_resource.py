@@ -3,7 +3,8 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
+from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import ClusterActionTimeoutError, ClusterRequestError
 from redis_enterprise_services.resources.action_completion import ActionCompletionWaiter
@@ -12,13 +13,13 @@ from redis_enterprise_services.steps.create_resource import CreateResourceStep
 from redis_enterprise_services.users.models import NewUser
 from redis_enterprise_services.users.repository import UserRepository
 
+CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
+ADDRESS: ClusterAddress = ClusterAddress(network="local", api_url="https://cluster.local:9443")
 TARGET: ClusterTarget = ClusterTarget(
-    network="local",
-    api_url="https://cluster.local:9443",
-    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
+    network=ADDRESS.network, api_url=ADDRESS.api_url, credentials=CREDENTIALS
 )
 SPEC: NewUser = NewUser(name="app-user", password="Aa1!password", role_uids=[5])
-STEP_INPUT: CreateResourceInput[NewUser] = CreateResourceInput(target=TARGET, spec=SPEC)
+STEP_INPUT: CreateResourceInput[NewUser] = CreateResourceInput(cluster=ADDRESS, spec=SPEC)
 CREATED: CreatedResource = CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
 DELETE_ACTION_UID: str = "e85d7b88"
 
@@ -38,7 +39,9 @@ def waiter() -> MagicMock:
 
 @pytest.fixture
 def step(repository: MagicMock, waiter: MagicMock) -> CreateResourceStep[NewUser]:
-    return CreateResourceStep(repository=repository, waiter=waiter)
+    return CreateResourceStep(
+        repository=repository, waiter=waiter, credentials=SharedCredentialsProvider(credentials=CREDENTIALS)
+    )
 
 
 def test_execute_hands_the_created_resource_to_the_saga(step: CreateResourceStep[NewUser]) -> None:
