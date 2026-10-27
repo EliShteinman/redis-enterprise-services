@@ -3,8 +3,9 @@ import json
 import logging
 
 import requests
+import urllib3
 from pydantic import JsonValue
-from urllib3.exceptions import ConnectTimeoutError, MaxRetryError
+from urllib3.exceptions import ConnectTimeoutError, InsecureRequestWarning, MaxRetryError
 
 from redis_enterprise_services.config.edge_settings import (
     EdgeErrorCodeSettings,
@@ -25,6 +26,8 @@ from redis_enterprise_services.exceptions.edge import (
 TEXT_ENCODING: str = "utf-8"
 
 logger: logging.Logger = logging.getLogger(name=__name__)
+
+urllib3.disable_warnings(category=InsecureRequestWarning)
 
 
 def was_not_sent(*, error: requests.RequestException) -> bool:
@@ -53,6 +56,7 @@ class EdgeClient:
                 headers=self._headers(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
+                verify=False,
             )
         except requests.RequestException as error:
             raise self._transport_error(network=network, error=error) from error
