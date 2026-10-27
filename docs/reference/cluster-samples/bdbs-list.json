@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:9443/v1/bdbs",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "server": "envoy",
+      "date": "Mon, 26 Oct 2026 17:20:00 GMT",
+      "content-type": "application/json",
+      "cluster-state-id": "497",
+      "x-envoy-upstream-service-time": "7",
+      "cache-control": "no-cache, no-store, max-age=0",
+      "pragma": "no-cache",
+      "expires": "-1",
+      "content-length": "3",
+      "traceparent": "00-ec539f04e8d8b1e3051a1bca395dbb64-b09adf9a0220f636-01"
+    },
+    "body": []
+  }
+}

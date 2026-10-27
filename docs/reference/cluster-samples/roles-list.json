@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:9443/v1/roles",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "date": "Mon, 26 Oct 2026 17:20:00 GMT",
+      "x-envoy-upstream-service-time": "0",
+      "cache-control": "no-cache, no-store, max-age=0",
+      "pragma": "no-cache",
+      "expires": "-1",
+      "server": "envoy",
+      "content-length": "48",
+      "traceparent": "00-666fcc718866e016a5dc3105b4669d13-d62340288a19b877-01"
+    },
+    "body": [
+      {
+        "management": "admin",
+        "name": "Admin",
+        "uid": 1
+      }
+    ]
+  }
+}

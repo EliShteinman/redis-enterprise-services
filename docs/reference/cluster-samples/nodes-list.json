@@ -1,0 +1,123 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:9443/v1/nodes",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "server": "envoy",
+      "date": "Mon, 26 Oct 2026 17:20:00 GMT",
+      "content-type": "application/json",
+      "cluster-state-id": "497",
+      "x-envoy-upstream-service-time": "3",
+      "cache-control": "no-cache, no-store, max-age=0",
+      "pragma": "no-cache",
+      "expires": "-1",
+      "content-length": "1826",
+      "traceparent": "00-14fbfa72222819c302aad678f9e76d08-26f83f0c34a3173c-01"
+    },
+    "body": [
+      {
+        "accept_servers": true,
+        "addr": "172.23.0.2",
+        "architecture": "aarch64",
+        "bigredis_storage_path": "/var/opt/redislabs/flash",
+        "bigstore_enabled": false,
+        "cores": 12,
+        "ephemeral_storage_path": "/var/opt/redislabs/tmp",
+        "ephemeral_storage_size": 485473984512.0,
+        "external_addr": [],
+        "fips_enabled": false,
+        "flash_shard_count": 0,
+        "max_listeners": 100,
+        "max_redis_forks": -1,
+        "max_redis_servers": 100,
+        "max_slave_full_syncs": -1,
+        "node_guardrails_ingress_throttling_worker_limit_ops_per_sec": -1,
+        "os_family": "rhel",
+        "os_name": "rhel",
+        "os_semantic_version": "9.8",
+        "os_version": "Red Hat Enterprise Linux 9.8 (Plow)",
+        "persistent_storage_path": "/var/opt/redislabs/persist",
+        "persistent_storage_size": 485473984512.0,
+        "rack_id": "",
+        "ram_shard_count": 0,
+        "second_rack_id": "",
+        "shard_count": 0,
+        "shard_list": [],
+        "software_version": "8.2.0-125",
+        "status": "active",
+        "supported_database_versions": [
+          {
+            "bigstore_support": true,
+            "crdb_support": false,
+            "db_type": "memcached",
+            "version": "1.4.17"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "6.2",
+            "version": "6.2.13"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "7.2",
+            "version": "7.2.7"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "7.4",
+            "version": "7.4.3"
+          },
+          {
+            "bigstore_support": false,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "8.0",
+            "version": "8.0.2"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "8.2",
+            "version": "8.2.1"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "8.4",
+            "version": "8.4.0"
+          },
+          {
+            "bigstore_support": true,
+            "crdb_support": true,
+            "db_type": "redis",
+            "major": true,
+            "redis_version": "8.6",
+            "version": "8.6.2"
+          }
+        ],
+        "total_memory": 12526108672,
+        "uid": 1,
+        "uptime": 790,
+        "use_internal_ipv6": false
+      }
+    ]
+  }
+}

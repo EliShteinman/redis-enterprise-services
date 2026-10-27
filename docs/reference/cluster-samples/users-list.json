@@ -1,0 +1,37 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:9443/v1/users",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "date": "Mon, 26 Oct 2026 17:20:00 GMT",
+      "x-envoy-upstream-service-time": "1",
+      "cache-control": "no-cache, no-store, max-age=0",
+      "pragma": "no-cache",
+      "expires": "-1",
+      "server": "envoy",
+      "content-length": "225",
+      "traceparent": "00-8f072a3c975f30b18cb7b36e4d3aab5b-aa17f4a9fd75b92d-01"
+    },
+    "body": [
+      {
+        "auth_method": "regular",
+        "email": "admin@redis.local",
+        "email_alerts": true,
+        "last_login": 1793035200,
+        "name": "Administrator",
+        "password_issue_date": "2026-10-25T09:07:58Z",
+        "role": "admin",
+        "role_uids": [
+          1
+        ],
+        "status": "active",
+        "uid": 1
+      }
+    ]
+  }
+}

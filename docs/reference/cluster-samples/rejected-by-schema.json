@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:9443/v1/cluster",
+    "body": null
+  },
+  "error": {
+    "type": "ResponseRejectedError",
+    "code": "cluster_unavailable",
+    "message": "relay answered 502 response_rejected: {\"error\":\"response_rejected\",\"reason\":\"'uid' is a required property\",\"field\":\"$\"}"
+  }
+}

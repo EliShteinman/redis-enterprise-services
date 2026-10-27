@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://localhost:1/v1/cluster",
+    "body": null
+  },
+  "error": {
+    "type": "RequestNotSentError",
+    "code": "cluster_unavailable",
+    "message": "relay answered 502 connection_failed: {\"error\":\"connection_failed\",\"reason\":\"cannot reach https://localhost:1/v1/cluster: HTTPSConnectionPool(host='localhost', port=1): Max retries exceeded with url: /v1/cluster (Caused by NewConnectionError(\\\"HTTPSConnection(host='localhost', port=1): Failed to establish a new connection: [Errno 61] Connection refused\\\"))\"}"
+  }
+}
