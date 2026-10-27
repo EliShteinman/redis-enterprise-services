@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.user_settings import UserSettings
-from redis_enterprise_services.users.models import CreatedUser, NewUser, User, UserCreationBody
+from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 
 USER_LIST_ADAPTER: TypeAdapter[list[User]] = TypeAdapter(type=list[User])
 
@@ -23,7 +23,7 @@ class UserRepository:
     def create(self, *, target: ClusterTarget, user: NewUser) -> CreatedUser:
         logger.info(msg=f"creating user {user.name} with roles {user.role_uids}")
         body: JsonValue = self._api.send(
-            target=target, method="POST", path=self._settings.collection_path, body=creation_body(user=user)
+            target=target, method="POST", path=self._settings.collection_path, body=user.model_dump()
         ).body
         return CreatedUser(user=User.model_validate(obj=body), action_uid=self._action_uid(body=body))
 
@@ -42,7 +42,3 @@ class UserRepository:
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
         return string_field(body=body, name=self._cluster.fields.action_uid)
-
-
-def creation_body(*, user: NewUser) -> dict[str, JsonValue]:
-    return UserCreationBody(name=user.name, password=user.password, role_uids=user.role_uids).model_dump()

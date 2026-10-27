@@ -1,7 +1,9 @@
 import logging
+from http import HTTPStatus
 
 from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.exceptions.cluster import ClusterRequestError
 from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 from redis_enterprise_services.users.repository import UserRepository
 
@@ -31,5 +33,11 @@ class UserCreate:
         if self._created is None:
             return
         logger.info(msg=f"removing created user {self._created.name}")
-        action_uid: str | None = self._repository.delete(target=self._target, uid=self._created.uid)
+        try:
+            action_uid: str | None = self._repository.delete(target=self._target, uid=self._created.uid)
+        except ClusterRequestError as error:
+            if error.cluster_status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.info(msg=f"user {self._created.name} is already gone")
+            return
         self._action_waiter.wait(target=self._target, action_uid=action_uid)

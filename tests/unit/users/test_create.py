@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.edge.models import ClusterCredentials
-from redis_enterprise_services.exceptions.cluster import ClusterActionTimeoutError
+from redis_enterprise_services.exceptions.cluster import ClusterActionTimeoutError, ClusterRequestError
 from redis_enterprise_services.users.create import UserCreate
 from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 from redis_enterprise_services.users.repository import UserRepository
@@ -16,7 +16,7 @@ TARGET: ClusterTarget = ClusterTarget(
     api_url="https://cluster.local:9443",
     credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
 )
-NEW_USER: NewUser = NewUser(name="app-user", password=SecretStr("Aa1!password"), role_uids=[5])
+NEW_USER: NewUser = NewUser(name="app-user", password="Aa1!password", role_uids=[5])
 CREATED: User = User(uid=6, name="app-user", role_uids=[5])
 ACTION_UID: str = "c7d4bccf-9462-4924-8c8f-345bd94fe89c"
 
@@ -68,3 +68,12 @@ def test_a_user_whose_action_did_not_finish_is_still_compensated(
     step.compensate()
 
     repository.delete.assert_called_once_with(target=TARGET, uid=CREATED.uid)
+
+
+def test_compensate_accepts_a_user_that_is_already_gone(repository: MagicMock, step: UserCreate) -> None:
+    repository.delete.side_effect = ClusterRequestError(
+        message="cluster answered 404", cluster_status_code=404, error_code="user_not_exist"
+    )
+    step.execute()
+
+    step.compensate()
