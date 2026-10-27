@@ -30,7 +30,7 @@ class ResourceEndpoint:
             resource: NamedResource = NamedResource.model_validate(obj=answer)
         except ValidationError as error:
             raise UnreadableAnswerError(
-                message=f"created {body.get('name')} but cannot read the answer: {error}"
+                message=f"created {body.get('name')}, unreadable answer fields {failed_fields(error=error)}"
             ) from error
         return CreatedResource(uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=answer))
 
@@ -45,7 +45,17 @@ class ResourceEndpoint:
         answer: JsonValue = self._api.send(
             target=target, method="GET", path=self._settings.collection_path
         ).body
-        return [resource for resource in NAMED_RESOURCE_LIST.validate_python(answer) if resource.name == name]
+        try:
+            resources: list[NamedResource] = NAMED_RESOURCE_LIST.validate_python(answer)
+        except ValidationError as error:
+            raise UnreadableAnswerError(
+                message=f"cannot read {self._settings.collection_path}, fields {failed_fields(error=error)}"
+            ) from error
+        return [resource for resource in resources if resource.name == name]
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
         return string_field(body=body, name=self._cluster.fields.action_uid)
+
+
+def failed_fields(*, error: ValidationError) -> list[str]:
+    return [".".join(str(part) for part in detail["loc"]) for detail in error.errors(include_input=False)]

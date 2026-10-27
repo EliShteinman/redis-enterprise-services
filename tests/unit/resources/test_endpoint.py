@@ -58,3 +58,14 @@ def test_create_reports_an_unreadable_answer_as_its_own_error() -> None:
 
     with pytest.raises(expected_exception=UnreadableAnswerError):
         endpoint.create(target=TARGET, body={"name": "app-user"})
+
+
+def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
+    endpoint: ResourceEndpoint = endpoint_answering(
+        answer={"name": "db1", "authentication_redis_pass": "s3cret"}
+    )
+
+    with pytest.raises(expected_exception=UnreadableAnswerError) as unreadable:
+        endpoint.create(target=TARGET, body={"name": "db1"})
+
+    assert "s3cret" not in unreadable.value.message

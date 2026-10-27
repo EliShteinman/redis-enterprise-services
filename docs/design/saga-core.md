@@ -95,6 +95,7 @@ class PlannedStep[TInput, TResult]:
 | `ClusterRequestError` זמני (`409 busy`, `wrong_cluster_state_id`, מהקונפיג) | ניסיון חוזר לפי מדיניות |
 | `ClusterRequestError` אחר | הצעד נכשל ⇐ פיצוי |
 | `InvalidEdgeRequestError` | הצעד נכשל ⇐ פיצוי (באג אצלנו) |
+| `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
 | כל שגיאת קצה אחרת, timeout של המתנה, תשובה שלא נקראת (`UnreadableAnswerError`) | `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ ניסיון חוזר. גם הבדיקה נכשלה ⇐ ממתינים ומנסים שוב |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי |
 
