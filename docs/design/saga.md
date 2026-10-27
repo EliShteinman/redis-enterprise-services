@@ -280,6 +280,21 @@ stateDiagram-v2
   | `replication` עם node אחד | `406`: צריך לפחות 2 nodes | - | - |
 
   צעד עריכה שמגדיל `shards_count` מסומן pivot. הרשימה נשמרת בקונפיגורציה.
+- **עריכה דרך ה-relay, מול cluster1** (V18):
+
+  | מה נבדק | תוצאה |
+  |---|---|
+  | `GET /v1/bdbs/{uid}?fields=memory_size,eviction_policy` | `200`, רק השדות שביקשנו, עם `cluster-state-id`. `uid` לא נוסף מעצמו |
+  | `fields` עם שם שדה שלא קיים | `406 invalid_fields_query_param` |
+  | `fields` עם שדה קיים שלא מוגדר ב-DB (`tags`, `backup_location`, `avoid_nodes`) | `200` בלי השדה, בלי שגיאה. לכן עדכון של שדה כזה נדחה לפני ה-`PUT`, כי אין מה להחזיר בביטול |
+  | `tags` | שדה רגיל של ה-bdb, ואין לו מקום אחר. לפני שהוגדר הוא חסר גם ב-`GET` המלא. אחרי `PUT` הוא חוזר, והקלאסטר מוסיף לכל tag את `isSystem: false`. `PUT` של ה-snapshot (כולל `isSystem`) מחזיר אותו. `[]` מנקה, ואחריו השדה חוזר כ-`[]`. `null` נדחה ב-`400 invalid_schema` |
+  | `PUT` עם שדות בודדים | `200`, ה-bdb המלא חוזר, `status: active-change-pending` |
+  | `PUT` נוסף בזמן `active-change-pending` | `409 db_busy`. לכן אחרי כל `PUT` מחכים ל-`active` (כשנייה ב-DB ריק) |
+  | `PUT` עם ה-snapshot (אותם שדות, ערכים ישנים) | הערכים חזרו |
+  | `PUT` עם אותו ערך שכבר קיים | `200`, וגם הוא עובר ל-`active-change-pending` |
+  | `PUT` עם שדה שלא קיים | `400 invalid_schema` |
+  | `PUT` עם `uid` | `500 internal_error`: "A uid is already assigned" |
+  | `cluster-state-id` | עולה גם בלי שינוי שלנו, כשה-DB עובר מ-pending ל-`active`. לכן לוקחים אותו מה-`GET` שממש לפני ה-`PUT` |
 - **לא קובעים `uid` ביצירה רגילה.** לפי התיעוד, מי שקובע uid חייב לקבוע אותו בכל ה-DBs שאחריו, כי המספור
   האוטומטי עלול להתנגש בו.
 - **ייחודיות שם DB:** הקלאסטר לא אוכף אותה ב-API (V2), בניגוד ל-UI. הפונה לשירות אחראי לוולידציה, והשירות
@@ -312,6 +327,12 @@ stateDiagram-v2
   המקומי. לכן שואלים כל קלאסטר בנפרד (נבדק: 1 ב-cluster1 ו-2 ב-cluster2).
 - **סודות:** התשובה כוללת `authentication_admin_pass` לכל instance, ו-`authentication_redis_pass` ב-bdb המקומי. מסתירים אותם כמו ב-bdb.
 - **Modules:** ה-CRDB נוצר עם `search` ו-`ReJSON` בלבד.
+- **`tags` ב-AA** (V19, נבדק על CRDB זמני בשני הקלאסטרים). התיעוד לא מזכיר `tags` ב-CRDB, אבל בפועל:
+  - `PATCH /v1/crdbs/{guid}` עם `default_db_config.tags`: ה-task מסתיים, וה-tags מופיעים ב-`default_db_config` של ה-CRDB
+    וגם ב-bdb המקומי בשני הקלאסטרים.
+  - `PUT /v1/bdbs/{uid}` עם `tags` על ה-bdb המקומי של קלאסטר אחד: ה-tags מופיעים רק בו. בקלאסטר השני אין tags,
+    וגם ה-CRDB לא יודע עליהם.
+  - לכן ב-AA מנהלים tags דרך ה-CRDB, ולא דרך ה-bdb המקומי.
 - **ביטול task שעוד לא הגיע ל-commit:** `POST /v1/crdb_tasks/{id}/actions/cancel`. במקרה של timeout
   ביצירה, עדיף לנסות ביטול לפני `DELETE`. **לא משתמשים ב-`force`,** כי הוא עלול לשבור את ה-CRDB.
 - **אתר שנופל באמצע יצירה (V13):**
@@ -333,14 +354,23 @@ stateDiagram-v2
 
 | פעולה | API | ביטול | הפיכות |
 |---|---|---|---|
-| הוספת זוג | `GET` לרשימה הנוכחית, ואז `PUT /v1/bdbs/{uid}` עם הרשימה והזוג החדש | `GET` לרשימה הנוכחית, ואז `PUT` בלי הזוג **שהוספנו** | ✅ |
-| הסרת זוג | `GET`, ואז `PUT` בלי הזוג | `GET`, ואז `PUT` עם הזוג | ✅ |
+| עדכון הרשאות | עדכון DB (5.4) של השדה `roles_permissions`: `GET ?fields=roles_permissions` ל-snapshot, ואז `PUT` עם הרשימה החדשה | `PUT` עם ה-snapshot | ✅ |
 
-- **הביטול מסיר או מחזיר רק את מה שהצעד שינה,** ולא משחזר את כל הרשימה מ-snapshot. כך שינוי שמישהו אחר
-  עשה במקביל לא נדרס.
-- **ב-AA** אין `roles_permissions` בקונפיגורציה של CRDB. לכל קלאסטר יש bdb מקומי משלו: ה-uid שלו נמצא
-  ב-`local_databases` (או ב-`instances[].db_uid`) של `GET /v1/crdbs/{guid}` באותו קלאסטר. מעדכנים כל אחד מהם
-  בנפרד.
+- **זו אותה אבן בניין של עדכון DB (5.4),** עם שדה אחד.
+- **הכל או כלום** (החוזה): ה-`PUT` שולח את הרשימה **המלאה** של כל הזוגות של ה-DB, והיא מחליפה את הקודמת. לא
+  שולחים "מה להוסיף" או "מה להסיר", ואין עדכון חלקי.
+- **`PUT` אחד בסוף, לכל הזוגות** (החוזה): בקשה שמוסיפה כמה יוזרים יוצרת קודם את כל ה-ACLs, ה-roles וה-users,
+  ורק בצעד האחרון נוגעת ב-DB, ב-`PUT` אחד שכולל את כל הזוגות.
+- **הרשאות לא נערכות יחד עם שינויים אחרים ב-DB** (החוזה), חוץ מההקמה הראשונית. לכן החזרת ה-snapshot לא דורסת
+  שינוי אחר.
+- **ב-AA** אין `roles_permissions` ב-`default_db_config`, כי לכל קלאסטר יש uids משלו ל-role ול-ACL. יש שתי דרכים
+  שעובדות. **הוחלט: `PATCH` אחד לשני הקלאסטרים**, כדי שיהיו קריאה אחת, snapshot אחד וביטול אחד:
+  - `PUT` לכל bdb מקומי בנפרד. ה-uid שלו נמצא ב-`local_databases` (או ב-`instances[].db_uid`) של
+    `GET /v1/crdbs/{guid}` באותו קלאסטר.
+  - **`PATCH /v1/crdbs/{guid}` אחד** עם `instances[].db_config.roles_permissions`, רשימה משלו לכל instance (V20).
+    התיעוד לא מזכיר את השדה ב-`db_config`, אבל נבדק על CRDB בשני הקלאסטרים: ה-task מסתיים כ-7 שניות, כל bdb מקומי
+    מקבל את הזוגות שלו, וה-CRDB שומר אותם ב-`instances[].db_config`. `PATCH` עם `[]` בכל instance מחזיר את שניהם
+    לרשימה ריקה. ה-id של כל instance ושם הקלאסטר שלו נמצאים ב-`instances` של `GET /v1/crdbs/{guid}`.
 - **אין צורך להחליף uid:** role ו-ACL נוצרים מחדש עם אותו uid (5.1, 5.2), ולכן כל הפניה אליהם נשארת תקינה.
 
 ---
@@ -369,7 +399,8 @@ stateDiagram-v2
 
 ## 7. תרחישים: מה כל פקודה מריצה
 
-ב-AA כל צעד מקומי (ACL, role, user, הרשאה) מוכפל לכל קלאסטר, לפי סעיף 6.
+ב-AA כל צעד מקומי (ACL, role, user) מוכפל לכל קלאסטר, לפי סעיף 6. ההרשאות של כל הקלאסטרים הן צעד אחד: `PATCH`
+אחד ל-CRDB (5.6).
 
 ### 7.1 יצירת DB עם N יוזרים (אתר בודד)
 
@@ -377,7 +408,7 @@ stateDiagram-v2
 |---|---|---|
 | 1 | יצירת DB, המתנה ל-`active` | הפיך |
 | 2..N | לכל יוזר: יצירת ACL, יצירת role עם `resources` של ה-DB, יצירת user עם `role_uids` | הפיך |
-| N+1 | לכל יוזר: הוספת זוג `role ↔ ACL` ל-`roles_permissions` | הפיך |
+| N+1 | `PUT` אחד של `roles_permissions` עם הזוגות `role ↔ ACL` של כל היוזרים (5.6) | הפיך |
 
 אין בה pivot, ולכן כשל בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
 
@@ -388,7 +419,7 @@ stateDiagram-v2
 | 1 | יצירת CRDB (`X-Task-ID`), המתנה ל-task | הפיך |
 | 2 | לכל קלאסטר: איתור ה-bdb המקומי, ושמירת ה-uid בהקשר | קריאה בלבד |
 | 3..N | לכל קלאסטר ולכל יוזר: ACL, role עם `resources` של ה-bdb **המקומי**, user | הפיך |
-| N+1 | לכל קלאסטר ולכל יוזר: הרשאה על ה-bdb המקומי | הפיך |
+| N+1 | `PATCH` אחד ל-CRDB, עם `roles_permissions` המלא של כל instance ב-`instances[].db_config` (5.6, V20) | הפיך |
 
 ### 7.3 יצירת DB בלי יוזרים / הוספת יוזר ל-DB קיים
 
@@ -547,7 +578,11 @@ stateDiagram-v2
   `SET NX` ו-TTL. ההחלטה צמודה להחלטה על שמירת מצב ה-Saga (סעיף 9).
 
 **מה הנעילה לא פותרת:** שינוי שמגיע מחוץ לשירות, למשל דרך ה-UI של Redis או דרך הקריאה הישירה. ההגנה כאן היא
-שהביטול מבוסס דלתא (5.6), ועדכון מותנה דרך `cluster-state-id`.
+החוזה (הרשאות לא נערכות יחד עם שינויים אחרים, 5.6), ועדכון מותנה דרך `cluster-state-id`.
+
+**ב-AA לא נבדק** אם `PATCH /v1/crdbs/{guid}` מכבד את `cluster-state-id`, ואיזה מזהה הוא יקבל כשהוא משנה כמה
+קלאסטרים. V11 נבדק רק על `PUT /v1/bdbs/{uid}`. לכן עד שזה ייבדק, ההרשאות ב-AA (והביטול שלהן) נשענות רק על
+הנעילה ועל החוזה.
 
 ### עדכון מותנה (`cluster-state-id`, נבדק V11)
 
@@ -561,7 +596,7 @@ stateDiagram-v2
 | `PUT` אחרי שינוי ב-DB **אחר** | **נדחה**. המזהה שייך לכל הקלאסטר, ולא ל-DB אחד. |
 | `PUT` אחרי יצירת ACL | עובר. יצירת ACL לא משנה את המזהה. |
 
-**השימוש:** כל צעד שקורא ואחר כך כותב את ה-DB (הוספה והסרה של זוג ב-`roles_permissions`, וגם הביטולים שלהן) שולח
+**השימוש:** כל צעד שקורא ואחר כך כותב את ה-DB (עדכון DB, כולל `roles_permissions`, וגם הביטול שלו) שולח
 את המזהה שקיבל ב-`GET`. כשמתקבל `wrong_cluster_state_id`, הצעד קורא שוב, מחשב מחדש ומנסה שוב, עד מספר ניסיונות
 שמוגדר בקונפיגורציה. המזהה שייך לכל הקלאסטר, ולכן יהיו גם דחיות מיותרות, כששינוי ב-DB אחר שינה את המזהה. במקרה
 כזה הניסיון הבא פשוט עובר.
@@ -595,6 +630,9 @@ stateDiagram-v2
 | V13 | CRDB שאתר נפל באמצע היצירה שלו | **ה-task נתקע ב-`started` עד שהאתר חוזר.** cancel מנקה את ה-bdb החלקי כשהאתר חוזר. בלי cancel היצירה מסתיימת. ראו 5.5. |
 | V16 | ייחודיות של `name` ביוזר, בלי `email` | **נאכפת.** שם קיים נדחה ב-`409 name_already_exists`, גם כשנשלח `email`. ההשוואה תלוית רישיות: `UNIQ-TEST` נוצר לצד `uniq-test`. `email` לא חובה, וכמה יוזרים בלי `email` מתקיימים יחד. נבדק 2026-10-25. |
 | V14 | dry_run של CRDB כשרק אתר אחד בעייתי | **נכשל, והשגיאה מציינת את האתר.** נבדק: פורט תפוס רק ב-cluster2, סיסמה שגויה רק ל-cluster2, סיסמה שגויה רק ל-cluster1. כששני האתרים בעייתיים מדווח רק cluster1. בשום מקרה לא נוצר כלום. |
+| V18 | עריכת bdb דרך ה-relay (`GET ?fields=`, `PUT`, המתנה ל-`active`, החזרת snapshot) | **עובד.** שדה שלא מוגדר ב-DB לא חוזר ב-`GET ?fields=`. `PUT` בזמן `active-change-pending` נדחה ב-`409 db_busy`. ראו 5.4. נבדק 2026-10-27. |
+| V19 | `tags` ב-AA | **שייכים ל-CRDB.** `PATCH` ל-`default_db_config.tags` מגיע לשני הקלאסטרים. `PUT` ל-bdb מקומי נשאר רק בו. ראו 5.5. נבדק 2026-10-27. |
+| V20 | `roles_permissions` לשני הקלאסטרים ב-`PATCH` אחד | **עובד.** `instances[].db_config.roles_permissions`, רשימה לכל instance. ראו 5.6. נבדק 2026-10-27. |
 
 ### עוד לא נבדק
 
@@ -645,8 +683,6 @@ classDiagram
     class CreateResourceStep
     class UpdateResourceStep
     class DeleteResourceStep
-    class AddDatabasePermissionStep
-    class RemoveDatabasePermissionStep
 
     class ResourceRepository~TSpec~ {
         <<interface>>
@@ -697,13 +733,9 @@ classDiagram
     SagaStep <|-- CreateResourceStep
     SagaStep <|-- UpdateResourceStep
     SagaStep <|-- DeleteResourceStep
-    SagaStep <|-- AddDatabasePermissionStep
-    SagaStep <|-- RemoveDatabasePermissionStep
     CreateResourceStep --> ResourceRepository
     UpdateResourceStep --> ResourceRepository
     DeleteResourceStep --> ResourceRepository
-    AddDatabasePermissionStep --> DatabaseRepository
-    RemoveDatabasePermissionStep --> DatabaseRepository
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. UserRepository
@@ -742,7 +774,7 @@ classDiagram
 | D1 | ~~מחיקה~~ **הוחלט:** כל מה שהפיך קודם, מחיקת ה-DB אחרונה. כשל לפניה ⇐ rollback מלא. | סעיף 7.7 |
 | D2 | ~~סיסמה ישנה~~ **הוחלט:** ה-UI שולח את הסיסמה הישנה, וכך החלפת סיסמה הפיכה. במחיקת יוזר לא צריך אותה (7.6). | סעיף 5.3 |
 | D9 | ~~היקף בקשה~~ **הוחלט:** שתי בקשות מכילות כמה אובייקטים: היצירה הראשונה, ועריכת רשימת היוזרים של DB. עריכת DB נוגעת רק באובייקט ה-DB. כל בקשה יכולה לרוץ על כמה אתרים (AA). | סעיף 7.4, שאלה 10 ב-plan |
-| D3 | ~~הסרת הרשאה בביטול~~ **הוחלט:** הביטול מבטל רק את השינוי של הצעד עצמו, ולא נוגע בשינויים של אחרים. | סעיף 5.6 |
+| D3 | ~~הסרת הרשאה בביטול~~ **הוחלט:** הרשאות הן הכל או כלום. ה-`PUT` שולח את הרשימה המלאה, והביטול מחזיר את ה-snapshot. זה בטוח, כי לפי החוזה הרשאות לא נערכות יחד עם שינויים אחרים. | סעיף 5.6 |
 | D4 | ~~מצב Saga~~ **הוחלט:** Redis, גם לרישום וגם לנעילה. ממשק מהיום הראשון, ומימוש בזיכרון לפיתוח בשלב 1. | סעיף 9 |
 | D5 | ~~אחרי קריסה~~ **הוחלט:** לא ממשיכים ולא מבטלים. עוצרים להתערבות ידנית ומחזירים כישלון ברור. | סעיף 9 |
 | D6 | ~~כשל של פיצוי~~ **הוחלט:** ממשיכים לבטל את השאר. הפעולה מסומנת ככישלון, עם הודעה שלא הכל בוטל ועם רשימת מה שנכשל. | סעיף 8 |

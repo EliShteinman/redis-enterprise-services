@@ -1,0 +1,6 @@
+database:
+  path: /v1/bdbs/{uid}
+  active_status: active
+  wait:
+    interval_seconds: 1
+    timeout_seconds: 120
