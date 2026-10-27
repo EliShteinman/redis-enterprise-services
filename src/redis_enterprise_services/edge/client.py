@@ -43,20 +43,19 @@ def basic_authorization(*, username: str, password: str) -> str:
 
 
 class EdgeClient:
-    def __init__(self, *, settings: EdgeSettings, session: requests.Session) -> None:
+    def __init__(self, *, settings: EdgeSettings) -> None:
         self._settings: EdgeSettings = settings
-        self._session: requests.Session = session
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
         endpoint: NetworkSettings = self._network(name=network)
         logger.debug(msg=f"{request.method} {request.url} through {network}")
         try:
-            response: requests.Response = self._session.post(
+            response: requests.Response = requests.post(
                 url=endpoint.url,
                 headers=self._headers(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
-                verify=False,
+                verify=False,  # noqa: S501 - the firewall uses internal certificates, not checked for now (C0e)
             )
         except requests.RequestException as error:
             raise self._transport_error(network=network, error=error) from error

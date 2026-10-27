@@ -3,7 +3,6 @@ import io
 import pytest
 import requests
 from pydantic import SecretStr
-from requests.adapters import BaseAdapter
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings
@@ -26,21 +25,6 @@ REQUEST: ClusterRequest = ClusterRequest(
 )
 
 
-class FakeRelay(BaseAdapter):
-    def __init__(self, *, answer: requests.Response | requests.RequestException) -> None:
-        super().__init__()
-        self._answer: requests.Response | requests.RequestException = answer
-
-    def send(self, request: requests.PreparedRequest, **kwargs: object) -> requests.Response:
-        if isinstance(self._answer, requests.RequestException):
-            raise self._answer
-        self._answer.request = request
-        return self._answer
-
-    def close(self) -> None:
-        pass
-
-
 @pytest.fixture
 def settings() -> EdgeSettings:
     return Settings().edge
@@ -54,17 +38,28 @@ def relay_answer(*, status_code: int, headers: dict[str, str], body: bytes = b"{
     return response
 
 
-def send(*, settings: EdgeSettings, answer: requests.Response | requests.RequestException) -> ClusterResponse:
-    session: requests.Session = requests.Session()
-    session.mount(prefix="http://", adapter=FakeRelay(answer=answer))
-    return EdgeClient(settings=settings, session=session).send(network=NETWORK, request=REQUEST)
+def send(
+    *,
+    settings: EdgeSettings,
+    answer: requests.Response | requests.RequestException,
+    monkeypatch: pytest.MonkeyPatch,
+) -> ClusterResponse:
+    def fake_post(**kwargs: object) -> requests.Response:
+        if isinstance(answer, requests.RequestException):
+            raise answer
+        return answer
+
+    monkeypatch.setattr(target=requests, name="post", value=fake_post)
+    return EdgeClient(settings=settings).send(network=NETWORK, request=REQUEST)
 
 
 @pytest.mark.parametrize(argnames="status_code", argvalues=[200, 404])
-def test_an_answer_without_edge_error_is_the_cluster_answer(settings: EdgeSettings, status_code: int) -> None:
+def test_an_answer_without_edge_error_is_the_cluster_answer(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings, status_code: int
+) -> None:
     answer: requests.Response = relay_answer(status_code=status_code, headers={})
 
-    assert send(settings=settings, answer=answer).status_code == status_code
+    assert send(settings=settings, answer=answer, monkeypatch=monkeypatch).status_code == status_code
 
 
 @pytest.mark.parametrize(
@@ -77,21 +72,27 @@ def test_an_answer_without_edge_error_is_the_cluster_answer(settings: EdgeSettin
         ("something_new", OutcomeUnknownError),
     ],
 )
-def test_an_edge_error_code_is_sorted(settings: EdgeSettings, code: str, expected: type[EdgeError]) -> None:
+def test_an_edge_error_code_is_sorted(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings, code: str, expected: type[EdgeError]
+) -> None:
     answer: requests.Response = relay_answer(status_code=502, headers={settings.headers.error: code})
 
     with pytest.raises(expected_exception=expected):
-        send(settings=settings, answer=answer)
+        send(settings=settings, answer=answer, monkeypatch=monkeypatch)
 
 
-def test_a_rejection_keeps_the_cluster_status(settings: EdgeSettings) -> None:
+def test_a_rejection_keeps_the_cluster_status(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
+) -> None:
     headers: dict[str, str] = {
         settings.headers.error: settings.error_codes.response_rejected,
         settings.headers.cluster_status: "201",
     }
 
     with pytest.raises(expected_exception=ResponseRejectedError) as rejection:
-        send(settings=settings, answer=relay_answer(status_code=502, headers=headers))
+        send(
+            settings=settings, answer=relay_answer(status_code=502, headers=headers), monkeypatch=monkeypatch
+        )
 
     assert rejection.value.cluster_status_code == 201
 
@@ -122,7 +123,10 @@ def test_a_rejection_keeps_the_cluster_status(settings: EdgeSettings) -> None:
     ],
 )
 def test_a_transport_error_is_sorted(
-    settings: EdgeSettings, error: requests.RequestException, expected: type[EdgeError]
+    monkeypatch: pytest.MonkeyPatch,
+    settings: EdgeSettings,
+    error: requests.RequestException,
+    expected: type[EdgeError],
 ) -> None:
     with pytest.raises(expected_exception=expected):
-        send(settings=settings, answer=error)
+        send(settings=settings, answer=error, monkeypatch=monkeypatch)
