@@ -662,8 +662,6 @@ classDiagram
     class CreateResourceStep
     class UpdateResourceStep
     class DeleteResourceStep
-    class AddDatabasePermissionStep
-    class RemoveDatabasePermissionStep
 
     class ResourceRepository~TSpec~ {
         <<interface>>
@@ -714,13 +712,9 @@ classDiagram
     SagaStep <|-- CreateResourceStep
     SagaStep <|-- UpdateResourceStep
     SagaStep <|-- DeleteResourceStep
-    SagaStep <|-- AddDatabasePermissionStep
-    SagaStep <|-- RemoveDatabasePermissionStep
     CreateResourceStep --> ResourceRepository
     UpdateResourceStep --> ResourceRepository
     DeleteResourceStep --> ResourceRepository
-    AddDatabasePermissionStep --> DatabaseRepository
-    RemoveDatabasePermissionStep --> DatabaseRepository
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. UserRepository
@@ -759,7 +753,7 @@ classDiagram
 | D1 | ~~מחיקה~~ **הוחלט:** כל מה שהפיך קודם, מחיקת ה-DB אחרונה. כשל לפניה ⇐ rollback מלא. | סעיף 7.7 |
 | D2 | ~~סיסמה ישנה~~ **הוחלט:** ה-UI שולח את הסיסמה הישנה, וכך החלפת סיסמה הפיכה. במחיקת יוזר לא צריך אותה (7.6). | סעיף 5.3 |
 | D9 | ~~היקף בקשה~~ **הוחלט:** שתי בקשות מכילות כמה אובייקטים: היצירה הראשונה, ועריכת רשימת היוזרים של DB. עריכת DB נוגעת רק באובייקט ה-DB. כל בקשה יכולה לרוץ על כמה אתרים (AA). | סעיף 7.4, שאלה 10 ב-plan |
-| D3 | ~~הסרת הרשאה בביטול~~ **הוחלט:** הביטול מבטל רק את השינוי של הצעד עצמו, ולא נוגע בשינויים של אחרים. | סעיף 5.6 |
+| D3 | ~~הסרת הרשאה בביטול~~ **הוחלט:** הרשאות הן הכל או כלום. ה-`PUT` שולח את הרשימה המלאה, והביטול מחזיר את ה-snapshot. זה בטוח, כי לפי החוזה הרשאות לא נערכות יחד עם שינויים אחרים. | סעיף 5.6 |
 | D4 | ~~מצב Saga~~ **הוחלט:** Redis, גם לרישום וגם לנעילה. ממשק מהיום הראשון, ומימוש בזיכרון לפיתוח בשלב 1. | סעיף 9 |
 | D5 | ~~אחרי קריסה~~ **הוחלט:** לא ממשיכים ולא מבטלים. עוצרים להתערבות ידנית ומחזירים כישלון ברור. | סעיף 9 |
 | D6 | ~~כשל של פיצוי~~ **הוחלט:** ממשיכים לבטל את השאר. הפעולה מסומנת ככישלון, עם הודעה שלא הכל בוטל ועם רשימת מה שנכשל. | סעיף 8 |
