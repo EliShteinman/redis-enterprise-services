@@ -3,33 +3,32 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
+from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.databases.update import DatabaseUpdate
+from redis_enterprise_services.databases.update import DatabaseUpdate, DatabaseUpdateInput
 from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 UID: int = 1
+CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
+ADDRESS: ClusterAddress = ClusterAddress(network="local", api_url="https://cluster.local:9443")
 TARGET: ClusterTarget = ClusterTarget(
-    network="local",
-    api_url="https://cluster.local:9443",
-    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
+    network=ADDRESS.network, api_url=ADDRESS.api_url, credentials=CREDENTIALS
 )
 NEW_VALUES: dict[str, JsonValue] = {"memory_size": 200, "eviction_policy": "noeviction"}
 OLD_VALUES: dict[str, JsonValue] = {"memory_size": 100, "eviction_policy": "volatile-lru"}
-SNAPSHOT_STATE_ID: int = 7
-CURRENT_STATE_ID: int = 9
+SNAPSHOT: DatabaseFields = DatabaseFields(values=OLD_VALUES, cluster_state_id=7)
+CURRENT: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
+STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(cluster=ADDRESS, uid=UID, values=NEW_VALUES)
 
 
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=DatabaseRepository, instance=True)
-    repository.get_fields.side_effect = [
-        DatabaseFields(values=OLD_VALUES, cluster_state_id=SNAPSHOT_STATE_ID),
-        DatabaseFields(values=NEW_VALUES, cluster_state_id=CURRENT_STATE_ID),
-    ]
+    repository.get_fields.side_effect = [SNAPSHOT, CURRENT]
     return repository
 
 
@@ -41,23 +40,35 @@ def active_waiter() -> MagicMock:
 @pytest.fixture
 def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
     return DatabaseUpdate(
-        repository=repository, active_waiter=active_waiter, target=TARGET, uid=UID, values=NEW_VALUES
+        repository=repository,
+        active_waiter=active_waiter,
+        credentials=SharedCredentialsProvider(credentials=CREDENTIALS),
     )
 
 
+def run(*, update: DatabaseUpdate) -> list[DatabaseFields]:
+    kept: list[DatabaseFields] = []
+    update.execute(step_input=STEP_INPUT, keep_result=kept.append)
+    return kept
+
+
 def test_execute_snapshots_only_the_fields_it_changes(repository: MagicMock, update: DatabaseUpdate) -> None:
-    update.execute()
+    run(update=update)
 
     repository.get_fields.assert_called_once_with(target=TARGET, uid=UID, fields=list(NEW_VALUES))
+
+
+def test_execute_hands_the_snapshot_to_the_saga(update: DatabaseUpdate) -> None:
+    assert run(update=update) == [SNAPSHOT]
 
 
 def test_execute_puts_the_new_values_with_the_snapshot_state_id(
     repository: MagicMock, update: DatabaseUpdate
 ) -> None:
-    update.execute()
+    run(update=update)
 
     repository.update.assert_called_once_with(
-        target=TARGET, uid=UID, values=NEW_VALUES, cluster_state_id=SNAPSHOT_STATE_ID
+        target=TARGET, uid=UID, values=NEW_VALUES, cluster_state_id=SNAPSHOT.cluster_state_id
     )
 
 
@@ -68,26 +79,21 @@ def test_execute_waits_for_active_after_the_put(
     steps.attach_mock(mock=repository.update, attribute="update")
     steps.attach_mock(mock=active_waiter.wait, attribute="wait")
 
-    update.execute()
+    run(update=update)
 
     assert steps.mock_calls == [
-        call.update(target=TARGET, uid=UID, values=NEW_VALUES, cluster_state_id=SNAPSHOT_STATE_ID),
+        call.update(target=TARGET, uid=UID, values=NEW_VALUES, cluster_state_id=SNAPSHOT.cluster_state_id),
         call.wait(target=TARGET, uid=UID),
     ]
 
 
-def test_execute_refuses_a_field_missing_from_the_snapshot(repository: MagicMock) -> None:
+def test_execute_refuses_a_field_missing_from_the_snapshot(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
     repository.get_fields.side_effect = [DatabaseFields(values={"memory_size": 100}, cluster_state_id=1)]
-    update: DatabaseUpdate = DatabaseUpdate(
-        repository=repository,
-        active_waiter=create_autospec(spec=DatabaseActiveWaiter, instance=True),
-        target=TARGET,
-        uid=UID,
-        values=NEW_VALUES,
-    )
 
     with pytest.raises(expected_exception=UnrestorableFieldsError):
-        update.execute()
+        run(update=update)
 
     repository.update.assert_not_called()
 
@@ -95,17 +101,26 @@ def test_execute_refuses_a_field_missing_from_the_snapshot(repository: MagicMock
 def test_compensate_puts_the_snapshot_back_with_the_current_state_id(
     repository: MagicMock, update: DatabaseUpdate
 ) -> None:
-    update.execute()
-    repository.update.reset_mock()
+    repository.get_fields.side_effect = [CURRENT]
 
-    update.compensate()
+    update.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
 
     repository.update.assert_called_once_with(
-        target=TARGET, uid=UID, values=OLD_VALUES, cluster_state_id=CURRENT_STATE_ID
+        target=TARGET, uid=UID, values=OLD_VALUES, cluster_state_id=CURRENT.cluster_state_id
     )
 
 
-def test_compensate_without_a_snapshot_changes_nothing(repository: MagicMock, update: DatabaseUpdate) -> None:
-    update.compensate()
+def test_find_outcome_keeps_the_snapshot_when_the_new_values_are_in_place(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [CURRENT]
 
-    repository.update.assert_not_called()
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) == SNAPSHOT
+
+
+def test_find_outcome_returns_none_when_the_old_values_are_still_there(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [SNAPSHOT]
+
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) is None

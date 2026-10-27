@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 
-class UserSettings(BaseModel):
+class ResourceSettings(BaseModel):
     collection_path: str
     path: str
