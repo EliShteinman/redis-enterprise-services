@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.resources.spec import NamedSpec
@@ -14,5 +14,7 @@ class CreatedResource(NamedResource):
 
 
 class CreateResourceInput[TSpec: NamedSpec](BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     cluster: ClusterAddress
     spec: TSpec

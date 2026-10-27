@@ -8,7 +8,11 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
-from redis_enterprise_services.exceptions.cluster import ClusterActionFailedError, ClusterActionTimeoutError
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterActionFailedError,
+    ClusterActionTimeoutError,
+    UnreadableAnswerError,
+)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -35,7 +39,9 @@ class ActionWaiter:
             target=target, method="GET", path=self._settings.path.format(uid=action_uid)
         ).body
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
-        if status is None or status in self._settings.failed_statuses:
+        if status is None:
+            raise UnreadableAnswerError(message=f"action {action_uid} answered without a status")
+        if status in self._settings.failed_statuses:
             raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action}")
         logger.debug(msg=f"action {action_uid} is {status}")
         return status == self._settings.completed_status

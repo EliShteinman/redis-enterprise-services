@@ -1,6 +1,6 @@
 import logging
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.credentials import ClusterCredentialsProvider
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
@@ -16,6 +16,8 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class DatabaseUpdateInput(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     cluster: ClusterAddress
     uid: int
     values: dict[str, JsonValue]

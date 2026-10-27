@@ -4,7 +4,7 @@ from redis_enterprise_services.edge.models import ClusterCredentials
 
 
 class ClusterAddress(BaseModel):
-    model_config = ConfigDict(revalidate_instances="always")
+    model_config = ConfigDict(revalidate_instances="always", frozen=True)
 
     network: str
     api_url: str
