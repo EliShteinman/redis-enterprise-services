@@ -12,8 +12,8 @@ from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
+from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
-from redis_enterprise_services.config.user_settings import UserSettings
 
 
 class Settings(BaseSettings):
@@ -25,6 +25,7 @@ class Settings(BaseSettings):
             "config/action.yaml",
             "config/cluster.yaml",
             "config/database.yaml",
+            "config/role.yaml",
             "config/user.yaml",
         ),
         env_prefix="RES_",
@@ -38,7 +39,8 @@ class Settings(BaseSettings):
     action: ActionSettings
     cluster: ClusterSettings
     database: DatabaseSettings
-    user: UserSettings
+    role: RoleSettings
+    user: ResourceSettings
 
     @classmethod
     def settings_customise_sources(
