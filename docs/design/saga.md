@@ -363,9 +363,14 @@ stateDiagram-v2
   ורק בצעד האחרון נוגעת ב-DB, ב-`PUT` אחד שכולל את כל הזוגות.
 - **הרשאות לא נערכות יחד עם שינויים אחרים ב-DB** (החוזה), חוץ מההקמה הראשונית. לכן החזרת ה-snapshot לא דורסת
   שינוי אחר.
-- **ב-AA** אין `roles_permissions` בקונפיגורציה של CRDB. לכל קלאסטר יש bdb מקומי משלו: ה-uid שלו נמצא
-  ב-`local_databases` (או ב-`instances[].db_uid`) של `GET /v1/crdbs/{guid}` באותו קלאסטר. מעדכנים כל אחד מהם
-  בנפרד.
+- **ב-AA** אין `roles_permissions` ב-`default_db_config`, כי לכל קלאסטר יש uids משלו ל-role ול-ACL. יש שתי דרכים
+  שעובדות:
+  - `PUT` לכל bdb מקומי בנפרד. ה-uid שלו נמצא ב-`local_databases` (או ב-`instances[].db_uid`) של
+    `GET /v1/crdbs/{guid}` באותו קלאסטר.
+  - **`PATCH /v1/crdbs/{guid}` אחד** עם `instances[].db_config.roles_permissions`, רשימה משלו לכל instance (V20).
+    התיעוד לא מזכיר את השדה ב-`db_config`, אבל נבדק על CRDB בשני הקלאסטרים: ה-task מסתיים כ-7 שניות, כל bdb מקומי
+    מקבל את הזוגות שלו, וה-CRDB שומר אותם ב-`instances[].db_config`. `PATCH` עם `[]` בכל instance מחזיר את שניהם
+    לרשימה ריקה. ה-id של כל instance ושם הקלאסטר שלו נמצאים ב-`instances` של `GET /v1/crdbs/{guid}`.
 - **אין צורך להחליף uid:** role ו-ACL נוצרים מחדש עם אותו uid (5.1, 5.2), ולכן כל הפניה אליהם נשארת תקינה.
 
 ---
