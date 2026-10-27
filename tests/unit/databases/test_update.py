@@ -124,3 +124,21 @@ def test_find_outcome_returns_none_when_the_old_values_are_still_there(
     repository.get_fields.side_effect = [SNAPSHOT]
 
     assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) is None
+
+
+def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    assert update.find_outcome(step_input=STEP_INPUT, kept=None) is None
+
+    repository.get_fields.assert_not_called()
+
+
+def test_find_outcome_waits_for_active_before_reporting_the_update_done(
+    repository: MagicMock, active_waiter: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [CURRENT]
+
+    update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT)
+
+    active_waiter.wait.assert_called_once_with(target=TARGET, uid=UID)

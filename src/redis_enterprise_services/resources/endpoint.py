@@ -1,12 +1,13 @@
 import logging
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
+from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 
 NAMED_RESOURCE_LIST: TypeAdapter[list[NamedResource]] = TypeAdapter(type=list[NamedResource])
@@ -25,7 +26,12 @@ class ResourceEndpoint:
         answer: JsonValue = self._api.send(
             target=target, method="POST", path=self._settings.collection_path, body=body
         ).body
-        resource: NamedResource = NamedResource.model_validate(obj=answer)
+        try:
+            resource: NamedResource = NamedResource.model_validate(obj=answer)
+        except ValidationError as error:
+            raise UnreadableAnswerError(
+                message=f"created {body.get('name')} but cannot read the answer: {error}"
+            ) from error
         return CreatedResource(uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=answer))
 
     def delete(self, *, target: ClusterTarget, uid: int) -> str | None:

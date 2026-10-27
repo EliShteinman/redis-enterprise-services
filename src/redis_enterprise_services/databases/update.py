@@ -51,7 +51,10 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         if kept is None:
             return None
         current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
-        return kept if current.values == step_input.values else None
+        if current.values != step_input.values:
+            return None
+        self._active_waiter.wait(target=self._target(step_input=step_input), uid=step_input.uid)
+        return kept
 
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")

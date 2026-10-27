@@ -43,7 +43,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         self, *, step_input: CreateResourceInput[TSpec], kept: CreatedResource | None
     ) -> CreatedResource | None:
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
-        outcome: CreatedResource | None = kept or self._find_by_name(target=target, step_input=step_input)
+        outcome: CreatedResource | None = (
+            kept if kept is not None else self._find_by_name(target=target, step_input=step_input)
+        )
         if outcome is not None:
             self._waiter.wait_created(target=target, resource=outcome)
         return outcome

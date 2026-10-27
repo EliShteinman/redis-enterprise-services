@@ -7,6 +7,7 @@ from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
+from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
 from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 
@@ -50,3 +51,10 @@ def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
     created: CreatedResource = endpoint.create(target=TARGET, body={"name": "app-user"})
 
     assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
+
+
+def test_create_reports_an_unreadable_answer_as_its_own_error() -> None:
+    endpoint: ResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
+
+    with pytest.raises(expected_exception=UnreadableAnswerError):
+        endpoint.create(target=TARGET, body={"name": "app-user"})
