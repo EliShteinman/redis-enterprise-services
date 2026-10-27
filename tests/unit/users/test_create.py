@@ -3,7 +3,9 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterTarget
+from redis_enterprise_services.cluster.actions import ActionWaiter
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import ClusterActionTimeoutError
 from redis_enterprise_services.users.create import UserCreate
 from redis_enterprise_services.users.models import CreatedUser, NewUser, User
@@ -27,8 +29,13 @@ def repository() -> MagicMock:
 
 
 @pytest.fixture
-def step(repository: MagicMock) -> UserCreate:
-    return UserCreate(repository=repository, target=TARGET, user=NEW_USER)
+def action_waiter() -> MagicMock:
+    return create_autospec(spec=ActionWaiter, instance=True)
+
+
+@pytest.fixture
+def step(repository: MagicMock, action_waiter: MagicMock) -> UserCreate:
+    return UserCreate(repository=repository, action_waiter=action_waiter, target=TARGET, user=NEW_USER)
 
 
 def test_execute_keeps_the_created_user(step: UserCreate) -> None:
@@ -52,9 +59,9 @@ def test_compensate_without_a_created_user_deletes_nothing(repository: MagicMock
 
 
 def test_a_user_whose_action_did_not_finish_is_still_compensated(
-    repository: MagicMock, step: UserCreate
+    repository: MagicMock, action_waiter: MagicMock, step: UserCreate
 ) -> None:
-    repository.wait_for_action.side_effect = ClusterActionTimeoutError(message="action did not complete")
+    action_waiter.wait.side_effect = [ClusterActionTimeoutError(message="action did not complete"), None]
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
         step.execute()
 

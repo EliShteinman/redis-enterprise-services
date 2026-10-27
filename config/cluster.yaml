@@ -1,0 +1,8 @@
+cluster:
+  fields:
+    status: status
+    error_code: error_code
+    action_uid: action_uid
+  fields_query:
+    name: fields
+    separator: ","

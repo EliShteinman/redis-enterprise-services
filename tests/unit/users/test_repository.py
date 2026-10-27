@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.settings import Settings
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse, ClusterTarget
+from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
 from redis_enterprise_services.users.models import User
 from redis_enterprise_services.users.repository import UserRepository
 
@@ -25,9 +25,8 @@ USERS: list[JsonValue] = [
 def repository() -> UserRepository:
     api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
     api.send.return_value = ClusterResponse(status_code=200, headers={}, body=USERS, cluster_state_id=None)
-    return UserRepository(
-        api=api, action_waiter=create_autospec(spec=ActionWaiter, instance=True), settings=Settings().user
-    )
+    settings: Settings = Settings()
+    return UserRepository(api=api, settings=settings.user, cluster=settings.cluster)
 
 
 def test_find_by_name_returns_the_user_with_that_name(repository: UserRepository) -> None:
