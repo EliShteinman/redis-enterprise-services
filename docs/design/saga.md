@@ -710,14 +710,14 @@ classDiagram
         <<interface>>
         +create(target, spec) CreatedResource
         +delete(target, uid) action_uid | None
-        +find_by_name(target, name) NamedResource | None
+        +find_by_name(target, name) list~NamedResource~
         +get(target, uid) Resource
         +update(target, uid, changes) None
     }
     class ResourceEndpoint {
         +create(target, body) CreatedResource
         +delete(target, uid) action_uid | None
-        +find_by_name(target, name) NamedResource | None
+        +find_by_name(target, name) list~NamedResource~
     }
     class DatabaseRepository
     class CrdbRepository

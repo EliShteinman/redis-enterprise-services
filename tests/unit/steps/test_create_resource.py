@@ -143,3 +143,19 @@ def test_find_outcome_refuses_more_than_one_resource_with_the_name(
 
     with pytest.raises(expected_exception=AmbiguousResourceError):
         step.find_outcome(step_input=STEP_INPUT, kept=None)
+
+
+def test_find_outcome_trusts_what_was_kept_without_searching(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    assert step.find_outcome(step_input=STEP_INPUT, kept=CREATED) == CREATED
+
+    repository.find_by_name.assert_not_called()
+
+
+def test_find_outcome_waits_until_the_found_resource_is_created(
+    waiter: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    step.find_outcome(step_input=STEP_INPUT, kept=CREATED)
+
+    waiter.wait_created.assert_called_once_with(target=TARGET, resource=CREATED)
