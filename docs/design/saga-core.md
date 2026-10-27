@@ -45,6 +45,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
   בזמן הריצה מ-`ClusterCredentialsProvider`, ולכן הם לא מגיעים ל-saga record. עד שיהיה registry של קלאסטרים,
   `SharedCredentialsProvider` נותן את אותם פרטי admin לכל קלאסטר.
 - **`step_input` ו-`result` הם מודלי Pydantic,** כדי שאפשר יהיה לשמור אותם ב-saga record ולקרוא אותם בחזרה.
+  המנוע שומר עותק שלהם (`model_dump`), ולא את האובייקט עצמו, כך ששינוי מאוחר באובייקט לא משנה את ה-record.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה. צעד שיש לו תוצאה מבוטל גם אם לא הגיע ל-`done`.
 - **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. הוא מקבל את
   מה שהמנוע כבר שמר (`kept`): בעדכון ה-snapshot נשמר לפני ה-`PUT`, ואי אפשר לבנות אותו מחדש מהקלאסטר.

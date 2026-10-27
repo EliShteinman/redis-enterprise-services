@@ -68,4 +68,15 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
     with pytest.raises(expected_exception=UnreadableAnswerError) as unreadable:
         endpoint.create(target=TARGET, body={"name": "db1"})
 
-    assert "s3cret" not in unreadable.value.message
+    assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
+
+
+def test_find_by_name_reports_an_unreadable_list_without_its_values() -> None:
+    endpoint: ResourceEndpoint = endpoint_answering(
+        answer=[{"name": "db1", "authentication_redis_pass": "s3cret"}]
+    )
+
+    with pytest.raises(expected_exception=UnreadableAnswerError) as unreadable:
+        endpoint.find_by_name(target=TARGET, name="db1")
+
+    assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"

@@ -5,6 +5,8 @@ from redis_enterprise_services.resources.spec import NamedSpec
 
 
 class NamedResource(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+
     uid: int
     name: str
 
