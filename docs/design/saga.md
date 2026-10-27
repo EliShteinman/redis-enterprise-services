@@ -327,6 +327,12 @@ stateDiagram-v2
   המקומי. לכן שואלים כל קלאסטר בנפרד (נבדק: 1 ב-cluster1 ו-2 ב-cluster2).
 - **סודות:** התשובה כוללת `authentication_admin_pass` לכל instance, ו-`authentication_redis_pass` ב-bdb המקומי. מסתירים אותם כמו ב-bdb.
 - **Modules:** ה-CRDB נוצר עם `search` ו-`ReJSON` בלבד.
+- **`tags` ב-AA** (V19, נבדק על CRDB זמני בשני הקלאסטרים). התיעוד לא מזכיר `tags` ב-CRDB, אבל בפועל:
+  - `PATCH /v1/crdbs/{guid}` עם `default_db_config.tags`: ה-task מסתיים, וה-tags מופיעים ב-`default_db_config` של ה-CRDB
+    וגם ב-bdb המקומי בשני הקלאסטרים.
+  - `PUT /v1/bdbs/{uid}` עם `tags` על ה-bdb המקומי של קלאסטר אחד: ה-tags מופיעים רק בו. בקלאסטר השני אין tags,
+    וגם ה-CRDB לא יודע עליהם.
+  - לכן ב-AA מנהלים tags דרך ה-CRDB, ולא דרך ה-bdb המקומי.
 - **ביטול task שעוד לא הגיע ל-commit:** `POST /v1/crdb_tasks/{id}/actions/cancel`. במקרה של timeout
   ביצירה, עדיף לנסות ביטול לפני `DELETE`. **לא משתמשים ב-`force`,** כי הוא עלול לשבור את ה-CRDB.
 - **אתר שנופל באמצע יצירה (V13):**
