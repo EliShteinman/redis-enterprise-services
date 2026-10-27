@@ -1,50 +1,28 @@
-import base64
 import json
 import logging
 
 import requests
 import urllib3
-from pydantic import JsonValue
-from urllib3.exceptions import ConnectTimeoutError, InsecureRequestWarning, MaxRetryError
+from urllib3.exceptions import InsecureRequestWarning
 
-from redis_enterprise_services.config.edge_settings import (
-    EdgeErrorCodeSettings,
-    EdgeHeaderSettings,
-    EdgeSettings,
-    NetworkSettings,
-)
+from redis_enterprise_services.config.edge_settings import EdgeSettings, NetworkSettings
+from redis_enterprise_services.edge.encoding import TEXT_ENCODING
+from redis_enterprise_services.edge.headers import EdgeHeaders
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
+from redis_enterprise_services.edge.response_reader import EdgeResponseReader
+from redis_enterprise_services.edge.transport_errors import transport_error
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.exceptions.edge import (
-    EdgeError,
-    InvalidEdgeRequestError,
-    OutcomeUnknownError,
-    RequestNotSentError,
-    ResponseRejectedError,
-)
-
-TEXT_ENCODING: str = "utf-8"
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 urllib3.disable_warnings(category=InsecureRequestWarning)
 
 
-def was_not_sent(*, error: requests.RequestException) -> bool:
-    return any(
-        isinstance(argument, MaxRetryError) and isinstance(argument.reason, ConnectTimeoutError)
-        for argument in error.args
-    )
-
-
-def basic_authorization(*, username: str, password: str) -> str:
-    token: str = base64.b64encode(f"{username}:{password}".encode(TEXT_ENCODING)).decode(TEXT_ENCODING)
-    return f"Basic {token}"
-
-
 class EdgeClient:
     def __init__(self, *, settings: EdgeSettings) -> None:
         self._settings: EdgeSettings = settings
+        self._headers: EdgeHeaders = EdgeHeaders(settings=settings)
+        self._reader: EdgeResponseReader = EdgeResponseReader(settings=settings)
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
         endpoint: NetworkSettings = self._network(name=network)
@@ -52,20 +30,14 @@ class EdgeClient:
         try:
             response: requests.Response = requests.post(
                 url=endpoint.url,
-                headers=self._headers(request=request, endpoint=endpoint),
+                headers=self._headers.build(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
                 verify=False,  # noqa: S501 - the firewall uses internal certificates, not checked for now (C0e)
             )
         except requests.RequestException as error:
-            raise self._transport_error(network=network, error=error) from error
-        return self._cluster_response(response=response)
-
-    @staticmethod
-    def _transport_error(*, network: str, error: requests.RequestException) -> EdgeError:
-        if was_not_sent(error=error):
-            return RequestNotSentError(message=f"the relay of {network} is unreachable: {error}")
-        return OutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")
+            raise transport_error(network=network, error=error) from error
+        return self._reader.read(response=response)
 
     def _network(self, *, name: str) -> NetworkSettings:
         endpoint: NetworkSettings | None = self._settings.networks.get(name)
@@ -73,67 +45,8 @@ class EdgeClient:
             raise ConfigurationError(message=f"no relay is configured for network {name}")
         return endpoint
 
-    def _headers(self, *, request: ClusterRequest, endpoint: NetworkSettings) -> dict[str, str]:
-        names: EdgeHeaderSettings = self._settings.headers
-        headers: dict[str, str] = {
-            names.method: request.method,
-            names.url: request.url,
-            names.authorization: basic_authorization(
-                username=request.credentials.username,
-                password=request.credentials.password.get_secret_value(),
-            ),
-            names.content_type: self._settings.content_type,
-        }
-        optional: dict[str, int | str | None] = {
-            names.cluster_state_id: request.cluster_state_id,
-            names.task_id: request.task_id,
-            names.result_ttl: request.result_ttl,
-        }
-        headers |= {name: str(value) for name, value in optional.items() if value is not None}
-        if endpoint.firewall is not None:
-            headers[endpoint.firewall.header] = basic_authorization(
-                username=endpoint.firewall.username, password=endpoint.firewall.password.get_secret_value()
-            )
-        return headers
-
     @staticmethod
     def _content(*, request: ClusterRequest) -> bytes | None:
         if request.body is None:
             return None
         return json.dumps(obj=request.body).encode(TEXT_ENCODING)
-
-    def _cluster_response(self, *, response: requests.Response) -> ClusterResponse:
-        edge_error: str | None = response.headers.get(self._settings.headers.error)
-        if edge_error is not None:
-            raise self._edge_error(code=edge_error, response=response)
-        cluster_state_id: str | None = response.headers.get(self._settings.headers.cluster_state_id)
-        return ClusterResponse(
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            body=self._body(response=response),
-            cluster_state_id=int(cluster_state_id) if cluster_state_id else None,
-        )
-
-    def _edge_error(self, *, code: str, response: requests.Response) -> EdgeError:
-        codes: EdgeErrorCodeSettings = self._settings.error_codes
-        message: str = f"relay answered {response.status_code} {code}: {response.text}"
-        logger.warning(msg=message)
-        if code == codes.invalid_request:
-            return InvalidEdgeRequestError(message=message)
-        if code == codes.connection_failed:
-            return RequestNotSentError(message=message)
-        if code == codes.response_rejected:
-            cluster_status: str | None = response.headers.get(self._settings.headers.cluster_status)
-            return ResponseRejectedError(
-                message=message, cluster_status_code=int(cluster_status) if cluster_status else None
-            )
-        return OutcomeUnknownError(message=message)
-
-    @staticmethod
-    def _body(*, response: requests.Response) -> JsonValue | None:
-        if not response.content:
-            return None
-        try:
-            return response.json()
-        except requests.JSONDecodeError:
-            return response.text
