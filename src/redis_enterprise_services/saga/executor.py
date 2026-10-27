@@ -1,6 +1,5 @@
 import logging
 
-from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.lock import DatabaseLock
@@ -15,26 +14,37 @@ from redis_enterprise_services.steps.kind import StepKind
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
+RELEASED_ON: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
+
+
 class SagaExecutor:
-    def __init__(self, *, state: SagaStateRepository, lock: DatabaseLock, settings: SagaSettings) -> None:
+    def __init__(
+        self,
+        *,
+        state: SagaStateRepository,
+        lock: DatabaseLock,
+        runner: StepRunner,
+        compensator: Compensator,
+    ) -> None:
         self._state: SagaStateRepository = state
         self._lock: DatabaseLock = lock
-        self._runner: StepRunner = StepRunner(settings=settings)
-        self._compensator: Compensator = Compensator(settings=settings)
+        self._runner: StepRunner = runner
+        self._compensator: Compensator = compensator
 
     def run(self, *, saga_id: str, plan: SagaPlan) -> SagaRecord:
         self._lock.acquire(keys=plan.lock_keys, owner=saga_id)
         record: SagaRecord = SagaRecord(
             saga_id=saga_id, steps=[StepRecord(key=step.key, kind=step.kind) for step in plan.steps]
         )
-        self._state.save(record=record)
         try:
+            self._state.save(record=record)
             record.status = self._run_steps(plan=plan, record=record)
         except Exception:
-            record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
             logger.exception(msg=f"saga {saga_id} stopped on an unexpected error")
             raise
         finally:
+            if record.status is SagaStatus.RUNNING:
+                record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
             self._finish(record=record, plan=plan)
         return record
 
@@ -58,7 +68,8 @@ class SagaExecutor:
 
     def _finish(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         self._state.finish(record=record)
-        if record.status is SagaStatus.REQUIRES_MANUAL_INTERVENTION:
+        logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
+        if record.status not in RELEASED_ON:
             logger.critical(
                 msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept"
             )

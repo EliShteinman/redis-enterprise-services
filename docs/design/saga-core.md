@@ -98,10 +98,10 @@ class PlannedStep[TInput, TResult]:
 | `ClusterRequestError` אחר | הצעד נכשל ⇐ פיצוי |
 | `InvalidEdgeRequestError` | הצעד נכשל ⇐ פיצוי (באג אצלנו) |
 | `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
-| `AmbiguousResourceError` מ-`find_outcome` (יותר ממשאב אחד באותו שם) | התערבות ידנית מיד: לא מנסים שוב ולא מפצים את הצעד הזה, כי לא ידוע איזה משאב שלנו |
+| `AmbiguousResourceError` מ-`find_outcome` (יותר ממשאב אחד באותו שם) | התערבות ידנית מיד: לא מנסים שוב ולא מפצים שום צעד, כי לא ידוע איזה משאב שלנו |
 | כל שגיאה אחרת של הפרויקט (למשל `UnrestorableFieldsError`) | הצעד נכשל ⇐ פיצוי, בלי ניסיון חוזר: היא תחזור באותה צורה |
-| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ ממתינים ומנסים את הבדיקה שוב, עד מדיניות הניסיונות של הצעדים, ואז הצעד נכשל ⇐ פיצוי |
-| כל שגיאת קצה אחרת, timeout של המתנה, תשובה שלא נקראת (`UnreadableAnswerError`) | `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ ניסיון חוזר. גם הבדיקה נכשלה ⇐ ממתינים ומנסים שוב |
+| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ ממתינים ומנסים את הבדיקה שוב, עד מדיניות הניסיונות של הצעדים. אם התוצאה עדיין לא ידועה ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה |
+| כל שגיאת קצה אחרת, timeout של המתנה, תשובה שלא נקראת (`UnreadableAnswerError`), או שגיאה זמנית אחרי שכבר יש תוצאה | `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ ניסיון חוזר. גם הבדיקה נכשלה ⇐ ממתינים ומנסים שוב |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי |
 
 - **רק ה-`keep_result` הראשון של צעד נשמר.** אחרי תוצאה לא ידועה המנוע קורא קודם ל-`find_outcome`, ורק אם לא
@@ -127,7 +127,7 @@ class PlannedStep[TInput, TResult]:
 |---|---|
 | `saga_id` | ה-trace ID של הבקשה |
 | `status` | `running`, `succeeded`, `rolled_back`, `requires_manual_intervention` |
-| `steps[]` | `key`, `kind`, `status`, `step_input`, `result`, `error` |
+| `steps[]` | `key`, `kind`, `status`, `step_input`, `result`, `obtained_by`, `error` |
 
 - **השמירה ב-Redis כבר משלב 1** (S4). ה-record נכתב לפני כל צעד, מיד כשיש תוצאה, ובסוף הצעד.
 - **`heartbeat_at`:** ה-pod שמריץ את ה-Saga מעדכן אותו כל כמה שניות (קונפיג).
@@ -182,11 +182,11 @@ class PlannedStep[TInput, TResult]:
 | **מימוש שלנו** | כן | כן, ראו למטה | המנוע מסעיף 4 | **ההמלצה** |
 
 **כמה pods במימוש שלנו:** Saga רץ כולו ב-pod שקיבל את הבקשה, ב-worker ברקע. ה-saga record והנעילה של ה-DB
-ב-Redis (`SET NX` עם TTL), כך ש:
+ב-Redis (סעיף 5א), כך ש:
 - שני pods לא ירוצו על אותו DB (סעיף 10).
 - כל pod יכול לענות ל-`GET /v1/operations/{trace_id}`, כי ה-record ב-Redis.
-- pod שקרס משאיר Saga ב-`running` שהנעילה שלו פגה. pod אחר מזהה אותו בעלייה או בבדיקה תקופתית, ומסמן
-  `requires_manual_intervention` (D5).
+- pod שקרס משאיר Saga ב-`running` שה-heartbeat שלו ישן. pod אחר מזהה אותו בעלייה או בבדיקה תקופתית, ומסמן
+  `requires_manual_intervention`. הנעילה נשארת (D5).
 
 ## 7. ניסיונות חוזרים (הוחלט)
 

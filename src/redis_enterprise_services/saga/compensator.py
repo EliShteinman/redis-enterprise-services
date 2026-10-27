@@ -27,14 +27,17 @@ class Compensator:
         if step.obtained_by is ObtainedBy.FOUND:
             logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
         error_message: str = ""
-        for attempt in range(1, self._settings.compensation_retry.attempts + 1):
+        attempts: int = self._settings.compensation_retry.attempts
+        for attempt in range(1, attempts + 1):
             try:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
                 logger.warning(msg=f"compensation of {step.key} failed: {error.code}: {error.message}")
                 error_message = error.message
-                pause(retry=self._settings.compensation_retry, attempt=attempt)
+                if attempt < attempts:
+                    pause(retry=self._settings.compensation_retry, attempt=attempt)
                 continue
+            logger.info(msg=f"step {step.key} compensated")
             recorder.compensated()
             return True
         logger.error(msg=f"compensation of {step.key} gave up: {error_message}")

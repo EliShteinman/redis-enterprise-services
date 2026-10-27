@@ -24,6 +24,7 @@ class StepRecorder:
         self._state.save(record=self._record)
 
     def done(self) -> None:
+        self._step.error = None
         self._mark(status=StepStatus.DONE)
 
     def failed(self) -> None:

@@ -18,3 +18,8 @@ def validate_order(*, steps: list[RunnableStep]) -> None:
         raise InvalidPlanError(message=f"steps out of order: {[step.kind.value for step in steps]}")
     if ranks.count(KIND_ORDER[StepKind.PIVOT]) > 1:
         raise InvalidPlanError(message="a plan has at most one pivot step")
+    if KIND_ORDER[StepKind.RETRIABLE] in ranks and KIND_ORDER[StepKind.PIVOT] not in ranks:
+        raise InvalidPlanError(message="retriable steps come after a pivot step")
+    keys: list[str] = [step.key for step in steps]
+    if len(set(keys)) != len(keys):
+        raise InvalidPlanError(message=f"step keys repeat: {keys}")

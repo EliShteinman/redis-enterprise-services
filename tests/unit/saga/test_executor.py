@@ -8,6 +8,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 from redis_enterprise_services.exceptions.cluster import AmbiguousResourceError, ClusterRequestError
 from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
 from redis_enterprise_services.exceptions.saga import DatabaseLockedError, InvalidPlanError
+from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.executor import SagaExecutor
 from redis_enterprise_services.saga.lock import DatabaseLock
@@ -15,6 +16,7 @@ from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepSt
 from redis_enterprise_services.saga.plan import SagaPlan
 from redis_enterprise_services.saga.planned_step import PlannedStep
 from redis_enterprise_services.saga.state import SagaStateRepository
+from redis_enterprise_services.saga.step_runner import StepRunner
 from redis_enterprise_services.steps.kind import StepKind
 from redis_enterprise_services.steps.result import KeepResult
 from redis_enterprise_services.steps.saga_step import SagaStep
@@ -58,7 +60,7 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         self._journal: list[str] = journal
         self._kind: StepKind = kind
         self._executions: list[Action] = executions or ["keep"]
-        self._outcomes: list[FakeResult | RedisEnterpriseServicesError | None] = outcomes or [None]
+        self._outcomes: list[FakeResult | RedisEnterpriseServicesError | None] = outcomes or []
         self._compensations: list[RedisEnterpriseServicesError | None] = compensations or [None]
         self.executed: int = 0
 
@@ -77,7 +79,9 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
             raise BUSY
 
     def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
-        outcome: FakeResult | RedisEnterpriseServicesError | None = self._outcomes.pop(0)
+        outcome: FakeResult | RedisEnterpriseServicesError | None = (
+            self._outcomes.pop(0) if self._outcomes else None
+        )
         if isinstance(outcome, RedisEnterpriseServicesError):
             raise outcome
         return outcome
@@ -90,11 +94,14 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
 
 
 class MemoryState(SagaStateRepository):
-    def __init__(self) -> None:
+    def __init__(self, *, broken: bool = False) -> None:
         self.saved: SagaRecord | None = None
         self.finished: bool = False
+        self._broken: bool = broken
 
     def save(self, *, record: SagaRecord) -> None:
+        if self._broken:
+            raise ConnectionError("state store is down")
         self.saved = record.model_copy(deep=True)
 
     def finish(self, *, record: SagaRecord) -> None:
@@ -140,7 +147,12 @@ def lock() -> MemoryLock:
 def run(
     *, steps: list[PlannedStep[FakeInput, FakeResult]], state: MemoryState, lock: MemoryLock
 ) -> SagaRecord:
-    executor: SagaExecutor = SagaExecutor(state=state, lock=lock, settings=SETTINGS)
+    executor: SagaExecutor = SagaExecutor(
+        state=state,
+        lock=lock,
+        runner=StepRunner(settings=SETTINGS),
+        compensator=Compensator(settings=SETTINGS),
+    )
     return executor.run(saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS))
 
 
@@ -278,11 +290,58 @@ def test_a_step_that_kept_a_result_before_failing_is_compensated(
 def test_only_the_first_kept_result_of_a_step_is_recorded(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"])
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
 
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
     assert record.steps[0].result == {"name": "a", "attempt": 1}
+
+
+def test_a_step_with_a_kept_result_is_checked_instead_of_run_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=["keep then busy"], outcomes=[FakeResult(name="a", attempt=1)]
+    )
+
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert step.executed == 1
+
+
+def test_an_outcome_that_stays_unknown_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[UNKNOWN, UNKNOWN, UNKNOWN])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, lock.held_by) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, SAGA_ID)
+
+
+def test_an_interrupted_saga_keeps_the_lock(journal: list[str], state: MemoryState, lock: MemoryLock) -> None:
+    def interrupted(context: SagaContext) -> FakeInput:
+        raise SystemExit(1)
+
+    with pytest.raises(expected_exception=SystemExit):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a", build=interrupted)],
+            state=state,
+            lock=lock,
+        )
+
+    assert lock.held_by == SAGA_ID
+
+
+def test_a_state_store_failure_keeps_the_lock(journal: list[str], lock: MemoryLock) -> None:
+    with pytest.raises(expected_exception=ConnectionError):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a")],
+            state=MemoryState(broken=True),
+            lock=lock,
+        )
+
+    assert lock.held_by == SAGA_ID
 
 
 def test_a_later_step_builds_its_input_from_an_earlier_result(
@@ -336,6 +395,28 @@ def test_a_compensatable_step_after_the_pivot_is_refused(journal: list[str]) -> 
         SagaPlan(
             steps=[
                 planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="pivot"),
+                planned(step=FakeStep(journal=journal), name="a"),
+            ],
+            lock_keys=LOCK_KEYS,
+        )
+
+
+def test_a_retriable_step_without_a_pivot_is_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(
+            steps=[
+                planned(step=FakeStep(journal=journal), name="a"),
+                planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE), name="b"),
+            ],
+            lock_keys=LOCK_KEYS,
+        )
+
+
+def test_repeated_step_keys_are_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(
+            steps=[
+                planned(step=FakeStep(journal=journal), name="a"),
                 planned(step=FakeStep(journal=journal), name="a"),
             ],
             lock_keys=LOCK_KEYS,

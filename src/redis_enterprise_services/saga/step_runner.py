@@ -24,20 +24,24 @@ class StepRunner:
         self._settings: SagaSettings = settings
 
     def run(self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder) -> StepOutcome:
+        logger.info(msg=f"step {step.key} started")
         recorder.started(step_input=step.prepare(context=context))
         outcome: StepOutcome = self._attempts(step=step, recorder=recorder)
         if outcome is StepOutcome.DONE:
             recorder.done()
         else:
             recorder.failed()
+        logger.info(msg=f"step {step.key} ended {outcome.value}")
         return outcome
 
     def _attempts(self, *, step: RunnableStep, recorder: StepRecorder) -> StepOutcome:
-        for attempt in range(1, self._settings.step_retry.attempts + 1):
+        attempts: int = self._settings.step_retry.attempts
+        for attempt in range(1, attempts + 1):
             outcome: StepOutcome = self._attempt(step=step, recorder=recorder)
             if outcome is not StepOutcome.NOT_FOUND:
                 return outcome
-            pause(retry=self._settings.step_retry, attempt=attempt)
+            if attempt < attempts:
+                pause(retry=self._settings.step_retry, attempt=attempt)
         return StepOutcome.FAILED
 
     def _attempt(self, *, step: RunnableStep, recorder: StepRecorder) -> StepOutcome:
@@ -58,12 +62,13 @@ class StepRunner:
             return StepOutcome.MANUAL
         if failure is Failure.FAILED:
             return StepOutcome.FAILED
-        if failure is Failure.TRANSIENT:
+        if failure is Failure.TRANSIENT and not step.has_result:
             return StepOutcome.NOT_FOUND
         return self._resolve(step=step, recorder=recorder)
 
     def _resolve(self, *, step: RunnableStep, recorder: StepRecorder) -> StepOutcome:
-        for attempt in range(1, self._settings.step_retry.attempts + 1):
+        attempts: int = self._settings.step_retry.attempts
+        for attempt in range(1, attempts + 1):
             try:
                 return StepOutcome.DONE if step.resolve(on_kept=recorder.kept) else StepOutcome.NOT_FOUND
             except RedisEnterpriseServicesError as error:
@@ -74,5 +79,7 @@ class StepRunner:
                     return StepOutcome.MANUAL
                 if failure is Failure.FAILED:
                     return StepOutcome.FAILED
-            pause(retry=self._settings.step_retry, attempt=attempt)
-        return StepOutcome.FAILED
+            if attempt < attempts:
+                pause(retry=self._settings.step_retry, attempt=attempt)
+        logger.error(msg=f"the outcome of step {step.key} is still unknown")
+        return StepOutcome.MANUAL
