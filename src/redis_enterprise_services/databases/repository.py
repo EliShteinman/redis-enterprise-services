@@ -53,8 +53,8 @@ class DatabaseRepository:
 
     def _is_active(self, *, target: ClusterTarget, uid: int) -> bool:
         status_field: str = self._cluster.fields.status
-        status: JsonValue = self.get_fields(target=target, uid=uid, fields=[status_field]).values.get(
+        status: JsonValue = self.get_fields(target=target, uid=uid, fields=[status_field]).values[
             status_field
-        )
+        ]
         logger.debug(msg=f"database {uid} is {status}")
         return status == self._settings.active_status
