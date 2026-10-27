@@ -125,9 +125,10 @@ stateDiagram-v2
     pending --> running
     running --> done
     running --> failed
-    running --> unknown : timeout / response_rejected
+    running --> unknown : כישלון שלא בא מהקלאסטר / response_rejected על כתיבה
     unknown --> done : נמצא בקלאסטר
-    unknown --> failed : לא נמצא
+    unknown --> running : לא נמצא, retry
+    unknown --> failed : נגמרו הניסיונות
     done --> compensating : צעד מאוחר יותר נכשל
     compensating --> compensated
     compensating --> compensation_failed : נגמרו הניסיונות
@@ -143,8 +144,8 @@ stateDiagram-v2
 - `response_rejected` של cluster-relay על פעולת כתיבה.
 - חיבור שנשבר אחרי שהבקשה יצאה, ונראה כמו "לא נשלח" (למשל שגיאת TLS).
 
-**הכלל:** לא סומכים על "לא נשלח". אחרי כל כישלון שלא בא מהקלאסטר עצמו (כל שגיאה של שירות הקצה או של החיבור
-אליו), המנוע תמיד בודק לפני ניסיון חוזר. אם גם הבדיקה נכשלת, הצעד מחכה ומנסה מאוחר יותר.
+**הכלל:** לא סומכים על "לא נשלח". אחרי כל כישלון שלא בא מהקלאסטר עצמו (שגיאה של שירות הקצה או של החיבור
+אליו, חוץ מ-`invalid_request`, שהוא באג אצלנו), המנוע תמיד בודק לפני ניסיון חוזר. אם גם הבדיקה נכשלת, הצעד מחכה ומנסה מאוחר יותר.
 
 **הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה (לפי
 הכלל, אחרי כל כישלון שלא בא מהקלאסטר), המנוע מאתר את המשאב לפי המפתח:
@@ -468,8 +469,10 @@ stateDiagram-v2
 | הצלחה | 2xx מהקלאסטר | ממשיך |
 | שגיאה זמנית | `409` עם `busy`, או שגיאה שמוגדרת בקונפיגורציה כזמנית | retry |
 | שגיאת קלאסטר | 4xx/5xx אחר מהקלאסטר, עם `error_code` | הצעד נכשל |
-| שגיאת שירות הקצה או החיבור אליו | header `x-edge-error` (חוזה C9–C11), או שאין תשובה מהקצה | `find_by_key` (סעיף 3), גם על `connection_failed` |
-| תוצאה לא ידועה | timeout, או `response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
+| בקשה לא תקינה מצדנו | `x-edge-error: invalid_request` | הצעד נכשל, בלי retry (באג אצלנו) |
+| שירות הקצה לא הגיע לקלאסטר, או לא ענה | `x-edge-error: connection_failed` או `timeout`, או שאין תשובה מהקצה | `find_by_key` (סעיף 3), גם על `connection_failed` |
+| תשובה שנדחתה על כתיבה | `x-edge-error: response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
+| תשובה שנדחתה על קריאה | `x-edge-error: response_rejected` על קריאה | הצעד נכשל (קריאה חוזרת תידחה שוב) |
 
 ### כשל של הפיצוי עצמו
 
