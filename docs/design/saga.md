@@ -364,7 +364,7 @@ stateDiagram-v2
 - **הרשאות לא נערכות יחד עם שינויים אחרים ב-DB** (החוזה), חוץ מההקמה הראשונית. לכן החזרת ה-snapshot לא דורסת
   שינוי אחר.
 - **ב-AA** אין `roles_permissions` ב-`default_db_config`, כי לכל קלאסטר יש uids משלו ל-role ול-ACL. יש שתי דרכים
-  שעובדות:
+  שעובדות. **הוחלט: `PATCH` אחד לשני הקלאסטרים**, כדי שיהיו קריאה אחת, snapshot אחד וביטול אחד:
   - `PUT` לכל bdb מקומי בנפרד. ה-uid שלו נמצא ב-`local_databases` (או ב-`instances[].db_uid`) של
     `GET /v1/crdbs/{guid}` באותו קלאסטר.
   - **`PATCH /v1/crdbs/{guid}` אחד** עם `instances[].db_config.roles_permissions`, רשימה משלו לכל instance (V20).
@@ -418,7 +418,7 @@ stateDiagram-v2
 | 1 | יצירת CRDB (`X-Task-ID`), המתנה ל-task | הפיך |
 | 2 | לכל קלאסטר: איתור ה-bdb המקומי, ושמירת ה-uid בהקשר | קריאה בלבד |
 | 3..N | לכל קלאסטר ולכל יוזר: ACL, role עם `resources` של ה-bdb **המקומי**, user | הפיך |
-| N+1 | לכל קלאסטר: `PUT` אחד של `roles_permissions` על ה-bdb המקומי, עם כל הזוגות (5.6) | הפיך |
+| N+1 | `PATCH` אחד ל-CRDB, עם `roles_permissions` המלא של כל instance ב-`instances[].db_config` (5.6, V20) | הפיך |
 
 ### 7.3 יצירת DB בלי יוזרים / הוספת יוזר ל-DB קיים
 
