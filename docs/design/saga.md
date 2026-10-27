@@ -102,7 +102,7 @@ global ⇐ סביבה (DEV/PROD/TEST) ⇐ רשת ⇐ אתר ⇐ קלאסטר ⇐
 |---|---|
 | **תוכנית (Plan)** | רשימה מסודרת של צעדים שהמפרק בונה מבקשה אחת |
 | **צעד (Step)** | פעולה אחת מול קלאסטר אחד, ויחד איתה הדרך לבטל אותה |
-| **הקשר (Context)** | מקום שבו צעד שומר תוצאות (uid, guid, snapshot) לצעדים שאחריו ולפיצוי שלו |
+| **הקשר (Context)** | המקום **היחיד** שבו נשמרות תוצאות של צעדים (uid, guid, snapshot), לצעדים שאחריו ולפיצוי. הוא חלק מה-saga record |
 | **Snapshot** | המצב של משאב לפני שצעד שינה אותו. נלקח ב-GET בתוך הצעד, ממש לפני השינוי. |
 | **Saga record** | הרישום של ריצה: הבקשה, הצעדים, הסטטוס של כל צעד, ה-snapshots וה-uids שנוצרו. כולל סיסמאות של יוזרי DB. בלי הסיסמה של `default_user` ובלי פרטי הגישה של הקלאסטרים (5.3) |
 
@@ -147,7 +147,8 @@ stateDiagram-v2
 **הכלל:** לא סומכים על "לא נשלח". אחרי כל כישלון שלא בא מהקלאסטר עצמו (שגיאה של שירות הקצה או של החיבור
 אליו, חוץ מ-`invalid_request`, שהוא באג אצלנו), המנוע תמיד בודק לפני ניסיון חוזר. אם גם הבדיקה נכשלת, הצעד מחכה ומנסה מאוחר יותר.
 
-**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה (לפי
+**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key` (בקוד: `find_by_name`, כי המפתח
+הוא השם. ב-CRDB המפתח הוא ה-`X-Task-ID`, ויהיה לו חיפוש משלו). כשהתוצאה לא ידועה (לפי
 הכלל, אחרי כל כישלון שלא בא מהקלאסטר), המנוע מאתר את המשאב לפי המפתח:
 - **נמצא:** הצעד נחשב הצליח, וה-uid נלקח מהרשומה שנמצאה.
 - **לא נמצא:** הצעד לא בוצע. מנסים שוב לפי מדיניות ה-retry, ואם היא נגמרת, הצעד נכשל.
@@ -653,6 +654,8 @@ stateDiagram-v2
 
 ## 12. מבנה המחלקות
 
+החוזה המדויק בין המנוע לצעדים, ומה כל צעד מממש: `saga-core.md`.
+
 ```mermaid
 classDiagram
     direction TB
@@ -660,9 +663,9 @@ classDiagram
     class SagaStep {
         <<abstract>>
         +kind: StepKind
-        +execute(context) None
-        +compensate(context) None
-        +find_outcome(context) StepOutcome
+        +execute(step_input, keep_result) None
+        +find_outcome(step_input, kept) TResult
+        +compensate(step_input, result) None
     }
     class StepKind {
         <<enum>>
@@ -671,12 +674,21 @@ classDiagram
         RETRIABLE
     }
     class SagaPlan {
-        +steps: list~SagaStep~
+        +steps: list~PlannedStep~
         +validate_order() None
     }
+    class PlannedStep {
+        +key: str
+        +step: SagaStep
+        +build_input(context) TInput
+    }
     class SagaContext {
-        +put(key, value) None
-        +get(key) Any
+        +keep(key, result) None
+        +get(key) result
+    }
+    class ClusterCredentialsProvider {
+        <<interface>>
+        +target_for(address) ClusterTarget
     }
     class SagaExecutor {
         +run(plan) SagaRecord
@@ -696,21 +708,29 @@ classDiagram
 
     class ResourceRepository~TSpec~ {
         <<interface>>
-        +create(spec) Resource
-        +get(uid) Resource
-        +find_by_key(key) Resource | None
-        +update(uid, changes) Resource
-        +delete(uid) None
+        +create(target, spec) CreatedResource
+        +delete(target, uid) action_uid | None
+        +find_by_name(target, name) list~NamedResource~
+        +get(target, uid) Resource
+        +update(target, uid, changes) None
+    }
+    class ResourceEndpoint {
+        +create(target, body) CreatedResource
+        +delete(target, uid) action_uid | None
+        +find_by_name(target, name) list~NamedResource~
     }
     class DatabaseRepository
     class CrdbRepository
     class UserRepository
     class RoleRepository
     class RedisAclRepository
-    class OperationWaiter {
+    class CompletionWaiter {
         <<interface>>
-        +wait(reference) None
+        +wait_created(target, resource) None
+        +wait_deleted(target, uid, action_uid) None
     }
+    class ActionCompletionWaiter
+    class DatabaseActiveWaiter
 
     class ClusterRegistry {
         <<interface>>
@@ -737,8 +757,9 @@ classDiagram
     SagaExecutor --> SagaPlan
     SagaExecutor --> SagaStateRepository
     SagaExecutor --> RetryPolicy
-    SagaPlan o-- SagaStep
-    SagaStep --> SagaContext
+    SagaPlan o-- PlannedStep
+    PlannedStep --> SagaStep
+    PlannedStep --> SagaContext
     SagaStep --> StepKind
     SagaStep <|-- CreateResourceStep
     SagaStep <|-- UpdateResourceStep
@@ -746,18 +767,25 @@ classDiagram
     CreateResourceStep --> ResourceRepository
     UpdateResourceStep --> ResourceRepository
     DeleteResourceStep --> ResourceRepository
+    CreateResourceStep --> CompletionWaiter
+    UpdateResourceStep --> CompletionWaiter
+    DeleteResourceStep --> CompletionWaiter
+    CompletionWaiter <|.. ActionCompletionWaiter
+    CompletionWaiter <|.. DatabaseActiveWaiter : planned, DB create stage
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. UserRepository
     ResourceRepository <|.. RoleRepository
     ResourceRepository <|.. RedisAclRepository
-    DatabaseRepository --> OperationWaiter
-    CrdbRepository --> OperationWaiter
     DatabaseRepository --> RelayClient
     CrdbRepository --> RelayClient
-    UserRepository --> RelayClient
-    RoleRepository --> RelayClient
-    RedisAclRepository --> RelayClient
+    UserRepository --> ResourceEndpoint
+    RoleRepository --> ResourceEndpoint
+    RedisAclRepository --> ResourceEndpoint
+    ResourceEndpoint --> RelayClient
+    CreateResourceStep --> ClusterCredentialsProvider
+    UpdateResourceStep --> ClusterCredentialsProvider
+    DeleteResourceStep --> ClusterCredentialsProvider
     RelayClient --> ClusterRegistry
     PlacementStrategy <|.. PriorityPlacement
     PlacementStrategy <|.. CapacityPlacement
@@ -768,10 +796,22 @@ classDiagram
     RelayClient --> ReplyClassifier
 ```
 
+**צעד לא מחזיק מצב.** רק ה-Saga מחזיק מידע, ב-context וב-saga record. צעד מקבל ב-`execute` את מה שהוא צריך, ומעביר
+את התוצאה שלו ל-Saga דרך `keep_result` ברגע שהיא ידועה: ה-`CreatedResource` מיד אחרי ה-`POST`, וה-snapshot לפני
+ה-`PUT`. זה קורה לפני ההמתנה, כך שגם אם ההמתנה נכשלת, ה-Saga יודע מה צריך לבטל. `compensate` מקבל מה-Saga את
+התוצאה ששמר. מכיוון שה-Saga מסמן צעד שבוטל כ-`compensated`, הוא לא יריץ את הביטול שוב.
+
 **איך זה מונע קוד כפול:**
 - **שלושה צעדים גנריים מכסים את כל המשאבים.** `CreateResourceStep`, `UpdateResourceStep` ו-`DeleteResourceStep`
   עובדים על כל `ResourceRepository`. ACL, role, user, DB ו-CRDB לא צריכים מחלקות צעד משלהם.
 - **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
+- **הצעד לא מחכה בעצמו ולא יודע איך מחכים.** הוא מקבל `CompletionWaiter`: ב-user, role ו-ACL דרך ה-action
+  (`ActionCompletionWaiter`), וב-DB דרך `status: active` ו-404 (`DatabaseActiveWaiter`). ה-repository רק מדבר עם
+  הקלאסטר. `DatabaseActiveWaiter` יממש את `CompletionWaiter` בשלב יצירת ה-DB. היום יש לו רק `wait(target, uid)`,
+  לעדכון.
+- **לכל spec יש `name`** (`NamedSpec`), כדי שה-Saga יוכל למצוא משאב לפי השם אחרי תוצאה לא ידועה (סעיף 3).
+- **`ResourceEndpoint` מחזיק את מה שזהה** ב-user, role ו-ACL: `POST` לאוסף, `DELETE`, וחיפוש בשם מדויק. כל
+  repository בונה רק את הגוף שלו. `get` ו-`update` נוספים לממשק כשצעדי העדכון והמחיקה נבנים.
 - **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
 - **הקריאה הישירה ששמה בתוכנית** משתמשת ישירות ב-`ClusterRegistry` וב-`RelayClient`, בלי Saga.
 

@@ -10,7 +10,11 @@ from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
-from redis_enterprise_services.exceptions.cluster import ClusterActionFailedError, ClusterActionTimeoutError
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterActionFailedError,
+    ClusterActionTimeoutError,
+    UnreadableAnswerError,
+)
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -35,7 +39,7 @@ def test_a_completed_action_ends_the_wait() -> None:
 
 @pytest.mark.parametrize(
     argnames="action",
-    argvalues=[{"status": "failed"}, {"status": "cancelled"}, {"status": "aborted"}, {"progress": "100"}],
+    argvalues=[{"status": "failed"}, {"status": "cancelled"}, {"status": "aborted"}],
 )
 def test_an_action_that_ended_without_completing_fails_at_once(action: JsonValue) -> None:
     with pytest.raises(expected_exception=ClusterActionFailedError):
@@ -45,3 +49,8 @@ def test_an_action_that_ended_without_completing_fails_at_once(action: JsonValue
 def test_a_running_action_times_out() -> None:
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
         waiter_answering(action={"status": "running"}).wait(target=TARGET, action_uid=ACTION_UID)
+
+
+def test_an_action_answer_without_a_status_is_unreadable() -> None:
+    with pytest.raises(expected_exception=UnreadableAnswerError):
+        waiter_answering(action={"progress": "100"}).wait(target=TARGET, action_uid=ACTION_UID)

@@ -31,3 +31,12 @@ class ClusterActionFailedError(RedisEnterpriseServicesError):
 class ClusterActionTimeoutError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "cluster_action_timeout"
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
+
+
+class AmbiguousResourceError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "ambiguous_resource"
+
+
+class UnreadableAnswerError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "unreadable_cluster_answer"
+    status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY

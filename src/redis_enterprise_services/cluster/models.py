@@ -1,9 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.edge.models import ClusterCredentials
 
 
-class ClusterTarget(BaseModel):
+class ClusterAddress(BaseModel):
+    model_config = ConfigDict(revalidate_instances="always", frozen=True)
+
     network: str
     api_url: str
+
+
+class ClusterTarget(ClusterAddress):
     credentials: ClusterCredentials
