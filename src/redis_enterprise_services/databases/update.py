@@ -61,6 +61,9 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
         current: DatabaseFields = self._read(step_input=step_input, fields=list(result.values))
+        if current.values == result.values:
+            logger.info(msg=f"database {step_input.uid} already has its old values")
+            return
         self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)
 
     def _read(self, *, step_input: DatabaseUpdateInput, fields: list[str]) -> DatabaseFields:

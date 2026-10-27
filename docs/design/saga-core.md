@@ -45,7 +45,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
   בזמן הריצה מ-`ClusterCredentialsProvider`, ולכן הם לא מגיעים ל-saga record. עד שיהיה registry של קלאסטרים,
   `SharedCredentialsProvider` נותן את אותם פרטי admin לכל קלאסטר.
 - **`step_input` ו-`result` הם מודלי Pydantic,** כדי שאפשר יהיה לשמור אותם ב-saga record ולקרוא אותם בחזרה.
-  המנוע שומר עותק שלהם (`model_dump`), ולא את האובייקט עצמו, כך ששינוי מאוחר באובייקט לא משנה את ה-record.
+  המנוע מחזיק את האובייקט בזיכרון ומעביר אותו ל-`find_outcome` ול-`compensate`. ל-saga record נכתב עותק (`model_dump`),
+  רק לתיעוד ולשאילתת הסטטוס: אחרי קריסה לא ממשיכים ולא מבטלים (D5), ולכן אין צורך לבנות תוצאה מחדש מה-record.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה. צעד שיש לו תוצאה מבוטל גם אם לא הגיע ל-`done`.
 - **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. הוא מקבל את
   מה שהמנוע כבר שמר (`kept`): בעדכון ה-snapshot נשמר לפני ה-`PUT`, ואי אפשר לבנות אותו מחדש מהקלאסטר.
@@ -98,7 +99,8 @@ class PlannedStep[TInput, TResult]:
 | `InvalidEdgeRequestError` | הצעד נכשל ⇐ פיצוי (באג אצלנו) |
 | `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
 | `AmbiguousResourceError` מ-`find_outcome` (יותר ממשאב אחד באותו שם) | התערבות ידנית מיד: לא מנסים שוב ולא מפצים את הצעד הזה, כי לא ידוע איזה משאב שלנו |
-| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ ממתינים ומנסים את הבדיקה שוב |
+| כל שגיאה אחרת של הפרויקט (למשל `UnrestorableFieldsError`) | הצעד נכשל ⇐ פיצוי, בלי ניסיון חוזר: היא תחזור באותה צורה |
+| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ ממתינים ומנסים את הבדיקה שוב, עד מדיניות הניסיונות של הצעדים, ואז הצעד נכשל ⇐ פיצוי |
 | כל שגיאת קצה אחרת, timeout של המתנה, תשובה שלא נקראת (`UnreadableAnswerError`) | `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ ניסיון חוזר. גם הבדיקה נכשלה ⇐ ממתינים ומנסים שוב |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי |
 

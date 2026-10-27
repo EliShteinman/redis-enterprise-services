@@ -142,3 +142,13 @@ def test_find_outcome_waits_for_active_before_reporting_the_update_done(
     update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT)
 
     active_waiter.wait.assert_called_once_with(target=TARGET, uid=UID)
+
+
+def test_compensate_skips_the_put_when_the_old_values_are_still_there(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [SNAPSHOT]
+
+    update.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
+
+    repository.update.assert_not_called()
