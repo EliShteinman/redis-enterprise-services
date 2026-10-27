@@ -1,9 +1,6 @@
-from pydantic import BaseModel, PositiveFloat
+from pydantic import BaseModel
 
-
-class WaitSettings(BaseModel):
-    interval_seconds: PositiveFloat
-    timeout_seconds: PositiveFloat
+from redis_enterprise_services.config.wait_settings import WaitSettings
 
 
 class DatabaseSettings(BaseModel):
