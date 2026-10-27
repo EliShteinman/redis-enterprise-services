@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import httpx
+import requests
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -43,8 +43,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     telemetry: Telemetry = Telemetry(settings=settings.telemetry)
     telemetry.start()
     configure_logging(settings=settings.log)
-    http_client: httpx.Client = httpx.Client()
-    app.state.edge_client = EdgeClient(settings=settings.edge, http_client=http_client)
+    session: requests.Session = requests.Session()
+    app.state.edge_client = EdgeClient(settings=settings.edge, session=session)
     yield
-    http_client.close()
+    session.close()
     telemetry.shutdown()

@@ -2,8 +2,9 @@ import base64
 import json
 import logging
 
-import httpx
+import requests
 from pydantic import JsonValue
+from urllib3.exceptions import MaxRetryError
 
 from redis_enterprise_services.config.edge_settings import (
     EdgeErrorCodeSettings,
@@ -26,31 +27,41 @@ TEXT_ENCODING: str = "utf-8"
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
+def was_not_sent(*, error: requests.RequestException) -> bool:
+    return isinstance(error, requests.ConnectionError) and any(
+        isinstance(argument, MaxRetryError) for argument in error.args
+    )
+
+
 def basic_authorization(*, username: str, password: str) -> str:
     token: str = base64.b64encode(f"{username}:{password}".encode(TEXT_ENCODING)).decode(TEXT_ENCODING)
     return f"Basic {token}"
 
 
 class EdgeClient:
-    def __init__(self, *, settings: EdgeSettings, http_client: httpx.Client) -> None:
+    def __init__(self, *, settings: EdgeSettings, session: requests.Session) -> None:
         self._settings: EdgeSettings = settings
-        self._http_client: httpx.Client = http_client
+        self._session: requests.Session = session
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
         endpoint: NetworkSettings = self._network(name=network)
         logger.debug(msg=f"{request.method} {request.url} through {network}")
         try:
-            response: httpx.Response = self._http_client.post(
+            response: requests.Response = self._session.post(
                 url=endpoint.url,
                 headers=self._headers(request=request, endpoint=endpoint),
-                content=self._content(request=request),
+                data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
             )
-        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as error:
-            raise RequestNotSentError(message=f"the relay of {network} is unreachable: {error}") from error
-        except httpx.TransportError as error:
-            raise OutcomeUnknownError(message=f"no answer from the relay of {network}: {error}") from error
+        except requests.RequestException as error:
+            raise self._transport_error(network=network, error=error) from error
         return self._cluster_response(response=response)
+
+    @staticmethod
+    def _transport_error(*, network: str, error: requests.RequestException) -> EdgeError:
+        if was_not_sent(error=error):
+            return RequestNotSentError(message=f"the relay of {network} is unreachable: {error}")
+        return OutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")
 
     def _network(self, *, name: str) -> NetworkSettings:
         endpoint: NetworkSettings | None = self._settings.networks.get(name)
@@ -87,7 +98,7 @@ class EdgeClient:
             return None
         return json.dumps(obj=request.body).encode(TEXT_ENCODING)
 
-    def _cluster_response(self, *, response: httpx.Response) -> ClusterResponse:
+    def _cluster_response(self, *, response: requests.Response) -> ClusterResponse:
         edge_error: str | None = response.headers.get(self._settings.headers.error)
         if edge_error is not None:
             raise self._edge_error(code=edge_error, response=response)
@@ -97,7 +108,7 @@ class EdgeClient:
             body=self._body(response=response),
         )
 
-    def _edge_error(self, *, code: str, response: httpx.Response) -> EdgeError:
+    def _edge_error(self, *, code: str, response: requests.Response) -> EdgeError:
         codes: EdgeErrorCodeSettings = self._settings.error_codes
         message: str = f"relay answered {response.status_code} {code}: {response.text}"
         logger.warning(msg=message)
@@ -113,10 +124,10 @@ class EdgeClient:
         return OutcomeUnknownError(message=message)
 
     @staticmethod
-    def _body(*, response: httpx.Response) -> JsonValue | None:
+    def _body(*, response: requests.Response) -> JsonValue | None:
         if not response.content:
             return None
         try:
             return response.json()
-        except json.JSONDecodeError:
+        except requests.JSONDecodeError:
             return response.text
