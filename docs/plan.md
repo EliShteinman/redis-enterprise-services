@@ -67,12 +67,7 @@ x-cluster-authorization: Basic <credentials>
 <body כמו שהוא>
 ```
 
-| שלב | שירות הקצה |
-|---|---|
-| עכשיו | proxy פשוט ב-docker compose שמעביר כל בקשה כמו שהיא לקלאסטר |
-| בהמשך | cluster-relay האמיתי |
-
-ההחלפה מתבצעת בקונפיגורציה בלבד (URL של שירות הקצה), בלי שינוי קוד בסרוויס.
+שירות הקצה הוא cluster-relay, כבר מהשלב הראשון. כתובת ה-relay של כל רשת מגיעה מהקונפיגורציה.
 
 ### בלי קוד כפול
 
@@ -116,7 +111,7 @@ x-cluster-authorization: Basic <credentials>
 
 ## משאבים בשלב 1–2
 
-נבדק מול `docs/reference/redis-rest-api/`.
+נבדק מול [Redis Software REST API](https://redis.io/docs/latest/operate/rs/references/rest-api/).
 
 | משאב / יכולת | API | הערה |
 |---|---|---|
@@ -135,7 +130,7 @@ x-cluster-authorization: Basic <credentials>
 | שירות | עכשיו | לפני שלב 2 |
 |---|---|---|
 | קלאסטר Redis Enterprise | אחד | שניים |
-| proxy (שירות קצה זמני) | אחד | אחד |
+| cluster-relay (מורץ מקומית) | אחד | אחד |
 | אתחול קלאסטר (bootstrap) | אוטומטי, דרך REST API | לכל קלאסטר |
 
 הקלאסטר מבוסס על `redislabs/redis`, עם `cap_add: sys_resource` ופורטים 8443, 9443 ו-12000+.
@@ -144,14 +139,25 @@ x-cluster-authorization: Basic <credentials>
 
 ### שלב 1: יצירת DB על אתר בודד
 
-זה ה-walking skeleton. בשלב הזה נבנים לראשונה כל הרכיבים:
+זה ה-walking skeleton. הבנייה מלמטה למעלה: קודם אבני הבניין, ובסוף התהליך שמחבר אותן. כל אבן היא פעולה
+עצמאית על קלאסטר עם פעולה מפצה משלה, והיא לא יודעת מי משתמש בה. כך אותה אבן משמשת ביצירה, ב-AA, במחיקה
+ובעריכה. כל אבן היא PR נפרד ל-`dev`, והקריאות עוברות מההתחלה דרך cluster-relay האמיתי.
 
-1. שלד הפרויקט: uv, ruff, pytest, pre-commit, Settings ולוגים.
-2. docker compose: קלאסטר אחד ו-proxy.
-3. client לשירות הקצה.
-4. משאבים: DB, ACL, role, user.
-5. מנוע ה-Saga: הרצת צעדים, ובכשל הרצת פיצויים בסדר הפוך.
-6. Endpoint ליצירת DB.
+| # | אבן | מצב |
+|---|---|---|
+| - | שלד: FastAPI factory, lifespan, לוג מהקונפיג, בדיקת בריאות | ✅ |
+| - | Observability: OpenTelemetry, `trace_id` בלוג, middleware לשגיאות | ✅ |
+| 0 | client ל-relay: שליחת קריאה ומיון התשובה לפי החוזה | ⬅️ |
+| 1 | עדכון DB: snapshot, עדכון, ובפיצוי החזרת ה-snapshot (צעד 5, ועריכה בשלב 4) | |
+| 2 | user: יצירה, מחיקה, מציאה לפי שם (צעד 4) | |
+| 3 | role: יצירה, מחיקה, מציאה לפי שם (צעד 3) | |
+| 4 | ACL: יצירה, מחיקה, מציאה לפי שם (צעד 2) | |
+| 5 | DB: יצירה עם המתנה ל-`active`, מחיקה, מציאה לפי שם (צעד 1) | |
+| 6 | Saga: הרצת אבנים, ובכשל פיצויים בסדר הפוך | |
+| 7 | endpoint ליצירה: ה-API האסינכרוני שמחבר את האבנים לצעדים | |
+
+לכל אבן ממשק אחיד: `execute` ו-`compensate`. התוצאה של `execute` היא מה ש-`compensate` צריך (uid או
+snapshot). טסטים נכתבים רק ללוגיקה של הפרויקט, לא לקוד תשתית.
 
 | # | צעד | קריאה | פעולה מפצה |
 |---|---|---|---|
@@ -162,7 +168,7 @@ x-cluster-authorization: Basic <credentials>
 | 5 | חיבור ל-DB | `PUT /v1/bdbs/{uid}` עם `roles_permissions` (role ↔ ACL) | החזרת `roles_permissions` הקודם |
 
 **הגדרת "גמור":**
-- `POST` ל-endpoint יוצר, דרך ה-proxy, DB עם N יוזרים, ואפשר להתחבר ל-DB עם כל אחד מהם.
+- `POST` ל-endpoint יוצר, דרך ה-relay, DB עם N יוזרים, ואפשר להתחבר ל-DB עם כל אחד מהם.
 - כשל מוזרק בכל אחד מהצעדים משאיר את הקלאסטר נקי.
 
 ### שלב 2: יצירת Active-Active
@@ -185,10 +191,6 @@ x-cluster-authorization: Basic <credentials>
 - הוספה והסרה של יוזרים, שינוי הרשאות ושינוי הגדרות DB (זיכרון, persistence וכו').
 - לפני כל `update` נשמר snapshot דרך `get`, והפיצוי מחזיר אותו.
 
-### אחרי שלב 4: מעבר ל-cluster-relay
-
-ה-proxy ב-docker compose מוחלף ב-cluster-relay. כל הטסטים של שלבים 1–4 צריכים לעבור בלי שינוי קוד בסרוויס.
-
 ## תוצאה לא ידועה של צעד
 
 יש מצבים שבהם הצעד נכשל מבחינת ה-Saga, אבל ייתכן שהפעולה בוצעה בקלאסטר:
@@ -203,7 +205,7 @@ x-cluster-authorization: Basic <credentials>
 
 ## חוזה מול שירות הקצה
 
-השירות שלנו נבנה לפי חוזה: `docs/contracts/edge-service.md`. את השירותים האחרים (cluster-relay, ה-proxy הזמני)
+השירות שלנו נבנה לפי חוזה: `docs/contracts/edge-service.md`. את cluster-relay
 לא משנים מכאן. הבעלים שלהם מתאים אותם לחוזה. סעיף 6 בחוזה מסכם את מצב cluster-relay: כל הדרישות מתקיימות.
 
 ## שאלות פתוחות

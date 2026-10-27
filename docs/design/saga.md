@@ -2,7 +2,7 @@
 
 **סטטוס:** טיוטה לדיון
 **תאריך:** 2026-10-20
-**מקור הנתונים:** `docs/reference/redis-rest-api/` (Redis Software, גרסת latest)
+**מקור הנתונים:** [Redis Software REST API](https://redis.io/docs/latest/operate/rs/references/rest-api/) (גרסת latest)
 
 המסמך מתאר איך כל פעולה על כל משאב מתבצעת, ואיך מבטלים אותה. הוא לא עוסק בשכבת הכניסה (routes) ולא
 בשדות שה-UI שולח. אלה ייקבעו במסמך האפיון.
@@ -125,9 +125,10 @@ stateDiagram-v2
     pending --> running
     running --> done
     running --> failed
-    running --> unknown : timeout / response_rejected
+    running --> unknown : כישלון שלא בא מהקלאסטר / response_rejected על כתיבה
     unknown --> done : נמצא בקלאסטר
-    unknown --> failed : לא נמצא
+    unknown --> running : לא נמצא, retry
+    unknown --> failed : נגמרו הניסיונות
     done --> compensating : צעד מאוחר יותר נכשל
     compensating --> compensated
     compensating --> compensation_failed : נגמרו הניסיונות
@@ -141,11 +142,15 @@ stateDiagram-v2
 ייתכן שצעד נכשל מבחינתנו, אבל בוצע בפועל בקלאסטר:
 - timeout אחרי שהבקשה נשלחה.
 - `response_rejected` של cluster-relay על פעולת כתיבה.
+- חיבור שנשבר אחרי שהבקשה יצאה, ונראה כמו "לא נשלח" (למשל שגיאת TLS).
 
-**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה,
-המנוע מאתר את המשאב לפי המפתח:
+**הכלל:** לא סומכים על "לא נשלח". אחרי כל כישלון שלא בא מהקלאסטר עצמו (שגיאה של שירות הקצה או של החיבור
+אליו, חוץ מ-`invalid_request`, שהוא באג אצלנו), המנוע תמיד בודק לפני ניסיון חוזר. אם גם הבדיקה נכשלת, הצעד מחכה ומנסה מאוחר יותר.
+
+**הפתרון:** לכל משאב יש מפתח זיהוי דטרמיניסטי (שם), ולכל repository יש `find_by_key`. כשהתוצאה לא ידועה (לפי
+הכלל, אחרי כל כישלון שלא בא מהקלאסטר), המנוע מאתר את המשאב לפי המפתח:
 - **נמצא:** הצעד נחשב הצליח, וה-uid נלקח מהרשומה שנמצאה.
-- **לא נמצא:** הצעד נחשב נכשל.
+- **לא נמצא:** הצעד לא בוצע. מנסים שוב לפי מדיניות ה-retry, ואם היא נגמרת, הצעד נכשל.
 
 **ל-REST API של Redis אין חיפוש לפי שם.** `find_by_key` שולף את **כל** הרשימה של אותו סוג משאב, ומסנן אותה
 בקוד שלנו לפי המפתח. ב-`bdbs` הפרמטר `fields` רק מצמצם את השדות שחוזרים לכל DB. הוא לא מסנן את הרשימה. שליפת
@@ -464,8 +469,10 @@ stateDiagram-v2
 | הצלחה | 2xx מהקלאסטר | ממשיך |
 | שגיאה זמנית | `409` עם `busy`, או שגיאה שמוגדרת בקונפיגורציה כזמנית | retry |
 | שגיאת קלאסטר | 4xx/5xx אחר מהקלאסטר, עם `error_code` | הצעד נכשל |
-| שגיאת שירות הקצה | header `x-edge-error` (חוזה C9–C11) | `connection_failed` ⇐ הצעד נכשל; `timeout` ⇐ תוצאה לא ידועה |
-| תוצאה לא ידועה | timeout, או `response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
+| בקשה לא תקינה מצדנו | `x-edge-error: invalid_request` | הצעד נכשל, בלי retry (באג אצלנו) |
+| שירות הקצה לא הגיע לקלאסטר, או לא ענה | `x-edge-error: connection_failed` או `timeout`, או שאין תשובה מהקצה | `find_by_key` (סעיף 3), גם על `connection_failed` |
+| תשובה שנדחתה על כתיבה | `x-edge-error: response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
+| תשובה שנדחתה על קריאה | `x-edge-error: response_rejected` על קריאה | הצעד נכשל (קריאה חוזרת תידחה שוב) |
 
 ### כשל של הפיצוי עצמו
 

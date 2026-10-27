@@ -14,6 +14,7 @@ from redis_enterprise_services.api.error_handlers import (
 )
 from redis_enterprise_services.api.middleware.unexpected_errors import UnexpectedErrorMiddleware
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
 from redis_enterprise_services.telemetry.setup import Telemetry
@@ -41,5 +42,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     telemetry: Telemetry = Telemetry(settings=settings.telemetry)
     telemetry.start()
     configure_logging(settings=settings.log)
+    app.state.edge_client = EdgeClient(settings=settings.edge)
     yield
     telemetry.shutdown()
