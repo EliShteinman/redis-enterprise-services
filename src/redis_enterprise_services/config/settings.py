@@ -8,6 +8,7 @@ from pydantic_settings import (
 )
 
 from redis_enterprise_services.config.action_settings import ActionSettings
+from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
             "config/telemetry.yaml",
             "config/edge.yaml",
             "config/action.yaml",
+            "config/cluster.yaml",
             "config/database.yaml",
             "config/user.yaml",
         ),
@@ -34,6 +36,7 @@ class Settings(BaseSettings):
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings
+    cluster: ClusterSettings
     database: DatabaseSettings
     user: UserSettings
 
