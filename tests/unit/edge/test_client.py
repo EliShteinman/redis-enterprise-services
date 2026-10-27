@@ -4,7 +4,7 @@ import pytest
 import requests
 from pydantic import SecretStr
 from requests.adapters import BaseAdapter
-from urllib3.exceptions import MaxRetryError, NewConnectionError, ProtocolError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import Settings
@@ -104,6 +104,18 @@ def test_a_rejection_keeps_the_cluster_status(settings: EdgeSettings) -> None:
                 MaxRetryError(pool=None, url="/", reason=NewConnectionError(None, "refused"))
             ),
             RequestNotSentError,
+        ),
+        (
+            requests.ConnectTimeout(
+                MaxRetryError(pool=None, url="/", reason=ConnectTimeoutError("timed out"))
+            ),
+            RequestNotSentError,
+        ),
+        (
+            requests.exceptions.SSLError(
+                MaxRetryError(pool=None, url="/", reason=SSLError("eof after sending"))
+            ),
+            OutcomeUnknownError,
         ),
         (requests.ConnectionError(ProtocolError("connection aborted")), OutcomeUnknownError),
         (requests.ReadTimeout("read timed out"), OutcomeUnknownError),

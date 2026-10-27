@@ -4,7 +4,7 @@ import logging
 
 import requests
 from pydantic import JsonValue
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError
 
 from redis_enterprise_services.config.edge_settings import (
     EdgeErrorCodeSettings,
@@ -28,8 +28,9 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 def was_not_sent(*, error: requests.RequestException) -> bool:
-    return isinstance(error, requests.ConnectionError) and any(
-        isinstance(argument, MaxRetryError) for argument in error.args
+    return any(
+        isinstance(argument, MaxRetryError) and isinstance(argument.reason, ConnectTimeoutError)
+        for argument in error.args
     )
 
 
