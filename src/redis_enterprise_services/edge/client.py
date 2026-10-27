@@ -46,7 +46,7 @@ class EdgeClient:
                 content=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
             )
-        except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as error:
             raise RequestNotSentError(message=f"the relay of {network} is unreachable: {error}") from error
         except httpx.TransportError as error:
             raise OutcomeUnknownError(message=f"no answer from the relay of {network}: {error}") from error
