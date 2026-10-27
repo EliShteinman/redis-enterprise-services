@@ -286,6 +286,7 @@ stateDiagram-v2
   |---|---|
   | `GET /v1/bdbs/{uid}?fields=memory_size,eviction_policy` | `200`, רק השדות שביקשנו, עם `cluster-state-id`. `uid` לא נוסף מעצמו |
   | `fields` עם שם שדה שלא קיים | `406 invalid_fields_query_param` |
+  | `fields` עם שדה קיים שלא מוגדר ב-DB (`tags`, `backup_location`, `avoid_nodes`) | `200` בלי השדה, בלי שגיאה. לכן עדכון של שדה כזה נדחה לפני ה-`PUT`, כי אין מה להחזיר בביטול |
   | `PUT` עם שדות בודדים | `200`, ה-bdb המלא חוזר, `status: active-change-pending` |
   | `PUT` נוסף בזמן `active-change-pending` | `409 db_busy`. לכן אחרי כל `PUT` מחכים ל-`active` (כשנייה ב-DB ריק) |
   | `PUT` עם ה-snapshot (אותם שדות, ערכים ישנים) | הערכים חזרו |
