@@ -696,21 +696,29 @@ classDiagram
 
     class ResourceRepository~TSpec~ {
         <<interface>>
-        +create(spec) Resource
-        +get(uid) Resource
-        +find_by_key(key) Resource | None
-        +update(uid, changes) Resource
-        +delete(uid) None
+        +create(target, spec) CreatedResource
+        +delete(target, uid) action_uid | None
+        +find_by_name(target, name) NamedResource | None
+        +get(target, uid) Resource
+        +update(target, uid, changes) None
+    }
+    class ResourceEndpoint {
+        +create(target, body) CreatedResource
+        +delete(target, uid) action_uid | None
+        +find_by_name(target, name) NamedResource | None
     }
     class DatabaseRepository
     class CrdbRepository
     class UserRepository
     class RoleRepository
     class RedisAclRepository
-    class OperationWaiter {
+    class CompletionWaiter {
         <<interface>>
-        +wait(reference) None
+        +wait_created(target, resource) None
+        +wait_deleted(target, uid, action_uid) None
     }
+    class ActionCompletionWaiter
+    class DatabaseActiveWaiter
 
     class ClusterRegistry {
         <<interface>>
@@ -746,18 +754,22 @@ classDiagram
     CreateResourceStep --> ResourceRepository
     UpdateResourceStep --> ResourceRepository
     DeleteResourceStep --> ResourceRepository
+    CreateResourceStep --> CompletionWaiter
+    UpdateResourceStep --> CompletionWaiter
+    DeleteResourceStep --> CompletionWaiter
+    CompletionWaiter <|.. ActionCompletionWaiter
+    CompletionWaiter <|.. DatabaseActiveWaiter
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. UserRepository
     ResourceRepository <|.. RoleRepository
     ResourceRepository <|.. RedisAclRepository
-    DatabaseRepository --> OperationWaiter
-    CrdbRepository --> OperationWaiter
     DatabaseRepository --> RelayClient
     CrdbRepository --> RelayClient
-    UserRepository --> RelayClient
-    RoleRepository --> RelayClient
-    RedisAclRepository --> RelayClient
+    UserRepository --> ResourceEndpoint
+    RoleRepository --> ResourceEndpoint
+    RedisAclRepository --> ResourceEndpoint
+    ResourceEndpoint --> RelayClient
     RelayClient --> ClusterRegistry
     PlacementStrategy <|.. PriorityPlacement
     PlacementStrategy <|.. CapacityPlacement
@@ -772,6 +784,11 @@ classDiagram
 - **שלושה צעדים גנריים מכסים את כל המשאבים.** `CreateResourceStep`, `UpdateResourceStep` ו-`DeleteResourceStep`
   עובדים על כל `ResourceRepository`. ACL, role, user, DB ו-CRDB לא צריכים מחלקות צעד משלהם.
 - **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
+- **הצעד לא מחכה בעצמו ולא יודע איך מחכים.** הוא מקבל `CompletionWaiter`: ב-user, role ו-ACL דרך ה-action
+  (`ActionCompletionWaiter`), וב-DB דרך `status: active` ו-404 (`DatabaseActiveWaiter`). ה-repository רק מדבר עם
+  הקלאסטר.
+- **`ResourceEndpoint` מחזיק את מה שזהה** ב-user, role ו-ACL: `POST` לאוסף, `DELETE`, וחיפוש בשם מדויק. כל
+  repository בונה רק את הגוף שלו. `get` ו-`update` נוספים לממשק כשצעדי העדכון והמחיקה נבנים.
 - **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
 - **הקריאה הישירה ששמה בתוכנית** משתמשת ישירות ב-`ClusterRegistry` וב-`RelayClient`, בלי Saga.
 
