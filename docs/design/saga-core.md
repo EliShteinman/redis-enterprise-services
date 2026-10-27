@@ -35,7 +35,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
-    def find_outcome(self, *, step_input: TInput) -> TResult | None: ...
+    def find_outcome(self, *, step_input: TInput, kept: TResult | None) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
 ```
@@ -43,16 +43,17 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 - **התלויות** (repository, waiter) בקונסטרקטור. **הנתונים** (קלאסטר יעד, spec) ב-`step_input`. כך הצעד בלי מצב.
 - **`step_input` ו-`result` הם מודלי Pydantic,** כדי שאפשר יהיה לשמור אותם ב-saga record ולקרוא אותם בחזרה.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה. צעד שיש לו תוצאה מבוטל גם אם לא הגיע ל-`done`.
-- **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן.
+- **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. הוא מקבל את
+  מה שהמנוע כבר שמר (`kept`): בעדכון ה-snapshot נשמר לפני ה-`PUT`, ואי אפשר לבנות אותו מחדש מהקלאסטר.
 - **`compensate`** idempotent. אם אין מה לבטל, הוא לא עושה כלום.
 
 ### מה כל צעד שבנינו או שנבנה מממש
 
 | צעד | `step_input` | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|---|
-| יצירת user / role / ACL | target + spec | `CreatedResource` | `find_by_name(spec.name)` | `delete`, ‏404 = כבר בוטל |
+| יצירת user / role / ACL | target + spec | `CreatedResource` | `find_by_name(spec.name)`, בלי `action_uid` | `delete`, ‏404 = כבר בוטל |
 | יצירת DB | target + spec | `CreatedResource` | `find_by_name` (שם לא ייחודי: יותר מאחד ⇐ התערבות ידנית, 5.4) | `delete`, המתנה ל-404 |
-| עדכון DB / הרשאות | target + uid + values | snapshot | האם הערכים הנוכחיים שווים לחדשים | `PUT` של ה-snapshot |
+| עדכון DB / הרשאות | target + uid + values | snapshot | הערכים הנוכחיים שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot |
 | יצירת CRDB | target + spec + `X-Task-ID` | guid | `GET /v1/crdb_tasks/{X-Task-ID}` | `DELETE` + task |
 | עדכון CRDB / הרשאות AA | target + guid + values | snapshot | השוואה | `PATCH` של ה-snapshot |
 | מחיקת user | target + uid + snapshot + password | - | האם היוזר עדיין קיים | **pivot**, אין פיצוי |
@@ -64,7 +65,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
 ```python
 class PlannedStep[TInput, TResult](BaseModel):
-    key: str                                    # ייחודי בתוכנית: "cluster1/role/db1-app-role/create"
+    key: str  # ייחודי בתוכנית: "cluster1/role/db1-app-role/create"
     step: SagaStep[TInput, TResult]
     build_input: Callable[[SagaContext], TInput]
 ```
