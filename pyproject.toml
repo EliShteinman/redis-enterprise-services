@@ -25,6 +25,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.40.2",
     "pre-commit>=4.7.0",
     "pytest>=9.1.1",
     "ruff>=0.17.2",
@@ -47,3 +48,8 @@ addopts = ["--import-mode=importlib"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S106"]
+
+[tool.basedpyright]
+include = ["src", "tests"]
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = "error"

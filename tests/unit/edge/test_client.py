@@ -1,12 +1,15 @@
 import io
+from unittest.mock import create_autospec
 
 import pytest
 import requests
 from pydantic import SecretStr
+from urllib3.connection import HTTPConnection
+from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings
-from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterRequest, ClusterResponse
 from redis_enterprise_services.exceptions.edge import (
@@ -18,6 +21,8 @@ from redis_enterprise_services.exceptions.edge import (
 )
 
 NETWORK: str = "local"
+POOL: ConnectionPool = create_autospec(spec=ConnectionPool, instance=True)
+CONNECTION: HTTPConnection = create_autospec(spec=HTTPConnection, instance=True)
 REQUEST: ClusterRequest = ClusterRequest(
     method="GET",
     url="https://cluster.local:9443/v1/bdbs/1",
@@ -27,7 +32,7 @@ REQUEST: ClusterRequest = ClusterRequest(
 
 @pytest.fixture
 def settings() -> EdgeSettings:
-    return Settings().edge
+    return load_settings().edge
 
 
 def relay_answer(*, status_code: int, headers: dict[str, str], body: bytes = b"{}") -> requests.Response:
@@ -102,19 +107,19 @@ def test_a_rejection_keeps_the_cluster_status(
     argvalues=[
         (
             requests.ConnectionError(
-                MaxRetryError(pool=None, url="/", reason=NewConnectionError(None, "refused"))
+                MaxRetryError(pool=POOL, url="/", reason=NewConnectionError(CONNECTION, "refused"))
             ),
             RequestNotSentError,
         ),
         (
             requests.ConnectTimeout(
-                MaxRetryError(pool=None, url="/", reason=ConnectTimeoutError("timed out"))
+                MaxRetryError(pool=POOL, url="/", reason=ConnectTimeoutError("timed out"))
             ),
             RequestNotSentError,
         ),
         (
             requests.exceptions.SSLError(
-                MaxRetryError(pool=None, url="/", reason=SSLError("eof after sending"))
+                MaxRetryError(pool=POOL, url="/", reason=SSLError("eof after sending"))
             ),
             OutcomeUnknownError,
         ),
