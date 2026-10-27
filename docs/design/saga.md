@@ -758,7 +758,7 @@ classDiagram
     UpdateResourceStep --> CompletionWaiter
     DeleteResourceStep --> CompletionWaiter
     CompletionWaiter <|.. ActionCompletionWaiter
-    CompletionWaiter <|.. DatabaseActiveWaiter
+    CompletionWaiter <|.. DatabaseActiveWaiter : planned, DB create stage
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. UserRepository
@@ -786,7 +786,9 @@ classDiagram
 - **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
 - **הצעד לא מחכה בעצמו ולא יודע איך מחכים.** הוא מקבל `CompletionWaiter`: ב-user, role ו-ACL דרך ה-action
   (`ActionCompletionWaiter`), וב-DB דרך `status: active` ו-404 (`DatabaseActiveWaiter`). ה-repository רק מדבר עם
-  הקלאסטר.
+  הקלאסטר. `DatabaseActiveWaiter` יממש את `CompletionWaiter` בשלב יצירת ה-DB. היום יש לו רק `wait(target, uid)`,
+  לעדכון.
+- **לכל spec יש `name`** (`NamedSpec`), כדי שה-Saga יוכל למצוא משאב לפי השם אחרי תוצאה לא ידועה (סעיף 3).
 - **`ResourceEndpoint` מחזיק את מה שזהה** ב-user, role ו-ACL: `POST` לאוסף, `DELETE`, וחיפוש בשם מדויק. כל
   repository בונה רק את הגוף שלו. `get` ו-`update` נוספים לממשק כשצעדי העדכון והמחיקה נבנים.
 - **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
