@@ -46,7 +46,7 @@ class DatabaseUpdate:
         )
         self._apply(values=self._snapshot.values, cluster_state_id=current.cluster_state_id)
 
-    def _apply(self, *, values: dict[str, JsonValue], cluster_state_id: int | None) -> None:
+    def _apply(self, *, values: dict[str, JsonValue], cluster_state_id: int) -> None:
         self._repository.update(
             target=self._target, uid=self._uid, values=values, cluster_state_id=cluster_state_id
         )

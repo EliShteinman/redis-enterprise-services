@@ -28,7 +28,7 @@ class DatabaseRepository:
         return DatabaseFields(values=response.body, cluster_state_id=response.cluster_state_id)
 
     def update(
-        self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int | None
+        self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
         logger.info(msg=f"updating {sorted(values)} of database {uid}")
         self._send(target=target, method="PUT", uid=uid, body=values, cluster_state_id=cluster_state_id)
