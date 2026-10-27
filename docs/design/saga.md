@@ -663,9 +663,9 @@ classDiagram
     class SagaStep {
         <<abstract>>
         +kind: StepKind
-        +execute(context) None
-        +compensate(context) None
-        +find_outcome(context) StepOutcome
+        +execute(step_input, keep_result) None
+        +find_outcome(step_input, kept) TResult
+        +compensate(step_input, result) None
     }
     class StepKind {
         <<enum>>
@@ -674,12 +674,21 @@ classDiagram
         RETRIABLE
     }
     class SagaPlan {
-        +steps: list~SagaStep~
+        +steps: list~PlannedStep~
         +validate_order() None
     }
+    class PlannedStep {
+        +key: str
+        +step: SagaStep
+        +build_input(context) TInput
+    }
     class SagaContext {
-        +put(key, value) None
-        +get(key) Any
+        +keep(key, result) None
+        +get(key) result
+    }
+    class ClusterCredentialsProvider {
+        <<interface>>
+        +target_for(address) ClusterTarget
     }
     class SagaExecutor {
         +run(plan) SagaRecord
@@ -748,8 +757,9 @@ classDiagram
     SagaExecutor --> SagaPlan
     SagaExecutor --> SagaStateRepository
     SagaExecutor --> RetryPolicy
-    SagaPlan o-- SagaStep
-    SagaStep --> SagaContext
+    SagaPlan o-- PlannedStep
+    PlannedStep --> SagaStep
+    PlannedStep --> SagaContext
     SagaStep --> StepKind
     SagaStep <|-- CreateResourceStep
     SagaStep <|-- UpdateResourceStep
@@ -773,6 +783,9 @@ classDiagram
     RoleRepository --> ResourceEndpoint
     RedisAclRepository --> ResourceEndpoint
     ResourceEndpoint --> RelayClient
+    CreateResourceStep --> ClusterCredentialsProvider
+    UpdateResourceStep --> ClusterCredentialsProvider
+    DeleteResourceStep --> ClusterCredentialsProvider
     RelayClient --> ClusterRegistry
     PlacementStrategy <|.. PriorityPlacement
     PlacementStrategy <|.. CapacityPlacement
