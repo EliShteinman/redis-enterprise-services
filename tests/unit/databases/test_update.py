@@ -3,10 +3,11 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
+from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.databases.update import DatabaseUpdate
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterTarget
+from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 UID: int = 1

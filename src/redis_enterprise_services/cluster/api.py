@@ -2,8 +2,9 @@ from http import HTTPStatus
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.edge.client import EdgeClient
-from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse, ClusterTarget, HttpMethod
+from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse, HttpMethod
 from redis_enterprise_services.exceptions.cluster import ClusterRequestError
 
 ERROR_CODE_FIELD: str = "error_code"
