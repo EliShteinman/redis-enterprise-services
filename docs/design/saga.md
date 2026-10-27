@@ -232,7 +232,7 @@ stateDiagram-v2
 
 | פעולה | API | Snapshot לפני | ביטול | הפיכות |
 |---|---|---|---|---|
-| יצירה | `POST /v1/users` `{name, password, role_uids, auth_method}` | - | `DELETE /v1/users/{uid}` | ✅ |
+| יצירה | `POST /v1/users` `{name, password, role_uids}` (`auth_method` לא נשלח: ברירת המחדל `regular`, V21) | - | `DELETE /v1/users/{uid}` | ✅ |
 | עריכה (בלי סיסמה) | `PUT /v1/users/{uid}` | `GET`: `name`, `email`, `role_uids`, `email_alerts`, `bdbs_email_alerts`, `auth_method` | `PUT` עם ה-snapshot | ✅ |
 | החלפת סיסמה | `PUT /v1/users/password` | **הסיסמה הישנה לא קריאה מה-API.** ה-UI שולח אותה בבקשה. | `PUT /v1/users/password` עם הסיסמה הישנה | ✅ |
 | מחיקה | `DELETE /v1/users/{uid}` | `GET`: כל השדות שאפשר לכתוב. הסיסמה מגיעה מה-UI. | `POST` עם ה-snapshot והסיסמה | ✅ (ה-uid משתנה) |
