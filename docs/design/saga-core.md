@@ -52,14 +52,17 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
 ### מה כל צעד שבנינו או שנבנה מממש
 
+`find_by_name` מחזיר רשימה. ב-user, role ו-ACL הקלאסטר אוכף שם ייחודי, ולכן יש לכל היותר אחד. ב-DB השם לא
+ייחודי (V2), ואם נמצא יותר מאחד, `find_outcome` זורק `AmbiguousResourceError`.
+
 | צעד | `step_input` | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|---|
-| יצירת user / role / ACL | target + spec | `CreatedResource` | `find_by_name(spec.name)`, בלי `action_uid` | `delete`, ‏404 = כבר בוטל |
-| יצירת DB | target + spec | `CreatedResource` | `find_by_name` (שם לא ייחודי: יותר מאחד ⇐ התערבות ידנית, 5.4) | `delete`, המתנה ל-404 |
-| עדכון DB / הרשאות | target + uid + values | snapshot | הערכים הנוכחיים שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot |
-| יצירת CRDB | target + spec + `X-Task-ID` | guid | `GET /v1/crdb_tasks/{X-Task-ID}` | `DELETE` + task |
-| עדכון CRDB / הרשאות AA | target + guid + values | snapshot | השוואה | `PATCH` של ה-snapshot |
-| מחיקת user | target + uid + snapshot + password | - | האם היוזר עדיין קיים | **pivot**, אין פיצוי |
+| יצירת user / role / ACL | כתובת קלאסטר + spec | `CreatedResource` | `find_by_name(spec.name)`, בלי `action_uid` | `delete`, ‏404 = כבר בוטל |
+| יצירת DB | כתובת קלאסטר + spec (בלי הסיסמה של `default_user`) | `CreatedResource` | `find_by_name` (שם לא ייחודי: יותר מאחד ⇐ `AmbiguousResourceError`, התערבות ידנית, 5.4) | `delete`, המתנה ל-404 |
+| עדכון DB / הרשאות | כתובת קלאסטר + uid + values | snapshot | הערכים הנוכחיים שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot |
+| יצירת CRDB (צעד משלו: מזהה guid, ממתין ל-task) | כתובת קלאסטר + spec + `X-Task-ID` | guid | `GET /v1/crdb_tasks/{X-Task-ID}` | `DELETE` + task |
+| עדכון CRDB / הרשאות AA | כתובת קלאסטר + guid + values | snapshot | השוואה | `PATCH` של ה-snapshot |
+| מחיקת user | כתובת קלאסטר + uid + snapshot + password | - | האם היוזר עדיין קיים | **pivot**, אין פיצוי |
 
 ## 3. קלט שתלוי בצעד קודם
 
