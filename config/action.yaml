@@ -1,0 +1,7 @@
+action:
+  path: /v1/actions/{uid}
+  completed_status: completed
+  failed_status: failed
+  wait:
+    interval_seconds: 0.5
+    timeout_seconds: 60
