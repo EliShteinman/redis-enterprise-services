@@ -654,6 +654,8 @@ stateDiagram-v2
 
 ## 12. מבנה המחלקות
 
+החוזה המדויק בין המנוע לצעדים, ומה כל צעד מממש: `saga-core.md`.
+
 ```mermaid
 classDiagram
     direction TB
