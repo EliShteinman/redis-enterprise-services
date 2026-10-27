@@ -82,7 +82,7 @@ x-result-ttl: 3600             (אופציונלי)
 | `x-edge-error` | מתי | הבקשה הגיעה לקלאסטר? | מה השירות שלנו עושה |
 |---|---|---|---|
 | `invalid_request` | חסר header או header לא תקין | **לא** | שגיאה אצלנו, לא מנסים שוב |
-| `connection_failed` | לא נפתח חיבור לקלאסטר (DNS, connection refused) | **לא** | הצעד נכשל. אפשר לנסות שוב בבטחה |
+| `connection_failed` | לא נפתח חיבור לקלאסטר (DNS, connection refused) | **לא** (לא סומכים על זה) | בודקים לפני ניסיון חוזר (design סעיף 3) |
 | `timeout` | הבקשה נשלחה, ולא חזרה תשובה בזמן | **לא ידוע** | `find_by_key` (design סעיף 3) |
 | `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | **כן**. ה-status המקורי ב-`x-edge-cluster-status` | 2xx מקורי על כתיבה ⇐ הפעולה בוצעה, `find_by_key` מביא את ה-uid |
 
