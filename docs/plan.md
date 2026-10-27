@@ -111,7 +111,7 @@ x-cluster-authorization: Basic <credentials>
 
 ## משאבים בשלב 1–2
 
-נבדק מול `docs/reference/redis-rest-api/`.
+נבדק מול [Redis Software REST API](https://redis.io/docs/latest/operate/rs/references/rest-api/).
 
 | משאב / יכולת | API | הערה |
 |---|---|---|

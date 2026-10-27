@@ -2,7 +2,7 @@
 
 **סטטוס:** טיוטה לדיון
 **תאריך:** 2026-10-20
-**מקור הנתונים:** `docs/reference/redis-rest-api/` (Redis Software, גרסת latest)
+**מקור הנתונים:** [Redis Software REST API](https://redis.io/docs/latest/operate/rs/references/rest-api/) (גרסת latest)
 
 המסמך מתאר איך כל פעולה על כל משאב מתבצעת, ואיך מבטלים אותה. הוא לא עוסק בשכבת הכניסה (routes) ולא
 בשדות שה-UI שולח. אלה ייקבעו במסמך האפיון.
