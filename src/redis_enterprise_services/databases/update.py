@@ -5,6 +5,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.edge.models import ClusterTarget
+from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -25,10 +26,16 @@ class DatabaseUpdate:
         self._snapshot: DatabaseFields | None = None
 
     def execute(self) -> None:
-        self._snapshot = self._repository.get_fields(
+        snapshot: DatabaseFields = self._repository.get_fields(
             target=self._target, uid=self._uid, fields=list(self._values)
         )
-        self._apply(values=self._values, cluster_state_id=self._snapshot.cluster_state_id)
+        missing: set[str] = set(self._values) - set(snapshot.values)
+        if missing:
+            raise UnrestorableFieldsError(
+                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
+            )
+        self._snapshot = snapshot
+        self._apply(values=self._values, cluster_state_id=snapshot.cluster_state_id)
 
     def compensate(self) -> None:
         if self._snapshot is None:
