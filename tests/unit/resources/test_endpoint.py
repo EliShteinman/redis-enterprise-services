@@ -8,7 +8,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
 from redis_enterprise_services.resources.endpoint import ResourceEndpoint
-from redis_enterprise_services.resources.models import NamedResource
+from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -36,3 +36,19 @@ def test_find_by_name_returns_the_resource_with_that_name(endpoint: ResourceEndp
 @pytest.mark.parametrize(argnames="name", argvalues=["no-such-user", "APP-USER"])
 def test_find_by_name_returns_none_without_an_exact_match(endpoint: ResourceEndpoint, name: str) -> None:
     assert endpoint.find_by_name(target=TARGET, name=name) is None
+
+
+def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
+    api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
+    api.send.return_value = ClusterResponse(
+        status_code=200,
+        headers={},
+        body={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"},
+        cluster_state_id=None,
+    )
+    settings: Settings = Settings()
+    endpoint: ResourceEndpoint = ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
+
+    created: CreatedResource = endpoint.create(target=TARGET, body={"name": "app-user"})
+
+    assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
