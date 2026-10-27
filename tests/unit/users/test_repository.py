@@ -5,7 +5,7 @@ from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
 from redis_enterprise_services.users.models import User
 from redis_enterprise_services.users.repository import UserRepository
@@ -25,7 +25,7 @@ USERS: list[JsonValue] = [
 def repository() -> UserRepository:
     api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
     api.send.return_value = ClusterResponse(status_code=200, headers={}, body=USERS, cluster_state_id=None)
-    settings: Settings = Settings()
+    settings: Settings = load_settings()
     return UserRepository(api=api, settings=settings.user, cluster=settings.cluster)
 
 
