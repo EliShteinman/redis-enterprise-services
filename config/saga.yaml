@@ -1,0 +1,11 @@
+saga:
+  step_retry:
+    attempts: 3
+    backoff_seconds: 2
+  compensation_retry:
+    attempts: 5
+    backoff_seconds: 2
+  transient_error_codes:
+    - busy
+    - db_busy
+    - wrong_cluster_state_id

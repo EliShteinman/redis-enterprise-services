@@ -1,0 +1,342 @@
+from collections.abc import Callable
+
+import pytest
+from pydantic import BaseModel
+
+from redis_enterprise_services.config.saga_settings import RetrySettings, SagaSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.cluster import AmbiguousResourceError, ClusterRequestError
+from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
+from redis_enterprise_services.exceptions.saga import DatabaseLockedError, InvalidPlanError
+from redis_enterprise_services.saga.context import SagaContext
+from redis_enterprise_services.saga.executor import SagaExecutor
+from redis_enterprise_services.saga.lock import DatabaseLock
+from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepStatus
+from redis_enterprise_services.saga.plan import SagaPlan
+from redis_enterprise_services.saga.planned_step import PlannedStep
+from redis_enterprise_services.saga.state import SagaStateRepository
+from redis_enterprise_services.steps.kind import StepKind
+from redis_enterprise_services.steps.result import KeepResult
+from redis_enterprise_services.steps.saga_step import SagaStep
+
+SAGA_ID: str = "trace-1"
+LOCK_KEYS: list[str] = ["cluster1/db1"]
+SETTINGS: SagaSettings = SagaSettings(
+    step_retry=RetrySettings(attempts=3, backoff_seconds=0),
+    compensation_retry=RetrySettings(attempts=2, backoff_seconds=0),
+    transient_error_codes=frozenset({"busy"}),
+)
+BUSY: ClusterRequestError = ClusterRequestError(message="busy", cluster_status_code=409, error_code="busy")
+REJECTED: ClusterRequestError = ClusterRequestError(
+    message="no", cluster_status_code=400, error_code="invalid"
+)
+UNKNOWN: OutcomeUnknownError = OutcomeUnknownError(message="timeout")
+
+type Action = str | RedisEnterpriseServicesError
+
+
+class FakeInput(BaseModel):
+    name: str
+    parent: str | None = None
+
+
+class FakeResult(BaseModel):
+    name: str
+    attempt: int
+
+
+class FakeStep(SagaStep[FakeInput, FakeResult]):
+    def __init__(
+        self,
+        *,
+        journal: list[str],
+        kind: StepKind = StepKind.COMPENSATABLE,
+        executions: list[Action] | None = None,
+        outcomes: list[FakeResult | RedisEnterpriseServicesError | None] | None = None,
+        compensations: list[RedisEnterpriseServicesError | None] | None = None,
+    ) -> None:
+        self._journal: list[str] = journal
+        self._kind: StepKind = kind
+        self._executions: list[Action] = executions or ["keep"]
+        self._outcomes: list[FakeResult | RedisEnterpriseServicesError | None] = outcomes or [None]
+        self._compensations: list[RedisEnterpriseServicesError | None] = compensations or [None]
+        self.executed: int = 0
+
+    @property
+    def kind(self) -> StepKind:
+        return self._kind
+
+    def execute(self, *, step_input: FakeInput, keep_result: KeepResult[FakeResult]) -> None:
+        action: Action = self._executions[min(self.executed, len(self._executions) - 1)]
+        self.executed += 1
+        self._journal.append(f"execute {step_input.name}")
+        if isinstance(action, RedisEnterpriseServicesError):
+            raise action
+        keep_result(FakeResult(name=step_input.name, attempt=self.executed))
+        if action == "keep then busy":
+            raise BUSY
+
+    def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
+        outcome: FakeResult | RedisEnterpriseServicesError | None = self._outcomes.pop(0)
+        if isinstance(outcome, RedisEnterpriseServicesError):
+            raise outcome
+        return outcome
+
+    def compensate(self, *, step_input: FakeInput, result: FakeResult) -> None:
+        self._journal.append(f"compensate {step_input.name}")
+        error: RedisEnterpriseServicesError | None = self._compensations[0]
+        if error is not None:
+            raise error
+
+
+class MemoryState(SagaStateRepository):
+    def __init__(self) -> None:
+        self.saved: SagaRecord | None = None
+        self.finished: bool = False
+
+    def save(self, *, record: SagaRecord) -> None:
+        self.saved = record.model_copy(deep=True)
+
+    def finish(self, *, record: SagaRecord) -> None:
+        self.saved = record.model_copy(deep=True)
+        self.finished = True
+
+
+class MemoryLock(DatabaseLock):
+    def __init__(self, *, held_by: str | None = None) -> None:
+        self.held_by: str | None = held_by
+
+    def acquire(self, *, keys: list[str], owner: str) -> None:
+        if self.held_by not in (None, owner):
+            raise DatabaseLockedError(message=f"{keys} locked by {self.held_by}")
+        self.held_by = owner
+
+    def release(self, *, keys: list[str], owner: str) -> None:
+        if self.held_by == owner:
+            self.held_by = None
+
+
+def planned(
+    *, step: FakeStep, name: str, build: Callable[[SagaContext], FakeInput] | None = None
+) -> PlannedStep[FakeInput, FakeResult]:
+    return PlannedStep(key=name, step=step, build_input=build or (lambda context: FakeInput(name=name)))
+
+
+@pytest.fixture
+def journal() -> list[str]:
+    return []
+
+
+@pytest.fixture
+def state() -> MemoryState:
+    return MemoryState()
+
+
+@pytest.fixture
+def lock() -> MemoryLock:
+    return MemoryLock()
+
+
+def run(
+    *, steps: list[PlannedStep[FakeInput, FakeResult]], state: MemoryState, lock: MemoryLock
+) -> SagaRecord:
+    executor: SagaExecutor = SagaExecutor(state=state, lock=lock, settings=SETTINGS)
+    return executor.run(saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS))
+
+
+def statuses(record: SagaRecord) -> list[StepStatus]:
+    return [step.status for step in record.steps]
+
+
+def test_all_steps_done_succeeds_and_releases_the_lock(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    record: SagaRecord = run(
+        steps=[planned(step=FakeStep(journal=journal), name=name) for name in ("a", "b")],
+        state=state,
+        lock=lock,
+    )
+
+    assert (record.status, statuses(record), lock.held_by) == (
+        SagaStatus.SUCCEEDED,
+        [StepStatus.DONE, StepStatus.DONE],
+        None,
+    )
+
+
+def test_a_failed_step_compensates_the_earlier_steps_in_reverse(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal), name="b"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="c"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, journal[-2:]) == (SagaStatus.ROLLED_BACK, ["compensate b", "compensate a"])
+
+
+def test_a_transient_error_is_retried(journal: list[str], state: MemoryState, lock: MemoryLock) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[BUSY, "keep"])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+
+
+def test_an_unknown_outcome_that_is_found_is_done_without_running_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=[UNKNOWN], outcomes=[FakeResult(name="a", attempt=0)]
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.executed, record.steps[0].obtained_by) == (SagaStatus.SUCCEEDED, 1, "found")
+
+
+def test_an_unknown_outcome_that_is_not_found_runs_the_step_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN, "keep"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+
+
+def test_an_ambiguous_outcome_stops_for_manual_intervention_and_keeps_the_lock(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(
+            step=FakeStep(
+                journal=journal, executions=[UNKNOWN], outcomes=[AmbiguousResourceError(message="2")]
+            ),
+            name="b",
+        ),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, "compensate a" in journal, lock.held_by) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        False,
+        SAGA_ID,
+    )
+
+
+def test_a_failed_compensation_still_compensates_the_others_and_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, compensations=[REJECTED]), name="b"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="c"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, statuses(record)[:2], lock.held_by) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        [StepStatus.COMPENSATED, StepStatus.COMPENSATION_FAILED],
+        SAGA_ID,
+    )
+
+
+def test_a_failure_after_the_pivot_is_not_compensated(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="pivot"),
+        planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE, executions=[REJECTED]), name="after"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, [entry for entry in journal if entry.startswith("compensate")]) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        [],
+    )
+
+
+def test_a_step_that_kept_a_result_before_failing_is_compensated(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy"])
+
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert journal[-1] == "compensate a"
+
+
+def test_only_the_first_kept_result_of_a_step_is_recorded(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert record.steps[0].result == {"name": "a", "attempt": 1}
+
+
+def test_a_later_step_builds_its_input_from_an_earlier_result(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def child_input(context: SagaContext) -> FakeInput:
+        return FakeInput(name="b", parent=context.result_of(key="a", result_type=FakeResult).name)
+
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal), name="b", build=child_input),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert record.steps[1].step_input == {"name": "b", "parent": "a"}
+
+
+def test_a_locked_database_runs_no_step(journal: list[str], state: MemoryState) -> None:
+    with pytest.raises(expected_exception=DatabaseLockedError):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a")],
+            state=state,
+            lock=MemoryLock(held_by="other"),
+        )
+
+    assert journal == []
+
+
+def test_an_unexpected_error_needs_manual_intervention_and_keeps_the_lock(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def broken_input(context: SagaContext) -> FakeInput:
+        raise ValueError("bug")
+
+    with pytest.raises(expected_exception=ValueError):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a", build=broken_input)],
+            state=state,
+            lock=lock,
+        )
+
+    assert (state.saved is not None and state.saved.status, lock.held_by) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        SAGA_ID,
+    )
+
+
+def test_a_compensatable_step_after_the_pivot_is_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(
+            steps=[
+                planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="pivot"),
+                planned(step=FakeStep(journal=journal), name="a"),
+            ],
+            lock_keys=LOCK_KEYS,
+        )

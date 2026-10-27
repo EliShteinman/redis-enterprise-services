@@ -1,0 +1,20 @@
+from redis_enterprise_services.exceptions.saga import InvalidPlanError
+from redis_enterprise_services.saga.runnable import RunnableStep
+from redis_enterprise_services.steps.kind import StepKind
+
+KIND_ORDER: dict[StepKind, int] = {StepKind.COMPENSATABLE: 0, StepKind.PIVOT: 1, StepKind.RETRIABLE: 2}
+
+
+class SagaPlan:
+    def __init__(self, *, steps: list[RunnableStep], lock_keys: list[str]) -> None:
+        validate_order(steps=steps)
+        self.steps: list[RunnableStep] = steps
+        self.lock_keys: list[str] = lock_keys
+
+
+def validate_order(*, steps: list[RunnableStep]) -> None:
+    ranks: list[int] = [KIND_ORDER[step.kind] for step in steps]
+    if ranks != sorted(ranks):
+        raise InvalidPlanError(message=f"steps out of order: {[step.kind.value for step in steps]}")
+    if ranks.count(KIND_ORDER[StepKind.PIVOT]) > 1:
+        raise InvalidPlanError(message="a plan has at most one pivot step")
