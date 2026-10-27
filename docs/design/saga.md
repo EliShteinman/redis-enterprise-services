@@ -280,6 +280,19 @@ stateDiagram-v2
   | `replication` עם node אחד | `406`: צריך לפחות 2 nodes | - | - |
 
   צעד עריכה שמגדיל `shards_count` מסומן pivot. הרשימה נשמרת בקונפיגורציה.
+- **עריכה דרך ה-relay, מול cluster1** (V18):
+
+  | מה נבדק | תוצאה |
+  |---|---|
+  | `GET /v1/bdbs/{uid}?fields=memory_size,eviction_policy` | `200`, רק השדות שביקשנו, עם `cluster-state-id`. `uid` לא נוסף מעצמו |
+  | `fields` עם שם שדה שלא קיים | `406 invalid_fields_query_param` |
+  | `PUT` עם שדות בודדים | `200`, ה-bdb המלא חוזר, `status: active-change-pending` |
+  | `PUT` נוסף בזמן `active-change-pending` | `409 db_busy`. לכן אחרי כל `PUT` מחכים ל-`active` (כשנייה ב-DB ריק) |
+  | `PUT` עם ה-snapshot (אותם שדות, ערכים ישנים) | הערכים חזרו |
+  | `PUT` עם אותו ערך שכבר קיים | `200`, וגם הוא עובר ל-`active-change-pending` |
+  | `PUT` עם שדה שלא קיים | `400 invalid_schema` |
+  | `PUT` עם `uid` | `500 internal_error`: "A uid is already assigned" |
+  | `cluster-state-id` | עולה גם בלי שינוי שלנו, כשה-DB עובר מ-pending ל-`active`. לכן לוקחים אותו מה-`GET` שממש לפני ה-`PUT` |
 - **לא קובעים `uid` ביצירה רגילה.** לפי התיעוד, מי שקובע uid חייב לקבוע אותו בכל ה-DBs שאחריו, כי המספור
   האוטומטי עלול להתנגש בו.
 - **ייחודיות שם DB:** הקלאסטר לא אוכף אותה ב-API (V2), בניגוד ל-UI. הפונה לשירות אחראי לוולידציה, והשירות
