@@ -40,7 +40,10 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
 ```
 
-- **התלויות** (repository, waiter) בקונסטרקטור. **הנתונים** (קלאסטר יעד, spec) ב-`step_input`. כך הצעד בלי מצב.
+- **התלויות** (repository, waiter, ספק פרטי הגישה) בקונסטרקטור. **הנתונים** ב-`step_input`. כך הצעד בלי מצב.
+- **`step_input` מחזיק רק כתובת של קלאסטר** (`ClusterAddress`: רשת ו-URL), בלי פרטי גישה. הצעד מקבל את פרטי הגישה
+  בזמן הריצה מ-`ClusterCredentialsProvider`, ולכן הם לא מגיעים ל-saga record. עד שיהיה registry של קלאסטרים,
+  `SharedCredentialsProvider` נותן את אותם פרטי admin לכל קלאסטר.
 - **`step_input` ו-`result` הם מודלי Pydantic,** כדי שאפשר יהיה לשמור אותם ב-saga record ולקרוא אותם בחזרה.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה. צעד שיש לו תוצאה מבוטל גם אם לא הגיע ל-`done`.
 - **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. הוא מקבל את
@@ -64,12 +67,13 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 מתוך ה-context:
 
 ```python
-class PlannedStep[TInput, TResult](BaseModel):
+class PlannedStep[TInput, TResult]:
     key: str  # ייחודי בתוכנית: "cluster1/role/db1-app-role/create"
     step: SagaStep[TInput, TResult]
     build_input: Callable[[SagaContext], TInput]
 ```
 
+- **`PlannedStep` הוא מחלקה רגילה,** ולא מודל: הוא מחזיק צעד ופונקציה, ולא נתונים שנשמרים.
 - **ה-context** הוא מיפוי מ-`key` לתוצאה של הצעד (`CreatedResource`, snapshot). הוא חלק מה-saga record.
 - **הצעד לא קורא מה-context.** רק התוכנית יודעת איזה צעד צריך תוצאה של איזה צעד. הצעד מקבל קלט מוכן ומוקלד.
 - **AA:** אותו צעד מופיע פעם לכל קלאסטר, עם `key` שמתחיל בקלאסטר.
@@ -90,6 +94,13 @@ class PlannedStep[TInput, TResult](BaseModel):
 | `InvalidEdgeRequestError` | הצעד נכשל ⇐ פיצוי (באג אצלנו) |
 | כל שגיאת קצה אחרת, timeout של המתנה | `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ ניסיון חוזר. גם הבדיקה נכשלה ⇐ ממתינים ומנסים שוב |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי |
+
+- **רק ה-`keep_result` הראשון של צעד נשמר.** אחרי תוצאה לא ידועה המנוע קורא קודם ל-`find_outcome`, ורק אם לא
+  נמצא כלום הוא מריץ את `execute` שוב. כך ניסיון חוזר לא מחליף את ה-snapshot הראשון.
+- **משאב ש-`find_outcome` מצא נחשב `done`,** בלי המתנה ל-action. אם ה-action עוד רץ, הצעד הבא יקבל `busy`, וזו
+  שגיאה זמנית עם ניסיון חוזר.
+- **`find_outcome` לא יכול להבדיל בין משאב שלנו למשאב קיים באותו שם.** לכן הבדיקה המוקדמת לפני ה-Saga עוצרת בקשה
+  שהמשאבים שלה כבר קיימים (`plan.md`, שאלה 5).
 
 5. **פיצוי:** כל צעד **שיש לו תוצאה** ב-context, בסדר הפוך, עם ניסיונות חוזרים. נכשל ⇐ `compensation_failed`,
    וה-Saga מסומן `requires_manual_intervention` (סעיף 9).
