@@ -95,7 +95,7 @@ def test_a_resource_whose_creation_did_not_finish_is_still_compensated(
 
 
 def test_compensate_accepts_a_resource_that_is_already_gone(
-    repository: MagicMock, step: CreateResourceStep[NewUser]
+    repository: MagicMock, waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     repository.delete.side_effect = ClusterRequestError(
         message="cluster answered 404", cluster_status_code=404, error_code="user_not_exist"
@@ -103,3 +103,17 @@ def test_compensate_accepts_a_resource_that_is_already_gone(
     step.execute()
 
     step.compensate()
+
+    waiter.wait_deleted.assert_not_called()
+
+
+def test_compensate_raises_any_other_cluster_error(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.delete.side_effect = ClusterRequestError(
+        message="cluster answered 406", cluster_status_code=406, error_code="role_in_use"
+    )
+    step.execute()
+
+    with pytest.raises(expected_exception=ClusterRequestError):
+        step.compensate()
