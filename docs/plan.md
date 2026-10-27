@@ -239,3 +239,4 @@ snapshot). טסטים נכתבים רק ללוגיקה של הפרויקט, לא
 |---|---|
 | כשתהיה תשובת streaming | להחליף את `UnexpectedErrorMiddleware` (על `BaseHTTPMiddleware`) ב-middleware של ASGI טהור. שגיאה אחרי שהתשובה התחילה לא עוברת היום דרכו |
 | כשתופעל שליחת telemetry | להוציא את `/health` מה-traces וה-metrics (`excluded_urls` מהקונפיג), כדי שבדיקות הבריאות לא יציפו את ה-collector |
+| ביצירת DB (שלב 5), לקראת ניהול tags | לשלוח תמיד `tags: []`. שדה שלא הוגדר לא חוזר ב-`GET` (V18), ואז עדכון ה-DB נעצר כי אין snapshot. כך הוספת tags בהמשך (מסלול נפרד) היא עדכון DB רגיל |
