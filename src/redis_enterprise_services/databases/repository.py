@@ -1,11 +1,11 @@
 import logging
-import time
 from urllib.parse import urlencode
 
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.polling import poll_until
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.edge.models import ClusterResponse
@@ -42,16 +42,16 @@ class DatabaseRepository:
         )
 
     def wait_until_active(self, *, target: ClusterTarget, uid: int) -> None:
-        deadline: float = time.monotonic() + self._settings.wait.timeout_seconds
-        while time.monotonic() < deadline:
-            status: JsonValue = self.get_fields(target=target, uid=uid, fields=[STATUS_FIELD]).values[
-                STATUS_FIELD
-            ]
-            if status == self._settings.active_status:
-                return
-            logger.debug(msg=f"database {uid} is {status}")
-            time.sleep(self._settings.wait.interval_seconds)
+        if poll_until(wait=self._settings.wait, is_done=lambda: self._is_active(target=target, uid=uid)):
+            return
         raise DatabaseNotActiveError(
             message=f"database {uid} is not {self._settings.active_status} "
             f"after {self._settings.wait.timeout_seconds} seconds"
         )
+
+    def _is_active(self, *, target: ClusterTarget, uid: int) -> bool:
+        status: JsonValue = self.get_fields(target=target, uid=uid, fields=[STATUS_FIELD]).values.get(
+            STATUS_FIELD
+        )
+        logger.debug(msg=f"database {uid} is {status}")
+        return status == self._settings.active_status
