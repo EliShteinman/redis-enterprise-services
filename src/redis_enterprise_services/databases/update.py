@@ -3,6 +3,7 @@ import logging
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
@@ -15,11 +16,13 @@ class DatabaseUpdate:
         self,
         *,
         repository: DatabaseRepository,
+        active_waiter: DatabaseActiveWaiter,
         target: ClusterTarget,
         uid: int,
         values: dict[str, JsonValue],
     ) -> None:
         self._repository: DatabaseRepository = repository
+        self._active_waiter: DatabaseActiveWaiter = active_waiter
         self._target: ClusterTarget = target
         self._uid: int = uid
         self._values: dict[str, JsonValue] = values
@@ -53,4 +56,4 @@ class DatabaseUpdate:
         self._repository.update(
             target=self._target, uid=self._uid, values=values, cluster_state_id=cluster_state_id
         )
-        self._repository.wait_until_active(target=self._target, uid=self._uid)
+        self._active_waiter.wait(target=self._target, uid=self._uid)
