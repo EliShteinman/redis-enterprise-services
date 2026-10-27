@@ -1,7 +1,7 @@
 import uvicorn
 
 LOCAL_HOST: str = "127.0.0.1"
-LOCAL_PORT: int = 8000
+LOCAL_PORT: int = 8080
 
 if __name__ == "__main__":
     uvicorn.run(
