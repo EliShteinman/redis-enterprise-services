@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.databases.update import DatabaseUpdate
+from redis_enterprise_services.databases.update import DatabaseUpdate, DatabaseUpdateInput
 from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
@@ -21,6 +21,7 @@ NEW_VALUES: dict[str, JsonValue] = {"memory_size": 200, "eviction_policy": "noev
 OLD_VALUES: dict[str, JsonValue] = {"memory_size": 100, "eviction_policy": "volatile-lru"}
 SNAPSHOT: DatabaseFields = DatabaseFields(values=OLD_VALUES, cluster_state_id=7)
 CURRENT: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
+STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(target=TARGET, uid=UID, values=NEW_VALUES)
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
 
 def run(*, update: DatabaseUpdate) -> list[DatabaseFields]:
     kept: list[DatabaseFields] = []
-    update.execute(target=TARGET, uid=UID, values=NEW_VALUES, keep_result=kept.append)
+    update.execute(step_input=STEP_INPUT, keep_result=kept.append)
     return kept
 
 
@@ -97,8 +98,24 @@ def test_compensate_puts_the_snapshot_back_with_the_current_state_id(
 ) -> None:
     repository.get_fields.side_effect = [CURRENT]
 
-    update.compensate(target=TARGET, uid=UID, snapshot=SNAPSHOT)
+    update.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
 
     repository.update.assert_called_once_with(
         target=TARGET, uid=UID, values=OLD_VALUES, cluster_state_id=CURRENT.cluster_state_id
     )
+
+
+def test_find_outcome_keeps_the_snapshot_when_the_new_values_are_in_place(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [CURRENT]
+
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) == SNAPSHOT
+
+
+def test_find_outcome_returns_none_when_the_old_values_are_still_there(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [SNAPSHOT]
+
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) is None

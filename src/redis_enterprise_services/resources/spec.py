@@ -1,5 +1,5 @@
-from typing import Protocol
+from pydantic import BaseModel
 
 
-class NamedSpec(Protocol):
+class NamedSpec(BaseModel):
     name: str

@@ -1,52 +1,70 @@
 import logging
 
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
+from redis_enterprise_services.steps.kind import StepKind
 from redis_enterprise_services.steps.result import KeepResult
+from redis_enterprise_services.steps.saga_step import SagaStep
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class DatabaseUpdate:
+class DatabaseUpdateInput(BaseModel):
+    target: ClusterTarget
+    uid: int
+    values: dict[str, JsonValue]
+
+
+class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def __init__(self, *, repository: DatabaseRepository, active_waiter: DatabaseActiveWaiter) -> None:
         self._repository: DatabaseRepository = repository
         self._active_waiter: DatabaseActiveWaiter = active_waiter
 
-    def execute(
-        self,
-        *,
-        target: ClusterTarget,
-        uid: int,
-        values: dict[str, JsonValue],
-        keep_result: KeepResult[DatabaseFields],
-    ) -> None:
-        snapshot: DatabaseFields = self._repository.get_fields(target=target, uid=uid, fields=list(values))
-        ensure_restorable(uid=uid, values=values, snapshot=snapshot)
-        keep_result(snapshot)
-        self._apply(target=target, uid=uid, values=values, cluster_state_id=snapshot.cluster_state_id)
+    @property
+    def kind(self) -> StepKind:
+        return StepKind.COMPENSATABLE
 
-    def compensate(self, *, target: ClusterTarget, uid: int, snapshot: DatabaseFields) -> None:
-        logger.info(msg=f"restoring {sorted(snapshot.values)} of database {uid}")
-        current: DatabaseFields = self._repository.get_fields(
-            target=target, uid=uid, fields=list(snapshot.values)
+    def execute(self, *, step_input: DatabaseUpdateInput, keep_result: KeepResult[DatabaseFields]) -> None:
+        snapshot: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
+        ensure_restorable(step_input=step_input, snapshot=snapshot)
+        keep_result(snapshot)
+        self._apply(
+            step_input=step_input, values=step_input.values, cluster_state_id=snapshot.cluster_state_id
         )
-        self._apply(target=target, uid=uid, values=snapshot.values, cluster_state_id=current.cluster_state_id)
+
+    def find_outcome(
+        self, *, step_input: DatabaseUpdateInput, kept: DatabaseFields | None
+    ) -> DatabaseFields | None:
+        if kept is None:
+            return None
+        current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
+        return kept if current.values == step_input.values else None
+
+    def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
+        logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
+        current: DatabaseFields = self._read(step_input=step_input, fields=list(result.values))
+        self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)
+
+    def _read(self, *, step_input: DatabaseUpdateInput, fields: list[str]) -> DatabaseFields:
+        return self._repository.get_fields(target=step_input.target, uid=step_input.uid, fields=fields)
 
     def _apply(
-        self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
+        self, *, step_input: DatabaseUpdateInput, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
-        self._repository.update(target=target, uid=uid, values=values, cluster_state_id=cluster_state_id)
-        self._active_waiter.wait(target=target, uid=uid)
+        self._repository.update(
+            target=step_input.target, uid=step_input.uid, values=values, cluster_state_id=cluster_state_id
+        )
+        self._active_waiter.wait(target=step_input.target, uid=step_input.uid)
 
 
-def ensure_restorable(*, uid: int, values: dict[str, JsonValue], snapshot: DatabaseFields) -> None:
-    missing: set[str] = set(values) - set(snapshot.values)
+def ensure_restorable(*, step_input: DatabaseUpdateInput, snapshot: DatabaseFields) -> None:
+    missing: set[str] = set(step_input.values) - set(snapshot.values)
     if missing:
         raise UnrestorableFieldsError(
-            message=f"fields {sorted(missing)} are not set on database {uid} and cannot be restored"
+            message=f"fields {sorted(missing)} are not set on database {step_input.uid}, cannot restore"
         )

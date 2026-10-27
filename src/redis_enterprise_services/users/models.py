@@ -1,7 +1,6 @@
-from pydantic import BaseModel
+from redis_enterprise_services.resources.spec import NamedSpec
 
 
-class NewUser(BaseModel):
-    name: str
+class NewUser(NamedSpec):
     password: str
     role_uids: list[int]
