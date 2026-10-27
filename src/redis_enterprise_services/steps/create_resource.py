@@ -6,11 +6,12 @@ from redis_enterprise_services.exceptions.cluster import ClusterRequestError
 from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.resources.repository import ResourceRepository
+from redis_enterprise_services.resources.spec import NamedSpec
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class CreateResourceStep[TSpec]:
+class CreateResourceStep[TSpec: NamedSpec]:
     def __init__(
         self,
         *,
