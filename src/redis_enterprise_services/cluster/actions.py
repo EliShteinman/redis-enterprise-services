@@ -35,7 +35,7 @@ class ActionWaiter:
             target=target, method="GET", path=self._settings.path.format(uid=action_uid)
         ).body
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
-        if status == self._settings.failed_status:
-            raise ClusterActionFailedError(message=f"action {action_uid} failed: {action}")
+        if status is None or status in self._settings.failed_statuses:
+            raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action}")
         logger.debug(msg=f"action {action_uid} is {status}")
         return status == self._settings.completed_status
