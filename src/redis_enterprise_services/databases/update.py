@@ -7,53 +7,46 @@ from redis_enterprise_services.databases.active_waiter import DatabaseActiveWait
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
+from redis_enterprise_services.steps.result import KeepResult
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class DatabaseUpdate:
-    def __init__(
+    def __init__(self, *, repository: DatabaseRepository, active_waiter: DatabaseActiveWaiter) -> None:
+        self._repository: DatabaseRepository = repository
+        self._active_waiter: DatabaseActiveWaiter = active_waiter
+
+    def execute(
         self,
         *,
-        repository: DatabaseRepository,
-        active_waiter: DatabaseActiveWaiter,
         target: ClusterTarget,
         uid: int,
         values: dict[str, JsonValue],
+        keep_result: KeepResult[DatabaseFields],
     ) -> None:
-        self._repository: DatabaseRepository = repository
-        self._active_waiter: DatabaseActiveWaiter = active_waiter
-        self._target: ClusterTarget = target
-        self._uid: int = uid
-        self._values: dict[str, JsonValue] = values
-        self._snapshot: DatabaseFields | None = None
+        snapshot: DatabaseFields = self._repository.get_fields(target=target, uid=uid, fields=list(values))
+        ensure_restorable(uid=uid, values=values, snapshot=snapshot)
+        keep_result(snapshot)
+        self._apply(target=target, uid=uid, values=values, cluster_state_id=snapshot.cluster_state_id)
 
-    def execute(self) -> None:
-        snapshot: DatabaseFields = self._repository.get_fields(
-            target=self._target, uid=self._uid, fields=list(self._values)
-        )
-        self._ensure_restorable(snapshot=snapshot)
-        self._snapshot = snapshot
-        self._apply(values=self._values, cluster_state_id=snapshot.cluster_state_id)
-
-    def compensate(self) -> None:
-        if self._snapshot is None:
-            return
-        logger.info(msg=f"restoring {sorted(self._snapshot.values)} of database {self._uid}")
+    def compensate(self, *, target: ClusterTarget, uid: int, snapshot: DatabaseFields) -> None:
+        logger.info(msg=f"restoring {sorted(snapshot.values)} of database {uid}")
         current: DatabaseFields = self._repository.get_fields(
-            target=self._target, uid=self._uid, fields=list(self._snapshot.values)
+            target=target, uid=uid, fields=list(snapshot.values)
         )
-        self._apply(values=self._snapshot.values, cluster_state_id=current.cluster_state_id)
+        self._apply(target=target, uid=uid, values=snapshot.values, cluster_state_id=current.cluster_state_id)
 
-    def _ensure_restorable(self, *, snapshot: DatabaseFields) -> None:
-        missing: set[str] = set(self._values) - set(snapshot.values)
-        if missing:
-            raise UnrestorableFieldsError(
-                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
-            )
+    def _apply(
+        self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
+    ) -> None:
+        self._repository.update(target=target, uid=uid, values=values, cluster_state_id=cluster_state_id)
+        self._active_waiter.wait(target=target, uid=uid)
 
-    def _apply(self, *, values: dict[str, JsonValue], cluster_state_id: int) -> None:
-        self._repository.update(
-            target=self._target, uid=self._uid, values=values, cluster_state_id=cluster_state_id
+
+def ensure_restorable(*, uid: int, values: dict[str, JsonValue], snapshot: DatabaseFields) -> None:
+    missing: set[str] = set(values) - set(snapshot.values)
+    if missing:
+        raise UnrestorableFieldsError(
+            message=f"fields {sorted(missing)} are not set on database {uid} and cannot be restored"
         )
-        self._active_waiter.wait(target=self._target, uid=self._uid)
