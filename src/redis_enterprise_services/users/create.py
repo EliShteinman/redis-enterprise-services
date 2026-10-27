@@ -1,7 +1,7 @@
 import logging
 
 from redis_enterprise_services.edge.models import ClusterTarget
-from redis_enterprise_services.users.models import NewUser, User
+from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 from redis_enterprise_services.users.repository import UserRepository
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -19,7 +19,9 @@ class UserCreate:
         return self._created
 
     def execute(self) -> None:
-        self._created = self._repository.create(target=self._target, user=self._user)
+        creation: CreatedUser = self._repository.create(target=self._target, user=self._user)
+        self._created = creation.user
+        self._repository.wait_for_action(target=self._target, action_uid=creation.action_uid)
 
     def compensate(self) -> None:
         if self._created is None:

@@ -6,7 +6,7 @@ from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.config.user_settings import UserSettings
 from redis_enterprise_services.edge.models import ClusterTarget
-from redis_enterprise_services.users.models import NewUser, User
+from redis_enterprise_services.users.models import CreatedUser, NewUser, User
 
 ACTION_UID_FIELD: str = "action_uid"
 USERS: TypeAdapter[list[User]] = TypeAdapter(type=list[User])
@@ -20,7 +20,7 @@ class UserRepository:
         self._action_waiter: ActionWaiter = action_waiter
         self._settings: UserSettings = settings
 
-    def create(self, *, target: ClusterTarget, user: NewUser) -> User:
+    def create(self, *, target: ClusterTarget, user: NewUser) -> CreatedUser:
         logger.info(msg=f"creating user {user.name} with roles {user.role_uids}")
         body: JsonValue = self._api.send(
             target=target,
@@ -32,15 +32,14 @@ class UserRepository:
                 "role_uids": user.role_uids,
             },
         ).body
-        self._wait_for_action(target=target, body=body)
-        return User.model_validate(obj=body)
+        return CreatedUser(user=User.model_validate(obj=body), action_uid=action_uid_of(body=body))
 
     def delete(self, *, target: ClusterTarget, uid: int) -> None:
         logger.info(msg=f"deleting user {uid}")
         body: JsonValue = self._api.send(
             target=target, method="DELETE", path=self._settings.path.format(uid=uid)
         ).body
-        self._wait_for_action(target=target, body=body)
+        self.wait_for_action(target=target, action_uid=action_uid_of(body=body))
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> User | None:
         body: JsonValue = self._api.send(
@@ -48,7 +47,11 @@ class UserRepository:
         ).body
         return next((user for user in USERS.validate_python(body) if user.name == name), None)
 
-    def _wait_for_action(self, *, target: ClusterTarget, body: JsonValue) -> None:
-        action_uid: JsonValue = body.get(ACTION_UID_FIELD) if isinstance(body, dict) else None
-        if isinstance(action_uid, str):
+    def wait_for_action(self, *, target: ClusterTarget, action_uid: str | None) -> None:
+        if action_uid is not None:
             self._action_waiter.wait(target=target, action_uid=action_uid)
+
+
+def action_uid_of(*, body: JsonValue) -> str | None:
+    action_uid: JsonValue = body.get(ACTION_UID_FIELD) if isinstance(body, dict) else None
+    return action_uid if isinstance(action_uid, str) else None

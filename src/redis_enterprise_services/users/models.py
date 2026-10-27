@@ -11,3 +11,8 @@ class User(BaseModel):
     uid: int
     name: str
     role_uids: list[int]
+
+
+class CreatedUser(BaseModel):
+    user: User
+    action_uid: str | None
