@@ -106,10 +106,12 @@ class EdgeClient:
         edge_error: str | None = response.headers.get(self._settings.headers.error)
         if edge_error is not None:
             raise self._edge_error(code=edge_error, response=response)
+        cluster_state_id: str | None = response.headers.get(self._settings.headers.cluster_state_id)
         return ClusterResponse(
             status_code=response.status_code,
             headers=dict(response.headers),
             body=self._body(response=response),
+            cluster_state_id=int(cluster_state_id) if cluster_state_id else None,
         )
 
     def _edge_error(self, *, code: str, response: requests.Response) -> EdgeError:
