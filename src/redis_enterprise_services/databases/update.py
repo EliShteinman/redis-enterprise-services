@@ -2,9 +2,9 @@ import logging
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.edge.models import ClusterTarget
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 
 logger: logging.Logger = logging.getLogger(name=__name__)

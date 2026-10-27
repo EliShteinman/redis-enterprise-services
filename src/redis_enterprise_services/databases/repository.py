@@ -5,9 +5,10 @@ from urllib.parse import urlencode
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.models import DatabaseFields
-from redis_enterprise_services.edge.models import ClusterResponse, ClusterTarget
+from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.cluster import DatabaseNotActiveError
 
 FIELDS_SEPARATOR: str = ","

@@ -25,9 +25,3 @@ class ClusterResponse(BaseModel):
     headers: dict[str, str]
     body: JsonValue | None
     cluster_state_id: int | None
-
-
-class ClusterTarget(BaseModel):
-    network: str
-    api_url: str
-    credentials: ClusterCredentials
