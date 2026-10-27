@@ -29,11 +29,7 @@ class DatabaseUpdate:
         snapshot: DatabaseFields = self._repository.get_fields(
             target=self._target, uid=self._uid, fields=list(self._values)
         )
-        missing: set[str] = set(self._values) - set(snapshot.values)
-        if missing:
-            raise UnrestorableFieldsError(
-                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
-            )
+        self._ensure_restorable(snapshot=snapshot)
         self._snapshot = snapshot
         self._apply(values=self._values, cluster_state_id=snapshot.cluster_state_id)
 
@@ -45,6 +41,13 @@ class DatabaseUpdate:
             target=self._target, uid=self._uid, fields=list(self._snapshot.values)
         )
         self._apply(values=self._snapshot.values, cluster_state_id=current.cluster_state_id)
+
+    def _ensure_restorable(self, *, snapshot: DatabaseFields) -> None:
+        missing: set[str] = set(self._values) - set(snapshot.values)
+        if missing:
+            raise UnrestorableFieldsError(
+                message=f"fields {sorted(missing)} are not set on database {self._uid} and cannot be restored"
+            )
 
     def _apply(self, *, values: dict[str, JsonValue], cluster_state_id: int) -> None:
         self._repository.update(
