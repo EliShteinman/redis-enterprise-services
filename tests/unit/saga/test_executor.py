@@ -500,7 +500,7 @@ def test_a_plan_without_a_lock_is_refused(journal: list[str]) -> None:
         SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=[])
 
 
-def test_a_known_failure_after_a_kept_result_is_compensated_and_not_checked(
+def test_a_failure_after_a_kept_result_lets_the_step_check_what_happened(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
     step: FakeStep = FakeStep(
@@ -509,7 +509,32 @@ def test_a_known_failure_after_a_kept_result_is_compensated_and_not_checked(
 
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
+    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 1)
+
+
+def test_a_failure_after_a_kept_result_that_did_not_happen_is_compensated(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then rejected"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
     assert (record.status, journal[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
+
+
+def test_a_pivot_that_kept_a_result_and_failed_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(
+            step=FakeStep(journal=journal, kind=StepKind.PIVOT, executions=["keep then rejected"]), name="p"
+        ),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, lock.held_by) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, SAGA_ID)
 
 
 class BrokenCompensation(FakeStep):
@@ -517,7 +542,7 @@ class BrokenCompensation(FakeStep):
         raise ValueError("bug in compensate")
 
 
-def test_a_bug_during_compensation_marks_that_step_unresolved(
+def test_a_bug_during_compensation_leaves_that_step_compensating(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
     steps: list[PlannedStep[FakeInput, FakeResult]] = [
@@ -528,4 +553,4 @@ def test_a_bug_during_compensation_marks_that_step_unresolved(
     with pytest.raises(expected_exception=ValueError):
         run(steps=steps, state=state, lock=lock)
 
-    assert state.saved is not None and state.saved.steps[0].status is StepStatus.UNRESOLVED
+    assert state.saved is not None and state.saved.steps[0].status is StepStatus.COMPENSATING

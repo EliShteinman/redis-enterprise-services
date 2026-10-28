@@ -63,7 +63,11 @@ class SagaExecutor:
             if outcome is StepOutcome.DONE:
                 pivot_done = pivot_done or step.kind is StepKind.PIVOT
                 continue
-            if outcome is StepOutcome.MANUAL or pivot_done:
+            if (
+                outcome is StepOutcome.MANUAL
+                or pivot_done
+                or (step.kind is StepKind.PIVOT and step.has_result)
+            ):
                 return SagaStatus.REQUIRES_MANUAL_INTERVENTION
             if self._compensator.compensate(steps=started):
                 return SagaStatus.ROLLED_BACK
@@ -84,5 +88,5 @@ class SagaExecutor:
 def stop_running(*, record: SagaRecord) -> None:
     record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
     for step in record.steps:
-        if step.status in (StepStatus.RUNNING, StepStatus.COMPENSATING):
+        if step.status is StepStatus.RUNNING:
             step.status = StepStatus.UNRESOLVED
