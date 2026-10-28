@@ -3,6 +3,7 @@ from collections.abc import Callable
 import pytest
 from pydantic import BaseModel
 
+from redis_enterprise_services.cluster.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.config.saga_settings import RetrySettings, SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import AmbiguousResourceError, ClusterRequestError
@@ -17,7 +18,6 @@ from redis_enterprise_services.saga.plan import SagaPlan
 from redis_enterprise_services.saga.planned_step import PlannedStep
 from redis_enterprise_services.saga.state import SagaStateRepository
 from redis_enterprise_services.saga.step_runner import StepRunner
-from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.steps.kind import StepKind
 from redis_enterprise_services.steps.result import KeepResult
 from redis_enterprise_services.steps.saga_step import SagaStep

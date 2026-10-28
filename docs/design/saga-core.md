@@ -94,7 +94,7 @@ class PlannedStep[TInput, TResult]:
 
 | שגיאה | המנוע עושה |
 |---|---|
-| `ClusterRequestError` זמני (`409 busy`, `wrong_cluster_state_id`, מהקונפיג) | ניסיון חוזר לפי מדיניות |
+| `ClusterRequestError` זמני (`409 busy`, `db_busy`, `wrong_cluster_state_id`, מהקונפיג של הקלאסטר) | ניסיון חוזר לפי מדיניות |
 | `ClusterRequestError` אחר | הצעד נכשל ⇐ פיצוי |
 | `InvalidEdgeRequestError` | הצעד נכשל ⇐ פיצוי (באג אצלנו) |
 | `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
@@ -194,7 +194,7 @@ class PlannedStep[TInput, TResult]:
 
 **המנוע לא מכיר את השגיאות של הקלאסטר.** הוא מקבל `FailureClassifier` מבחוץ, שממיין כל שגיאה לאחת מארבע
 קטגוריות: זמנית, נכשלה, תוצאה לא ידועה, התערבות ידנית. המימוש לקלאסטר הוא `ClusterFailureClassifier`
-(`steps/failure_classifier.py`), לפי הטבלה בסעיף 4. התיקייה `saga/` לא מייבאת שום שגיאה של הקלאסטר או של שירות הקצה.
+(`cluster/failure_classifier.py`), לפי הטבלה בסעיף 4. התיקייה `saga/` לא מייבאת שום שגיאה של הקלאסטר או של שירות הקצה.
 
 ## 6. ספרייה או מימוש שלנו
 
