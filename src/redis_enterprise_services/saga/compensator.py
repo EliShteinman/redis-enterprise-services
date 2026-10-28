@@ -27,6 +27,7 @@ class Compensator:
     def _compensate(self, *, step: RunnableStep, recorder: StepRecorder) -> bool:
         if step.obtained_by is ObtainedBy.FOUND:
             logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
+        recorder.compensating()
         error_message: str = ""
         attempts: int = self._settings.compensation_retry.attempts
         for attempt in range(1, attempts + 1):

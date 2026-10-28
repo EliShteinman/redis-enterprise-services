@@ -79,6 +79,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         keep_result(FakeResult(name=step_input.name, attempt=self.executed))
         if action == "keep then busy":
             raise BUSY
+        if action == "keep then rejected":
+            raise REJECTED
 
     def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
@@ -496,3 +498,34 @@ def test_a_known_failure_after_an_unknown_outcome_that_is_not_found_needs_manual
 def test_a_plan_without_a_lock_is_refused(journal: list[str]) -> None:
     with pytest.raises(expected_exception=InvalidPlanError):
         SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=[])
+
+
+def test_a_known_failure_after_a_kept_result_is_compensated_and_not_checked(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=["keep then rejected"], outcomes=[FakeResult(name="a", attempt=1)]
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, journal[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
+
+
+class BrokenCompensation(FakeStep):
+    def compensate(self, *, step_input: FakeInput, result: FakeResult) -> None:
+        raise ValueError("bug in compensate")
+
+
+def test_a_bug_during_compensation_marks_that_step_unresolved(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=BrokenCompensation(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="b"),
+    ]
+
+    with pytest.raises(expected_exception=ValueError):
+        run(steps=steps, state=state, lock=lock)
+
+    assert state.saved is not None and state.saved.steps[0].status is StepStatus.UNRESOLVED

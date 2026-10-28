@@ -1,7 +1,7 @@
 import logging
 from enum import StrEnum
 
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -28,12 +28,13 @@ class StepRunner:
     def run(self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder) -> StepOutcome:
         logger.info(msg=f"step {step.key} started")
         try:
-            recorder.started(step_input=step.prepare(context=context))
+            step_input: JsonValue = step.prepare(context=context)
         except (RedisEnterpriseServicesError, ValidationError) as error:
             logger.error(msg=f"cannot build the input of step {step.key}: {error}")
             recorder.failed_attempt(error=f"cannot build the input: {error}")
             recorder.failed()
             return StepOutcome.FAILED
+        recorder.started(step_input=step_input)
         outcome: StepOutcome = self._attempts(step=step, recorder=recorder)
         if outcome is StepOutcome.DONE:
             recorder.done()
@@ -53,7 +54,7 @@ class StepRunner:
                 return StepOutcome.DONE
             if failure is Failure.MANUAL:
                 return StepOutcome.MANUAL
-            if failure is Failure.UNKNOWN or step.has_result or uncertain:
+            if failure is Failure.UNKNOWN or uncertain or (failure is Failure.TRANSIENT and step.has_result):
                 uncertain = True
                 outcome: StepOutcome = self._resolve(step=step, recorder=recorder)
                 if outcome is not StepOutcome.NOT_FOUND:

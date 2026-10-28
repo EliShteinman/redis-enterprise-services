@@ -84,5 +84,5 @@ class SagaExecutor:
 def stop_running(*, record: SagaRecord) -> None:
     record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
     for step in record.steps:
-        if step.status is StepStatus.RUNNING:
+        if step.status in (StepStatus.RUNNING, StepStatus.COMPENSATING):
             step.status = StepStatus.UNRESOLVED
