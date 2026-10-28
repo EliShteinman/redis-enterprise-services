@@ -4,8 +4,8 @@ from typing import Protocol
 from pydantic import JsonValue
 
 from redis_enterprise_services.saga.context import SagaContext
+from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.models import ObtainedBy
-from redis_enterprise_services.steps.kind import StepKind
 
 type OnKept = Callable[[JsonValue, ObtainedBy], None]
 

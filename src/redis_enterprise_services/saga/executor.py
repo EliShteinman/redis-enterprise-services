@@ -2,6 +2,7 @@ import logging
 
 from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
+from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.lock import DatabaseLock
 from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.plan import SagaPlan
@@ -9,7 +10,6 @@ from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.runnable import RunnableStep
 from redis_enterprise_services.saga.state import SagaStateRepository
 from redis_enterprise_services.saga.step_runner import StepOutcome, StepRunner
-from redis_enterprise_services.steps.kind import StepKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
