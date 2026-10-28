@@ -63,7 +63,7 @@ class SagaExecutor:
             if outcome is StepOutcome.DONE:
                 pivot_done = pivot_done or step.kind is StepKind.PIVOT
                 continue
-            if outcome is StepOutcome.MANUAL or pivot_done:
+            if outcome is StepOutcome.MANUAL or pivot_done or step.kind is StepKind.RETRIABLE:
                 return SagaStatus.REQUIRES_MANUAL_INTERVENTION
             if self._compensator.compensate(steps=started):
                 return SagaStatus.ROLLED_BACK

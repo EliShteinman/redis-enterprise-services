@@ -64,7 +64,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 | עדכון DB / הרשאות | כתובת קלאסטר + uid + values | snapshot | הערכים הנוכחיים שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot |
 | יצירת CRDB (צעד משלו: מזהה guid, ממתין ל-task) | כתובת קלאסטר + spec + `X-Task-ID` | guid | `GET /v1/crdb_tasks/{X-Task-ID}` | `DELETE` + task |
 | עדכון CRDB / הרשאות AA | כתובת קלאסטר + guid + values | snapshot | השוואה | `PATCH` של ה-snapshot |
-| מחיקת user | כתובת קלאסטר + uid + snapshot + password | - | האם היוזר עדיין קיים | **pivot**, אין פיצוי |
+| מחיקת user | כתובת קלאסטר + uid | - | האם היוזר כבר לא קיים | **retriable**, בסוף התוכנית, `404` = הצלחה, אין פיצוי (`saga.md` 7.6) |
 
 ## 3. קלט שתלוי בצעד קודם
 
@@ -190,7 +190,7 @@ class PlannedStep[TInput, TResult]:
 |---|---|---|
 | `COMPENSATABLE` | מבוטל בסדר הפוך | ניסיונות, ואז ביטול של מה שלפניו |
 | `PIVOT` | לא מבוטל. אחריו רק קדימה | ניסיונות, ואז ביטול של מה שלפניו (הוא עצמו לא בוצע). אם שמר תוצאה ⇐ התערבות ידנית |
-| `RETRIABLE` | - (אחרי ה-pivot) | ניסיונות עד הצלחה, ואז התערבות ידנית |
+| `RETRIABLE` | - (בסוף התוכנית, אחרי ה-pivot אם יש) | ניסיונות עד הצלחה, ואז התערבות ידנית. מה שלפניו לא מבוטל |
 
 **המנוע לא מכיר את השגיאות של הקלאסטר.** הוא מקבל `FailureClassifier` מבחוץ, שממיין כל שגיאה לאחת מארבע
 קטגוריות: זמנית, נכשלה, תוצאה לא ידועה, התערבות ידנית. המימוש לקלאסטר הוא `ClusterFailureClassifier`
