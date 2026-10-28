@@ -6,3 +6,7 @@ cluster:
   fields_query:
     name: fields
     separator: ","
+  transient_error_codes:
+    - busy
+    - db_busy
+    - wrong_cluster_state_id
