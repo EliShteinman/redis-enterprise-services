@@ -1,6 +1,5 @@
 import pytest
 
-from redis_enterprise_services.cluster.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     AmbiguousResourceError,
@@ -18,6 +17,7 @@ from redis_enterprise_services.exceptions.edge import (
     ResponseRejectedError,
 )
 from redis_enterprise_services.saga.failure import Failure
+from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 
 CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=frozenset({"busy"}))
 
