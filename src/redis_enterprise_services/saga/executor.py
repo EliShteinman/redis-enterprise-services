@@ -3,7 +3,7 @@ import logging
 from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.lock import DatabaseLock
-from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepRecord
+from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.plan import SagaPlan
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.runnable import RunnableStep
@@ -38,13 +38,17 @@ class SagaExecutor:
         )
         try:
             self._state.save(record=record)
+        except Exception:
+            self._lock.release(keys=plan.lock_keys, owner=saga_id)
+            raise
+        try:
             record.status = self._run_steps(plan=plan, record=record)
         except Exception:
             logger.exception(msg=f"saga {saga_id} stopped on an unexpected error")
             raise
         finally:
             if record.status is SagaStatus.RUNNING:
-                record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
+                stop_running(record=record)
             self._finish(record=record, plan=plan)
         return record
 
@@ -75,3 +79,10 @@ class SagaExecutor:
                 msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept"
             )
         self._state.finish(record=record)
+
+
+def stop_running(*, record: SagaRecord) -> None:
+    record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
+    for step in record.steps:
+        if step.status is StepStatus.RUNNING:
+            step.status = StepStatus.UNRESOLVED

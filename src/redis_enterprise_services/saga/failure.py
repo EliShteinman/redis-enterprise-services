@@ -43,3 +43,7 @@ def classify_lookup(*, error: RedisEnterpriseServicesError) -> Failure:
     if isinstance(error, ClusterActionFailedError):
         return Failure.FAILED
     return Failure.UNKNOWN
+
+
+def describe(*, error: RedisEnterpriseServicesError) -> str:
+    return f"{error.code}: {error.message}"

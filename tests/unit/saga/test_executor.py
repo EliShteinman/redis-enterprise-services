@@ -74,6 +74,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         self._journal.append(f"execute {step_input.name}")
         if isinstance(action, RedisEnterpriseServicesError):
             raise action
+        if action == "interrupt":
+            raise SystemExit(1)
         keep_result(FakeResult(name=step_input.name, attempt=self.executed))
         if action == "keep then busy":
             raise BUSY
@@ -320,20 +322,24 @@ def test_an_outcome_that_stays_unknown_needs_manual_intervention(
 
 
 def test_an_interrupted_saga_keeps_the_lock(journal: list[str], state: MemoryState, lock: MemoryLock) -> None:
-    def interrupted(context: SagaContext) -> FakeInput:
-        raise SystemExit(1)
+    interrupted: FakeStep = FakeStep(journal=journal, executions=["interrupt"])
 
     with pytest.raises(expected_exception=SystemExit):
         run(
-            steps=[planned(step=FakeStep(journal=journal), name="a", build=interrupted)],
+            steps=[planned(step=interrupted, name="a")],
             state=state,
             lock=lock,
         )
 
-    assert lock.held_by == SAGA_ID
+    assert (lock.held_by, state.saved is not None and state.saved.steps[0].status) == (
+        SAGA_ID,
+        StepStatus.UNRESOLVED,
+    )
 
 
-def test_a_state_store_failure_keeps_the_lock(journal: list[str], lock: MemoryLock) -> None:
+def test_a_saga_that_cannot_save_its_first_record_releases_the_lock(
+    journal: list[str], lock: MemoryLock
+) -> None:
     with pytest.raises(expected_exception=ConnectionError):
         run(
             steps=[planned(step=FakeStep(journal=journal), name="a")],
@@ -341,7 +347,7 @@ def test_a_state_store_failure_keeps_the_lock(journal: list[str], lock: MemoryLo
             lock=lock,
         )
 
-    assert lock.held_by == SAGA_ID
+    assert (lock.held_by, journal) == (None, [])
 
 
 def test_a_later_step_builds_its_input_from_an_earlier_result(
@@ -463,3 +469,30 @@ def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
         run(steps=[planned(step=FakeStep(journal=journal), name="a")], state=FinishFailingState(), lock=lock)
 
     assert lock.held_by is None
+
+
+def test_a_known_failure_after_an_unknown_outcome_is_checked_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=[UNKNOWN, REJECTED], outcomes=[None, FakeResult(name="a", attempt=1)]
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, record.steps[0].obtained_by) == (SagaStatus.SUCCEEDED, "found")
+
+
+def test_a_known_failure_after_an_unknown_outcome_that_is_not_found_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN, REJECTED], outcomes=[None, None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, lock.held_by) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, SAGA_ID)
+
+
+def test_a_plan_without_a_lock_is_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=[])

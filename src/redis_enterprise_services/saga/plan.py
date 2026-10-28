@@ -8,6 +8,8 @@ KIND_ORDER: dict[StepKind, int] = {StepKind.COMPENSATABLE: 0, StepKind.PIVOT: 1,
 class SagaPlan:
     def __init__(self, *, steps: list[RunnableStep], lock_keys: list[str]) -> None:
         validate_order(steps=steps)
+        if not lock_keys:
+            raise InvalidPlanError(message="a plan locks at least one database")
         self.steps: list[RunnableStep] = steps
         self.lock_keys: list[str] = lock_keys
 
