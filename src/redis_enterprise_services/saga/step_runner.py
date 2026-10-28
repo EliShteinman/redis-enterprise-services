@@ -25,10 +25,18 @@ class StepRunner:
 
     def run(self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder) -> StepOutcome:
         logger.info(msg=f"step {step.key} started")
-        recorder.started(step_input=step.prepare(context=context))
+        try:
+            recorder.started(step_input=step.prepare(context=context))
+        except RedisEnterpriseServicesError as error:
+            logger.error(msg=f"cannot build the input of step {step.key}: {error.code}: {error.message}")
+            recorder.failed_attempt(error=describe(error=error))
+            recorder.failed()
+            return StepOutcome.FAILED
         outcome: StepOutcome = self._attempts(step=step, recorder=recorder)
         if outcome is StepOutcome.DONE:
             recorder.done()
+        elif outcome is StepOutcome.MANUAL:
+            recorder.unresolved()
         else:
             recorder.failed()
         logger.info(msg=f"step {step.key} ended {outcome.value}")
@@ -49,7 +57,7 @@ class StepRunner:
             step.execute(on_kept=recorder.kept)
         except RedisEnterpriseServicesError as error:
             logger.warning(msg=f"step {step.key} failed: {error.code}: {error.message}")
-            recorder.failed_attempt(error=error.message)
+            recorder.failed_attempt(error=describe(error=error))
             return self._after_failure(
                 step=step,
                 recorder=recorder,
@@ -73,7 +81,7 @@ class StepRunner:
                 return StepOutcome.DONE if step.resolve(on_kept=recorder.kept) else StepOutcome.NOT_FOUND
             except RedisEnterpriseServicesError as error:
                 logger.warning(msg=f"checking step {step.key} failed: {error.code}: {error.message}")
-                recorder.failed_attempt(error=error.message)
+                recorder.failed_attempt(error=describe(error=error))
                 failure: Failure = classify_lookup(error=error)
                 if failure is Failure.MANUAL:
                     return StepOutcome.MANUAL
@@ -83,3 +91,7 @@ class StepRunner:
                 pause(retry=self._settings.step_retry, attempt=attempt)
         logger.error(msg=f"the outcome of step {step.key} is still unknown")
         return StepOutcome.MANUAL
+
+
+def describe(*, error: RedisEnterpriseServicesError) -> str:
+    return f"{error.code}: {error.message}"

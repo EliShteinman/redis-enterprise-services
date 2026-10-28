@@ -30,6 +30,9 @@ class StepRecorder:
     def failed(self) -> None:
         self._mark(status=StepStatus.FAILED)
 
+    def unresolved(self) -> None:
+        self._mark(status=StepStatus.UNRESOLVED)
+
     def compensated(self) -> None:
         self._mark(status=StepStatus.COMPENSATED)
 

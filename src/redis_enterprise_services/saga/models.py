@@ -10,6 +10,7 @@ class StepStatus(StrEnum):
     RUNNING = "running"
     DONE = "done"
     FAILED = "failed"
+    UNRESOLVED = "unresolved"
     COMPENSATED = "compensated"
     COMPENSATION_FAILED = "compensation_failed"
 

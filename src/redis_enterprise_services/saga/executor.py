@@ -67,11 +67,11 @@ class SagaExecutor:
         return SagaStatus.SUCCEEDED
 
     def _finish(self, *, record: SagaRecord, plan: SagaPlan) -> None:
-        self._state.finish(record=record)
         logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
-        if record.status not in RELEASED_ON:
+        if record.status in RELEASED_ON:
+            self._lock.release(keys=plan.lock_keys, owner=record.saga_id)
+        else:
             logger.critical(
                 msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept"
             )
-            return
-        self._lock.release(keys=plan.lock_keys, owner=record.saga_id)
+        self._state.finish(record=record)

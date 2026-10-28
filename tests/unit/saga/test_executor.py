@@ -421,3 +421,45 @@ def test_repeated_step_keys_are_refused(journal: list[str]) -> None:
             ],
             lock_keys=LOCK_KEYS,
         )
+
+
+def test_a_missing_earlier_result_fails_the_step_and_compensates_the_rest(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def needs_missing(context: SagaContext) -> FakeInput:
+        return FakeInput(name="b", parent=context.result_of(key="missing", result_type=FakeResult).name)
+
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal), name="b", build=needs_missing),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, journal[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
+
+
+def test_a_step_that_stops_the_saga_is_marked_unresolved(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=[UNKNOWN], outcomes=[AmbiguousResourceError(message="2")]
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert record.steps[0].status is StepStatus.UNRESOLVED
+
+
+class FinishFailingState(MemoryState):
+    def finish(self, *, record: SagaRecord) -> None:
+        raise ConnectionError("state store is down")
+
+
+def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
+    journal: list[str], lock: MemoryLock
+) -> None:
+    with pytest.raises(expected_exception=ConnectionError):
+        run(steps=[planned(step=FakeStep(journal=journal), name="a")], state=FinishFailingState(), lock=lock)
+
+    assert lock.held_by is None

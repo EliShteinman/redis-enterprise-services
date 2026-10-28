@@ -6,6 +6,7 @@ from redis_enterprise_services.saga.models import ObtainedBy
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.retry import pause
 from redis_enterprise_services.saga.runnable import RunnableStep
+from redis_enterprise_services.saga.step_runner import describe
 from redis_enterprise_services.steps.kind import StepKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -33,7 +34,7 @@ class Compensator:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
                 logger.warning(msg=f"compensation of {step.key} failed: {error.code}: {error.message}")
-                error_message = error.message
+                error_message = describe(error=error)
                 if attempt < attempts:
                     pause(retry=self._settings.compensation_retry, attempt=attempt)
                 continue
