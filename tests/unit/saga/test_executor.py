@@ -5,12 +5,11 @@ from pydantic import BaseModel
 
 from redis_enterprise_services.config.saga_settings import RetrySettings, SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.cluster import AmbiguousResourceError, ClusterRequestError
-from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
 from redis_enterprise_services.exceptions.saga import DatabaseLockedError, InvalidPlanError
 from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.executor import SagaExecutor
+from redis_enterprise_services.saga.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.lock import DatabaseLock
 from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepStatus
@@ -20,20 +19,33 @@ from redis_enterprise_services.saga.result import KeepResult
 from redis_enterprise_services.saga.saga_step import SagaStep
 from redis_enterprise_services.saga.state import SagaStateRepository
 from redis_enterprise_services.saga.step_runner import StepRunner
-from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]
-CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=frozenset({"busy"}))
 SETTINGS: SagaSettings = SagaSettings(
     step_retry=RetrySettings(attempts=3, backoff_seconds=0),
     compensation_retry=RetrySettings(attempts=2, backoff_seconds=0),
 )
-BUSY: ClusterRequestError = ClusterRequestError(message="busy", cluster_status_code=409, error_code="busy")
-REJECTED: ClusterRequestError = ClusterRequestError(
-    message="no", cluster_status_code=400, error_code="invalid"
-)
-UNKNOWN: OutcomeUnknownError = OutcomeUnknownError(message="timeout")
+
+
+class FakeError(RedisEnterpriseServicesError):
+    def __init__(self, *, message: str, failure: Failure) -> None:
+        super().__init__(message=message)
+        self.failure: Failure = failure
+
+
+class FakeClassifier(FailureClassifier):
+    def classify(self, *, error: RedisEnterpriseServicesError) -> Failure:
+        return error.failure if isinstance(error, FakeError) else Failure.FAILED
+
+    def classify_lookup(self, *, error: RedisEnterpriseServicesError) -> Failure:
+        return self.classify(error=error)
+
+
+BUSY: FakeError = FakeError(message="busy", failure=Failure.TRANSIENT)
+REJECTED: FakeError = FakeError(message="no", failure=Failure.FAILED)
+UNKNOWN: FakeError = FakeError(message="timeout", failure=Failure.UNKNOWN)
+AMBIGUOUS: FakeError = FakeError(message="two found", failure=Failure.MANUAL)
 
 type Action = str | RedisEnterpriseServicesError
 
@@ -155,7 +167,7 @@ def run(
     executor: SagaExecutor = SagaExecutor(
         state=state,
         lock=lock,
-        runner=StepRunner(settings=SETTINGS, classifier=CLASSIFIER),
+        runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier()),
         compensator=Compensator(settings=SETTINGS),
     )
     return executor.run(saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS))
@@ -231,9 +243,7 @@ def test_an_ambiguous_outcome_stops_for_manual_intervention_and_keeps_the_lock(
     steps: list[PlannedStep[FakeInput, FakeResult]] = [
         planned(step=FakeStep(journal=journal), name="a"),
         planned(
-            step=FakeStep(
-                journal=journal, executions=[UNKNOWN], outcomes=[AmbiguousResourceError(message="2")]
-            ),
+            step=FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[AMBIGUOUS]),
             name="b",
         ),
     ]
@@ -245,6 +255,42 @@ def test_an_ambiguous_outcome_stops_for_manual_intervention_and_keeps_the_lock(
         False,
         SAGA_ID,
     )
+
+
+def test_a_step_that_fails_for_manual_intervention_runs_once(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[AMBIGUOUS])
+
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert step.executed == 1
+
+
+def test_a_step_that_fails_for_manual_intervention_is_unresolved(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[AMBIGUOUS]), name="b"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert statuses(record) == [StepStatus.DONE, StepStatus.UNRESOLVED]
+
+
+def test_a_check_that_fails_for_a_known_reason_compensates_the_earlier_steps(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[REJECTED]), name="b"),
+    ]
+
+    run(steps=steps, state=state, lock=lock)
+
+    assert journal[-1] == "compensate a"
 
 
 def test_a_failed_compensation_still_compensates_the_others_and_needs_manual_intervention(
@@ -467,9 +513,7 @@ def test_a_missing_earlier_result_fails_the_step_and_compensates_the_rest(
 def test_a_step_that_stops_the_saga_is_marked_unresolved(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
-    step: FakeStep = FakeStep(
-        journal=journal, executions=[UNKNOWN], outcomes=[AmbiguousResourceError(message="2")]
-    )
+    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[AMBIGUOUS])
 
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
