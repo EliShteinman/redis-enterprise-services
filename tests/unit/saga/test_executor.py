@@ -434,7 +434,7 @@ def test_a_first_retriable_step_that_fails_compensates_the_steps_before_it(
 
     record: SagaRecord = run(steps=steps, state=state, lock=lock)
 
-    assert record.status is SagaStatus.ROLLED_BACK
+    assert statuses(record)[0] is StepStatus.COMPENSATED
 
 
 def test_repeated_step_keys_are_refused(journal: list[str]) -> None:
