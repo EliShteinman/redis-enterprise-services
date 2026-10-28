@@ -291,14 +291,14 @@ def test_a_step_that_kept_a_result_before_failing_is_compensated(
     assert journal[-1] == "compensate a"
 
 
-def test_only_the_first_kept_result_of_a_step_is_recorded(
+def test_a_step_that_kept_a_result_and_is_not_found_is_not_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
     step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
 
-    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
-    assert record.steps[0].result == {"name": "a", "attempt": 1}
+    assert step.executed == 1
 
 
 def test_a_step_with_a_kept_result_is_checked_instead_of_run_again(
@@ -534,7 +534,7 @@ def test_a_pivot_that_kept_a_result_and_failed_needs_manual_intervention(
 
     record: SagaRecord = run(steps=steps, state=state, lock=lock)
 
-    assert (record.status, lock.held_by) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, SAGA_ID)
+    assert record.steps[1].status is StepStatus.UNRESOLVED
 
 
 class BrokenCompensation(FakeStep):

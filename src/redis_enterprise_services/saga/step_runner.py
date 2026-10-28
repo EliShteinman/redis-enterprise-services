@@ -10,6 +10,7 @@ from redis_enterprise_services.saga.failure import Failure, classify, classify_l
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.retry import pause
 from redis_enterprise_services.saga.runnable import RunnableStep
+from redis_enterprise_services.steps.kind import StepKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -35,7 +36,7 @@ class StepRunner:
             recorder.failed()
             return StepOutcome.FAILED
         recorder.started(step_input=step_input)
-        outcome: StepOutcome = self._attempts(step=step, recorder=recorder)
+        outcome: StepOutcome = self._settled(step=step, outcome=self._attempts(step=step, recorder=recorder))
         if outcome is StepOutcome.DONE:
             recorder.done()
         elif outcome is StepOutcome.MANUAL:
@@ -43,6 +44,13 @@ class StepRunner:
         else:
             recorder.failed()
         logger.info(msg=f"step {step.key} ended {outcome.value}")
+        return outcome
+
+    @staticmethod
+    def _settled(*, step: RunnableStep, outcome: StepOutcome) -> StepOutcome:
+        if outcome is StepOutcome.FAILED and step.has_result and step.kind is not StepKind.COMPENSATABLE:
+            logger.error(msg=f"step {step.key} kept a result that cannot be compensated")
+            return StepOutcome.MANUAL
         return outcome
 
     def _attempts(self, *, step: RunnableStep, recorder: StepRecorder) -> StepOutcome:
@@ -59,7 +67,7 @@ class StepRunner:
                 outcome: StepOutcome = self._resolve(step=step, recorder=recorder)
                 if outcome is not StepOutcome.NOT_FOUND:
                     return outcome
-                if failure is Failure.FAILED:
+                if failure is Failure.FAILED or step.has_result:
                     return self._failed_after_uncertainty(step=step)
             elif failure is Failure.FAILED:
                 return StepOutcome.FAILED
