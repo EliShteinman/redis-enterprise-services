@@ -68,15 +68,15 @@ class StepRunner:
                 if outcome is not StepOutcome.NOT_FOUND:
                     return outcome
                 if failure is Failure.FAILED or step.has_result:
-                    return self._failed_after_uncertainty(step=step)
+                    return self._not_found(step=step)
             elif failure is Failure.FAILED:
                 return StepOutcome.FAILED
             if attempt < attempts:
                 pause(retry=self._settings.step_retry, attempt=attempt)
-        return self._failed_after_uncertainty(step=step) if uncertain else StepOutcome.FAILED
+        return self._not_found(step=step) if uncertain else StepOutcome.FAILED
 
     @staticmethod
-    def _failed_after_uncertainty(*, step: RunnableStep) -> StepOutcome:
+    def _not_found(*, step: RunnableStep) -> StepOutcome:
         if step.has_result:
             return StepOutcome.FAILED
         logger.error(msg=f"step {step.key} may have run, but it is not found")

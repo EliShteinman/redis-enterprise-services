@@ -512,6 +512,18 @@ def test_a_failure_after_a_kept_result_lets_the_step_check_what_happened(
     assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 1)
 
 
+def test_only_the_first_kept_result_of_a_step_is_recorded(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, executions=["keep then rejected"], outcomes=[FakeResult(name="a", attempt=2)]
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert record.steps[0].result == {"name": "a", "attempt": 1}
+
+
 def test_a_failure_after_a_kept_result_that_did_not_happen_is_compensated(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
