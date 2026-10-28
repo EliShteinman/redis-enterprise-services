@@ -267,6 +267,32 @@ def test_a_step_that_fails_for_manual_intervention_runs_once(
     assert step.executed == 1
 
 
+def test_a_step_that_fails_for_manual_intervention_is_unresolved(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[AMBIGUOUS]), name="b"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert statuses(record) == [StepStatus.DONE, StepStatus.UNRESOLVED]
+
+
+def test_a_check_that_fails_for_a_known_reason_compensates_the_earlier_steps(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[REJECTED]), name="b"),
+    ]
+
+    run(steps=steps, state=state, lock=lock)
+
+    assert journal[-1] == "compensate a"
+
+
 def test_a_failed_compensation_still_compensates_the_others_and_needs_manual_intervention(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
