@@ -410,15 +410,31 @@ def test_a_compensatable_step_after_the_pivot_is_refused(journal: list[str]) -> 
         )
 
 
-def test_a_retriable_step_without_a_pivot_is_refused(journal: list[str]) -> None:
-    with pytest.raises(expected_exception=InvalidPlanError):
-        SagaPlan(
-            steps=[
-                planned(step=FakeStep(journal=journal), name="a"),
-                planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE), name="b"),
-            ],
-            lock_keys=LOCK_KEYS,
-        )
+def test_a_failure_after_a_retriable_step_without_a_pivot_is_not_compensated(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE), name="b"),
+        planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE, executions=[REJECTED]), name="c"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert (record.status, journal[-1]) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, "execute c")
+
+
+def test_a_first_retriable_step_that_fails_compensates_the_steps_before_it(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(step=FakeStep(journal=journal, kind=StepKind.RETRIABLE, executions=[REJECTED]), name="b"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    assert statuses(record)[0] is StepStatus.COMPENSATED
 
 
 def test_repeated_step_keys_are_refused(journal: list[str]) -> None:

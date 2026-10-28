@@ -55,15 +55,15 @@ class SagaExecutor:
     def _run_steps(self, *, plan: SagaPlan, record: SagaRecord) -> SagaStatus:
         context: SagaContext = SagaContext()
         started: list[tuple[RunnableStep, StepRecorder]] = []
-        pivot_done: bool = False
+        past_no_return: bool = False
         for step, step_record in zip(plan.steps, record.steps, strict=True):
             recorder: StepRecorder = StepRecorder(state=self._state, record=record, step=step_record)
             started.append((step, recorder))
             outcome: StepOutcome = self._runner.run(step=step, context=context, recorder=recorder)
             if outcome is StepOutcome.DONE:
-                pivot_done = pivot_done or step.kind is StepKind.PIVOT
+                past_no_return = past_no_return or step.kind is not StepKind.COMPENSATABLE
                 continue
-            if outcome is StepOutcome.MANUAL or pivot_done:
+            if outcome is StepOutcome.MANUAL or past_no_return:
                 return SagaStatus.REQUIRES_MANUAL_INTERVENTION
             if self._compensator.compensate(steps=started):
                 return SagaStatus.ROLLED_BACK
