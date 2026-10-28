@@ -6,11 +6,11 @@ from pydantic import JsonValue, ValidationError
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.saga.context import SagaContext
-from redis_enterprise_services.saga.failure import Failure, classify, classify_lookup, describe
+from redis_enterprise_services.saga.failure import Failure, FailureClassifier, describe
+from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.retry import pause
 from redis_enterprise_services.saga.runnable import RunnableStep
-from redis_enterprise_services.steps.kind import StepKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -23,8 +23,9 @@ class StepOutcome(StrEnum):
 
 
 class StepRunner:
-    def __init__(self, *, settings: SagaSettings) -> None:
+    def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier) -> None:
         self._settings: SagaSettings = settings
+        self._classifier: FailureClassifier = classifier
 
     def run(self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder) -> StepOutcome:
         logger.info(msg=f"step {step.key} started")
@@ -88,7 +89,7 @@ class StepRunner:
         except RedisEnterpriseServicesError as error:
             logger.warning(msg=f"step {step.key} failed: {error.code}: {error.message}")
             recorder.failed_attempt(error=describe(error=error))
-            return classify(error=error, transient_codes=self._settings.transient_error_codes)
+            return self._classifier.classify(error=error)
         return None
 
     def _resolve(self, *, step: RunnableStep, recorder: StepRecorder) -> StepOutcome:
@@ -99,7 +100,7 @@ class StepRunner:
             except RedisEnterpriseServicesError as error:
                 logger.warning(msg=f"checking step {step.key} failed: {error.code}: {error.message}")
                 recorder.failed_attempt(error=describe(error=error))
-                failure: Failure = classify_lookup(error=error)
+                failure: Failure = self._classifier.classify_lookup(error=error)
                 if failure is Failure.MANUAL:
                     return StepOutcome.MANUAL
                 if failure is Failure.FAILED:

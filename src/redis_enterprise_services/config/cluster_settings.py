@@ -15,3 +15,4 @@ class FieldsQuerySettings(BaseModel):
 class ClusterSettings(BaseModel):
     fields: ClusterFieldSettings
     fields_query: FieldsQuerySettings
+    transient_error_codes: frozenset[str]

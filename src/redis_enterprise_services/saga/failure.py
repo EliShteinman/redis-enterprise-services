@@ -1,21 +1,7 @@
 from enum import StrEnum
+from typing import Protocol
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.cluster import (
-    AmbiguousResourceError,
-    ClusterActionFailedError,
-    ClusterActionTimeoutError,
-    ClusterRequestError,
-    DatabaseNotActiveError,
-    UnreadableAnswerError,
-)
-from redis_enterprise_services.exceptions.edge import EdgeError, InvalidEdgeRequestError
-
-UNKNOWN_OUTCOME_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
-    ClusterActionTimeoutError,
-    DatabaseNotActiveError,
-    UnreadableAnswerError,
-)
 
 
 class Failure(StrEnum):
@@ -25,24 +11,10 @@ class Failure(StrEnum):
     MANUAL = "manual"
 
 
-def classify(*, error: RedisEnterpriseServicesError, transient_codes: frozenset[str]) -> Failure:
-    if isinstance(error, AmbiguousResourceError):
-        return Failure.MANUAL
-    if isinstance(error, ClusterRequestError):
-        return Failure.TRANSIENT if error.error_code in transient_codes else Failure.FAILED
-    if isinstance(error, (InvalidEdgeRequestError, ClusterActionFailedError)):
-        return Failure.FAILED
-    if isinstance(error, (EdgeError, *UNKNOWN_OUTCOME_ERRORS)):
-        return Failure.UNKNOWN
-    return Failure.FAILED
+class FailureClassifier(Protocol):
+    def classify(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
 
-
-def classify_lookup(*, error: RedisEnterpriseServicesError) -> Failure:
-    if isinstance(error, AmbiguousResourceError):
-        return Failure.MANUAL
-    if isinstance(error, ClusterActionFailedError):
-        return Failure.FAILED
-    return Failure.UNKNOWN
+    def classify_lookup(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
 
 
 def describe(*, error: RedisEnterpriseServicesError) -> str:

@@ -16,9 +16,10 @@ from redis_enterprise_services.exceptions.edge import (
     RequestNotSentError,
     ResponseRejectedError,
 )
-from redis_enterprise_services.saga.failure import Failure, classify, classify_lookup
+from redis_enterprise_services.saga.failure import Failure
+from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 
-TRANSIENT_CODES: frozenset[str] = frozenset({"busy"})
+CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=frozenset({"busy"}))
 
 
 @pytest.mark.parametrize(
@@ -41,7 +42,7 @@ TRANSIENT_CODES: frozenset[str] = frozenset({"busy"})
 def test_a_step_error_is_sorted_by_the_engine_table(
     error: RedisEnterpriseServicesError, expected: Failure
 ) -> None:
-    assert classify(error=error, transient_codes=TRANSIENT_CODES) is expected
+    assert CLASSIFIER.classify(error=error) is expected
 
 
 @pytest.mark.parametrize(
@@ -55,4 +56,4 @@ def test_a_step_error_is_sorted_by_the_engine_table(
 def test_a_lookup_error_is_sorted_by_the_engine_table(
     error: RedisEnterpriseServicesError, expected: Failure
 ) -> None:
-    assert classify_lookup(error=error) is expected
+    assert CLASSIFIER.classify_lookup(error=error) is expected

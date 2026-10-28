@@ -9,4 +9,3 @@ class RetrySettings(BaseModel):
 class SagaSettings(BaseModel):
     step_retry: RetrySettings
     compensation_retry: RetrySettings
-    transient_error_codes: frozenset[str]
