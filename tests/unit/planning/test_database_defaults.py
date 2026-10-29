@@ -64,6 +64,21 @@ def test_a_later_override_beats_an_earlier_one() -> None:
     )
 
 
+def test_an_override_applies_only_when_all_its_labels_match() -> None:
+    defaults: DatabaseDefaults = DatabaseDefaults(
+        settings=DatabaseDefaultsSettings(
+            values={"replication": True},
+            overrides=[
+                DefaultsOverride(
+                    when=DefaultsMatch(environment="DEV", site="dc2"), values={"replication": False}
+                )
+            ],
+        )
+    )
+
+    assert defaults.complete(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is True
+
+
 def test_a_field_sent_as_null_keeps_the_default() -> None:
     requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=None)
 

@@ -10,7 +10,7 @@ from pydantic_settings import (
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.clusters_settings import ClusterList
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     role: RoleSettings
     user: ResourceSettings
     server: ServerSettings
-    clusters: list[ClusterEntry]
+    clusters: ClusterList
     database_defaults: DatabaseDefaultsSettings
 
     @classmethod

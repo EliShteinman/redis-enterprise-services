@@ -1,7 +1,6 @@
 import logging
 
 from redis_enterprise_services.config.clusters_settings import ClusterEntry
-from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import UnknownClusterError
 from redis_enterprise_services.planning.cluster_chooser import ClusterChooser
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
@@ -24,7 +23,7 @@ class ClusterResolver:
         chosen: ClusterEntry = (
             self._chooser.choose(target=target, candidates=candidates)
             if target.cluster.type == "generic"
-            else only_dedicated(target=target, candidates=candidates)
+            else candidates[0]
         )
         logger.info(msg=f"{target.describe()} resolves to cluster {chosen.name}")
         return chosen
@@ -34,9 +33,3 @@ class ClusterResolver:
         if target.cluster.type == "generic":
             return at_site
         return [cluster for cluster in at_site if cluster.name == target.cluster.name]
-
-
-def only_dedicated(*, target: SiteTarget, candidates: list[ClusterEntry]) -> ClusterEntry:
-    if len(candidates) > 1:
-        raise ConfigurationError(message=f"{target.describe()} is configured more than once")
-    return candidates[0]
