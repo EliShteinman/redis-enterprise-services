@@ -15,8 +15,8 @@ from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
 from redis_enterprise_services.saga.plan.context import SagaContext
-from redis_enterprise_services.saga.plan.plan import SagaPlan
 from redis_enterprise_services.saga.plan.planned_step import BuildInput, PlannedStep
+from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]

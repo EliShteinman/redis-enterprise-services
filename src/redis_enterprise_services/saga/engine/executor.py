@@ -14,8 +14,8 @@ from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
 from redis_enterprise_services.saga.engine.step_runner import StepOutcome, StepRunner
 from redis_enterprise_services.saga.plan.context import SagaContext
-from redis_enterprise_services.saga.plan.plan import SagaPlan
 from redis_enterprise_services.saga.plan.runnable import PreparedStep, RunnableStep
+from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

@@ -220,9 +220,9 @@ PlannedStep(
 
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
-| `saga/contract/` | מה שמבחוץ מממשים או מקבלים: `SagaStep`, `StepKind`, `KeepResult`, `Failure` ו-`FailureClassifier`, `DatabaseLock`, `SagaStateRepository`, וה-record | כלום מתוך `saga/` |
+| `saga/contract/` | מה שמבחוץ מממשים או מקבלים: `SagaStep`, `StepKind`, `KeepResult`, `Failure` ו-`FailureClassifier`, `DatabaseLock`, `SagaStateRepository`, וה-record | כלום מתוך `plan` או `engine` |
 | `saga/plan/` | בניית התוכנית: `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
-| `saga/engine/` | ההרצה: `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
+| `saga/engine/` | ההרצה: `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder`, וההמתנה בין ניסיונות | `contract`, `plan` |
 
 ## 6. ספרייה או מימוש שלנו
 
