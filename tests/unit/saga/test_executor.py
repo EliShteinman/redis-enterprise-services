@@ -688,6 +688,20 @@ def test_a_failure_after_a_kept_result_that_did_not_happen_is_compensated(
     assert (record.status, journal[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
 
 
+def test_an_unknown_outcome_after_a_kept_result_that_is_not_found_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then unknown"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.compensated, lock.held_by) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        0,
+        SAGA_ID,
+    )
+
+
 def test_a_pivot_that_kept_a_result_and_failed_needs_manual_intervention(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
