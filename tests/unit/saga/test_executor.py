@@ -576,16 +576,33 @@ def test_a_plan_without_steps_is_refused() -> None:
 
 
 def test_a_compensation_that_fails_for_a_known_reason_is_not_retried(
-    journal: list[str], state: MemoryState, lock: MemoryLock
+    journal: list[str], state: MemoryState, lock: MemoryLock, sleeper: RecordingSleeper
 ) -> None:
     steps: list[PlannedStep[FakeInput, FakeResult]] = [
         planned(step=FakeStep(journal=journal, compensations=[REJECTED]), name="a"),
         planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="b"),
     ]
 
-    run(steps=steps, state=state, lock=lock)
+    run(steps=steps, state=state, lock=lock, sleeper=sleeper)
 
-    assert journal.count("compensate a") == 1
+    assert (journal.count("compensate a"), sleeper.slept) == (1, [])
+
+
+def test_an_undo_that_stays_busy_fails_after_its_attempts_without_a_last_wait(
+    journal: list[str], state: MemoryState, lock: MemoryLock, sleeper: RecordingSleeper
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal, compensations=[BUSY]), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="b"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock, sleeper=sleeper)
+
+    assert (statuses(record)[0], journal.count("compensate a"), sleeper.slept) == (
+        StepStatus.COMPENSATION_FAILED,
+        2,
+        [1],
+    )
 
 
 @pytest.mark.parametrize(argnames="failure", argvalues=[BUSY, UNKNOWN])
