@@ -80,6 +80,14 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "shared packages: logging and telemetry over config and exceptions"
+type = "layers"
+layers = [
+    "redis_enterprise_services.logger | redis_enterprise_services.telemetry",
+    "redis_enterprise_services.config | redis_enterprise_services.exceptions",
+]
+
+[[tool.importlinter.contracts]]
 name = "shared packages import nothing else of ours"
 type = "forbidden"
 source_modules = [
