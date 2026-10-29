@@ -12,7 +12,9 @@ from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.edge.client import EdgeClient
+from redis_enterprise_services.edge.headers import EdgeHeaders
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
+from redis_enterprise_services.edge.response_reader import EdgeResponseReader
 from redis_enterprise_services.exceptions.edge import (
     EdgeError,
     InvalidEdgeRequestError,
@@ -56,7 +58,11 @@ def send(
         return answer
 
     monkeypatch.setattr(target=requests, name="post", value=fake_post)
-    return EdgeClient(settings=settings).send(network=NETWORK, request=REQUEST)
+    return EdgeClient(
+        settings=settings,
+        headers=EdgeHeaders(settings=settings),
+        reader=EdgeResponseReader(settings=settings),
+    ).send(network=NETWORK, request=REQUEST)
 
 
 @pytest.mark.parametrize(argnames="status_code", argvalues=[200, 404])

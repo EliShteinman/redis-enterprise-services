@@ -15,6 +15,7 @@ from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
+from redis_enterprise_services.config.server_settings import ServerSettings
 from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
@@ -34,6 +35,7 @@ class Settings(BaseSettings):
             "config/state.yaml",
             "config/role.yaml",
             "config/user.yaml",
+            "config/server.yaml",
         ),
         env_prefix="RES_",
         env_nested_delimiter="__",
@@ -52,6 +54,7 @@ class Settings(BaseSettings):
     state: StateSettings
     role: RoleSettings
     user: ResourceSettings
+    server: ServerSettings
 
     @classmethod
     def settings_customise_sources(
