@@ -122,17 +122,18 @@ global ⇐ סביבה (DEV/PROD/TEST) ⇐ רשת ⇐ אתר ⇐ קלאסטר ⇐
 ```mermaid
 stateDiagram-v2
     [*] --> pending
-    pending --> running
-    running --> done
-    running --> failed
-    running --> unknown : כישלון שלא בא מהקלאסטר / response_rejected על כתיבה
-    unknown --> done : נמצא בקלאסטר
-    unknown --> running : לא נמצא, retry
-    unknown --> failed : נגמרו הניסיונות
+    pending --> running : הקלט נבנה מהתוצאות הקודמות
+    pending --> failed : אי אפשר לבנות את הקלט
+    running --> running : שגיאה זמנית, או תוצאה לא ידועה שלא נמצאה: ניסיון חוזר
+    running --> done : הצליח, או תוצאה לא ידועה שנמצאה ב-find_outcome
+    running --> failed : כישלון ידוע, נגמרו הניסיונות, או תוצאה שמורה שלא נמצאה
+    running --> unresolved : כמה משאבים באותו שם, תוצאה שנשארה לא ידועה, צעד שאין לו ביטול ששמר תוצאה ונכשל, או Saga שנעצר באמצע הצעד
     done --> compensating : צעד מאוחר יותר נכשל
+    failed --> compensating : שמר תוצאה לפני שנכשל
     compensating --> compensated
     compensating --> compensation_failed : נגמרו הניסיונות
-    compensation_failed --> [*] : התערבות ידנית
+    unresolved --> [*] : התערבות ידנית, הנעילה נשארת
+    compensation_failed --> [*] : התערבות ידנית, הנעילה נשארת
 ```
 
 ---
@@ -647,6 +648,7 @@ stateDiagram-v2
 | V20 | `roles_permissions` לשני הקלאסטרים ב-`PATCH` אחד | **עובד.** `instances[].db_config.roles_permissions`, רשימה לכל instance. ראו 5.6. נבדק 2026-10-27. |
 | V21 | user דרך ה-relay | **יצירה:** התשובה היא היוזר המלא עם `uid` ו-`action_uid` (`update_redis_acls`). היוזר קיים מיד, וה-action מסתיים תוך כ-3 שניות. שם קיים: `409 name_already_exists`. role שלא קיים: `404 role_not_exist`. סיסמה חלשה (`a`) מתקבלת. **מחיקה:** `action_uid`, והיוזר נעלם מיד (`404 user_not_exist`). **רשימה:** `GET /v1/users?fields=` לא מצמצם, וחוזר הכל. **role:** יצירה בלי `action_uid`, מחיקה עם. role שיש לו יוזר לא נמחק: `406 role_in_use`. נבדק 2026-10-27. |
 | V22 | role דרך ה-relay | **יצירה:** התשובה היא ה-role המלא עם `uid`, בלי `action_uid`. שם קיים: `409 name_already_exists`, תלוי רישיות. uid של DB כמספר: `400 invalid_schema`. DB שלא קיים: `404 db_not_found`. `management` לא מוכר: `400` עם רשימת הערכים המותרים. **מחיקה:** `action_uid` (כחצי שנייה), וה-role נעלם מיד (`404 role_not_exist`). נבדק 2026-10-27. **ב-Saga** (2026-10-29): role ואחריו user שמקבל את ה-uid שלו מה-context. בכישלון אחריהם נמחקו קודם ה-user ואז ה-role. |
+| V23 | ACL דרך ה-relay | **יצירה:** התשובה היא ה-ACL המלא עם `uid`, בלי `action_uid`. שם קיים: `409 name_already_exists`, תלוי רישיות. כלל שגוי: `400 invalid_param` עם השגיאה של Redis. כלל ריק: `400 missing_field`. **מחיקה:** `action_uid`, וה-ACL נעלם מיד (`404 redis_acl_not_exist`). **ב-Saga:** ACL, role, user, ואז `roles_permissions` ב-DB. ה-user נכנס ל-DB, כותב וקורא תחת ה-prefix של ה-ACL, ומקבל `NOPERM` מחוץ לו. בכישלון אחריהם הקישור הוחזר ל-`[]` ושלושת המשאבים נמחקו בסדר הפוך. נבדק 2026-10-29. |
 
 ### עוד לא נבדק
 
@@ -685,15 +687,15 @@ classDiagram
         +key: str
         +kind: StepKind
         +has_result: bool
-        +obtained_by: ObtainedBy
+        +obtained_by: ObtainedBy | None
         +prepare(context) JsonValue
         +execute(on_kept) None
         +resolve(on_kept) bool
         +compensate() None
     }
     class PlannedStep {
-        +step: SagaStep
-        +build_input(context) TInput
+        -step: SagaStep
+        -build_input(context) TInput
     }
     class StepRecorder {
         +started(step_input) None
@@ -763,7 +765,10 @@ classDiagram
     class CrdbRepository
     class UserRepository
     class RoleRepository
-    class RedisAclRepository
+    class AclRepository
+    class EndpointRepository~TSpec~ {
+        +creation_body(spec) dict
+    }
     class CompletionWaiter {
         <<interface>>
         +wait_created(target, resource) None
@@ -806,6 +811,8 @@ classDiagram
     SagaPlan o-- RunnableStep
     RunnableStep <|-- PlannedStep
     StepRunner --> StepRecorder
+    SagaExecutor --> StepRecorder : one per step
+    StepRecorder --> SagaStateRepository
     Compensator --> RunnableStep
     Compensator --> StepRecorder
     PlannedStep --> SagaStep
@@ -824,14 +831,13 @@ classDiagram
     CompletionWaiter <|.. DatabaseActiveWaiter : planned, DB create stage
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
-    ResourceRepository <|.. UserRepository
-    ResourceRepository <|.. RoleRepository
-    ResourceRepository <|.. RedisAclRepository
+    ResourceRepository <|.. EndpointRepository
+    EndpointRepository <|-- UserRepository
+    EndpointRepository <|-- RoleRepository
+    EndpointRepository <|-- AclRepository
     DatabaseRepository --> RelayClient
     CrdbRepository --> RelayClient
-    UserRepository --> ResourceEndpoint
-    RoleRepository --> ResourceEndpoint
-    RedisAclRepository --> ResourceEndpoint
+    EndpointRepository --> ResourceEndpoint
     ResourceEndpoint --> RelayClient
     CreateResourceStep --> ClusterCredentialsProvider
     UpdateResourceStep --> ClusterCredentialsProvider

@@ -1,0 +1,3 @@
+acl:
+  collection_path: /v1/redis_acls
+  path: /v1/redis_acls/{uid}

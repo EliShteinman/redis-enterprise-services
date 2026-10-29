@@ -25,6 +25,7 @@ class Settings(BaseSettings):
             "config/telemetry.yaml",
             "config/edge.yaml",
             "config/action.yaml",
+            "config/acl.yaml",
             "config/cluster.yaml",
             "config/database.yaml",
             "config/saga.yaml",
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings
+    acl: ResourceSettings
     cluster: ClusterSettings
     database: DatabaseSettings
     saga: SagaSettings
