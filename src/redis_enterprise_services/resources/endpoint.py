@@ -3,7 +3,7 @@ import logging
 from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
 
 from redis_enterprise_services.cluster.api import ClusterApi
-from redis_enterprise_services.cluster.json_body import string_field
+from redis_enterprise_services.cluster.json_body import failed_fields, string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
@@ -57,7 +57,3 @@ class ResourceEndpoint:
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
         return string_field(body=body, name=self._cluster.fields.action_uid)
-
-
-def failed_fields(*, error: ValidationError) -> list[str]:
-    return [".".join(str(part) for part in detail["loc"]) for detail in error.errors(include_input=False)]
