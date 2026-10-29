@@ -7,7 +7,7 @@ from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.models import ObtainedBy
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.retry import pause
-from redis_enterprise_services.saga.runnable import RunnableStep
+from redis_enterprise_services.saga.runnable import PreparedStep
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -16,7 +16,7 @@ class Compensator:
     def __init__(self, *, settings: SagaSettings) -> None:
         self._settings: SagaSettings = settings
 
-    def compensate(self, *, steps: list[tuple[RunnableStep, StepRecorder]]) -> bool:
+    def compensate(self, *, steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
         all_undone: bool = True
         for step, recorder in reversed(steps):
             if step.kind is not StepKind.COMPENSATABLE or not step.has_result:
@@ -24,7 +24,7 @@ class Compensator:
             all_undone = self._compensate(step=step, recorder=recorder) and all_undone
         return all_undone
 
-    def _compensate(self, *, step: RunnableStep, recorder: StepRecorder) -> bool:
+    def _compensate(self, *, step: PreparedStep, recorder: StepRecorder) -> bool:
         if step.obtained_by is ObtainedBy.FOUND:
             logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
         recorder.compensating()

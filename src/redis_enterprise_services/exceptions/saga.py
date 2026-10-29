@@ -13,9 +13,5 @@ class InvalidPlanError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "invalid_plan"
 
 
-class StepNotPreparedError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "step_not_prepared"
-
-
 class MissingResultError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_result"

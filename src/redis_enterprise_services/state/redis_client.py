@@ -13,6 +13,6 @@ def build_redis_client(*, settings: StateSettings) -> Redis:
         password=settings.password.get_secret_value(),
         socket_timeout=settings.socket_timeout_seconds,
         socket_connect_timeout=settings.socket_timeout_seconds,
-        retry=Retry(backoff=NoBackoff(), retries=settings.command_retries),
+        retry=Retry(backoff=NoBackoff(), retries=0),
         decode_responses=True,
     )

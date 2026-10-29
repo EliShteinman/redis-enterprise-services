@@ -8,7 +8,7 @@ class SagaContext:
         self._results: dict[str, BaseModel] = {}
 
     def keep(self, *, key: str, result: BaseModel) -> None:
-        self._results.setdefault(key, result)
+        self._results[key] = result
 
     def result_of[TResult: BaseModel](self, *, key: str, result_type: type[TResult]) -> TResult:
         result: BaseModel | None = self._results.get(key)
