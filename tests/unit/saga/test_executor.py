@@ -83,6 +83,7 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         self._outcomes: list[FakeResult | RedisEnterpriseServicesError | None] = outcomes or []
         self._compensations: list[RedisEnterpriseServicesError | None] = compensations or [None]
         self.executed: int = 0
+        self.compensated: int = 0
 
     @property
     def kind(self) -> StepKind:
@@ -114,7 +115,10 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
 
     def compensate(self, *, step_input: FakeInput, result: FakeResult) -> None:
         self._journal.append(f"compensate {step_input.name}")
-        error: RedisEnterpriseServicesError | None = self._compensations[0]
+        error: RedisEnterpriseServicesError | None = self._compensations[
+            min(self.compensated, len(self._compensations) - 1)
+        ]
+        self.compensated += 1
         if error is not None:
             raise error
 
@@ -179,7 +183,7 @@ def run(
     lock: MemoryLock,
     sleeper: Sleeper | None = None,
 ) -> SagaRecord:
-    waits: Sleeper = sleeper or RecordingSleeper()
+    waits: Sleeper = RecordingSleeper() if sleeper is None else sleeper
     executor: SagaExecutor = SagaExecutor(
         state=state,
         lock=lock,
@@ -582,6 +586,20 @@ def test_a_compensation_that_fails_for_a_known_reason_is_not_retried(
     run(steps=steps, state=state, lock=lock)
 
     assert journal.count("compensate a") == 1
+
+
+@pytest.mark.parametrize(argnames="failure", argvalues=[BUSY, UNKNOWN])
+def test_an_undo_that_fails_for_a_transient_or_unknown_reason_is_retried_after_a_wait(
+    journal: list[str], state: MemoryState, lock: MemoryLock, sleeper: RecordingSleeper, failure: FakeError
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal, compensations=[failure, None]), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="b"),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock, sleeper=sleeper)
+
+    assert (record.status, journal.count("compensate a"), sleeper.slept) == (SagaStatus.ROLLED_BACK, 2, [1])
 
 
 def test_each_retry_waits_longer_than_the_one_before(
