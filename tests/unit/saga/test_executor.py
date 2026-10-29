@@ -94,6 +94,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
             raise BUSY
         if action == "keep then rejected":
             raise REJECTED
+        if action == "keep then unknown":
+            raise UNKNOWN
 
     def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
@@ -328,7 +330,7 @@ def test_a_failure_after_the_pivot_is_not_compensated(
     )
 
 
-def test_a_step_that_kept_a_result_before_failing_is_compensated(
+def test_a_step_that_kept_a_result_and_stays_busy_is_compensated(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
     step: FakeStep = FakeStep(journal=journal, executions=["keep then busy"])
@@ -338,22 +340,33 @@ def test_a_step_that_kept_a_result_before_failing_is_compensated(
     assert journal[-1] == "compensate a"
 
 
-def test_a_step_that_kept_a_result_and_is_not_found_is_not_run_again(
-    journal: list[str], state: MemoryState, lock: MemoryLock
-) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
-
-    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
-
-    assert step.executed == 1
-
-
 def test_a_step_with_a_kept_result_is_checked_instead_of_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
     step: FakeStep = FakeStep(
         journal=journal, executions=["keep then busy"], outcomes=[FakeResult(name="a", attempt=1)]
     )
+
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert step.executed == 1
+
+
+def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+
+
+@pytest.mark.parametrize(argnames="failing", argvalues=["keep then rejected", "keep then unknown"])
+def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock, failing: str
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[failing, "keep"], outcomes=[None])
 
     run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 

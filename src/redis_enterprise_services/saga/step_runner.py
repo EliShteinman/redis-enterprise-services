@@ -68,7 +68,7 @@ class StepRunner:
                 outcome: StepOutcome = self._resolve(step=step, recorder=recorder)
                 if outcome is not StepOutcome.NOT_FOUND:
                     return outcome
-                if failure is Failure.FAILED or step.has_result:
+                if failure is Failure.FAILED or (failure is Failure.UNKNOWN and step.has_result):
                     return self._not_found(step=step)
             elif failure is Failure.FAILED:
                 return StepOutcome.FAILED
