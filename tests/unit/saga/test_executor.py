@@ -130,7 +130,7 @@ class MemoryLock(DatabaseLock):
         self.held_by: str | None = held_by
 
     def acquire(self, *, keys: list[str], owner: str) -> None:
-        if self.held_by not in (None, owner):
+        if self.held_by is not None:
             raise DatabaseLockedError(message=f"{keys} locked by {self.held_by}")
         self.held_by = owner
 
@@ -370,10 +370,12 @@ def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_ru
     assert step.executed == 1
 
 
-def test_an_outcome_that_stays_unknown_needs_manual_intervention(
+def test_an_outcome_check_that_fails_needs_manual_intervention_without_a_second_check(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN], outcomes=[UNKNOWN, UNKNOWN, UNKNOWN])
+    step: FakeStep = FakeStep(
+        journal=journal, executions=[UNKNOWN], outcomes=[UNKNOWN, FakeResult(name="a", attempt=0)]
+    )
 
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
@@ -531,7 +533,7 @@ def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
     assert lock.held_by is None
 
 
-@pytest.mark.parametrize(argnames="failure", argvalues=[REJECTED, BUSY])
+@pytest.mark.parametrize(argnames="failure", argvalues=[REJECTED, BUSY, UNKNOWN])
 def test_any_failure_after_an_unknown_outcome_needs_manual_intervention(
     journal: list[str], state: MemoryState, lock: MemoryLock, failure: FakeError
 ) -> None:

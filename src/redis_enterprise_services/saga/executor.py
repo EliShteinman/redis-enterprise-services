@@ -38,7 +38,7 @@ class SagaExecutor:
             record.status = self._run_steps(plan=plan, record=record)
         finally:
             if record.status is SagaStatus.RUNNING:
-                logger.error(msg=f"saga {saga_id} stopped on an unexpected error")
+                logger.error(msg=f"saga {saga_id} stopped on an unexpected error", exc_info=True)
                 stop_running(record=record)
             self._finish(record=record, plan=plan)
         return record
