@@ -14,7 +14,7 @@ def test_the_creation_body_limits_the_role_to_its_databases_by_uid_strings() -> 
     )
 
     body: dict[str, JsonValue] = repository.creation_body(
-        role=NewRole(name="db1-app-role", management="db_viewer", database_uids=[1, 7])
+        spec=NewRole(name="db1-app-role", management="db_viewer", database_uids=[1, 7])
     )
 
     assert body["resources"] == [{"type": "db", "uids": ["1", "7"]}]
