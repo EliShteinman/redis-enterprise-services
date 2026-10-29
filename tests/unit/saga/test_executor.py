@@ -13,11 +13,11 @@ from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
-from redis_enterprise_services.saga.engine.retry import Sleeper
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
 from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.planned_step import BuildInput, PlannedStep
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
+from redis_enterprise_services.timing.sleeper import Sleeper
 
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]
@@ -488,6 +488,17 @@ def test_an_unexpected_error_needs_manual_intervention_and_keeps_the_lock(
         SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         SAGA_ID,
     )
+
+
+def test_a_plan_with_two_pivots_is_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(
+            steps=[
+                planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="first"),
+                planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="second"),
+            ],
+            lock_keys=LOCK_KEYS,
+        )
 
 
 def test_a_compensatable_step_after_the_pivot_is_refused(journal: list[str]) -> None:
