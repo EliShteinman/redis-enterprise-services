@@ -3,13 +3,11 @@ import logging
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.saga.models import SagaRecord, SagaStatus
+from redis_enterprise_services.saga.models import SETTLED, SagaRecord
 from redis_enterprise_services.saga.state import SagaStateRepository
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
-
-EXPIRES_ON: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
 
 SAVE_UNFINISHED: str = """
 redis.call('SET', KEYS[1], ARGV[1])
@@ -38,7 +36,7 @@ class RedisSagaState(SagaStateRepository):
         logger.debug(msg=f"saga {record.saga_id} saved")
 
     def finish(self, *, record: SagaRecord) -> None:
-        if record.status not in EXPIRES_ON:
+        if record.status not in SETTLED:
             self.save(record=record)
             logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")
             return
