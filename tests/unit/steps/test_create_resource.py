@@ -51,7 +51,7 @@ def step(repository: MagicMock, waiter: MagicMock) -> CreateResourceStep[NewUser
 def test_execute_hands_the_created_resource_to_the_saga(step: CreateResourceStep[NewUser]) -> None:
     kept: list[CreatedResource] = []
 
-    step.execute(step_input=STEP_INPUT, keep_result=kept.append)
+    step.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
 
     assert kept == [CREATED]
 
@@ -59,7 +59,7 @@ def test_execute_hands_the_created_resource_to_the_saga(step: CreateResourceStep
 def test_execute_waits_until_the_resource_is_created(
     waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    step.execute(step_input=STEP_INPUT, keep_result=lambda created: None)
+    step.execute(step_input=STEP_INPUT, keep_result=lambda result: None)
 
     waiter.wait_created.assert_called_once_with(target=TARGET, resource=CREATED)
 
@@ -71,7 +71,7 @@ def test_the_saga_has_the_resource_even_when_waiting_for_it_fails(
     kept: list[CreatedResource] = []
 
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
-        step.execute(step_input=STEP_INPUT, keep_result=kept.append)
+        step.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
 
     assert kept == [CREATED]
 

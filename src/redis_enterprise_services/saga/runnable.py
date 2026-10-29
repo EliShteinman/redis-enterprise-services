@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Protocol
 
 from pydantic import JsonValue
@@ -7,7 +6,9 @@ from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.models import ObtainedBy
 
-type OnKept = Callable[[JsonValue, ObtainedBy], None]
+
+class OnKept(Protocol):
+    def __call__(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None: ...
 
 
 class PreparedStep(Protocol):

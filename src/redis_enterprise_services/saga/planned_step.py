@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from typing import Protocol
 
 from pydantic import BaseModel, JsonValue
 
@@ -8,7 +8,9 @@ from redis_enterprise_services.saga.models import ObtainedBy
 from redis_enterprise_services.saga.runnable import OnKept, PreparedStep, RunnableStep
 from redis_enterprise_services.saga.saga_step import SagaStep
 
-type BuildInput[TInput] = Callable[[SagaContext], TInput]
+
+class BuildInput[TInput](Protocol):
+    def __call__(self, *, context: SagaContext) -> TInput: ...
 
 
 class PlannedStep[TInput: BaseModel, TResult: BaseModel](RunnableStep):
@@ -27,7 +29,7 @@ class PlannedStep[TInput: BaseModel, TResult: BaseModel](RunnableStep):
 
     def prepare(self, *, context: SagaContext) -> PreparedStep:
         return PreparedPlannedStep(
-            key=self._key, step=self._step, step_input=self._build_input(context), context=context
+            key=self._key, step=self._step, step_input=self._build_input(context=context), context=context
         )
 
 
@@ -87,4 +89,4 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         self._result = result
         self._obtained_by = obtained_by
         self._context.keep(key=self._key, result=result)
-        on_kept(result.model_dump(mode="json"), obtained_by)
+        on_kept(result=result.model_dump(mode="json"), obtained_by=obtained_by)

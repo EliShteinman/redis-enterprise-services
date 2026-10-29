@@ -42,7 +42,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def execute(self, *, step_input: DatabaseUpdateInput, keep_result: KeepResult[DatabaseFields]) -> None:
         snapshot: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
         ensure_restorable(step_input=step_input, snapshot=snapshot)
-        keep_result(snapshot)
+        keep_result(result=snapshot)
         self._apply(
             step_input=step_input, values=step_input.values, cluster_state_id=snapshot.cluster_state_id
         )

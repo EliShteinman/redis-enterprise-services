@@ -1,3 +1,5 @@
-from collections.abc import Callable
+from typing import Protocol
 
-type KeepResult[TResult] = Callable[[TResult], None]
+
+class KeepResult[TResult](Protocol):
+    def __call__(self, *, result: TResult) -> None: ...
