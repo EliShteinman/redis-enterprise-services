@@ -6,7 +6,7 @@ from redis.commands.core import Script
 
 from redis_enterprise_services.config.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import DatabaseLockedError
-from redis_enterprise_services.saga.lock import DatabaseLock
+from redis_enterprise_services.saga.contract.lock import DatabaseLock
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)

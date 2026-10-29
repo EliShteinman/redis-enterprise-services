@@ -8,7 +8,7 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableAnswerError,
 )
 from redis_enterprise_services.exceptions.edge import EdgeError, InvalidEdgeRequestError
-from redis_enterprise_services.saga.failure import Failure, FailureClassifier
+from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 
 UNKNOWN_OUTCOME_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionTimeoutError,

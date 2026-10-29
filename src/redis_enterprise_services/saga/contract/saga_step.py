@@ -2,8 +2,8 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from redis_enterprise_services.saga.kind import StepKind
-from redis_enterprise_services.saga.result import KeepResult
+from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.result import KeepResult
 
 
 class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):

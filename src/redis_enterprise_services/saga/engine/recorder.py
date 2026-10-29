@@ -1,7 +1,7 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.saga.models import ObtainedBy, SagaRecord, StepRecord, StepStatus
-from redis_enterprise_services.saga.state import SagaStateRepository
+from redis_enterprise_services.saga.contract.models import ObtainedBy, SagaRecord, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.state import SagaStateRepository
 
 
 class StepRecorder:

@@ -8,9 +8,9 @@ from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
 from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.resources.spec import NamedSpec
-from redis_enterprise_services.saga.kind import StepKind
-from redis_enterprise_services.saga.result import KeepResult
-from redis_enterprise_services.saga.saga_step import SagaStep
+from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.result import KeepResult
+from redis_enterprise_services.saga.contract.saga_step import SagaStep
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

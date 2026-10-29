@@ -3,8 +3,8 @@ import logging
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.saga.models import SETTLED, SagaRecord
-from redis_enterprise_services.saga.state import SagaStateRepository
+from redis_enterprise_services.saga.contract.models import SETTLED, SagaRecord
+from redis_enterprise_services.saga.contract.state import SagaStateRepository
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)

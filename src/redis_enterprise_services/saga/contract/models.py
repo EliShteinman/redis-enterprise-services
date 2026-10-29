@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, JsonValue
 
-from redis_enterprise_services.saga.kind import StepKind
+from redis_enterprise_services.saga.contract.kind import StepKind
 
 
 class StepStatus(StrEnum):
