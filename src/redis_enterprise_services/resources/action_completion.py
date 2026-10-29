@@ -1,12 +1,12 @@
-from redis_enterprise_services.cluster.actions import ActionWaiter
+from redis_enterprise_services.cluster.action_tracker import ActionTracker
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource
 
 
 class ActionCompletionWaiter(CompletionWaiter):
-    def __init__(self, *, action_waiter: ActionWaiter) -> None:
-        self._action_waiter: ActionWaiter = action_waiter
+    def __init__(self, *, action_waiter: ActionTracker) -> None:
+        self._action_waiter: ActionTracker = action_waiter
 
     def wait_created(self, *, target: ClusterTarget, resource: CreatedResource) -> None:
         self._action_waiter.wait(target=target, action_uid=resource.action_uid)

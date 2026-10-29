@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 
 
 class ClusterCredentialsProvider(Protocol):

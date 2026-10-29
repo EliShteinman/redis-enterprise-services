@@ -871,6 +871,19 @@ classDiagram
 - **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
 - **הקריאה הישירה ששמה בתוכנית** משתמשת ישירות ב-`ClusterRegistry` וב-`RelayClient`, בלי Saga.
 
+**כל שכבה תלויה בממשק של השכבה שמתחתיה, לא במחלקה:**
+
+| ממשק | מי מממש | מי משתמש |
+|---|---|---|
+| `EdgeTransport` (`cluster/transport.py`) | `EdgeClient` | `ClusterApi` |
+| `ClusterCaller` (`cluster/caller.py`), מחזיר `ClusterAnswer` ולא את מודל התעבורה | `ClusterApi` | `ResourceEndpoint`, `DatabaseRepository`, `ActionWaiter` |
+| `ActionTracker` (`cluster/action_tracker.py`) | `ActionWaiter` | `ActionCompletionWaiter` |
+| `ResourceCalls` (`resources/resource_calls.py`) | `ResourceEndpoint` | `EndpointRepository` ו-`RoleRepository` |
+| `DatabaseFieldsReader` / `DatabaseFieldsStore` (`databases/fields_store.py`) | `DatabaseRepository` | `DatabaseActiveWaiter` (קריאה), `DatabaseUpdate` (קריאה ועדכון) |
+| `DatabaseReadiness` (`databases/readiness.py`) | `DatabaseActiveWaiter` | `DatabaseUpdate` |
+
+**שני טיפוסים משותפים לתעבורה ולקלאסטר** (`HttpMethod`, `ClusterCredentials`) נמצאים ב-`connection/`, מתחת ל-`edge`. כך מעל ה-API של הקלאסטר אף שכבה לא תלויה בשום טיפוס של `edge` (נאכף ב-`import-linter`).
+
 ---
 
 ## 13. החלטות שמחכות לך

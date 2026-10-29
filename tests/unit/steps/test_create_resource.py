@@ -5,17 +5,17 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     AmbiguousResourceError,
     ClusterActionTimeoutError,
     ClusterRequestError,
 )
-from redis_enterprise_services.resources.action_completion import ActionCompletionWaiter
+from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
+from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.steps.create_resource import CreateResourceStep
 from redis_enterprise_services.users.models import NewUser
-from redis_enterprise_services.users.repository import UserRepository
 
 CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
 ADDRESS: ClusterAddress = ClusterAddress(network="local", api_url="https://cluster.local:9443")
@@ -30,7 +30,7 @@ DELETE_ACTION_UID: str = "e85d7b88"
 
 @pytest.fixture
 def repository() -> MagicMock:
-    repository: MagicMock = create_autospec(spec=UserRepository, instance=True)
+    repository: MagicMock = create_autospec(spec=ResourceRepository, instance=True)
     repository.create.return_value = CREATED
     repository.delete.return_value = DELETE_ACTION_UID
     return repository
@@ -38,7 +38,7 @@ def repository() -> MagicMock:
 
 @pytest.fixture
 def waiter() -> MagicMock:
-    return create_autospec(spec=ActionCompletionWaiter, instance=True)
+    return create_autospec(spec=CompletionWaiter, instance=True)
 
 
 @pytest.fixture
