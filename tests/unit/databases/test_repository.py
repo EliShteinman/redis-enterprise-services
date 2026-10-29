@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.databases.repository import DatabaseRepository
@@ -18,7 +18,7 @@ TARGET: ClusterTarget = ClusterTarget(
 
 
 def test_an_answer_without_a_cluster_state_id_is_unreadable() -> None:
-    api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
     api.send.return_value = ClusterAnswer(body={"memory_size": 100}, cluster_state_id=None)
     settings: Settings = load_settings()
     repository: DatabaseRepository = DatabaseRepository(

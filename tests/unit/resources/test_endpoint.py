@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.edge.models import ClusterCredentials
@@ -23,7 +23,7 @@ USERS: list[JsonValue] = [
 
 
 def endpoint_answering(*, answer: JsonValue) -> ResourceEndpoint:
-    api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
     api.send.return_value = ClusterAnswer(body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
     return ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)

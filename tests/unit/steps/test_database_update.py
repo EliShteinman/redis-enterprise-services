@@ -5,9 +5,9 @@ from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
+from redis_enterprise_services.databases.active_wait import DatabaseActiveWait
+from redis_enterprise_services.databases.fields_store import DatabaseFieldsStore
 from redis_enterprise_services.databases.models import DatabaseFields
-from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 from redis_enterprise_services.steps.database_update import DatabaseUpdate, DatabaseUpdateInput
@@ -27,14 +27,14 @@ STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(cluster=ADDRESS, uid=UID, 
 
 @pytest.fixture
 def repository() -> MagicMock:
-    repository: MagicMock = create_autospec(spec=DatabaseRepository, instance=True)
+    repository: MagicMock = create_autospec(spec=DatabaseFieldsStore, instance=True)
     repository.get_fields.side_effect = [SNAPSHOT, CURRENT]
     return repository
 
 
 @pytest.fixture
 def active_waiter() -> MagicMock:
-    return create_autospec(spec=DatabaseActiveWaiter, instance=True)
+    return create_autospec(spec=DatabaseActiveWait, instance=True)
 
 
 @pytest.fixture

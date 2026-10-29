@@ -15,5 +15,7 @@ class ClusterTarget(ClusterAddress):
 
 
 class ClusterAnswer(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     body: JsonValue | None
     cluster_state_id: int | None
