@@ -4,10 +4,9 @@ from fastapi import Request, Response
 from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from redis_enterprise_services.api.app_settings import api_settings
 from redis_enterprise_services.api.error_response import ErrorDetail, error_response
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-
-INTERNAL_ERROR_MESSAGE: str = "internal error"
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -21,5 +20,8 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
             trace.get_current_span().record_exception(exception=error)
             return error_response(
                 status_code=RedisEnterpriseServicesError.status_code,
-                error=ErrorDetail(code=RedisEnterpriseServicesError.code, message=INTERNAL_ERROR_MESSAGE),
+                error=ErrorDetail(
+                    code=RedisEnterpriseServicesError.code,
+                    message=api_settings(request=request).internal_error_message,
+                ),
             )

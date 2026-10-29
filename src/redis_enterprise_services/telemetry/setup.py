@@ -15,9 +15,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
-OTLP_TRACES_PATH: str = "/v1/traces"
-OTLP_METRICS_PATH: str = "/v1/metrics"
-
 
 class Telemetry:
     def __init__(self, *, settings: TelemetrySettings) -> None:
@@ -32,7 +29,7 @@ class Telemetry:
         provider: TracerProvider = TracerProvider(resource=resource)
         if not settings.export_enabled:
             return provider
-        exporter: OTLPSpanExporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint + OTLP_TRACES_PATH)
+        exporter: OTLPSpanExporter = OTLPSpanExporter(endpoint=settings.otlp_endpoint + settings.traces_path)
         provider.add_span_processor(span_processor=BatchSpanProcessor(span_exporter=exporter))
         return provider
 
@@ -40,7 +37,9 @@ class Telemetry:
     def _build_meter_provider(*, settings: TelemetrySettings, resource: Resource) -> MeterProvider:
         if not settings.export_enabled:
             return MeterProvider(resource=resource)
-        exporter: OTLPMetricExporter = OTLPMetricExporter(endpoint=settings.otlp_endpoint + OTLP_METRICS_PATH)
+        exporter: OTLPMetricExporter = OTLPMetricExporter(
+            endpoint=settings.otlp_endpoint + settings.metrics_path
+        )
         reader: MetricReader = PeriodicExportingMetricReader(
             exporter=exporter, export_interval_millis=settings.metrics_export_interval_ms
         )

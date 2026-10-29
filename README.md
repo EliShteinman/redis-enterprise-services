@@ -26,10 +26,10 @@ uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0
 
 ## Configuration
 
-Settings are in `config/`, one YAML file per topic (`log.yaml`, `telemetry.yaml`, `edge.yaml`, `action.yaml`,
-`acl.yaml`, `cluster.yaml`, `database.yaml`, `role.yaml`, `saga.yaml`, `state.yaml`, `user.yaml`), read from
-the working directory. Any value can be overridden by an environment variable with the `RES_` prefix and `__`
-between levels, for example:
+Settings are in `config/`, one YAML file per topic (`log.yaml`, `api.yaml`, `telemetry.yaml`, `edge.yaml`,
+`action.yaml`, `acl.yaml`, `cluster.yaml`, `database.yaml`, `role.yaml`, `saga.yaml`, `state.yaml`,
+`user.yaml`), read from the working directory. Any value can be overridden by an environment variable with the
+`RES_` prefix and `__` between levels, for example:
 
 ```bash
 RES_LOG__LEVEL=DEBUG

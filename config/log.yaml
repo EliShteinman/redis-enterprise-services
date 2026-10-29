@@ -2,3 +2,9 @@ log:
   level: INFO
   line_pattern: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
+  handler_class: logging.StreamHandler
+  stream: ext://sys.stdout
+  server_loggers:
+    - uvicorn
+    - uvicorn.error
+    - uvicorn.access

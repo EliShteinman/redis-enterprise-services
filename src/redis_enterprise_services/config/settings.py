@@ -8,6 +8,7 @@ from pydantic_settings import (
 )
 
 from redis_enterprise_services.config.action_settings import ActionSettings
+from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         yaml_file=(
             "config/log.yaml",
+            "config/api.yaml",
             "config/telemetry.yaml",
             "config/edge.yaml",
             "config/action.yaml",
@@ -39,6 +41,7 @@ class Settings(BaseSettings):
     )
 
     log: LoggingSettings
+    api: ApiSettings
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings

@@ -4,8 +4,6 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.config.log_settings import LoggingSettings
 
-SERVER_LOGGERS: tuple[str, ...] = ("uvicorn", "uvicorn.error", "uvicorn.access")
-
 
 def configure_logging(*, settings: LoggingSettings) -> None:
     logging.config.dictConfig(config=logging_config(settings=settings))
@@ -17,10 +15,11 @@ def logging_config(*, settings: LoggingSettings) -> dict[str, JsonValue]:
         "disable_existing_loggers": False,
         "formatters": {"line": {"format": settings.line_pattern, "datefmt": settings.date_format}},
         "handlers": {
-            "console": {"class": "logging.StreamHandler", "formatter": "line", "stream": "ext://sys.stdout"}
+            "console": {"class": settings.handler_class, "formatter": "line", "stream": settings.stream}
         },
         "root": {"level": settings.level, "handlers": ["console"]},
         "loggers": {
-            name: {"level": settings.level, "handlers": [], "propagate": True} for name in SERVER_LOGGERS
+            name: {"level": settings.level, "handlers": [], "propagate": True}
+            for name in settings.server_loggers
         },
     }

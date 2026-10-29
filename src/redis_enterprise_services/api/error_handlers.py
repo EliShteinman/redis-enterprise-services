@@ -5,11 +5,11 @@ from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
+from redis_enterprise_services.api.app_settings import api_settings
 from redis_enterprise_services.api.error_response import ErrorDetail, FieldError, error_response
+from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
-VALIDATION_ERROR_CODE: str = "validation_error"
-VALIDATION_ERROR_MESSAGE: str = "the request does not match the contract"
 FIELD_PATH_SEPARATOR: str = "."
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -32,10 +32,13 @@ async def validation_error_handler(request: Request, error: RequestValidationErr
         FieldError(field=field_path(location=detail["loc"]), message=detail["msg"])
         for detail in error.errors()
     ]
-    logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in details]}")
+    settings: ApiSettings = api_settings(request=request)
+    logger.info(msg=f"{settings.validation_error_code}: {[detail.field for detail in details]}")
     return error_response(
         status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
-        error=ErrorDetail(code=VALIDATION_ERROR_CODE, message=VALIDATION_ERROR_MESSAGE, details=details),
+        error=ErrorDetail(
+            code=settings.validation_error_code, message=settings.validation_error_message, details=details
+        ),
     )
 
 
