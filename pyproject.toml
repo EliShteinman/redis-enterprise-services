@@ -68,8 +68,8 @@ layers = [
     "app",
     "api",
     "steps | state",
-    "users | roles | acls",
-    "resources | databases",
+    "users | roles | acls | databases",
+    "resources",
     "cluster",
     "edge",
     "connection",
@@ -155,5 +155,6 @@ forbidden_modules = [
     "redis_enterprise_services.resources.endpoint",
     "redis_enterprise_services.databases.repository",
     "redis_enterprise_services.databases.active_waiter",
+    "redis_enterprise_services.databases.lifecycle",
 ]
 allow_indirect_imports = true

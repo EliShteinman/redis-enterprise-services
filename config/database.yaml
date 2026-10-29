@@ -1,5 +1,9 @@
 database:
+  collection_path: /v1/bdbs
   path: /v1/bdbs/{uid}
+  list_fields:
+    - uid
+    - name
   active_status: active
   wait:
     interval_seconds: 1

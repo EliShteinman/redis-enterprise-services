@@ -3,6 +3,7 @@ import logging
 from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
 
 from redis_enterprise_services.cluster.caller import ClusterCaller
+from redis_enterprise_services.cluster.fields_query import fields_query
 from redis_enterprise_services.cluster.json_body import failed_fields, string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
@@ -46,7 +47,7 @@ class ResourceEndpoint(ResourceCalls):
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
         answer: JsonValue = self._api.send(
-            target=target, method="GET", path=self._settings.collection_path
+            target=target, method="GET", path=self._settings.collection_path, query=self._list_query()
         ).body
         try:
             resources: list[NamedResource] = NAMED_RESOURCE_LIST.validate_python(answer)
@@ -55,6 +56,11 @@ class ResourceEndpoint(ResourceCalls):
                 message=f"cannot read {self._settings.collection_path}, fields {failed_fields(error=error)}"
             ) from error
         return [resource for resource in resources if resource.name == name]
+
+    def _list_query(self) -> str | None:
+        if not self._settings.list_fields:
+            return None
+        return fields_query(settings=self._cluster.fields_query, fields=self._settings.list_fields)
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
         return string_field(body=body, name=self._cluster.fields.action_uid)
