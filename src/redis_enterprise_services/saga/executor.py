@@ -4,7 +4,7 @@ from redis_enterprise_services.saga.compensator import Compensator
 from redis_enterprise_services.saga.context import SagaContext
 from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.lock import DatabaseLock
-from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.models import SETTLED, SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.plan import SagaPlan
 from redis_enterprise_services.saga.recorder import StepRecorder
 from redis_enterprise_services.saga.runnable import RunnableStep
@@ -12,9 +12,6 @@ from redis_enterprise_services.saga.state import SagaStateRepository
 from redis_enterprise_services.saga.step_runner import StepOutcome, StepRunner
 
 logger: logging.Logger = logging.getLogger(name=__name__)
-
-
-RELEASED_ON: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
 
 
 class SagaExecutor:
@@ -72,7 +69,7 @@ class SagaExecutor:
 
     def _finish(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
-        if record.status in RELEASED_ON:
+        if record.status in SETTLED:
             self._lock.release(keys=plan.lock_keys, owner=record.saga_id)
         else:
             logger.critical(

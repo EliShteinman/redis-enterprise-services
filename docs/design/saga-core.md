@@ -145,13 +145,17 @@ class PlannedStep[TInput, TResult]:
 **כל מפתח מתחיל ב-prefix מהקונפיג,** כי ה-Redis של הארגון מתיר למשתמש רק prefix מסוים. כל המפתחות נבנים במקום
 אחד (`RedisKeys`), כך שאי אפשר לכתוב מפתח מחוץ ל-prefix.
 
+`res:` ו-`{state}` הם ה-prefix וה-hash tag מהקונפיג, והסוגריים המסולסלים הם חלק מהמפתח.
+
 | מפתח | סוג | תוכן |
 |---|---|---|
-| `{prefix}saga:{saga_id}` | string (JSON) | ה-saga record. TTL מהקונפיג אחרי שה-Saga הסתיים, כדי ששאילתת הסטטוס תענה עוד זמן מה |
-| `{prefix}sagas:unfinished` | set | מזהי ה-Sagas שעוד רצים, לזיהוי אחרי קריסה |
-| `{prefix}lock:{cluster}/{db}` | string | ה-`saga_id` שמחזיק בנעילה |
+| `res:{state}saga:{saga_id}` | string (JSON) | ה-saga record. TTL מהקונפיג אחרי שה-Saga הסתיים, כדי ששאילתת הסטטוס תענה עוד זמן מה |
+| `res:{state}sagas:unfinished` | set | מזהי ה-Sagas שעוד רצים, לזיהוי אחרי קריסה |
+| `res:{state}lock:{cluster}/{db}` | string | ה-`saga_id` שמחזיק בנעילה |
 
-- **נעילה:** `SET NX` בלי TTL. שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
+- **נעילה:** `SET` בלי TTL. סקריפט Lua אחד נועל את כל המפתחות של ה-Saga, או אף אחד מהם אם אחד תפוס (ב-AA יש כמה).
+  מפתח שכבר מוחזק על ידי אותו Saga לא חוסם אותו, כדי שסקריפט שנשלח שוב אחרי timeout לא ינעל את ה-Saga מול עצמו.
+  שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
 - **קריסה (D5):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at` שלו ישן מהסף בקונפיג. הוא
   מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB במצב חלקי לא משתנה עד
@@ -160,9 +164,9 @@ class PlannedStep[TInput, TResult]:
   עובר להתערבות ידנית עם הנעילה. לא מבטלים לבד, כי גם "לא נשלח" לא אמין: חיבור מוצפן שנשבר אחרי השליחה (למשל
   `SSLEOFError`) נראה בדיוק כך, גם בלי בדיקת תעודות.
 - **שחרור ידני של Saga שנעצר:**
-  1. קוראים את ה-record (`{prefix}saga:{saga_id}`): אילו צעדים `done`, איזה `unresolved`, ומה הקלט והתוצאה שלהם.
+  1. קוראים את ה-record (`res:{state}saga:{saga_id}`): אילו צעדים `done`, איזה `unresolved`, ומה הקלט והתוצאה שלהם.
   2. בודקים בקלאסטר מה באמת קיים (לפי השמות שבקלט), ומשלימים או מבטלים ידנית.
-  3. מוחקים את הנעילה (`{prefix}lock:{cluster}/{db}`), רק אחרי שהקלאסטר במצב נקי או מלא.
+  3. מוחקים את הנעילה (`res:{state}lock:{cluster}/{db}`), רק אחרי שהקלאסטר במצב נקי או מלא.
   כלי לזה (endpoint או פקודה) ייבנה בהמשך. עד אז זה נעשה ב-`redis-cli` של מי שמורשה.
 - **Saga שהצליח אבל השמירה האחרונה שלו נכשלה:** הנעילה כבר שוחררה, אבל ב-Redis ה-record נשאר `running`. בדיקת
   הקריסה תסמן אותו להתערבות ידנית. מי שבודק ימצא שכל הצעדים `done` והקלאסטר מלא, ויסגור אותו.
@@ -185,6 +189,14 @@ class PlannedStep[TInput, TResult]:
 - **משתמש ה-ACL של השירות:** `+@all -@dangerous +info ~{prefix}*`: כל הפקודות חוץ מהמסוכנות, `INFO` בנוסף, ורק
   מפתחות תחת ה-prefix. כמה prefixes: עוד `~{prefix2}*`. הסיסמה מ-Secret בלבד.
 - **הספרייה:** `redis-py`, סינכרונית, עם Lua ו-ACL (שם משתמש וסיסמה).
+- **שמירת ה-record** וההוספה ל-`sagas:unfinished` (או ההוצאה ממנו בסוף, עם ה-TTL) נעשות יחד בסקריפט Lua אחד.
+- **קונפיג:** `config/state.yaml` (host, port, user, prefix, hash tag, timeout של socket, מספר ניסיונות חוזרים של פקודה, TTL, זמן ההמתנה לנעילה). הסיסמה
+  רק מ-`RES_STATE__PASSWORD`.
+- **כל המפתחות עם אותו hash tag אחרי ה-prefix** (`res:{state}saga:...`), כדי שהסקריפטים יעבדו גם ב-DB עם כמה shards.
+- **רק Saga שהצליח או בוטל מקבל TTL ויוצא מ-`sagas:unfinished`.** Saga להתערבות ידנית נשמר בלי TTL ונשאר ב-set,
+  כי ה-record שלו הוא הצעד הראשון בשחרור הידני, והנעילה שלו נשארת.
+- **נבדק מול ה-Redis של הסביבה המקומית** (2026-10-29): Saga שהצליח ושבוטל נשמרו עם TTL, יצאו מ-`sagas:unfinished`,
+  והנעילה שוחררה. DB נעול ⇐ המתנה, ואז `database_locked` בלי אף קריאה לקלאסטר.
 
 ## המנוע גנרי לגמרי
 

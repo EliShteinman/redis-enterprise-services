@@ -23,6 +23,9 @@ class SagaStatus(StrEnum):
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
+SETTLED: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
+
+
 class ObtainedBy(StrEnum):
     KEPT = "kept"
     FOUND = "found"

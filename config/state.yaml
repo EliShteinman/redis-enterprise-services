@@ -1,0 +1,12 @@
+state:
+  host: localhost
+  port: 12005
+  username: saga-service
+  prefix: "res:"
+  hash_tag: state
+  socket_timeout_seconds: 5
+  command_retries: 1
+  finished_ttl_seconds: 604800
+  lock:
+    wait_timeout_seconds: 30
+    poll_seconds: 1

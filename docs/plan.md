@@ -151,8 +151,8 @@ x-cluster-authorization: Basic <credentials>
 | 1 | עדכון DB: snapshot, עדכון, ובפיצוי החזרת ה-snapshot (צעד 5, ועריכה בשלב 4) | ✅ |
 | 2 | user: יצירה, מחיקה, מציאה לפי שם (צעד 4) | ✅ |
 | 3 | חוזים: `SagaStep`, `ResourceRepository`, `CompletionWaiter`, צעד יצירה כללי, והאבנים הקיימות לפי החוזה (`saga-core.md`) | ✅ |
-| 4 | ליבת ה-Saga: המנוע הגנרי (תוכנית, context, ניסיונות, פיצוי) | ⬅️ |
-| 4ב | שמירת ה-saga record ונעילת ה-DB ב-Redis, תחת prefix, עם heartbeat וזיהוי קריסה (`saga-core.md` 5א) | |
+| 4 | ליבת ה-Saga: המנוע הגנרי (תוכנית, context, ניסיונות, פיצוי) | ✅ |
+| 4ב | שמירת ה-saga record ונעילת ה-DB ב-Redis, תחת prefix, עם heartbeat וזיהוי קריסה (`saga-core.md` 5א) | ⬅️ |
 | 5 | role: יצירה, מחיקה, מציאה לפי שם (צעד 3) | |
 | 6 | ACL: יצירה, מחיקה, מציאה לפי שם (צעד 2) | |
 | 7 | DB: מודל ה-DB לפי `db-model.md` (גם לעדכון: בלי ברירות מחדל), יצירה עם המתנה ל-`active`, מחיקה, מציאה לפי שם (צעד 1). הסיסמה של `default_user` נוספת בזמן הריצה מה-Secret, ולא בקלט של הצעד. `cluster-state-id` חסר ⇐ שגיאה ברורה | |
