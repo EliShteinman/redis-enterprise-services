@@ -5,7 +5,7 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
 from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
@@ -22,8 +22,9 @@ def test_an_answer_without_a_cluster_state_id_is_unreadable() -> None:
     api.send.return_value = ClusterResponse(
         status_code=200, headers={}, body={"memory_size": 100}, cluster_state_id=None
     )
+    settings: Settings = load_settings()
     repository: DatabaseRepository = DatabaseRepository(
-        api=api, settings=load_settings().database, cluster=load_settings().cluster
+        api=api, settings=settings.database, cluster=settings.cluster
     )
 
     with pytest.raises(expected_exception=UnreadableAnswerError):

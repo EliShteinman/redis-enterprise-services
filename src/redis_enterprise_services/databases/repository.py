@@ -35,7 +35,7 @@ class DatabaseRepository:
             )
         except ValidationError as error:
             raise UnreadableAnswerError(
-                message=f"database {uid} answered without {failed_fields(error=error)}"
+                message=f"database {uid} answered with unreadable fields {failed_fields(error=error)}"
             ) from error
 
     def update(
