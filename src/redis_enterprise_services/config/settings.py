@@ -14,6 +14,7 @@ from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
+from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
 
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
             "config/cluster.yaml",
             "config/database.yaml",
             "config/saga.yaml",
+            "config/state.yaml",
             "config/user.yaml",
         ),
         env_prefix="RES_",
@@ -41,6 +43,7 @@ class Settings(BaseSettings):
     cluster: ClusterSettings
     database: DatabaseSettings
     saga: SagaSettings
+    state: StateSettings
     user: ResourceSettings
 
     @classmethod
