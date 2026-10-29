@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 import pytest
 from pydantic import BaseModel
 
@@ -14,7 +12,7 @@ from redis_enterprise_services.saga.kind import StepKind
 from redis_enterprise_services.saga.lock import DatabaseLock
 from redis_enterprise_services.saga.models import SagaRecord, SagaStatus, StepStatus
 from redis_enterprise_services.saga.plan import SagaPlan
-from redis_enterprise_services.saga.planned_step import PlannedStep
+from redis_enterprise_services.saga.planned_step import BuildInput, PlannedStep
 from redis_enterprise_services.saga.result import KeepResult
 from redis_enterprise_services.saga.saga_step import SagaStep
 from redis_enterprise_services.saga.state import SagaStateRepository
@@ -89,7 +87,7 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
             raise action
         if action == "interrupt":
             raise SystemExit(1)
-        keep_result(FakeResult(name=step_input.name, attempt=self.executed))
+        keep_result(result=FakeResult(name=step_input.name, attempt=self.executed))
         if action == "keep then busy":
             raise BUSY
         if action == "keep then rejected":
@@ -140,7 +138,7 @@ class MemoryLock(DatabaseLock):
 
 
 def planned(
-    *, step: FakeStep, name: str, build: Callable[[SagaContext], FakeInput] | None = None
+    *, step: FakeStep, name: str, build: BuildInput[FakeInput] | None = None
 ) -> PlannedStep[FakeInput, FakeResult]:
     return PlannedStep(key=name, step=step, build_input=build or (lambda context: FakeInput(name=name)))
 

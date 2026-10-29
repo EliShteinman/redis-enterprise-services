@@ -14,7 +14,7 @@ class StepRecorder:
         self._step.step_input = step_input
         self._mark(status=StepStatus.RUNNING)
 
-    def kept(self, result: JsonValue, obtained_by: ObtainedBy) -> None:
+    def kept(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
         self._step.result = result
         self._step.obtained_by = obtained_by
         self._state.save(record=self._record)

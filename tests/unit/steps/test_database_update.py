@@ -48,7 +48,7 @@ def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
 
 def run(*, update: DatabaseUpdate) -> list[DatabaseFields]:
     kept: list[DatabaseFields] = []
-    update.execute(step_input=STEP_INPUT, keep_result=kept.append)
+    update.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
     return kept
 
 

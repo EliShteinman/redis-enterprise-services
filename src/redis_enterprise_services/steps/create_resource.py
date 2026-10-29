@@ -36,7 +36,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
     ) -> None:
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
         created: CreatedResource = self._repository.create(target=target, spec=step_input.spec)
-        keep_result(created)
+        keep_result(result=created)
         self._waiter.wait_created(target=target, resource=created)
 
     def find_outcome(
