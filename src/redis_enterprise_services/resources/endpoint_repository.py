@@ -1,15 +1,15 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 from redis_enterprise_services.resources.repository import ResourceRepository
+from redis_enterprise_services.resources.resource_calls import ResourceCalls
 from redis_enterprise_services.resources.spec import NamedSpec
 
 
 class EndpointRepository[TSpec: NamedSpec](ResourceRepository[TSpec]):
-    def __init__(self, *, endpoint: ResourceEndpoint) -> None:
-        self._endpoint: ResourceEndpoint = endpoint
+    def __init__(self, *, endpoint: ResourceCalls) -> None:
+        self._endpoint: ResourceCalls = endpoint
 
     def create(self, *, target: ClusterTarget, spec: TSpec) -> CreatedResource:
         return self._endpoint.create(target=target, body=self.creation_body(spec=spec))

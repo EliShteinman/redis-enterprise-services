@@ -6,17 +6,18 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
-from redis_enterprise_services.databases.repository import DatabaseRepository
+from redis_enterprise_services.databases.active_wait import DatabaseActiveWait
+from redis_enterprise_services.databases.fields_store import DatabaseFieldsReader
 from redis_enterprise_services.exceptions.cluster import DatabaseNotActiveError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class DatabaseActiveWaiter:
+class DatabaseActiveWaiter(DatabaseActiveWait):
     def __init__(
-        self, *, repository: DatabaseRepository, settings: DatabaseSettings, cluster: ClusterSettings
+        self, *, repository: DatabaseFieldsReader, settings: DatabaseSettings, cluster: ClusterSettings
     ) -> None:
-        self._repository: DatabaseRepository = repository
+        self._repository: DatabaseFieldsReader = repository
         self._settings: DatabaseSettings = settings
         self._cluster: ClusterSettings = cluster
 

@@ -5,11 +5,11 @@ from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.actions import ActionWaiter
 from redis_enterprise_services.cluster.api import ClusterApi
-from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
+from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
@@ -27,7 +27,7 @@ SHORT_WAIT: WaitSettings = WaitSettings(interval_seconds=0.001, timeout_seconds=
 
 def waiter_answering(*, action: JsonValue) -> ActionWaiter:
     api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
-    api.send.return_value = ClusterResponse(status_code=200, headers={}, body=action, cluster_state_id=None)
+    api.send.return_value = ClusterAnswer(body=action, cluster_state_id=None)
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
     return ActionWaiter(api=api, settings=action_settings, cluster=settings.cluster)

@@ -871,6 +871,19 @@ classDiagram
 - **AA לא מוסיף מחלקות.** אותו צעד מקבל קלאסטר אחר (סעיף 6).
 - **הקריאה הישירה ששמה בתוכנית** משתמשת ישירות ב-`ClusterRegistry` וב-`RelayClient`, בלי Saga.
 
+**כל שכבה תלויה בממשק של השכבה שמתחתיה, לא במחלקה:**
+
+| ממשק | מי מממש | מי משתמש |
+|---|---|---|
+| `EdgeTransport` (`cluster/transport.py`) | `EdgeClient` | `ClusterApi` |
+| `ClusterCaller` (`cluster/caller.py`), מחזיר `ClusterAnswer` ולא את מודל התעבורה | `ClusterApi` | `ResourceEndpoint`, `DatabaseRepository`, `ActionWaiter` |
+| `ActionTracker` (`cluster/action_tracker.py`) | `ActionWaiter` | `ActionCompletionWaiter` |
+| `ResourceCalls` (`resources/resource_calls.py`) | `ResourceEndpoint` | `EndpointRepository` ו-`RoleRepository` |
+| `DatabaseFieldsReader` / `DatabaseFieldsStore` (`databases/fields_store.py`) | `DatabaseRepository` | `DatabaseActiveWaiter` (קריאה), `DatabaseUpdate` (קריאה ועדכון) |
+| `DatabaseActiveWait` (`databases/active_wait.py`) | `DatabaseActiveWaiter` | `DatabaseUpdate` |
+
+מעל ה-API של הקלאסטר אף שכבה לא מייבאת את `edge` (נאכף ב-`import-linter`).
+
 ---
 
 ## 13. החלטות שמחכות לך

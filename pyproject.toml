@@ -135,3 +135,17 @@ forbidden_modules = [
     "redis_enterprise_services.api",
     "redis_enterprise_services.app",
 ]
+
+[[tool.importlinter.contracts]]
+name = "above the cluster API, nothing imports the transport directly"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+    "redis_enterprise_services.steps",
+]
+forbidden_modules = ["redis_enterprise_services.edge"]
+allow_indirect_imports = true

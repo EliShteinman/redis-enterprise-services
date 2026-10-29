@@ -2,7 +2,8 @@ import logging
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.action_tracker import ActionTracker
+from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
@@ -17,9 +18,9 @@ from redis_enterprise_services.exceptions.cluster import (
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class ActionWaiter:
-    def __init__(self, *, api: ClusterApi, settings: ActionSettings, cluster: ClusterSettings) -> None:
-        self._api: ClusterApi = api
+class ActionWaiter(ActionTracker):
+    def __init__(self, *, api: ClusterCaller, settings: ActionSettings, cluster: ClusterSettings) -> None:
+        self._api: ClusterCaller = api
         self._settings: ActionSettings = settings
         self._cluster: ClusterSettings = cluster
 

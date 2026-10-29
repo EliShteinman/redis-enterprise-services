@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.edge.models import ClusterCredentials
 
@@ -12,3 +12,8 @@ class ClusterAddress(BaseModel):
 
 class ClusterTarget(ClusterAddress):
     credentials: ClusterCredentials
+
+
+class ClusterAnswer(BaseModel):
+    body: JsonValue | None
+    cluster_state_id: int | None

@@ -4,9 +4,9 @@ import pytest
 from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.api import ClusterApi
-from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterResponse
+from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
 from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
@@ -24,7 +24,7 @@ USERS: list[JsonValue] = [
 
 def endpoint_answering(*, answer: JsonValue) -> ResourceEndpoint:
     api: MagicMock = create_autospec(spec=ClusterApi, instance=True)
-    api.send.return_value = ClusterResponse(status_code=200, headers={}, body=answer, cluster_state_id=None)
+    api.send.return_value = ClusterAnswer(body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
     return ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
 

@@ -2,13 +2,14 @@ import logging
 
 from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
 
-from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.json_body import failed_fields, string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
+from redis_enterprise_services.resources.resource_calls import ResourceCalls
 
 NAMED_RESOURCE_LIST: TypeAdapter[list[NamedResource]] = TypeAdapter(
     type=list[NamedResource], config=ConfigDict(hide_input_in_errors=True)
@@ -17,9 +18,9 @@ NAMED_RESOURCE_LIST: TypeAdapter[list[NamedResource]] = TypeAdapter(
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class ResourceEndpoint:
-    def __init__(self, *, api: ClusterApi, settings: ResourceSettings, cluster: ClusterSettings) -> None:
-        self._api: ClusterApi = api
+class ResourceEndpoint(ResourceCalls):
+    def __init__(self, *, api: ClusterCaller, settings: ResourceSettings, cluster: ClusterSettings) -> None:
+        self._api: ClusterCaller = api
         self._settings: ResourceSettings = settings
         self._cluster: ClusterSettings = cluster
 

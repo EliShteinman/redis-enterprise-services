@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.credentials import ClusterCredentialsProvider
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
+from redis_enterprise_services.databases.active_wait import DatabaseActiveWait
+from redis_enterprise_services.databases.fields_store import DatabaseFieldsStore
 from redis_enterprise_services.databases.models import DatabaseFields
-from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.result import KeepResult
@@ -27,12 +27,12 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def __init__(
         self,
         *,
-        repository: DatabaseRepository,
-        active_waiter: DatabaseActiveWaiter,
+        repository: DatabaseFieldsStore,
+        active_waiter: DatabaseActiveWait,
         credentials: ClusterCredentialsProvider,
     ) -> None:
-        self._repository: DatabaseRepository = repository
-        self._active_waiter: DatabaseActiveWaiter = active_waiter
+        self._repository: DatabaseFieldsStore = repository
+        self._active_waiter: DatabaseActiveWait = active_waiter
         self._credentials: ClusterCredentialsProvider = credentials
 
     @property
