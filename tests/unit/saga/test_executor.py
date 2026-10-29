@@ -113,14 +113,11 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
 
 
 class MemoryState(SagaStateRepository):
-    def __init__(self, *, broken: bool = False) -> None:
+    def __init__(self) -> None:
         self.saved: SagaRecord | None = None
         self.finished: bool = False
-        self._broken: bool = broken
 
     def save(self, *, record: SagaRecord) -> None:
-        if self._broken:
-            raise ConnectionError("state store is down")
         self.saved = record.model_copy(deep=True)
 
     def finish(self, *, record: SagaRecord) -> None:
@@ -399,19 +396,6 @@ def test_an_interrupted_saga_keeps_the_lock(journal: list[str], state: MemorySta
     )
 
 
-def test_a_saga_that_cannot_save_its_first_record_releases_the_lock(
-    journal: list[str], lock: MemoryLock
-) -> None:
-    with pytest.raises(expected_exception=ConnectionError):
-        run(
-            steps=[planned(step=FakeStep(journal=journal), name="a")],
-            state=MemoryState(broken=True),
-            lock=lock,
-        )
-
-    assert (lock.held_by, journal) == (None, [])
-
-
 def test_a_later_step_builds_its_input_from_an_earlier_result(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
@@ -547,22 +531,11 @@ def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
     assert lock.held_by is None
 
 
-def test_a_known_failure_after_an_unknown_outcome_is_checked_again(
-    journal: list[str], state: MemoryState, lock: MemoryLock
+@pytest.mark.parametrize(argnames="failure", argvalues=[REJECTED, BUSY])
+def test_any_failure_after_an_unknown_outcome_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock, failure: FakeError
 ) -> None:
-    step: FakeStep = FakeStep(
-        journal=journal, executions=[UNKNOWN, REJECTED], outcomes=[None, FakeResult(name="a", attempt=1)]
-    )
-
-    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
-
-    assert (record.status, record.steps[0].obtained_by) == (SagaStatus.SUCCEEDED, "found")
-
-
-def test_a_known_failure_after_an_unknown_outcome_that_is_not_found_needs_manual_intervention(
-    journal: list[str], state: MemoryState, lock: MemoryLock
-) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN, REJECTED], outcomes=[None, None])
+    step: FakeStep = FakeStep(journal=journal, executions=[UNKNOWN, failure, "keep"], outcomes=[None])
 
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
