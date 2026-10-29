@@ -105,7 +105,9 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         if action == "keep then unknown":
             raise UNKNOWN
 
-    def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
+    def find_outcome(
+        self, *, step_input: FakeInput, kept: FakeResult | None, keep_found: KeepResult[FakeResult]
+    ) -> FakeResult | None:
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
             self._outcomes.pop(0) if self._outcomes else None
         )

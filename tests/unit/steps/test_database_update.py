@@ -25,6 +25,10 @@ CURRENT: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
 STEP_INPUT: DatabaseUpdateInput = DatabaseUpdateInput(cluster=ADDRESS, uid=UID, values=NEW_VALUES)
 
 
+def ignore_found(*, result: DatabaseFields) -> None:
+    pass
+
+
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=DatabaseFieldsStore, instance=True)
@@ -115,7 +119,7 @@ def test_find_outcome_keeps_the_snapshot_when_the_new_values_are_in_place(
 ) -> None:
     repository.get_fields.side_effect = [CURRENT]
 
-    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) == SNAPSHOT
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT, keep_found=ignore_found) == SNAPSHOT
 
 
 def test_find_outcome_returns_none_when_the_old_values_are_still_there(
@@ -123,13 +127,13 @@ def test_find_outcome_returns_none_when_the_old_values_are_still_there(
 ) -> None:
     repository.get_fields.side_effect = [SNAPSHOT]
 
-    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT) is None
+    assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT, keep_found=ignore_found) is None
 
 
 def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
     repository: MagicMock, update: DatabaseUpdate
 ) -> None:
-    assert update.find_outcome(step_input=STEP_INPUT, kept=None) is None
+    assert update.find_outcome(step_input=STEP_INPUT, kept=None, keep_found=ignore_found) is None
 
     repository.get_fields.assert_not_called()
 
@@ -139,7 +143,7 @@ def test_find_outcome_waits_for_active_before_reporting_the_update_done(
 ) -> None:
     repository.get_fields.side_effect = [CURRENT]
 
-    update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT)
+    update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT, keep_found=ignore_found)
 
     readiness.wait.assert_called_once_with(target=TARGET, uid=UID)
 

@@ -8,6 +8,7 @@ from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarg
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     AmbiguousResourceError,
+    ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRequestError,
 )
@@ -26,6 +27,10 @@ SPEC: NewUser = NewUser(name="app-user", password="Aa1!password", role_uids=[5])
 STEP_INPUT: CreateResourceInput[NewUser] = CreateResourceInput(cluster=ADDRESS, spec=SPEC)
 CREATED: CreatedResource = CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
 DELETE_ACTION_UID: str = "e85d7b88"
+
+
+def ignore_found(*, result: CreatedResource) -> None:
+    pass
 
 
 @pytest.fixture
@@ -120,9 +125,24 @@ def test_find_outcome_finds_the_resource_by_the_spec_name(
 ) -> None:
     repository.find_by_name.return_value = [NamedResource(uid=6, name="app-user")]
 
-    found: CreatedResource | None = step.find_outcome(step_input=STEP_INPUT, kept=None)
+    found: CreatedResource | None = step.find_outcome(
+        step_input=STEP_INPUT, kept=None, keep_found=ignore_found
+    )
 
     assert found == CreatedResource(uid=6, name="app-user", action_uid=None)
+
+
+def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_failed(
+    repository: MagicMock, waiter: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.find_by_name.return_value = [NamedResource(uid=6, name="app-user")]
+    waiter.wait_created.side_effect = ClusterActionFailedError(message="creation failed")
+    kept: list[CreatedResource] = []
+
+    with pytest.raises(expected_exception=ClusterActionFailedError):
+        step.find_outcome(step_input=STEP_INPUT, kept=None, keep_found=lambda result: kept.append(result))
+
+    assert kept == [CreatedResource(uid=6, name="app-user", action_uid=None)]
 
 
 def test_find_outcome_returns_none_when_the_resource_does_not_exist(
@@ -130,7 +150,7 @@ def test_find_outcome_returns_none_when_the_resource_does_not_exist(
 ) -> None:
     repository.find_by_name.return_value = []
 
-    assert step.find_outcome(step_input=STEP_INPUT, kept=None) is None
+    assert step.find_outcome(step_input=STEP_INPUT, kept=None, keep_found=ignore_found) is None
 
 
 def test_find_outcome_refuses_more_than_one_resource_with_the_name(
@@ -142,13 +162,13 @@ def test_find_outcome_refuses_more_than_one_resource_with_the_name(
     ]
 
     with pytest.raises(expected_exception=AmbiguousResourceError):
-        step.find_outcome(step_input=STEP_INPUT, kept=None)
+        step.find_outcome(step_input=STEP_INPUT, kept=None, keep_found=ignore_found)
 
 
 def test_find_outcome_trusts_what_was_kept_without_searching(
     repository: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    assert step.find_outcome(step_input=STEP_INPUT, kept=CREATED) == CREATED
+    assert step.find_outcome(step_input=STEP_INPUT, kept=CREATED, keep_found=ignore_found) == CREATED
 
     repository.find_by_name.assert_not_called()
 
@@ -156,6 +176,6 @@ def test_find_outcome_trusts_what_was_kept_without_searching(
 def test_find_outcome_waits_until_the_found_resource_is_created(
     waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    step.find_outcome(step_input=STEP_INPUT, kept=CREATED)
+    step.find_outcome(step_input=STEP_INPUT, kept=CREATED, keep_found=ignore_found)
 
     waiter.wait_created.assert_called_once_with(target=TARGET, resource=CREATED)
