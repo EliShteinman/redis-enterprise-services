@@ -646,6 +646,7 @@ stateDiagram-v2
 | V19 | `tags` ב-AA | **שייכים ל-CRDB.** `PATCH` ל-`default_db_config.tags` מגיע לשני הקלאסטרים. `PUT` ל-bdb מקומי נשאר רק בו. ראו 5.5. נבדק 2026-10-27. |
 | V20 | `roles_permissions` לשני הקלאסטרים ב-`PATCH` אחד | **עובד.** `instances[].db_config.roles_permissions`, רשימה לכל instance. ראו 5.6. נבדק 2026-10-27. |
 | V21 | user דרך ה-relay | **יצירה:** התשובה היא היוזר המלא עם `uid` ו-`action_uid` (`update_redis_acls`). היוזר קיים מיד, וה-action מסתיים תוך כ-3 שניות. שם קיים: `409 name_already_exists`. role שלא קיים: `404 role_not_exist`. סיסמה חלשה (`a`) מתקבלת. **מחיקה:** `action_uid`, והיוזר נעלם מיד (`404 user_not_exist`). **רשימה:** `GET /v1/users?fields=` לא מצמצם, וחוזר הכל. **role:** יצירה בלי `action_uid`, מחיקה עם. role שיש לו יוזר לא נמחק: `406 role_in_use`. נבדק 2026-10-27. |
+| V22 | role דרך ה-relay | **יצירה:** התשובה היא ה-role המלא עם `uid`, בלי `action_uid`. שם קיים: `409 name_already_exists`, תלוי רישיות. uid של DB כמספר: `400 invalid_schema`. DB שלא קיים: `404 db_not_found`. `management` לא מוכר: `400` עם רשימת הערכים המותרים. **מחיקה:** `action_uid` (כחצי שנייה), וה-role נעלם מיד (`404 role_not_exist`). נבדק 2026-10-27. **ב-Saga** (2026-10-29): role ואחריו user שמקבל את ה-uid שלו מה-context. בכישלון אחריהם נמחקו קודם ה-user ואז ה-role. |
 
 ### עוד לא נבדק
 
