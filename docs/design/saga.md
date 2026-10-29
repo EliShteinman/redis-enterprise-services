@@ -685,6 +685,7 @@ classDiagram
         +key: str
         +kind: StepKind
         +has_result: bool
+        +obtained_by: ObtainedBy
         +prepare(context) JsonValue
         +execute(on_kept) None
         +resolve(on_kept) bool
@@ -697,12 +698,17 @@ classDiagram
     class StepRecorder {
         +started(step_input) None
         +kept(result, obtained_by) None
+        +failed_attempt(error) None
         +done() None
         +failed() None
+        +unresolved() None
+        +compensating() None
+        +compensated() None
+        +compensation_failed(error) None
     }
     class SagaContext {
         +keep(key, result) None
-        +get(key) result
+        +result_of(key, result_type) TResult
     }
     class ClusterCredentialsProvider {
         <<interface>>
@@ -800,6 +806,8 @@ classDiagram
     SagaPlan o-- RunnableStep
     RunnableStep <|-- PlannedStep
     StepRunner --> StepRecorder
+    Compensator --> RunnableStep
+    Compensator --> StepRecorder
     PlannedStep --> SagaStep
     PlannedStep --> SagaContext
     SagaStep --> StepKind
