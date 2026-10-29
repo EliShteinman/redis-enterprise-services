@@ -2,18 +2,24 @@ import logging
 
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.models import ObtainedBy
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
-from redis_enterprise_services.saga.engine.retry import pause
+from redis_enterprise_services.saga.engine.retry import Sleeper, pause
 from redis_enterprise_services.saga.plan.runnable import PreparedStep
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
+RETRIED_UNDO_FAILURES: frozenset[Failure] = frozenset({Failure.TRANSIENT, Failure.UNKNOWN})
+
+
 class Compensator:
-    def __init__(self, *, settings: SagaSettings) -> None:
+    def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier, sleeper: Sleeper) -> None:
         self._settings: SagaSettings = settings
+        self._classifier: FailureClassifier = classifier
+        self._sleeper: Sleeper = sleeper
 
     def compensate(self, *, steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
         all_undone: bool = True
@@ -45,8 +51,10 @@ class Compensator:
             except RedisEnterpriseServicesError as error:
                 last_error = error.describe()
                 logger.warning(msg=f"compensation of {step.key} failed: {last_error}")
+                if self._classifier.classify(error=error) not in RETRIED_UNDO_FAILURES:
+                    return last_error
                 if attempt < attempts:
-                    pause(retry=self._settings.compensation_retry, attempt=attempt)
+                    pause(retry=self._settings.compensation_retry, attempt=attempt, sleeper=self._sleeper)
                 continue
             return None
         return last_error

@@ -8,7 +8,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
-from redis_enterprise_services.saga.engine.retry import pause
+from redis_enterprise_services.saga.engine.retry import Sleeper, pause
 from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.runnable import PreparedStep, RunnableStep
 
@@ -29,9 +29,10 @@ class Check(StrEnum):
 
 
 class StepRunner:
-    def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier) -> None:
+    def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier, sleeper: Sleeper) -> None:
         self._settings: SagaSettings = settings
         self._classifier: FailureClassifier = classifier
+        self._sleeper: Sleeper = sleeper
 
     def prepare(
         self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder
@@ -74,7 +75,7 @@ class StepRunner:
                 return outcome
             after_unknown = after_unknown or failure is Failure.UNKNOWN
             if attempt < attempts:
-                pause(retry=self._settings.step_retry, attempt=attempt)
+                pause(retry=self._settings.step_retry, attempt=attempt, sleeper=self._sleeper)
         return StepOutcome.MANUAL if after_unknown else StepOutcome.FAILED
 
     def _final_outcome(
