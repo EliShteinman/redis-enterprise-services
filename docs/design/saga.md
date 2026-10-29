@@ -677,13 +677,28 @@ classDiagram
         RETRIABLE
     }
     class SagaPlan {
-        +steps: list~PlannedStep~
-        +validate_order() None
+        +steps: list~RunnableStep~
+        +lock_keys: list~str~
+    }
+    class RunnableStep {
+        <<abstract>>
+        +key: str
+        +kind: StepKind
+        +has_result: bool
+        +prepare(context) JsonValue
+        +execute(on_kept) None
+        +resolve(on_kept) bool
+        +compensate() None
     }
     class PlannedStep {
-        +key: str
         +step: SagaStep
         +build_input(context) TInput
+    }
+    class StepRecorder {
+        +started(step_input) None
+        +kept(result, obtained_by) None
+        +done() None
+        +failed() None
     }
     class SagaContext {
         +keep(key, result) None
@@ -782,7 +797,9 @@ classDiagram
     FailureClassifier <|.. ClusterFailureClassifier
     SagaStateRepository <|.. RedisSagaState
     DatabaseLock <|.. RedisDatabaseLock
-    SagaPlan o-- PlannedStep
+    SagaPlan o-- RunnableStep
+    RunnableStep <|-- PlannedStep
+    StepRunner --> StepRecorder
     PlannedStep --> SagaStep
     PlannedStep --> SagaContext
     SagaStep --> StepKind

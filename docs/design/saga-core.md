@@ -133,6 +133,7 @@ class PlannedStep[TInput, TResult]:
 | `saga_id` | ה-trace ID של הבקשה |
 | `status` | `running`, `succeeded`, `rolled_back`, `requires_manual_intervention` |
 | `steps[]` | `key`, `kind`, `status`, `step_input`, `result`, `obtained_by`, `error` |
+| `heartbeat_at` | עוד לא נבנה, נבנה עם ה-API |
 
 - **השמירה ב-Redis כבר משלב 1** (S4). ה-record נכתב לפני כל צעד, מיד כשיש תוצאה, ובסוף הצעד.
 - **`heartbeat_at`** (עוד לא נבנה, נבנה עם ה-API): ה-pod שמריץ את ה-Saga מעדכן אותו כל כמה שניות (קונפיג).
@@ -158,9 +159,9 @@ class PlannedStep[TInput, TResult]:
   מפתח שכבר מוחזק על ידי אותו Saga לא חוסם אותו, כדי שסקריפט שנשלח שוב אחרי timeout לא ינעל את ה-Saga מול עצמו.
   שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
-- **קריסה (D5, עוד לא נבנה, נבנה עם ה-API):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at` שלו ישן מהסף בקונפיג. הוא
-  מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB במצב חלקי לא משתנה עד
-  שמישהו מטפל בו.
+- **קריסה (D5, עוד לא נבנה, נבנה עם ה-API):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at`
+  שלו ישן מהסף בקונפיג. הוא מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB
+  במצב חלקי לא משתנה עד שמישהו מטפל בו.
 - **relay שלא זמין (הוחלט):** גם הבדיקה (`find_outcome`) לא מגיעה לקלאסטר, ולכן התוצאה נשארת לא ידועה וה-Saga
   עובר להתערבות ידנית עם הנעילה. לא מבטלים לבד, כי גם "לא נשלח" לא אמין: חיבור מוצפן שנשבר אחרי השליחה (למשל
   `SSLEOFError`) נראה בדיוק כך, גם בלי בדיקת תעודות.
@@ -181,8 +182,7 @@ class PlannedStep[TInput, TResult]:
   לא מבטל), אלא נכשל ומבוטל, כי ידוע בדיוק מה קיים. חוץ משגיאה זמנית: הקלאסטר אמר שלא ביצע, ולכן הצעד רץ שוב.
   נבדק מול cluster1: `PUT` של עדכון קיבל `409 db_busy` אחרי שה-snapshot נשמר, ובלי זה כל ה-Saga בוטל.
 - **pivot או retriable ששמר תוצאה ונכשל ⇐ התערבות ידנית, והצעד מסומן `unresolved`** (אחרי שגיאה זמנית: רק כשנגמרו
-  הניסיונות), כי אין לו פיצוי, וההשפעה
-  שלו אולי קיימת.
+  הניסיונות), כי אין לו פיצוי, וההשפעה שלו אולי קיימת.
 - **Saga שלא הצליח לשמור את ה-record הראשון:** שום דבר לא נשלח לקלאסטר, ולכן הנעילה משתחררת והשגיאה עולה.
 - **צעד שנשאר `running` כש-Saga נעצר** (הפסקה, תקלה ב-store, באג) מסומן `unresolved`.
 - **כישלון ידוע אחרי תוצאה לא ידועה** (למשל "השם כבר קיים" אחרי timeout) נבדק שוב ב-`find_outcome`. אם המשאב
@@ -234,7 +234,7 @@ class PlannedStep[TInput, TResult]:
 - שני pods לא ירוצו על אותו DB (סעיף 10).
 - כל pod יכול לענות ל-`GET /v1/operations/{trace_id}`, כי ה-record ב-Redis.
 - pod שקרס משאיר Saga ב-`running` שה-heartbeat שלו ישן. pod אחר מזהה אותו בעלייה או בבדיקה תקופתית, ומסמן
-  `requires_manual_intervention`. הנעילה נשארת (D5).
+  `requires_manual_intervention`. הנעילה נשארת (D5). עוד לא נבנה, נבנה עם ה-API.
 
 ## 7. ניסיונות חוזרים (הוחלט)
 
