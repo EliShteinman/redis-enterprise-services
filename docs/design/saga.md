@@ -122,17 +122,18 @@ global ⇐ סביבה (DEV/PROD/TEST) ⇐ רשת ⇐ אתר ⇐ קלאסטר ⇐
 ```mermaid
 stateDiagram-v2
     [*] --> pending
-    pending --> running
-    running --> done
-    running --> failed
-    running --> unknown : כישלון שלא בא מהקלאסטר / response_rejected על כתיבה
-    unknown --> done : נמצא בקלאסטר
-    unknown --> running : לא נמצא, retry
-    unknown --> failed : נגמרו הניסיונות
+    pending --> running : הקלט נבנה מהתוצאות הקודמות
+    pending --> failed : אי אפשר לבנות את הקלט
+    running --> running : שגיאה זמנית, או תוצאה לא ידועה שלא נמצאה: ניסיון חוזר
+    running --> done : הצליח, או תוצאה לא ידועה שנמצאה ב-find_outcome
+    running --> failed : כישלון ידוע, נגמרו הניסיונות, או תוצאה שמורה שלא נמצאה
+    running --> unresolved : כמה משאבים באותו שם, תוצאה שנשארה לא ידועה, או pivot ששמר תוצאה ונכשל
     done --> compensating : צעד מאוחר יותר נכשל
+    failed --> compensating : שמר תוצאה לפני שנכשל
     compensating --> compensated
     compensating --> compensation_failed : נגמרו הניסיונות
-    compensation_failed --> [*] : התערבות ידנית
+    unresolved --> [*] : התערבות ידנית, הנעילה נשארת
+    compensation_failed --> [*] : התערבות ידנית, הנעילה נשארת
 ```
 
 ---
