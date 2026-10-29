@@ -13,6 +13,7 @@ from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
+from redis_enterprise_services.saga.engine.retry import Sleeper
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
 from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.planned_step import BuildInput, PlannedStep
@@ -21,9 +22,17 @@ from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]
 SETTINGS: SagaSettings = SagaSettings(
-    step_retry=RetrySettings(attempts=3, backoff_seconds=0),
-    compensation_retry=RetrySettings(attempts=2, backoff_seconds=0),
+    step_retry=RetrySettings(attempts=3, backoff_seconds=1),
+    compensation_retry=RetrySettings(attempts=2, backoff_seconds=1),
 )
+
+
+class RecordingSleeper(Sleeper):
+    def __init__(self) -> None:
+        self.slept: list[float] = []
+
+    def sleep(self, *, seconds: float) -> None:
+        self.slept.append(seconds)
 
 
 class FakeError(RedisEnterpriseServicesError):
@@ -158,14 +167,24 @@ def lock() -> MemoryLock:
     return MemoryLock()
 
 
+@pytest.fixture
+def sleeper() -> RecordingSleeper:
+    return RecordingSleeper()
+
+
 def run(
-    *, steps: list[PlannedStep[FakeInput, FakeResult]], state: MemoryState, lock: MemoryLock
+    *,
+    steps: list[PlannedStep[FakeInput, FakeResult]],
+    state: MemoryState,
+    lock: MemoryLock,
+    sleeper: Sleeper | None = None,
 ) -> SagaRecord:
+    waits: Sleeper = sleeper or RecordingSleeper()
     executor: SagaExecutor = SagaExecutor(
         state=state,
         lock=lock,
-        runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier()),
-        compensator=Compensator(settings=SETTINGS),
+        runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier(), sleeper=waits),
+        compensator=Compensator(settings=SETTINGS, classifier=FakeClassifier(), sleeper=waits),
     )
     return executor.run(saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS))
 
@@ -545,6 +564,34 @@ def test_any_failure_after_an_unknown_outcome_needs_manual_intervention(
 def test_a_plan_without_a_lock_is_refused(journal: list[str]) -> None:
     with pytest.raises(expected_exception=InvalidPlanError):
         SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=[])
+
+
+def test_a_plan_without_steps_is_refused() -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(steps=[], lock_keys=LOCK_KEYS)
+
+
+def test_a_compensation_that_fails_for_a_known_reason_is_not_retried(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal, compensations=[REJECTED]), name="a"),
+        planned(step=FakeStep(journal=journal, executions=[REJECTED]), name="b"),
+    ]
+
+    run(steps=steps, state=state, lock=lock)
+
+    assert journal.count("compensate a") == 1
+
+
+def test_each_retry_waits_longer_than_the_one_before(
+    journal: list[str], state: MemoryState, lock: MemoryLock, sleeper: RecordingSleeper
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=[BUSY, BUSY, "keep"])
+
+    run(steps=[planned(step=step, name="a")], state=state, lock=lock, sleeper=sleeper)
+
+    assert sleeper.slept == [1, 2]
 
 
 def test_a_failure_after_a_kept_result_lets_the_step_check_what_happened(
