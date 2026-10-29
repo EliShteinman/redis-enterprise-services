@@ -44,7 +44,11 @@ Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, t
 
 ```bash
 uv run ruff check . && uv run ruff format .
+uv run basedpyright
+uv run lint-imports
 ```
+
+`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. All of these run in pre-commit.
 
 ## Local clusters
 
