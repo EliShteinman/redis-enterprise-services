@@ -25,12 +25,13 @@ return false
 """
 
 RELEASE_OWNED: str = """
+local released = 0
 for _, key in ipairs(KEYS) do
     if redis.call('GET', key) == ARGV[1] then
-        redis.call('DEL', key)
+        released = released + redis.call('DEL', key)
     end
 end
-return true
+return released
 """
 
 
@@ -43,16 +44,21 @@ class RedisDatabaseLock(DatabaseLock):
 
     def acquire(self, *, keys: list[str], owner: str) -> None:
         deadline: float = time.monotonic() + self._settings.wait_timeout_seconds
-        while (holder := self._acquire_all(keys=self._lock_keys(keys=keys), args=[owner])) is not None:
+        holder: str | None = self._acquire_all(keys=self._lock_keys(keys=keys), args=[owner])
+        if holder is not None:
+            logger.warning(msg=f"{keys} locked by {holder}, waiting")
+        while holder is not None:
             if time.monotonic() >= deadline:
                 logger.error(msg=f"{keys} still locked by {holder}")
                 raise DatabaseLockedError(message=f"{keys} locked by {holder}")
-            logger.warning(msg=f"{keys} locked by {holder}, waiting")
             time.sleep(self._settings.poll_seconds)
+            holder = self._acquire_all(keys=self._lock_keys(keys=keys), args=[owner])
         logger.info(msg=f"{keys} locked by {owner}")
 
     def release(self, *, keys: list[str], owner: str) -> None:
-        self._release_owned(keys=self._lock_keys(keys=keys), args=[owner])
+        released: int = self._release_owned(keys=self._lock_keys(keys=keys), args=[owner])
+        if released < len(keys):
+            logger.warning(msg=f"{owner} held only {released} of {keys}")
         logger.info(msg=f"{keys} released by {owner}")
 
     def _lock_keys(self, *, keys: list[str]) -> list[str]:
