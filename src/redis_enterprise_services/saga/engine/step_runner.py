@@ -21,6 +21,20 @@ class StepOutcome(StrEnum):
     MANUAL = "manual"
 
 
+class Check(StrEnum):
+    FOUND = "found"
+    NOT_FOUND = "not_found"
+    FAILED = "failed"
+    MANUAL = "manual"
+
+
+CHECK_OUTCOMES: dict[Check, StepOutcome] = {
+    Check.FOUND: StepOutcome.DONE,
+    Check.FAILED: StepOutcome.FAILED,
+    Check.MANUAL: StepOutcome.MANUAL,
+}
+
+
 class StepRunner:
     def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier) -> None:
         self._settings: SagaSettings = settings
@@ -60,7 +74,7 @@ class StepRunner:
             failure: Failure | None = self._attempt(step=step, recorder=recorder)
             if failure is None:
                 return StepOutcome.DONE
-            outcome: StepOutcome | None = self._after_failure(
+            outcome: StepOutcome | None = self._final_outcome(
                 step=step, recorder=recorder, failure=failure, after_unknown=after_unknown
             )
             if outcome is not None:
@@ -70,16 +84,16 @@ class StepRunner:
                 pause(retry=self._settings.step_retry, attempt=attempt)
         return StepOutcome.MANUAL if after_unknown else StepOutcome.FAILED
 
-    def _after_failure(
+    def _final_outcome(
         self, *, step: PreparedStep, recorder: StepRecorder, failure: Failure, after_unknown: bool
     ) -> StepOutcome | None:
         if failure is Failure.MANUAL or after_unknown:
             return StepOutcome.MANUAL
         if failure is not Failure.UNKNOWN and not step.has_result:
             return StepOutcome.FAILED if failure is Failure.FAILED else None
-        checked: StepOutcome | None = self._check(step=step, recorder=recorder)
-        if checked is not None:
-            return checked
+        checked: Check = self._check(step=step, recorder=recorder)
+        if checked is not Check.NOT_FOUND:
+            return CHECK_OUTCOMES[checked]
         return StepOutcome.FAILED if step.has_result and failure is not Failure.TRANSIENT else None
 
     def _attempt(self, *, step: PreparedStep, recorder: StepRecorder) -> Failure | None:
@@ -91,15 +105,15 @@ class StepRunner:
             return self._classifier.classify(error=error)
         return None
 
-    def _check(self, *, step: PreparedStep, recorder: StepRecorder) -> StepOutcome | None:
+    def _check(self, *, step: PreparedStep, recorder: StepRecorder) -> Check:
         try:
-            return StepOutcome.DONE if step.resolve(on_kept=recorder.kept) else None
+            return Check.FOUND if step.resolve(on_kept=recorder.kept) else Check.NOT_FOUND
         except RedisEnterpriseServicesError as error:
             logger.error(msg=f"checking step {step.key} failed: {error.code}: {error.message}")
             recorder.failed_attempt(error=error.describe())
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
-                return StepOutcome.FAILED
-            return StepOutcome.MANUAL
+                return Check.FAILED
+            return Check.MANUAL
 
 
 def manual_if_cannot_undo(*, step: PreparedStep, outcome: StepOutcome) -> StepOutcome:

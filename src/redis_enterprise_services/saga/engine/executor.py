@@ -7,7 +7,6 @@ from redis_enterprise_services.saga.contract.models import (
     SagaRecord,
     SagaStatus,
     StepRecord,
-    StepStatus,
 )
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
 from redis_enterprise_services.saga.engine.compensator import Compensator
@@ -45,7 +44,7 @@ class SagaExecutor:
         finally:
             if record.status is SagaStatus.RUNNING:
                 logger.error(msg=f"saga {saga_id} stopped on an unexpected error", exc_info=True)
-                stop_running(record=record)
+                record.stop_running()
             self._finish(record=record, plan=plan)
         return record
 
@@ -55,9 +54,9 @@ class SagaExecutor:
         past_no_return: bool = False
         for step, step_record in zip(plan.steps, record.steps, strict=True):
             recorder: StepRecorder = StepRecorder(state=self._state, record=record, step=step_record)
-            outcome: StepOutcome = self._run_step(
-                step=step, context=context, recorder=recorder, started=started
-            )
+            outcome, prepared = self._run_step(step=step, context=context, recorder=recorder)
+            if prepared is not None:
+                started.append((prepared, recorder))
             if outcome is StepOutcome.DONE:
                 past_no_return = past_no_return or step.kind is not StepKind.COMPENSATABLE
                 continue
@@ -65,18 +64,12 @@ class SagaExecutor:
         return SagaStatus.SUCCEEDED
 
     def _run_step(
-        self,
-        *,
-        step: RunnableStep,
-        context: SagaContext,
-        recorder: StepRecorder,
-        started: list[tuple[PreparedStep, StepRecorder]],
-    ) -> StepOutcome:
+        self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder
+    ) -> tuple[StepOutcome, PreparedStep | None]:
         prepared: PreparedStep | None = self._runner.prepare(step=step, context=context, recorder=recorder)
         if prepared is None:
-            return StepOutcome.FAILED
-        started.append((prepared, recorder))
-        return self._runner.run(step=prepared, recorder=recorder)
+            return StepOutcome.FAILED, None
+        return self._runner.run(step=prepared, recorder=recorder), prepared
 
     def _stopped(
         self, *, outcome: StepOutcome, past_no_return: bool, started: list[tuple[PreparedStep, StepRecorder]]
@@ -96,10 +89,3 @@ class SagaExecutor:
                 msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept"
             )
         self._state.finish(record=record)
-
-
-def stop_running(*, record: SagaRecord) -> None:
-    record.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
-    for step in record.steps:
-        if step.status is StepStatus.RUNNING:
-            step.status = StepStatus.UNRESOLVED
