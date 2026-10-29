@@ -60,7 +60,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 root_package = "redis_enterprise_services"
 
 [[tool.importlinter.contracts]]
-name = "every top-level package has a place in the layers (a new package fails until it is added)"
+name = "every top-level package has a place in the layers (a new package fails until it is added); packages joined by | do not import each other"
 type = "layers"
 containers = ["redis_enterprise_services"]
 exhaustive = true
@@ -88,7 +88,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "repositories and transport do not know the saga, the state store or the API"
+name = "repositories and transport do not know the saga"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.edge",
@@ -99,27 +99,16 @@ source_modules = [
     "redis_enterprise_services.roles",
     "redis_enterprise_services.acls",
 ]
-forbidden_modules = [
-    "redis_enterprise_services.saga",
-    "redis_enterprise_services.state",
-    "redis_enterprise_services.api",
-    "redis_enterprise_services.app",
-]
+forbidden_modules = ["redis_enterprise_services.saga"]
 
 [[tool.importlinter.contracts]]
-name = "steps use only the saga contract, and not the state store or the API"
+name = "steps use only the saga contract"
 type = "forbidden"
 source_modules = ["redis_enterprise_services.steps"]
-forbidden_modules = [
-    "redis_enterprise_services.saga.engine",
-    "redis_enterprise_services.saga.plan",
-    "redis_enterprise_services.state",
-    "redis_enterprise_services.api",
-    "redis_enterprise_services.app",
-]
+forbidden_modules = ["redis_enterprise_services.saga.engine", "redis_enterprise_services.saga.plan"]
 
 [[tool.importlinter.contracts]]
-name = "the state store uses only the saga contract, and nothing of the clusters, steps or API"
+name = "the state store uses only the saga contract, and nothing of the clusters"
 type = "forbidden"
 source_modules = ["redis_enterprise_services.state"]
 forbidden_modules = [
@@ -132,9 +121,6 @@ forbidden_modules = [
     "redis_enterprise_services.users",
     "redis_enterprise_services.roles",
     "redis_enterprise_services.acls",
-    "redis_enterprise_services.steps",
-    "redis_enterprise_services.api",
-    "redis_enterprise_services.app",
 ]
 
 [[tool.importlinter.contracts]]

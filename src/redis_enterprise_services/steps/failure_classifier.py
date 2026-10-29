@@ -26,7 +26,7 @@ class ClusterFailureClassifier(FailureClassifier):
             return Failure.MANUAL
         if isinstance(error, ClusterRequestError):
             return Failure.TRANSIENT if error.error_code in self._transient_codes else Failure.FAILED
-        if isinstance(error, (InvalidEdgeRequestError, ClusterActionFailedError)):
+        if isinstance(error, InvalidEdgeRequestError | ClusterActionFailedError):
             return Failure.FAILED
         if isinstance(error, (EdgeError, *UNKNOWN_OUTCOME_ERRORS)):
             return Failure.UNKNOWN

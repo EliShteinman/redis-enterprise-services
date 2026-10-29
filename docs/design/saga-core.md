@@ -224,7 +224,7 @@ PlannedStep(
 | `saga/plan/` | בניית התוכנית: `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | ההרצה: `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder`, וההמתנה בין ניסיונות | `contract`, `plan` |
 
-הכיוונים נאכפים ב-`import-linter`, שרץ ב-pre-commit. כל הכללים, לכל השכבות, ב-`pyproject.toml`. כלל אחד מסדר את כל החבילות ברמה העליונה, וחבילה חדשה נכשלת בו עד שנותנים לה מקום.
+הכיוונים נאכפים ב-`import-linter`, שרץ ב-pre-commit. כל הכללים, לכל השכבות, ב-`pyproject.toml`. כלל אחד מסדר את כל החבילות ברמה העליונה, וחבילה חדשה נכשלת בו עד שנותנים לה מקום. חבילות באותה רמה, שמחוברות ב-`|`, לא מייבאות זו מזו.
 
 ## 6. ספרייה או מימוש שלנו
 

@@ -57,8 +57,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         if not found:
             return None
         if len(found) > 1:
+            uids: list[int] = [resource.uid for resource in found]
             raise AmbiguousResourceError(
-                message=f"{len(found)} resources named {step_input.spec.name}: {[r.uid for r in found]}"
+                message=f"{len(found)} resources named {step_input.spec.name}: {uids}"
             )
         return CreatedResource(uid=found[0].uid, name=found[0].name, action_uid=None)
 

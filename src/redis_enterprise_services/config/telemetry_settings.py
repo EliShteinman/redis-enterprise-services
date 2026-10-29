@@ -1,4 +1,4 @@
-from pydantic import BaseModel, PositiveInt
+from pydantic import BaseModel, Field, PositiveInt
 
 
 class TelemetrySettings(BaseModel):
@@ -6,5 +6,5 @@ class TelemetrySettings(BaseModel):
     export_enabled: bool
     otlp_endpoint: str
     metrics_export_interval_ms: PositiveInt
-    traces_path: str
-    metrics_path: str
+    traces_path: str = Field(pattern=r"^/")
+    metrics_path: str = Field(pattern=r"^/")

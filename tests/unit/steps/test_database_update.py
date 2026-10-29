@@ -41,7 +41,7 @@ def active_waiter() -> MagicMock:
 def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
     return DatabaseUpdate(
         repository=repository,
-        active_waiter=active_waiter,
+        readiness=active_waiter,
         credentials=SharedCredentialsProvider(credentials=CREDENTIALS),
     )
 
