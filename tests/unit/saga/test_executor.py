@@ -338,22 +338,20 @@ def test_a_step_that_kept_a_result_before_failing_is_compensated(
     assert journal[-1] == "compensate a"
 
 
-def test_a_step_that_kept_a_result_and_is_not_found_is_not_run_again(
+def test_a_transient_error_after_a_kept_result_is_retried(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"])
 
-    run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
-    assert step.executed == 1
+    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
 
 
-def test_a_step_with_a_kept_result_is_checked_instead_of_run_again(
+def test_a_known_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock
 ) -> None:
-    step: FakeStep = FakeStep(
-        journal=journal, executions=["keep then busy"], outcomes=[FakeResult(name="a", attempt=1)]
-    )
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then rejected", "keep"], outcomes=[None])
 
     run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 

@@ -63,12 +63,12 @@ class StepRunner:
                 return StepOutcome.DONE
             if failure is Failure.MANUAL:
                 return StepOutcome.MANUAL
-            if failure is Failure.UNKNOWN or uncertain or step.has_result:
+            if failure is Failure.UNKNOWN or uncertain or (step.has_result and failure is Failure.FAILED):
                 uncertain = True
                 outcome: StepOutcome = self._resolve(step=step, recorder=recorder)
                 if outcome is not StepOutcome.NOT_FOUND:
                     return outcome
-                if failure is Failure.FAILED or step.has_result:
+                if failure is not Failure.TRANSIENT and (failure is Failure.FAILED or step.has_result):
                     return self._not_found(step=step)
             elif failure is Failure.FAILED:
                 return StepOutcome.FAILED
