@@ -10,6 +10,8 @@ from pydantic_settings import (
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
+from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
@@ -36,6 +38,8 @@ class Settings(BaseSettings):
             "config/role.yaml",
             "config/user.yaml",
             "config/server.yaml",
+            "config/clusters.yaml",
+            "config/database_defaults.yaml",
         ),
         env_prefix="RES_",
         env_nested_delimiter="__",
@@ -55,6 +59,8 @@ class Settings(BaseSettings):
     role: RoleSettings
     user: ResourceSettings
     server: ServerSettings
+    clusters: list[ClusterEntry]
+    database_defaults: DatabaseDefaultsSettings
 
     @classmethod
     def settings_customise_sources(

@@ -1,0 +1,13 @@
+clusters:
+  - name: cluster1
+    network: local
+    environment: DEV
+    site: dc1
+    type: generic
+    api_url: https://localhost:9443
+  - name: cluster2
+    network: local
+    environment: DEV
+    site: dc2
+    type: generic
+    api_url: https://localhost:9444
