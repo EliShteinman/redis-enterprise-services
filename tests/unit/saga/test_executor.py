@@ -94,6 +94,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
             raise BUSY
         if action == "keep then rejected":
             raise REJECTED
+        if action == "keep then unknown":
+            raise UNKNOWN
 
     def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
@@ -360,10 +362,11 @@ def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
     assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
 
 
-def test_a_known_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
-    journal: list[str], state: MemoryState, lock: MemoryLock
+@pytest.mark.parametrize(argnames="failing", argvalues=["keep then rejected", "keep then unknown"])
+def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock, failing: str
 ) -> None:
-    step: FakeStep = FakeStep(journal=journal, executions=["keep then rejected", "keep"], outcomes=[None])
+    step: FakeStep = FakeStep(journal=journal, executions=[failing, "keep"], outcomes=[None])
 
     run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
