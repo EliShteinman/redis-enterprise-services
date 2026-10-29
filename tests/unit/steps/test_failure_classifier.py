@@ -6,7 +6,9 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRequestError,
+    DatabaseCreationFailedError,
     DatabaseNotActiveError,
+    DatabaseStillExistsError,
     UnreadableAnswerError,
     UnrestorableFieldsError,
 )
@@ -29,6 +31,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=
         (ClusterRequestError(message="m", cluster_status_code=400, error_code="invalid"), Failure.FAILED),
         (InvalidEdgeRequestError(message="m"), Failure.FAILED),
         (ClusterActionFailedError(message="m"), Failure.FAILED),
+        (DatabaseCreationFailedError(message="m"), Failure.FAILED),
         (AmbiguousResourceError(message="m"), Failure.MANUAL),
         (UnrestorableFieldsError(message="m"), Failure.FAILED),
         (RequestNotSentError(message="m"), Failure.UNKNOWN),
@@ -36,6 +39,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=
         (ResponseRejectedError(message="m", cluster_status_code=200), Failure.UNKNOWN),
         (ClusterActionTimeoutError(message="m"), Failure.UNKNOWN),
         (DatabaseNotActiveError(message="m"), Failure.UNKNOWN),
+        (DatabaseStillExistsError(message="m"), Failure.UNKNOWN),
         (UnreadableAnswerError(message="m"), Failure.UNKNOWN),
     ],
 )
@@ -50,6 +54,7 @@ def test_a_step_error_is_sorted_by_the_engine_table(
     argvalues=[
         (AmbiguousResourceError(message="m"), Failure.MANUAL),
         (ClusterActionFailedError(message="m"), Failure.FAILED),
+        (DatabaseCreationFailedError(message="m"), Failure.FAILED),
         (OutcomeUnknownError(message="m"), Failure.UNKNOWN),
     ],
 )

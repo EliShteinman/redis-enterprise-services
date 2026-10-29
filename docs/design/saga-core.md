@@ -35,7 +35,9 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
-    def find_outcome(self, *, step_input: TInput, kept: TResult | None) -> TResult | None: ...
+    def find_outcome(
+        self, *, step_input: TInput, kept: TResult | None, keep_found: KeepResult[TResult]
+    ) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
 ```
@@ -52,6 +54,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
   מה שהמנוע כבר שמר (`kept`): בעדכון ה-snapshot נשמר לפני ה-`PUT`, ואי אפשר לבנות אותו מחדש מהקלאסטר.
   `None` אומר שהשינוי לא נמצא בקלאסטר. כשיש `kept`, הוא מחזיר `None` רק אם הרצה חוזרת של הצעד בטוחה, כי אחרי
   שגיאה זמנית המנוע מריץ אותו שוב.
+- **`keep_found`** נקרא ב-`find_outcome` ברגע שנמצא משאב, לפני ההמתנה, כמו `keep_result` ב-`execute`. כך משאב שנמצא
+  לפי שם, ונכשל בהמתנה (למשל DB ב-`creation-failed`), נשאר תוצאה של הצעד ומבוטל.
 - **`compensate`** idempotent. אם אין מה לבטל, הוא לא עושה כלום.
 
 ### מה כל צעד שבנינו או שנבנה מממש
@@ -103,7 +107,7 @@ PlannedStep(
 | `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
 | `AmbiguousResourceError` מ-`find_outcome` (יותר ממשאב אחד באותו שם) | התערבות ידנית מיד: לא מנסים שוב ולא מפצים שום צעד, כי לא ידוע איזה משאב שלנו |
 | כל שגיאה אחרת של הפרויקט (למשל `UnrestorableFieldsError`) | הצעד נכשל ⇐ פיצוי, בלי ניסיון חוזר: היא תחזור באותה צורה |
-| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ התערבות ידנית מיד, בלי לנסות את הבדיקה שוב, כי ייתכן שהפעולה בוצעה |
+| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` או `DatabaseCreationFailedError` ⇐ הצעד נכשל, והוא מבוטל אם נשמרה לו תוצאה (ב-`execute` או ב-`keep_found`), `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ התערבות ידנית מיד, בלי לנסות את הבדיקה שוב, כי ייתכן שהפעולה בוצעה |
 | כל שגיאת קצה אחרת, timeout של המתנה, או תשובה שלא נקראת (`UnreadableAnswerError`) | `find_outcome` פעם אחת: נמצא ⇐ `done`. לא נמצא, ואין לצעד תוצאה שמורה ⇐ ניסיון חוזר אחד, ומכאן כל כישלון ⇐ התערבות ידנית. לא נמצא, ויש תוצאה שמורה ⇐ פיצוי |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי. אם בדרך הייתה תוצאה לא ידועה ⇐ התערבות ידנית |
 
@@ -135,10 +139,10 @@ PlannedStep(
 | `saga_id` | ה-trace ID של הבקשה |
 | `status` | `running`, `succeeded`, `rolled_back`, `requires_manual_intervention` |
 | `steps[]` | `key`, `kind`, `status`, `step_input`, `result`, `obtained_by`, `error` |
-| `heartbeat_at` | עוד לא נבנה, נבנה באבן 7ד |
+| `heartbeat_at` | עוד לא נבנה, נבנה באבן 8ד |
 
 - **השמירה ב-Redis כבר משלב 1** (S4). ה-record נכתב לפני כל צעד, מיד כשיש תוצאה, ובסוף הצעד.
-- **`heartbeat_at`** (עוד לא נבנה, נבנה באבן 7ד): ה-pod שמריץ את ה-Saga מעדכן אותו כל כמה שניות (קונפיג).
+- **`heartbeat_at`** (עוד לא נבנה, נבנה באבן 8ד): ה-pod שמריץ את ה-Saga מעדכן אותו כל כמה שניות (קונפיג).
 - **`obtained_by` לכל תוצאה:** `kept` (מ-`keep_result`) או `found` (מ-`find_outcome`). בביטול של תוצאה `found` נרשם
   WARNING.
 - **סודות לא נכנסים ל-record:** הסיסמה של `default_user` ופרטי הגישה לקלאסטרים לא חלק מ-`step_input`. הצעד
@@ -160,7 +164,7 @@ PlannedStep(
 - **נעילה:** `SET` בלי TTL. סקריפט Lua אחד נועל את כל המפתחות של ה-Saga, או אף אחד מהם אם אחד תפוס (ב-AA יש כמה).
   שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
-- **קריסה (D5, עוד לא נבנה, נבנה באבן 7ד):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at`
+- **קריסה (D5, עוד לא נבנה, נבנה באבן 8ד):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at`
   שלו ישן מהסף בקונפיג. הוא מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB
   במצב חלקי לא משתנה עד שמישהו מטפל בו.
 - **relay שלא זמין (הוחלט):** גם הבדיקה (`find_outcome`) לא מגיעה לקלאסטר, ולכן התוצאה נשארת לא ידועה וה-Saga
@@ -246,7 +250,7 @@ PlannedStep(
 - שני pods לא ירוצו על אותו DB (סעיף 10).
 - כל pod יכול לענות ל-`GET /v1/operations/{trace_id}`, כי ה-record ב-Redis.
 - pod שקרס משאיר Saga ב-`running` שה-heartbeat שלו ישן. pod אחר מזהה אותו בעלייה או בבדיקה תקופתית, ומסמן
-  `requires_manual_intervention`. הנעילה נשארת (D5). עוד לא נבנה, נבנה באבן 7ד.
+  `requires_manual_intervention`. הנעילה נשארת (D5). עוד לא נבנה, נבנה באבן 8ד.
 
 ## 7. ניסיונות חוזרים (הוחלט)
 

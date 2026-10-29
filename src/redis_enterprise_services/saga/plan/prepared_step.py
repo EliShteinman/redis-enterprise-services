@@ -47,7 +47,13 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         )
 
     def resolve(self, *, on_kept: OnKept) -> bool:
-        found: TResult | None = self._step.find_outcome(step_input=self._input, kept=self._result)
+        found: TResult | None = self._step.find_outcome(
+            step_input=self._input,
+            kept=self._result,
+            keep_found=lambda result: self._keep(
+                result=result, obtained_by=ObtainedBy.FOUND, on_kept=on_kept
+            ),
+        )
         if found is None:
             return False
         self._keep(result=found, obtained_by=ObtainedBy.FOUND, on_kept=on_kept)

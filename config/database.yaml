@@ -1,6 +1,12 @@
 database:
+  collection_path: /v1/bdbs
   path: /v1/bdbs/{uid}
+  list_fields:
+    - uid
+    - name
   active_status: active
+  creation_failed_status: creation-failed
+  default_tags: []
   wait:
     interval_seconds: 1
     timeout_seconds: 120

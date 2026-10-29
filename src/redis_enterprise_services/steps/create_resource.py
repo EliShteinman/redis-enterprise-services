@@ -40,13 +40,18 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         self._waiter.wait_created(target=target, resource=created)
 
     def find_outcome(
-        self, *, step_input: CreateResourceInput[TSpec], kept: CreatedResource | None
+        self,
+        *,
+        step_input: CreateResourceInput[TSpec],
+        kept: CreatedResource | None,
+        keep_found: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
         outcome: CreatedResource | None = (
             kept if kept is not None else self._find_by_name(target=target, step_input=step_input)
         )
         if outcome is not None:
+            keep_found(result=outcome)
             self._waiter.wait_created(target=target, resource=outcome)
         return outcome
 

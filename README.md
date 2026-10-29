@@ -35,8 +35,10 @@ Settings are in `config/`, one YAML file per topic (`log.yaml`, `api.yaml`, `tel
 RES_LOG__LEVEL=DEBUG
 ```
 
-Secrets are passed only through environment variables. The password of the Redis that keeps the saga state
-is required: `RES_STATE__PASSWORD`.
+Secrets are passed only through environment variables. Required:
+
+- `RES_STATE__PASSWORD`: the password of the Redis that keeps the saga state.
+- `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 

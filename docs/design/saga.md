@@ -650,6 +650,7 @@ stateDiagram-v2
 | V21 | user דרך ה-relay | **יצירה:** התשובה היא היוזר המלא עם `uid` ו-`action_uid` (`update_redis_acls`). היוזר קיים מיד, וה-action מסתיים תוך כ-3 שניות. שם קיים: `409 name_already_exists`. role שלא קיים: `404 role_not_exist`. סיסמה חלשה (`a`) מתקבלת. **מחיקה:** `action_uid`, והיוזר נעלם מיד (`404 user_not_exist`). **רשימה:** `GET /v1/users?fields=` לא מצמצם, וחוזר הכל. **role:** יצירה בלי `action_uid`, מחיקה עם. role שיש לו יוזר לא נמחק: `406 role_in_use`. נבדק 2026-10-27. |
 | V22 | role דרך ה-relay | **יצירה:** התשובה היא ה-role המלא עם `uid`, בלי `action_uid`. שם קיים: `409 name_already_exists`, תלוי רישיות. uid של DB כמספר: `400 invalid_schema`. DB שלא קיים: `404 db_not_found`. `management` לא מוכר: `400` עם רשימת הערכים המותרים. **מחיקה:** `action_uid` (כחצי שנייה), וה-role נעלם מיד (`404 role_not_exist`). נבדק 2026-10-27. **ב-Saga** (2026-10-29): role ואחריו user שמקבל את ה-uid שלו מה-context. בכישלון אחריהם נמחקו קודם ה-user ואז ה-role. |
 | V23 | ACL דרך ה-relay | **יצירה:** התשובה היא ה-ACL המלא עם `uid`, בלי `action_uid`. שם קיים: `409 name_already_exists`, תלוי רישיות. כלל שגוי: `400 invalid_param` עם השגיאה של Redis. כלל ריק: `400 missing_field`. **מחיקה:** `action_uid`, וה-ACL נעלם מיד (`404 redis_acl_not_exist`). **ב-Saga:** ACL, role, user, ואז `roles_permissions` ב-DB. ה-user נכנס ל-DB, כותב וקורא תחת ה-prefix של ה-ACL, ומקבל `NOPERM` מחוץ לו. בכישלון אחריהם הקישור הוחזר ל-`[]` ושלושת המשאבים נמחקו בסדר הפוך. נבדק 2026-10-29. |
+| V24 | DB דרך ה-relay | **יצירה:** `POST /v1/bdbs` מחזיר את ה-bdb המלא עם `uid`, `status: pending` ו-`action_uid`, ותוך כשנייה `active`. **מחיקה:** `action_uid` ו-`status: delete-pending`, ותוך כשנייה `404 db_not_exist`. **התשובות ליצירה ולמחיקה כוללות את `authentication_redis_pass`, `authentication_admin_pass` ו-`authentication_sasl_pass` בטקסט גלוי**, ולכן הן לא נשמרות כמו שהן: התוצאה של הצעד היא רק `uid`, `name` ו-`action_uid`. **רשימה:** `GET /v1/bdbs?fields=uid,name` מחזיר רק את שני השדות. **ב-Saga:** DB חדש, ACL, role עם ה-uid של ה-DB מה-context, user וקישור. בכישלון בסוף הכל נמחק, כולל ה-DB. אחרי הצלחה: חיבור בלי סיסמה ⇐ `NOAUTH`, `default` עם הסיסמה מה-Secret ⇐ `PONG`, ה-user כותב תחת ה-prefix של ה-ACL ומקבל `NOPERM` מחוץ לו. הסיסמה של `default_user` לא נמצאת ב-record. Saga שני עם אותו שם DB נכשל ב-ACL (`409`) ומחק רק את ה-DB שהוא עצמו יצר, לפי ה-`uid` ששמר. נבדק 2026-10-29. |
 
 ### עוד לא נבדק
 
@@ -829,7 +830,7 @@ classDiagram
     UpdateResourceStep --> CompletionWaiter
     DeleteResourceStep --> CompletionWaiter
     CompletionWaiter <|.. ActionCompletionWaiter
-    CompletionWaiter <|.. DatabaseActiveWaiter : planned, DB create stage
+    CompletionWaiter <|.. DatabaseActiveWaiter
     ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. EndpointRepository
@@ -864,8 +865,11 @@ classDiagram
 - **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
 - **הצעד לא מחכה בעצמו ולא יודע איך מחכים.** הוא מקבל `CompletionWaiter`: ב-user, role ו-ACL דרך ה-action
   (`ActionCompletionWaiter`), וב-DB דרך `status: active` ו-404 (`DatabaseActiveWaiter`). ה-repository רק מדבר עם
-  הקלאסטר. `DatabaseActiveWaiter` יממש את `CompletionWaiter` בשלב יצירת ה-DB. היום יש לו רק `wait(target, uid)`,
-  לעדכון.
+  הקלאסטר. `DatabaseActiveWaiter` מממש גם את `CompletionWaiter` (יצירה: `active`, מחיקה: `404`) וגם את
+  `DatabaseReadiness` (אחרי עדכון).
+- **יצירת DB עוברת דרך אותו `CreateResourceStep`.** `DatabaseLifecycle` בונה את גוף הבקשה: השדות שנקבעו ב-
+  `NewDatabase`, ו-`default_user` עם הסיסמה מה-Secret (`RES_DATABASE__DEFAULT_USER_PASSWORD`), שמתווספת רק כאן ולא
+  נכנסת לקלט של הצעד.
 - **לכל spec יש `name`** (`NamedSpec`), כדי שה-Saga יוכל למצוא משאב לפי השם אחרי תוצאה לא ידועה (סעיף 3).
 - **`ResourceEndpoint` מחזיק את מה שזהה** ב-user, role ו-ACL: `POST` לאוסף, `DELETE`, וחיפוש בשם מדויק. כל
   repository בונה רק את הגוף שלו. `get` ו-`update` נוספים לממשק כשצעדי העדכון והמחיקה נבנים.

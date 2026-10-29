@@ -49,7 +49,11 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         )
 
     def find_outcome(
-        self, *, step_input: DatabaseUpdateInput, kept: DatabaseFields | None
+        self,
+        *,
+        step_input: DatabaseUpdateInput,
+        kept: DatabaseFields | None,
+        keep_found: KeepResult[DatabaseFields],
     ) -> DatabaseFields | None:
         if kept is None:
             return None

@@ -80,3 +80,15 @@ def test_find_by_name_reports_an_unreadable_list_without_its_values() -> None:
         endpoint.find_by_name(target=TARGET, name="db1")
 
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
+
+
+def test_the_database_list_asks_only_for_the_configured_fields() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.return_value = ClusterAnswer(body=[], cluster_state_id=None)
+    settings: Settings = load_settings()
+
+    ResourceEndpoint(api=api, settings=settings.database, cluster=settings.cluster).find_by_name(
+        target=TARGET, name="orders"
+    )
+
+    assert api.send.call_args.kwargs["query"] == "fields=uid,name"

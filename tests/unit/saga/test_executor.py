@@ -75,12 +75,14 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         kind: StepKind = StepKind.COMPENSATABLE,
         executions: list[Action] | None = None,
         outcomes: list[FakeResult | RedisEnterpriseServicesError | None] | None = None,
+        found_before_check: FakeResult | None = None,
         compensations: list[RedisEnterpriseServicesError | None] | None = None,
     ) -> None:
         self._journal: list[str] = journal
         self._kind: StepKind = kind
         self._executions: list[Action] = executions or ["keep"]
         self._outcomes: list[FakeResult | RedisEnterpriseServicesError | None] = outcomes or []
+        self._found_before_check: FakeResult | None = found_before_check
         self._compensations: list[RedisEnterpriseServicesError | None] = compensations or [None]
         self.executed: int = 0
         self.compensated: int = 0
@@ -105,7 +107,11 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         if action == "keep then unknown":
             raise UNKNOWN
 
-    def find_outcome(self, *, step_input: FakeInput, kept: FakeResult | None) -> FakeResult | None:
+    def find_outcome(
+        self, *, step_input: FakeInput, kept: FakeResult | None, keep_found: KeepResult[FakeResult]
+    ) -> FakeResult | None:
+        if self._found_before_check is not None:
+            keep_found(result=self._found_before_check)
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
             self._outcomes.pop(0) if self._outcomes else None
         )
@@ -311,6 +317,25 @@ def test_a_check_that_fails_for_a_known_reason_compensates_the_earlier_steps(
     run(steps=steps, state=state, lock=lock)
 
     assert journal[-1] == "compensate a"
+
+
+def test_a_result_found_before_a_failing_check_is_rolled_back(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal,
+        executions=[UNKNOWN],
+        found_before_check=FakeResult(name="a", attempt=0),
+        outcomes=[REJECTED],
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, record.steps[0].obtained_by, journal[-1]) == (
+        SagaStatus.ROLLED_BACK,
+        "found",
+        "compensate a",
+    )
 
 
 def test_a_failed_compensation_still_compensates_the_others_and_needs_manual_intervention(

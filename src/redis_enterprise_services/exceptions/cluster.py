@@ -23,6 +23,16 @@ class UnrestorableFieldsError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unrestorable_fields"
 
 
+class DatabaseStillExistsError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "database_still_exists"
+    status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
+
+
+class DatabaseCreationFailedError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "database_creation_failed"
+    status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
+
+
 class ClusterActionFailedError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "cluster_action_failed"
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
