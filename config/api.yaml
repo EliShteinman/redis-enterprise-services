@@ -1,4 +1,3 @@
 api:
-  validation_error_code: validation_error
   validation_error_message: the request does not match the contract
   internal_error_message: internal error

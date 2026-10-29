@@ -10,9 +10,9 @@ from starlette.types import ExceptionHandler
 
 from redis_enterprise_services.api import health
 from redis_enterprise_services.api.error_handlers import (
+    ValidationErrorHandler,
     http_error_handler,
     project_error_handler,
-    validation_error_handler,
 )
 from redis_enterprise_services.api.middleware.unexpected_errors import UnexpectedErrorMiddleware
 from redis_enterprise_services.config.settings import Settings, load_settings
@@ -25,14 +25,14 @@ def create_app() -> FastAPI:
     settings: Settings = load_settings()
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
     app.state.settings = settings
-    app.add_middleware(middleware_class=UnexpectedErrorMiddleware)
+    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, settings=settings.api)
     app.add_exception_handler(
         exc_class_or_status_code=RedisEnterpriseServicesError,
         handler=cast("ExceptionHandler", project_error_handler),
     )
     app.add_exception_handler(
         exc_class_or_status_code=RequestValidationError,
-        handler=cast("ExceptionHandler", validation_error_handler),
+        handler=cast("ExceptionHandler", ValidationErrorHandler(settings=settings.api)),
     )
     app.add_exception_handler(
         exc_class_or_status_code=HTTPException, handler=cast("ExceptionHandler", http_error_handler)

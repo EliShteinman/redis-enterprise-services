@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from redis_enterprise_services.roles.models import RoleManagement
+
 
 class RoleResource(BaseModel):
     type: str
@@ -8,5 +10,5 @@ class RoleResource(BaseModel):
 
 class RoleBody(BaseModel):
     name: str
-    management: str
+    management: RoleManagement
     resources: list[RoleResource]
