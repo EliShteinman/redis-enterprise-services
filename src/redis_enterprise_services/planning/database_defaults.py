@@ -3,46 +3,44 @@ import logging
 from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.clusters_settings import ClusterEntry
-from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
+from redis_enterprise_services.config.database_defaults_settings import (
+    DatabaseDefaultsSettings,
+    DefaultsMatch,
+)
 from redis_enterprise_services.databases.new_database import DatabaseOptions, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-CLUSTER_LABELS: tuple[str, ...] = ("network", "environment", "site", "type", "cluster")
-
 
 class DatabaseDefaults:
     def __init__(self, *, settings: DatabaseDefaultsSettings) -> None:
-        validate_layers(settings=settings)
+        validate_values(settings=settings)
         self._settings: DatabaseDefaultsSettings = settings
 
     def complete(self, *, cluster: ClusterEntry, requested: NewDatabase) -> NewDatabase:
-        labels: dict[str, str] = cluster_labels(cluster=cluster)
         values: dict[str, JsonValue] = dict(self._settings.values)
         for override in self._settings.overrides:
-            if override.when.items() <= labels.items():
+            if applies(match=override.when, cluster=cluster):
                 logger.debug(msg=f"defaults for {override.when} apply to {requested.name}")
                 values.update(override.values)
-        values.update(requested.model_dump(exclude_unset=True))
+        values.update(requested.model_dump(exclude_none=True))
         return NewDatabase.model_validate(obj=values)
 
 
-def cluster_labels(*, cluster: ClusterEntry) -> dict[str, str]:
-    values: tuple[str, ...] = (cluster.network, cluster.environment, cluster.site, cluster.type, cluster.name)
-    return dict(zip(CLUSTER_LABELS, values, strict=True))
+def applies(*, match: DefaultsMatch, cluster: ClusterEntry) -> bool:
+    labels: dict[str, str] = {
+        "network": cluster.network,
+        "environment": cluster.environment,
+        "site": cluster.site,
+        "type": cluster.type,
+        "cluster": cluster.name,
+    }
+    return match.model_dump(exclude_none=True).items() <= labels.items()
 
 
-def validate_layers(*, settings: DatabaseDefaultsSettings) -> None:
-    layers: list[dict[str, JsonValue]] = [
-        settings.values,
-        *(override.values for override in settings.overrides),
-    ]
-    for override in settings.overrides:
-        unknown: set[str] = set(override.when) - set(CLUSTER_LABELS)
-        if unknown:
-            raise ConfigurationError(message=f"database defaults match on unknown labels {sorted(unknown)}")
-    for values in layers:
+def validate_values(*, settings: DatabaseDefaultsSettings) -> None:
+    for values in [settings.values, *(override.values for override in settings.overrides)]:
         try:
             DatabaseOptions.model_validate(obj=values)
         except ValidationError as error:

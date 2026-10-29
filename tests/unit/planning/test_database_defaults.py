@@ -1,9 +1,10 @@
 import pytest
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.clusters_settings import ClusterEntry, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
+    DefaultsMatch,
     DefaultsOverride,
 )
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -13,7 +14,7 @@ from redis_enterprise_services.planning.database_defaults import DatabaseDefault
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
         values={"replication": True, "data_persistence": "aof"},
-        overrides=[DefaultsOverride(when={"environment": "DEV"}, values={"replication": False})],
+        overrides=[DefaultsOverride(when=DefaultsMatch(environment="DEV"), values={"replication": False})],
     )
 )
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
@@ -46,20 +47,53 @@ def test_the_request_beats_every_default() -> None:
     assert DEFAULTS.complete(cluster=cluster(environment="DEV"), requested=requested).replication is True
 
 
+def test_a_later_override_beats_an_earlier_one() -> None:
+    defaults: DatabaseDefaults = DatabaseDefaults(
+        settings=DatabaseDefaultsSettings(
+            values={},
+            overrides=[
+                DefaultsOverride(when=DefaultsMatch(environment="DEV"), values={"shards_placement": "dense"}),
+                DefaultsOverride(when=DefaultsMatch(site="dc1"), values={"shards_placement": "sparse"}),
+            ],
+        )
+    )
+
+    assert (
+        defaults.complete(cluster=cluster(environment="DEV"), requested=REQUESTED).shards_placement
+        == "sparse"
+    )
+
+
+def test_a_field_sent_as_null_keeps_the_default() -> None:
+    requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=None)
+
+    assert DEFAULTS.complete(cluster=cluster(environment="DEV"), requested=requested).replication is False
+
+
 @pytest.mark.parametrize(
-    argnames=("values", "when"),
+    argnames="values",
     argvalues=[
-        pytest.param({"replication": "maybe"}, {"environment": "DEV"}, id="invalid value"),
-        pytest.param({"name": "fixed"}, {"environment": "DEV"}, id="field outside the options"),
-        pytest.param({"replication": False}, {"region": "eu"}, id="unknown label"),
+        pytest.param({"replication": "maybe"}, id="invalid value"),
+        pytest.param({"name": "fixed"}, id="field outside the options"),
     ],
 )
-def test_defaults_that_cannot_apply_stop_at_startup(
-    values: dict[str, JsonValue], when: dict[str, str]
-) -> None:
+def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         DatabaseDefaults(
             settings=DatabaseDefaultsSettings(
-                values={}, overrides=[DefaultsOverride(when=when, values=values)]
+                values={}, overrides=[DefaultsOverride(when=DefaultsMatch(environment="DEV"), values=values)]
             )
         )
+
+
+@pytest.mark.parametrize(
+    argnames="when",
+    argvalues=[
+        pytest.param({"environment": "DEV", "region": "eu"}, id="unknown label"),
+        pytest.param({"environment": "dev"}, id="a value that never matches"),
+        pytest.param({}, id="no label"),
+    ],
+)
+def test_an_override_that_can_never_match_is_refused(when: dict[str, str]) -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        DefaultsMatch.model_validate(obj=when)
