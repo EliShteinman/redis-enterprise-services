@@ -1,13 +1,6 @@
-from typing import Literal
+from pydantic import BaseModel, JsonValue
 
-from pydantic import BaseModel, JsonValue, SecretStr
-
-type HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
-
-
-class ClusterCredentials(BaseModel):
-    username: str
-    password: SecretStr
+from redis_enterprise_services.connection.models import ClusterCredentials, HttpMethod
 
 
 class ClusterRequest(BaseModel):

@@ -5,7 +5,7 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     AmbiguousResourceError,
     ClusterActionTimeoutError,

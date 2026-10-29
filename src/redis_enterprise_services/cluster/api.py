@@ -7,7 +7,8 @@ from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.cluster.transport import EdgeTransport
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
-from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse, HttpMethod
+from redis_enterprise_services.connection.models import HttpMethod
+from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRequestError
 
 

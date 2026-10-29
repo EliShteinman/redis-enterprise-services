@@ -2,7 +2,7 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.resources.models import CreateResourceInput
 from redis_enterprise_services.users.models import NewUser
 

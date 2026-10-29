@@ -6,8 +6,8 @@ from pydantic import SecretStr
 from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
 from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
 
 TARGET: ClusterTarget = ClusterTarget(

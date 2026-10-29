@@ -880,9 +880,9 @@ classDiagram
 | `ActionTracker` (`cluster/action_tracker.py`) | `ActionWaiter` | `ActionCompletionWaiter` |
 | `ResourceCalls` (`resources/resource_calls.py`) | `ResourceEndpoint` | `EndpointRepository` ו-`RoleRepository` |
 | `DatabaseFieldsReader` / `DatabaseFieldsStore` (`databases/fields_store.py`) | `DatabaseRepository` | `DatabaseActiveWaiter` (קריאה), `DatabaseUpdate` (קריאה ועדכון) |
-| `DatabaseActiveWait` (`databases/active_wait.py`) | `DatabaseActiveWaiter` | `DatabaseUpdate` |
+| `DatabaseReadiness` (`databases/readiness.py`) | `DatabaseActiveWaiter` | `DatabaseUpdate` |
 
-מעל ה-API של הקלאסטר אף שכבה לא מייבאת את `edge` (נאכף ב-`import-linter`).
+**שני טיפוסים משותפים לתעבורה ולקלאסטר** (`HttpMethod`, `ClusterCredentials`) נמצאים ב-`connection/`, מתחת ל-`edge`. כך מעל ה-API של הקלאסטר אף שכבה לא תלויה בשום טיפוס של `edge` (נאכף ב-`import-linter`).
 
 ---
 

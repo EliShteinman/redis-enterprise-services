@@ -10,8 +10,9 @@ from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnection
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.edge.client import EdgeClient
-from redis_enterprise_services.edge.models import ClusterCredentials, ClusterRequest, ClusterResponse
+from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.exceptions.edge import (
     EdgeError,
     InvalidEdgeRequestError,

@@ -9,7 +9,7 @@ from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarge
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,

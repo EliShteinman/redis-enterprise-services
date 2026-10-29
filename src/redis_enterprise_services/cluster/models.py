@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from redis_enterprise_services.edge.models import ClusterCredentials
+from redis_enterprise_services.connection.models import ClusterCredentials
 
 
 class ClusterAddress(BaseModel):
