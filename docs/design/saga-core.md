@@ -35,7 +35,9 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
-    def find_outcome(self, *, step_input: TInput, kept: TResult | None) -> TResult | None: ...
+    def find_outcome(
+        self, *, step_input: TInput, kept: TResult | None, keep_found: KeepResult[TResult]
+    ) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
 ```
@@ -52,6 +54,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
   מה שהמנוע כבר שמר (`kept`): בעדכון ה-snapshot נשמר לפני ה-`PUT`, ואי אפשר לבנות אותו מחדש מהקלאסטר.
   `None` אומר שהשינוי לא נמצא בקלאסטר. כשיש `kept`, הוא מחזיר `None` רק אם הרצה חוזרת של הצעד בטוחה, כי אחרי
   שגיאה זמנית המנוע מריץ אותו שוב.
+- **`keep_found`** נקרא ב-`find_outcome` ברגע שנמצא משאב, לפני ההמתנה, כמו `keep_result` ב-`execute`. כך משאב שנמצא
+  לפי שם, ונכשל בהמתנה (למשל DB ב-`creation-failed`), נשאר תוצאה של הצעד ומבוטל.
 - **`compensate`** idempotent. אם אין מה לבטל, הוא לא עושה כלום.
 
 ### מה כל צעד שבנינו או שנבנה מממש
@@ -103,7 +107,7 @@ PlannedStep(
 | `ClusterActionFailedError` (ה-action הסתיים ב-`failed`, `cancelled` או `aborted`) | הצעד נכשל ⇐ פיצוי. זו תוצאה ידועה, ולא מנסים שוב |
 | `AmbiguousResourceError` מ-`find_outcome` (יותר ממשאב אחד באותו שם) | התערבות ידנית מיד: לא מנסים שוב ולא מפצים שום צעד, כי לא ידוע איזה משאב שלנו |
 | כל שגיאה אחרת של הפרויקט (למשל `UnrestorableFieldsError`) | הצעד נכשל ⇐ פיצוי, בלי ניסיון חוזר: היא תחזור באותה צורה |
-| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` ⇐ פיצוי, `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ התערבות ידנית מיד, בלי לנסות את הבדיקה שוב, כי ייתכן שהפעולה בוצעה |
+| שגיאה מתוך `find_outcome` | אותו מיון כמו בטבלה: `ClusterActionFailedError` או `DatabaseCreationFailedError` ⇐ הצעד נכשל, והוא מבוטל אם נשמרה לו תוצאה (ב-`execute` או ב-`keep_found`), `AmbiguousResourceError` ⇐ התערבות ידנית, וכל השאר ⇐ התערבות ידנית מיד, בלי לנסות את הבדיקה שוב, כי ייתכן שהפעולה בוצעה |
 | כל שגיאת קצה אחרת, timeout של המתנה, או תשובה שלא נקראת (`UnreadableAnswerError`) | `find_outcome` פעם אחת: נמצא ⇐ `done`. לא נמצא, ואין לצעד תוצאה שמורה ⇐ ניסיון חוזר אחד, ומכאן כל כישלון ⇐ התערבות ידנית. לא נמצא, ויש תוצאה שמורה ⇐ פיצוי |
 | נגמרו הניסיונות | הצעד נכשל ⇐ פיצוי. אם בדרך הייתה תוצאה לא ידועה ⇐ התערבות ידנית |
 
