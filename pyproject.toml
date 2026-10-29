@@ -27,6 +27,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.2",
+    "import-linter>=2.15",
     "pre-commit>=4.7.0",
     "pytest>=9.1.1",
     "ruff>=0.17.2",
@@ -54,3 +55,63 @@ addopts = ["--import-mode=importlib"]
 include = ["src", "tests"]
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.importlinter]
+root_package = "redis_enterprise_services"
+
+[[tool.importlinter.contracts]]
+name = "cluster layers: steps over repositories over cluster API over transport"
+type = "layers"
+layers = [
+    "redis_enterprise_services.steps",
+    "redis_enterprise_services.users | redis_enterprise_services.roles | redis_enterprise_services.acls",
+    "redis_enterprise_services.resources | redis_enterprise_services.databases",
+    "redis_enterprise_services.cluster",
+    "redis_enterprise_services.edge",
+]
+
+[[tool.importlinter.contracts]]
+name = "saga folders: engine over plan over contract"
+type = "layers"
+layers = [
+    "redis_enterprise_services.saga.engine",
+    "redis_enterprise_services.saga.plan",
+    "redis_enterprise_services.saga.contract",
+]
+
+[[tool.importlinter.contracts]]
+name = "the saga knows nothing about clusters, steps or stores"
+type = "forbidden"
+source_modules = ["redis_enterprise_services.saga"]
+forbidden_modules = [
+    "redis_enterprise_services.edge",
+    "redis_enterprise_services.cluster",
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+    "redis_enterprise_services.steps",
+    "redis_enterprise_services.state",
+    "redis_enterprise_services.api",
+]
+
+[[tool.importlinter.contracts]]
+name = "repositories and transport do not know the saga or the state store"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.edge",
+    "redis_enterprise_services.cluster",
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+]
+forbidden_modules = ["redis_enterprise_services.saga", "redis_enterprise_services.state"]
+
+[[tool.importlinter.contracts]]
+name = "steps and the state store use only the saga contract"
+type = "forbidden"
+source_modules = ["redis_enterprise_services.steps", "redis_enterprise_services.state"]
+forbidden_modules = ["redis_enterprise_services.saga.engine", "redis_enterprise_services.saga.plan"]

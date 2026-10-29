@@ -224,6 +224,8 @@ PlannedStep(
 | `saga/plan/` | בניית התוכנית: `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | ההרצה: `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder`, וההמתנה בין ניסיונות | `contract`, `plan` |
 
+הכיוונים נאכפים ב-`import-linter` (`pyproject.toml`), שרץ ב-pre-commit: התיקיות של ה-Saga, ה-Saga בלי קלאסטר, צעדים ו-store, והשכבות של הקלאסטר.
+
 ## 6. ספרייה או מימוש שלנו
 
 **מה ספרייה נותנת:** בעיקר המשך אוטומטי אחרי קריסה (durable execution). אצלנו הוחלט שאחרי קריסה **לא ממשיכים
