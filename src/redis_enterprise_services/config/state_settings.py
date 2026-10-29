@@ -1,4 +1,4 @@
-from pydantic import BaseModel, NonNegativeInt, PositiveFloat, PositiveInt, SecretStr
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveFloat, PositiveInt, SecretStr
 
 
 class LockSettings(BaseModel):
@@ -11,6 +11,8 @@ class StateSettings(BaseModel):
     port: PositiveInt
     username: str
     password: SecretStr
-    prefix: str
+    prefix: str = Field(min_length=1)
+    hash_tag: str = Field(min_length=1)
+    socket_timeout_seconds: PositiveFloat
     finished_ttl_seconds: PositiveInt
     lock: LockSettings
