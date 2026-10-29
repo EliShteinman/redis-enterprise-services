@@ -21,5 +21,6 @@ def test_the_creation_body_turns_the_default_user_on_with_the_secret_and_sends_o
         "memory_size": 104857600,
         "data_persistence": "aof",
         "default_user": True,
+        "tags": [],
         "authentication_redis_pass": "s3cret",
     }

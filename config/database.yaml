@@ -5,6 +5,7 @@ database:
     - uid
     - name
   active_status: active
+  creation_failed_status: creation-failed
   wait:
     interval_seconds: 1
     timeout_seconds: 120

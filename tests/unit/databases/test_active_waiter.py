@@ -8,7 +8,8 @@ from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsReader
-from redis_enterprise_services.exceptions.cluster import ClusterRequestError
+from redis_enterprise_services.databases.models import DatabaseFields
+from redis_enterprise_services.exceptions.cluster import ClusterRequestError, DatabaseCreationFailedError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -49,3 +50,12 @@ def test_another_error_while_waiting_for_a_delete_is_raised(
 
     with pytest.raises(expected_exception=ClusterRequestError):
         waiter.wait_deleted(target=TARGET, uid=11, action_uid=None)
+
+
+def test_a_database_whose_creation_failed_stops_the_wait(
+    fields: MagicMock, waiter: DatabaseActiveWaiter
+) -> None:
+    fields.get_fields.return_value = DatabaseFields(values={"status": "creation-failed"}, cluster_state_id=1)
+
+    with pytest.raises(expected_exception=DatabaseCreationFailedError):
+        waiter.wait(target=TARGET, uid=11)

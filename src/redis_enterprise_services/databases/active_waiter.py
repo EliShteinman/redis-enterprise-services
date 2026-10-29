@@ -9,7 +9,12 @@ from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsReader
 from redis_enterprise_services.databases.readiness import DatabaseReadiness
-from redis_enterprise_services.exceptions.cluster import ClusterRequestError, DatabaseNotActiveError
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterRequestError,
+    DatabaseCreationFailedError,
+    DatabaseNotActiveError,
+    DatabaseStillExistsError,
+)
 from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource
 
@@ -38,7 +43,7 @@ class DatabaseActiveWaiter(DatabaseReadiness, CompletionWaiter):
     def wait_deleted(self, *, target: ClusterTarget, uid: int, action_uid: str | None) -> None:
         if poll_until(wait=self._settings.wait, is_done=lambda: self._is_gone(target=target, uid=uid)):
             return
-        raise DatabaseNotActiveError(
+        raise DatabaseStillExistsError(
             message=f"database {uid} still exists after {self._settings.wait.timeout_seconds} seconds"
         )
 
@@ -58,4 +63,6 @@ class DatabaseActiveWaiter(DatabaseReadiness, CompletionWaiter):
         ).values
         status: JsonValue = values[status_field]
         logger.debug(msg=f"database {uid} is {status}")
+        if status == self._settings.creation_failed_status:
+            raise DatabaseCreationFailedError(message=f"database {uid} is {status}")
         return status == self._settings.active_status
