@@ -6,8 +6,9 @@ from redis_enterprise_services.saga.contract.failure import Failure, FailureClas
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.models import ObtainedBy
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
-from redis_enterprise_services.saga.engine.retry import Sleeper, pause
+from redis_enterprise_services.saga.engine.retry import pause
 from redis_enterprise_services.saga.plan.runnable import PreparedStep
+from redis_enterprise_services.timing.sleeper import Sleeper
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

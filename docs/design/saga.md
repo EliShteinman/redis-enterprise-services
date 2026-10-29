@@ -126,8 +126,8 @@ stateDiagram-v2
     pending --> failed : אי אפשר לבנות את הקלט
     running --> running : שגיאה זמנית, או תוצאה לא ידועה שלא נמצאה: ניסיון חוזר
     running --> done : הצליח, או תוצאה לא ידועה שנמצאה ב-find_outcome
-    running --> failed : כישלון ידוע, נגמרו הניסיונות, או תוצאה שמורה שלא נמצאה
-    running --> unresolved : כמה משאבים באותו שם, תוצאה שנשארה לא ידועה, צעד שאין לו ביטול ששמר תוצאה ונכשל, או Saga שנעצר באמצע הצעד
+    running --> failed : כישלון ידוע, נגמרו הניסיונות, או תוצאה שמורה שלא נמצאה אחרי כישלון ידוע
+    running --> unresolved : כמה משאבים באותו שם, תוצאה שנשארה לא ידועה, תוצאה שמורה שלא נמצאה אחרי תוצאה לא ידועה, צעד שאין לו ביטול ששמר תוצאה ונכשל, או Saga שנעצר באמצע הצעד
     done --> compensating : צעד מאוחר יותר נכשל
     failed --> compensating : שמר תוצאה לפני שנכשל
     compensating --> compensated
@@ -516,7 +516,7 @@ stateDiagram-v2
 | בקשה לא תקינה מצדנו | `x-edge-error: invalid_request` | הצעד נכשל, בלי retry (באג אצלנו) |
 | שירות הקצה לא הגיע לקלאסטר, או לא ענה | `x-edge-error: connection_failed` או `timeout`, או שאין תשובה מהקצה | `find_by_key` (סעיף 3), גם על `connection_failed` |
 | תשובה שנדחתה על כתיבה | `x-edge-error: response_rejected` על כתיבה | `find_by_key` (סעיף 3) |
-| תשובה שנדחתה על קריאה | `x-edge-error: response_rejected` על קריאה | הצעד נכשל (קריאה חוזרת תידחה שוב) |
+| תשובה שנדחתה על קריאה | `x-edge-error: response_rejected` על קריאה | כמו כל שגיאת קצה חוץ מ-`invalid_request`: תוצאה לא ידועה (saga-core סעיף 4) |
 
 ### כשל של הפיצוי עצמו
 
@@ -536,8 +536,7 @@ stateDiagram-v2
 | | המלצה |
 |---|---|
 | **ממשק** | `SagaStateRepository`: שמירה ועדכון של saga record |
-| **שלב 1** | מימוש בזיכרון. מספיק כדי לבנות ולבדוק את המנוע. |
-| **לפני production** | מימוש ב-Redis (הוחלט). אותו Redis מחזיק גם את נעילת ה-DB (סעיף 10), כך שהשירות יכול לרוץ בכמה עותקים. |
+| **מימוש** | ב-Redis כבר משלב 1 (saga-core S4 וסעיף 5א). אותו Redis מחזיק גם את נעילת ה-DB (סעיף 10), כך שהשירות יכול לרוץ בכמה עותקים. |
 | **מתי כותבים** | לפני כל צעד (`running`) ואחריו (`done` + תוצאות). כך אחרי קריסה ידוע בדיוק איזה צעד היה באוויר. |
 | **סיסמאות** | סיסמאות של יוזרי DB **נשמרות** (הן לא סוד, 5.3). הסיסמה של `default_user` ופרטי הגישה של הקלאסטרים **לא נשמרים אף פעם** |
 
@@ -588,8 +587,8 @@ stateDiagram-v2
 - **כשה-DB נעול:** ה-worker מחכה, כי ייתכן שהנעילה תשתחרר בינתיים. אם עבר ה-timeout שמוגדר בקונפיגורציה, התוצאה
   היא `rejected` עם `database_locked` (הוחלט).
 - **בקשות על DBs שונים** רצות במקביל בלי הפרעה.
-- **איפה הנעילה נשמרת:** ב-instance אחד מספיקה נעילה בזיכרון. בכמה replicas צריך נעילה משותפת, למשל ב-Redis עם
-  `SET NX` ו-TTL. ההחלטה צמודה להחלטה על שמירת מצב ה-Saga (סעיף 9).
+- **איפה הנעילה נשמרת:** ב-Redis, יחד עם מצב ה-Saga. סקריפט Lua נועל את כל המפתחות או אף אחד, בלי TTL
+  (saga-core סעיף 5א).
 
 **מה הנעילה לא פותרת:** שינוי שמגיע מחוץ לשירות, למשל דרך ה-UI של Redis או דרך הקריאה הישירה. ההגנה כאן היא
 החוזה (הרשאות לא נערכות יחד עם שינויים אחרים, 5.6), ועדכון מותנה דרך `cluster-state-id`.
@@ -671,7 +670,7 @@ classDiagram
         <<abstract>>
         +kind: StepKind
         +execute(step_input, keep_result) None
-        +find_outcome(step_input, kept) TResult
+        +find_outcome(step_input, kept, keep_found) TResult
         +compensate(step_input, result) None
     }
     class StepKind {
@@ -688,17 +687,24 @@ classDiagram
         <<abstract>>
         +key: str
         +kind: StepKind
-        +has_result: bool
-        +obtained_by: ObtainedBy | None
-        +prepare(context) JsonValue
-        +execute(on_kept) None
-        +resolve(on_kept) bool
-        +compensate() None
+        +prepare(context) PreparedStep
     }
     class PlannedStep {
         -step: SagaStep
         -build_input(context) TInput
     }
+    class PreparedStep {
+        <<abstract>>
+        +key: str
+        +kind: StepKind
+        +step_input: JsonValue
+        +has_result: bool
+        +obtained_by: ObtainedBy | None
+        +execute(on_kept) None
+        +resolve(on_kept) bool
+        +compensate() None
+    }
+    class PreparedPlannedStep
     class StepRecorder {
         +started(step_input) None
         +kept(result, obtained_by) None
@@ -722,7 +728,8 @@ classDiagram
         +run(saga_id, plan) SagaRecord
     }
     class StepRunner {
-        +run(step, context, recorder) StepOutcome
+        +prepare(step, context, recorder) PreparedStep | None
+        +run(step, recorder) StepOutcome
     }
     class Compensator {
         +compensate(steps) bool
@@ -747,16 +754,24 @@ classDiagram
     class RedisDatabaseLock
 
     class CreateResourceStep
-    class UpdateResourceStep
+    class DatabaseUpdate
     class DeleteResourceStep
+    class DatabaseFieldsStore {
+        <<interface>>
+        +get_fields(target, uid, fields) DatabaseFields
+        +update(target, uid, values, cluster_state_id) None
+    }
+    class DatabaseReadiness {
+        <<interface>>
+        +wait(target, uid) None
+    }
+    class DatabaseLifecycle
 
     class ResourceRepository~TSpec~ {
         <<interface>>
         +create(target, spec) CreatedResource
         +delete(target, uid) action_uid | None
         +find_by_name(target, name) list~NamedResource~
-        +get(target, uid) Resource
-        +update(target, uid, changes) None
     }
     class ResourceEndpoint {
         +create(target, body) CreatedResource
@@ -812,37 +827,43 @@ classDiagram
     DatabaseLock <|.. RedisDatabaseLock
     SagaPlan o-- RunnableStep
     RunnableStep <|-- PlannedStep
+    PreparedStep <|-- PreparedPlannedStep
+    PlannedStep --> PreparedPlannedStep : prepare
+    StepRunner --> PreparedStep
     StepRunner --> StepRecorder
     SagaExecutor --> StepRecorder : one per step
     StepRecorder --> SagaStateRepository
-    Compensator --> RunnableStep
+    Compensator --> PreparedStep
     Compensator --> StepRecorder
     PlannedStep --> SagaStep
-    PlannedStep --> SagaContext
+    PreparedPlannedStep --> SagaStep
+    PreparedPlannedStep --> SagaContext
     SagaStep --> StepKind
     SagaStep <|-- CreateResourceStep
-    SagaStep <|-- UpdateResourceStep
+    SagaStep <|-- DatabaseUpdate
     SagaStep <|-- DeleteResourceStep
     CreateResourceStep --> ResourceRepository
-    UpdateResourceStep --> ResourceRepository
+    DatabaseUpdate --> DatabaseFieldsStore
+    DatabaseUpdate --> DatabaseReadiness
+    DatabaseFieldsStore <|.. DatabaseRepository
+    DatabaseReadiness <|.. DatabaseActiveWaiter
     DeleteResourceStep --> ResourceRepository
     CreateResourceStep --> CompletionWaiter
-    UpdateResourceStep --> CompletionWaiter
     DeleteResourceStep --> CompletionWaiter
     CompletionWaiter <|.. ActionCompletionWaiter
     CompletionWaiter <|.. DatabaseActiveWaiter
-    ResourceRepository <|.. DatabaseRepository
     ResourceRepository <|.. CrdbRepository
     ResourceRepository <|.. EndpointRepository
     EndpointRepository <|-- UserRepository
     EndpointRepository <|-- RoleRepository
     EndpointRepository <|-- AclRepository
+    EndpointRepository <|-- DatabaseLifecycle
     DatabaseRepository --> RelayClient
     CrdbRepository --> RelayClient
     EndpointRepository --> ResourceEndpoint
     ResourceEndpoint --> RelayClient
     CreateResourceStep --> ClusterCredentialsProvider
-    UpdateResourceStep --> ClusterCredentialsProvider
+    DatabaseUpdate --> ClusterCredentialsProvider
     DeleteResourceStep --> ClusterCredentialsProvider
     RelayClient --> ClusterRegistry
     PlacementStrategy <|.. PriorityPlacement
@@ -860,8 +881,9 @@ classDiagram
 התוצאה ששמר. מכיוון שה-Saga מסמן צעד שבוטל כ-`compensated`, הוא לא יריץ את הביטול שוב.
 
 **איך זה מונע קוד כפול:**
-- **שלושה צעדים גנריים מכסים את כל המשאבים.** `CreateResourceStep`, `UpdateResourceStep` ו-`DeleteResourceStep`
-  עובדים על כל `ResourceRepository`. ACL, role, user, DB ו-CRDB לא צריכים מחלקות צעד משלהם.
+- **צעד יצירה אחד לכל המשאבים.** `CreateResourceStep` (וגם `DeleteResourceStep` כשייבנה) עובד על כל
+  `ResourceRepository`. ACL, role, user ו-DB לא צריכים מחלקת צעד משלהם. עדכון DB הוא צעד משלו (`DatabaseUpdate`),
+  כי הוא שומר snapshot של השדות ומחכה ל-`active`.
 - **הפיצוי של יצירה הוא אותו `delete`** שמשמש את פעולת המחיקה, והפיצוי של עדכון הוא אותו `update`.
 - **הצעד לא מחכה בעצמו ולא יודע איך מחכים.** הוא מקבל `CompletionWaiter`: ב-user, role ו-ACL דרך ה-action
   (`ActionCompletionWaiter`), וב-DB דרך `status: active` ו-404 (`DatabaseActiveWaiter`). ה-repository רק מדבר עם
@@ -899,7 +921,7 @@ classDiagram
 | D2 | ~~סיסמה ישנה~~ **הוחלט:** ה-UI שולח את הסיסמה הישנה, וכך החלפת סיסמה הפיכה. במחיקת יוזר לא צריך אותה (7.6). | סעיף 5.3 |
 | D9 | ~~היקף בקשה~~ **הוחלט:** שתי בקשות מכילות כמה אובייקטים: היצירה הראשונה, ועריכת רשימת היוזרים של DB. עריכת DB נוגעת רק באובייקט ה-DB. כל בקשה יכולה לרוץ על כמה אתרים (AA). | סעיף 7.4, שאלה 10 ב-plan |
 | D3 | ~~הסרת הרשאה בביטול~~ **הוחלט:** הרשאות הן הכל או כלום. ה-`PUT` שולח את הרשימה המלאה, והביטול מחזיר את ה-snapshot. זה בטוח, כי לפי החוזה הרשאות לא נערכות יחד עם שינויים אחרים. | סעיף 5.6 |
-| D4 | ~~מצב Saga~~ **הוחלט:** Redis, גם לרישום וגם לנעילה. ממשק מהיום הראשון, ומימוש בזיכרון לפיתוח בשלב 1. | סעיף 9 |
+| D4 | ~~מצב Saga~~ **הוחלט:** Redis, גם לרישום וגם לנעילה. ממשק מהיום הראשון, ומימוש ב-Redis כבר משלב 1. | סעיף 9 |
 | D5 | ~~אחרי קריסה~~ **הוחלט:** לא ממשיכים ולא מבטלים. עוצרים להתערבות ידנית ומחזירים כישלון ברור. | סעיף 9 |
 | D6 | ~~כשל של פיצוי~~ **הוחלט:** ממשיכים לבטל את השאר. הפעולה מסומנת ככישלון, עם הודעה שלא הכל בוטל ועם רשימת מה שנכשל. | סעיף 8 |
 | D8 | ~~timeout ביצירת CRDB~~ **הוחלט:** cancel, וכישלון עם סטטוס "ממתין לניקוי". ה-task id נשמר, ושאילתת הסטטוס בודקת אם הניקוי הסתיים. | סעיף 5.5 |

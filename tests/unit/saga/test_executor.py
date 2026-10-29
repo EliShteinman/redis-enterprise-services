@@ -13,11 +13,11 @@ from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
-from redis_enterprise_services.saga.engine.retry import Sleeper
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
 from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.planned_step import BuildInput, PlannedStep
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
+from redis_enterprise_services.timing.sleeper import Sleeper
 
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]
@@ -490,6 +490,17 @@ def test_an_unexpected_error_needs_manual_intervention_and_keeps_the_lock(
     )
 
 
+def test_a_plan_with_two_pivots_is_refused(journal: list[str]) -> None:
+    with pytest.raises(expected_exception=InvalidPlanError):
+        SagaPlan(
+            steps=[
+                planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="first"),
+                planned(step=FakeStep(journal=journal, kind=StepKind.PIVOT), name="second"),
+            ],
+            lock_keys=LOCK_KEYS,
+        )
+
+
 def test_a_compensatable_step_after_the_pivot_is_refused(journal: list[str]) -> None:
     with pytest.raises(expected_exception=InvalidPlanError):
         SagaPlan(
@@ -686,6 +697,20 @@ def test_a_failure_after_a_kept_result_that_did_not_happen_is_compensated(
     record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
 
     assert (record.status, journal[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
+
+
+def test_an_unknown_outcome_after_a_kept_result_that_is_not_found_needs_manual_intervention(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then unknown"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert (record.status, step.compensated, lock.held_by) == (
+        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        0,
+        SAGA_ID,
+    )
 
 
 def test_a_pivot_that_kept_a_result_and_failed_needs_manual_intervention(

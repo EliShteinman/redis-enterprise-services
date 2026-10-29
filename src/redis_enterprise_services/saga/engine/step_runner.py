@@ -8,9 +8,10 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
-from redis_enterprise_services.saga.engine.retry import Sleeper, pause
+from redis_enterprise_services.saga.engine.retry import pause
 from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.runnable import PreparedStep, RunnableStep
+from redis_enterprise_services.timing.sleeper import Sleeper
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -93,7 +94,7 @@ class StepRunner:
             case Check.MANUAL:
                 return StepOutcome.MANUAL
             case Check.NOT_FOUND:
-                return StepOutcome.FAILED if step.has_result and failure is not Failure.TRANSIENT else None
+                return not_found_outcome(step=step, failure=failure)
 
     def _attempt(self, *, step: PreparedStep, recorder: StepRecorder) -> Failure | None:
         try:
@@ -113,6 +114,15 @@ class StepRunner:
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL
+
+
+def not_found_outcome(*, step: PreparedStep, failure: Failure) -> StepOutcome | None:
+    if not step.has_result or failure is Failure.TRANSIENT:
+        return None
+    if failure is Failure.UNKNOWN:
+        logger.error(msg=f"step {step.key} kept a result, and its unknown outcome was not found")
+        return StepOutcome.MANUAL
+    return StepOutcome.FAILED
 
 
 def manual_if_cannot_undo(*, step: PreparedStep, outcome: StepOutcome) -> StepOutcome:

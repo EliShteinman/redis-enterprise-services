@@ -2,8 +2,6 @@ import json
 import logging
 
 import requests
-import urllib3
-from urllib3.exceptions import InsecureRequestWarning
 
 from redis_enterprise_services.config.edge_settings import EdgeSettings, NetworkSettings
 from redis_enterprise_services.edge.encoding import TEXT_ENCODING
@@ -17,11 +15,10 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class EdgeClient:
-    def __init__(self, *, settings: EdgeSettings) -> None:
-        urllib3.disable_warnings(category=InsecureRequestWarning)
+    def __init__(self, *, settings: EdgeSettings, headers: EdgeHeaders, reader: EdgeResponseReader) -> None:
         self._settings: EdgeSettings = settings
-        self._headers: EdgeHeaders = EdgeHeaders(settings=settings)
-        self._reader: EdgeResponseReader = EdgeResponseReader(settings=settings)
+        self._headers: EdgeHeaders = headers
+        self._reader: EdgeResponseReader = reader
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
         endpoint: NetworkSettings = self._network(name=network)

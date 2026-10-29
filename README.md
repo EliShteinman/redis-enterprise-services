@@ -11,7 +11,7 @@ uv run pre-commit install
 
 ## Running
 
-Locally, from the project root:
+Locally, from the project root (host and port come from `config/server.yaml`):
 
 ```bash
 uv run python run.py
