@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -16,7 +17,7 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class DatabaseUpdateInput(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     cluster: ClusterAddress
     uid: int
@@ -28,11 +29,11 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         self,
         *,
         repository: DatabaseFieldsStore,
-        active_waiter: DatabaseReadiness,
+        readiness: DatabaseReadiness,
         credentials: ClusterCredentialsProvider,
     ) -> None:
         self._repository: DatabaseFieldsStore = repository
-        self._active_waiter: DatabaseReadiness = active_waiter
+        self._readiness: DatabaseReadiness = readiness
         self._credentials: ClusterCredentialsProvider = credentials
 
     @property
@@ -55,7 +56,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
         if current.values != step_input.values:
             return None
-        self._active_waiter.wait(target=self._target(step_input=step_input), uid=step_input.uid)
+        self._readiness.wait(target=self._target(step_input=step_input), uid=step_input.uid)
         return kept
 
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
@@ -78,7 +79,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         self._repository.update(
             target=target, uid=step_input.uid, values=values, cluster_state_id=cluster_state_id
         )
-        self._active_waiter.wait(target=target, uid=step_input.uid)
+        self._readiness.wait(target=target, uid=step_input.uid)
 
     def _target(self, *, step_input: DatabaseUpdateInput) -> ClusterTarget:
         return self._credentials.target_for(address=step_input.cluster)

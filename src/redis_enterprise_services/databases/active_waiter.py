@@ -15,9 +15,9 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class DatabaseActiveWaiter(DatabaseReadiness):
     def __init__(
-        self, *, repository: DatabaseFieldsReader, settings: DatabaseSettings, cluster: ClusterSettings
+        self, *, fields: DatabaseFieldsReader, settings: DatabaseSettings, cluster: ClusterSettings
     ) -> None:
-        self._repository: DatabaseFieldsReader = repository
+        self._fields: DatabaseFieldsReader = fields
         self._settings: DatabaseSettings = settings
         self._cluster: ClusterSettings = cluster
 
@@ -31,7 +31,7 @@ class DatabaseActiveWaiter(DatabaseReadiness):
 
     def _is_active(self, *, target: ClusterTarget, uid: int) -> bool:
         status_field: str = self._cluster.fields.status
-        values: dict[str, JsonValue] = self._repository.get_fields(
+        values: dict[str, JsonValue] = self._fields.get_fields(
             target=target, uid=uid, fields=[status_field]
         ).values
         status: JsonValue = values[status_field]

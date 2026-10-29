@@ -43,10 +43,6 @@ class EdgeResponseReader:
         codes: EdgeErrorCodeSettings = self._settings.error_codes
         message: str = f"relay answered {response.status_code} {code}: {response.text}"
         logger.warning(msg=message)
-        if code == codes.invalid_request:
-            return InvalidEdgeRequestError(message=message)
-        if code == codes.connection_failed:
-            return RequestNotSentError(message=message)
         if code == codes.response_rejected:
             return ResponseRejectedError(
                 message=message,
@@ -54,7 +50,11 @@ class EdgeResponseReader:
                     headers=response.headers, name=self._settings.headers.cluster_status
                 ),
             )
-        return OutcomeUnknownError(message=message)
+        by_code: dict[str, type[EdgeError]] = {
+            codes.invalid_request: InvalidEdgeRequestError,
+            codes.connection_failed: RequestNotSentError,
+        }
+        return by_code.get(code, OutcomeUnknownError)(message=message)
 
     @staticmethod
     def _body(*, response: requests.Response) -> JsonValue | None:

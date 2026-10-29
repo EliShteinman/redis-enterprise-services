@@ -45,3 +45,9 @@ class SagaRecord(BaseModel):
     saga_id: str
     status: SagaStatus = SagaStatus.RUNNING
     steps: list[StepRecord]
+
+    def stop_running(self) -> None:
+        self.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
+        for step in self.steps:
+            if step.status is StepStatus.RUNNING:
+                step.status = StepStatus.UNRESOLVED

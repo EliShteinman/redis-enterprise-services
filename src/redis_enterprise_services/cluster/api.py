@@ -13,8 +13,8 @@ from redis_enterprise_services.exceptions.cluster import ClusterRequestError
 
 
 class ClusterApi(ClusterCaller):
-    def __init__(self, *, edge_client: EdgeTransport, settings: ClusterSettings) -> None:
-        self._edge_client: EdgeTransport = edge_client
+    def __init__(self, *, transport: EdgeTransport, settings: ClusterSettings) -> None:
+        self._transport: EdgeTransport = transport
         self._settings: ClusterSettings = settings
 
     def send(
@@ -35,7 +35,7 @@ class ClusterApi(ClusterCaller):
             body=body,
             cluster_state_id=cluster_state_id,
         )
-        response: ClusterResponse = self._edge_client.send(network=target.network, request=request)
+        response: ClusterResponse = self._transport.send(network=target.network, request=request)
         if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise self._cluster_error(response=response)
         return ClusterAnswer(body=response.body, cluster_state_id=response.cluster_state_id)

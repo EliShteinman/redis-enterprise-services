@@ -4,7 +4,6 @@ from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.models import ObtainedBy
-from redis_enterprise_services.saga.engine.describe import describe
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
 from redis_enterprise_services.saga.engine.retry import pause
 from redis_enterprise_services.saga.plan.runnable import PreparedStep
@@ -28,20 +27,26 @@ class Compensator:
         if step.obtained_by is ObtainedBy.FOUND:
             logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
         recorder.compensating()
-        error_message: str = ""
+        last_error: str | None = self._last_error_of_attempts(step=step)
+        if last_error is None:
+            logger.info(msg=f"step {step.key} compensated")
+            recorder.compensated()
+            return True
+        logger.error(msg=f"compensation of {step.key} gave up: {last_error}")
+        recorder.compensation_failed(error=last_error)
+        return False
+
+    def _last_error_of_attempts(self, *, step: PreparedStep) -> str | None:
         attempts: int = self._settings.compensation_retry.attempts
+        last_error: str | None = None
         for attempt in range(1, attempts + 1):
             try:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
-                logger.warning(msg=f"compensation of {step.key} failed: {error.code}: {error.message}")
-                error_message = describe(error=error)
+                last_error = error.describe()
+                logger.warning(msg=f"compensation of {step.key} failed: {last_error}")
                 if attempt < attempts:
                     pause(retry=self._settings.compensation_retry, attempt=attempt)
                 continue
-            logger.info(msg=f"step {step.key} compensated")
-            recorder.compensated()
-            return True
-        logger.error(msg=f"compensation of {step.key} gave up: {error_message}")
-        recorder.compensation_failed(error=error_message)
-        return False
+            return None
+        return last_error
