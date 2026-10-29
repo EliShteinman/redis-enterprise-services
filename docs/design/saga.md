@@ -694,16 +694,32 @@ classDiagram
         +target_for(address) ClusterTarget
     }
     class SagaExecutor {
-        +run(plan) SagaRecord
-        -compensate_completed(record) None
-        -retry_forward(record) None
+        +run(saga_id, plan) SagaRecord
     }
-    class RetryPolicy
+    class StepRunner {
+        +run(step, context, recorder) StepOutcome
+    }
+    class Compensator {
+        +compensate(steps) bool
+    }
+    class FailureClassifier {
+        <<interface>>
+        +classify(error) Failure
+        +classify_lookup(error) Failure
+    }
+    class ClusterFailureClassifier
     class SagaStateRepository {
         <<interface>>
         +save(record) None
-        +find_unfinished() list~SagaRecord~
+        +finish(record) None
     }
+    class DatabaseLock {
+        <<interface>>
+        +acquire(keys, owner) None
+        +release(keys, owner) None
+    }
+    class RedisSagaState
+    class RedisDatabaseLock
 
     class CreateResourceStep
     class UpdateResourceStep
@@ -759,7 +775,13 @@ classDiagram
 
     SagaExecutor --> SagaPlan
     SagaExecutor --> SagaStateRepository
-    SagaExecutor --> RetryPolicy
+    SagaExecutor --> DatabaseLock
+    SagaExecutor --> StepRunner
+    SagaExecutor --> Compensator
+    StepRunner --> FailureClassifier
+    FailureClassifier <|.. ClusterFailureClassifier
+    SagaStateRepository <|.. RedisSagaState
+    DatabaseLock <|.. RedisDatabaseLock
     SagaPlan o-- PlannedStep
     PlannedStep --> SagaStep
     PlannedStep --> SagaContext
