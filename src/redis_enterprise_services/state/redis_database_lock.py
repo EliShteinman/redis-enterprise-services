@@ -14,7 +14,7 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 ACQUIRE_ALL: str = """
 for _, key in ipairs(KEYS) do
     local holder = redis.call('GET', key)
-    if holder then
+    if holder and holder ~= ARGV[1] then
         return holder
     end
 end
@@ -57,9 +57,7 @@ class RedisDatabaseLock(DatabaseLock):
 
     def release(self, *, keys: list[str], owner: str) -> None:
         released: int = self._release_owned(keys=self._lock_keys(keys=keys), args=[owner])
-        if released < len(keys):
-            logger.warning(msg=f"{owner} held only {released} of {keys}")
-        logger.info(msg=f"{keys} released by {owner}")
+        logger.info(msg=f"{released} of {keys} released by {owner}")
 
     def _lock_keys(self, *, keys: list[str]) -> list[str]:
         return [self._keys.lock(key=key) for key in keys]
