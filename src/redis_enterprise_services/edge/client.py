@@ -15,11 +15,10 @@ from redis_enterprise_services.exceptions.configuration import ConfigurationErro
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-urllib3.disable_warnings(category=InsecureRequestWarning)
-
 
 class EdgeClient:
     def __init__(self, *, settings: EdgeSettings) -> None:
+        urllib3.disable_warnings(category=InsecureRequestWarning)
         self._settings: EdgeSettings = settings
         self._headers: EdgeHeaders = EdgeHeaders(settings=settings)
         self._reader: EdgeResponseReader = EdgeResponseReader(settings=settings)
@@ -33,7 +32,7 @@ class EdgeClient:
                 headers=self._headers.build(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
-                verify=False,  # noqa: S501 - the firewall uses internal certificates, not checked for now (C0e)
+                verify=False,  # noqa: S501
             )
         except requests.RequestException as error:
             raise transport_error(network=network, error=error) from error
