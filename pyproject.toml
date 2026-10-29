@@ -18,6 +18,7 @@ dependencies = [
     "opentelemetry-sdk>=1.45.1",
     "pydantic>=2.14.1",
     "pydantic-settings[yaml]>=2.16.1",
+    "redis>=8.1.0",
     "requests>=2.34.2",
     "urllib3>=2.8.0",
     "uvicorn[standard]>=0.54.0",
