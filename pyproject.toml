@@ -147,6 +147,27 @@ source_modules = [
     "redis_enterprise_services.roles",
     "redis_enterprise_services.acls",
     "redis_enterprise_services.steps",
+    "redis_enterprise_services.api",
 ]
 forbidden_modules = ["redis_enterprise_services.edge"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "layers use interfaces; only the app builds the concrete classes"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.steps",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+    "redis_enterprise_services.api",
+]
+forbidden_modules = [
+    "redis_enterprise_services.edge.client",
+    "redis_enterprise_services.cluster.api",
+    "redis_enterprise_services.cluster.actions",
+    "redis_enterprise_services.resources.endpoint",
+    "redis_enterprise_services.databases.repository",
+    "redis_enterprise_services.databases.active_waiter",
+]
 allow_indirect_imports = true
