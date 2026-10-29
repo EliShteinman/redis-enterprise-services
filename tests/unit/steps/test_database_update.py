@@ -8,9 +8,9 @@ from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarg
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.databases.update import DatabaseUpdate, DatabaseUpdateInput
 from redis_enterprise_services.edge.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
+from redis_enterprise_services.steps.database_update import DatabaseUpdate, DatabaseUpdateInput
 
 UID: int = 1
 CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
