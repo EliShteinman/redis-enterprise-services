@@ -7,7 +7,6 @@ from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.engine.describe import describe
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
 from redis_enterprise_services.saga.engine.retry import pause
 from redis_enterprise_services.saga.plan.context import SagaContext
@@ -88,7 +87,7 @@ class StepRunner:
             step.execute(on_kept=recorder.kept)
         except RedisEnterpriseServicesError as error:
             logger.warning(msg=f"step {step.key} failed: {error.code}: {error.message}")
-            recorder.failed_attempt(error=describe(error=error))
+            recorder.failed_attempt(error=error.describe())
             return self._classifier.classify(error=error)
         return None
 
@@ -97,7 +96,7 @@ class StepRunner:
             return StepOutcome.DONE if step.resolve(on_kept=recorder.kept) else None
         except RedisEnterpriseServicesError as error:
             logger.error(msg=f"checking step {step.key} failed: {error.code}: {error.message}")
-            recorder.failed_attempt(error=describe(error=error))
+            recorder.failed_attempt(error=error.describe())
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return StepOutcome.FAILED
             return StepOutcome.MANUAL

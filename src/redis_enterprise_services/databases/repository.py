@@ -22,12 +22,11 @@ class DatabaseRepository(DatabaseFieldsStore):
         self._cluster: ClusterSettings = cluster
 
     def get_fields(self, *, target: ClusterTarget, uid: int, fields: list[str]) -> DatabaseFields:
-        fields_query: FieldsQuerySettings = self._cluster.fields_query
-        query: str = urlencode(
-            query={fields_query.name: fields_query.separator.join(fields)}, safe=fields_query.separator
-        )
         response: ClusterAnswer = self._api.send(
-            target=target, method="GET", path=self._settings.path.format(uid=uid), query=query
+            target=target,
+            method="GET",
+            path=self._settings.path.format(uid=uid),
+            query=self._query(fields=fields),
         )
         try:
             return DatabaseFields.model_validate(
@@ -37,6 +36,12 @@ class DatabaseRepository(DatabaseFieldsStore):
             raise UnreadableAnswerError(
                 message=f"database {uid} answered with unreadable fields {failed_fields(error=error)}"
             ) from error
+
+    def _query(self, *, fields: list[str]) -> str:
+        fields_query: FieldsQuerySettings = self._cluster.fields_query
+        return urlencode(
+            query={fields_query.name: fields_query.separator.join(fields)}, safe=fields_query.separator
+        )
 
     def update(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int

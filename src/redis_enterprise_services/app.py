@@ -15,6 +15,7 @@ from redis_enterprise_services.api.error_handlers import (
     project_error_handler,
 )
 from redis_enterprise_services.api.middleware.unexpected_errors import UnexpectedErrorMiddleware
+from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
@@ -25,21 +26,25 @@ def create_app() -> FastAPI:
     settings: Settings = load_settings()
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
     app.state.settings = settings
-    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, settings=settings.api)
-    app.add_exception_handler(
-        exc_class_or_status_code=RedisEnterpriseServicesError,
-        handler=cast("ExceptionHandler", project_error_handler),
-    )
-    app.add_exception_handler(
-        exc_class_or_status_code=RequestValidationError,
-        handler=cast("ExceptionHandler", ValidationErrorHandler(settings=settings.api)),
-    )
-    app.add_exception_handler(
-        exc_class_or_status_code=HTTPException, handler=cast("ExceptionHandler", http_error_handler)
-    )
+    add_error_handling(app=app, settings=settings.api)
     app.include_router(router=health.router)
     FastAPIInstrumentor.instrument_app(app=app)
     return app
+
+
+def add_error_handling(*, app: FastAPI, settings: ApiSettings) -> None:
+    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, settings=settings)
+    app.add_exception_handler(
+        exc_class_or_status_code=RedisEnterpriseServicesError,
+        handler=cast(ExceptionHandler, project_error_handler),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=RequestValidationError,
+        handler=cast(ExceptionHandler, ValidationErrorHandler(settings=settings)),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=HTTPException, handler=cast(ExceptionHandler, http_error_handler)
+    )
 
 
 @asynccontextmanager
