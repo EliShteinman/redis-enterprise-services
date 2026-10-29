@@ -14,7 +14,6 @@ edge:
   error_codes:
     invalid_request: invalid_request
     connection_failed: connection_failed
-    timeout: timeout
     response_rejected: response_rejected
   networks:
     local:

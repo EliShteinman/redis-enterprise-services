@@ -16,7 +16,6 @@ class EdgeHeaderSettings(BaseModel):
 class EdgeErrorCodeSettings(BaseModel):
     invalid_request: str
     connection_failed: str
-    timeout: str
     response_rejected: str
 
 
