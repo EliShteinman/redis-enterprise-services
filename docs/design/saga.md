@@ -677,33 +677,70 @@ classDiagram
         RETRIABLE
     }
     class SagaPlan {
-        +steps: list~PlannedStep~
-        +validate_order() None
+        +steps: list~RunnableStep~
+        +lock_keys: list~str~
+    }
+    class RunnableStep {
+        <<abstract>>
+        +key: str
+        +kind: StepKind
+        +has_result: bool
+        +obtained_by: ObtainedBy
+        +prepare(context) JsonValue
+        +execute(on_kept) None
+        +resolve(on_kept) bool
+        +compensate() None
     }
     class PlannedStep {
-        +key: str
         +step: SagaStep
         +build_input(context) TInput
     }
+    class StepRecorder {
+        +started(step_input) None
+        +kept(result, obtained_by) None
+        +failed_attempt(error) None
+        +done() None
+        +failed() None
+        +unresolved() None
+        +compensating() None
+        +compensated() None
+        +compensation_failed(error) None
+    }
     class SagaContext {
         +keep(key, result) None
-        +get(key) result
+        +result_of(key, result_type) TResult
     }
     class ClusterCredentialsProvider {
         <<interface>>
         +target_for(address) ClusterTarget
     }
     class SagaExecutor {
-        +run(plan) SagaRecord
-        -compensate_completed(record) None
-        -retry_forward(record) None
+        +run(saga_id, plan) SagaRecord
     }
-    class RetryPolicy
+    class StepRunner {
+        +run(step, context, recorder) StepOutcome
+    }
+    class Compensator {
+        +compensate(steps) bool
+    }
+    class FailureClassifier {
+        <<interface>>
+        +classify(error) Failure
+        +classify_lookup(error) Failure
+    }
+    class ClusterFailureClassifier
     class SagaStateRepository {
         <<interface>>
         +save(record) None
-        +find_unfinished() list~SagaRecord~
+        +finish(record) None
     }
+    class DatabaseLock {
+        <<interface>>
+        +acquire(keys, owner) None
+        +release(keys, owner) None
+    }
+    class RedisSagaState
+    class RedisDatabaseLock
 
     class CreateResourceStep
     class UpdateResourceStep
@@ -759,8 +796,18 @@ classDiagram
 
     SagaExecutor --> SagaPlan
     SagaExecutor --> SagaStateRepository
-    SagaExecutor --> RetryPolicy
-    SagaPlan o-- PlannedStep
+    SagaExecutor --> DatabaseLock
+    SagaExecutor --> StepRunner
+    SagaExecutor --> Compensator
+    StepRunner --> FailureClassifier
+    FailureClassifier <|.. ClusterFailureClassifier
+    SagaStateRepository <|.. RedisSagaState
+    DatabaseLock <|.. RedisDatabaseLock
+    SagaPlan o-- RunnableStep
+    RunnableStep <|-- PlannedStep
+    StepRunner --> StepRecorder
+    Compensator --> RunnableStep
+    Compensator --> StepRecorder
     PlannedStep --> SagaStep
     PlannedStep --> SagaContext
     SagaStep --> StepKind
