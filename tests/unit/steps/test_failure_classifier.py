@@ -16,7 +16,7 @@ from redis_enterprise_services.exceptions.edge import (
     RequestNotSentError,
     ResponseRejectedError,
 )
-from redis_enterprise_services.saga.failure import Failure
+from redis_enterprise_services.saga.contract.failure import Failure
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 
 CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=frozenset({"busy"}))

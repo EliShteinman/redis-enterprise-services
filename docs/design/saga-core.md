@@ -216,6 +216,14 @@ PlannedStep(
 קטגוריות: זמנית, נכשלה, תוצאה לא ידועה, התערבות ידנית. המימוש לקלאסטר הוא `ClusterFailureClassifier`
 (`steps/failure_classifier.py`), לפי הטבלה בסעיף 4. התיקייה `saga/` לא מייבאת שום שגיאה של הקלאסטר או של שירות הקצה.
 
+**שלוש תיקיות, בכיוון אחד:**
+
+| תיקייה | מה יש בה | מייבאת |
+|---|---|---|
+| `saga/contract/` | מה שמבחוץ מממשים או מקבלים: `SagaStep`, `StepKind`, `KeepResult`, `Failure` ו-`FailureClassifier`, `DatabaseLock`, `SagaStateRepository`, וה-record | כלום מתוך `plan` או `engine` |
+| `saga/plan/` | בניית התוכנית: `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
+| `saga/engine/` | ההרצה: `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder`, וההמתנה בין ניסיונות | `contract`, `plan` |
+
 ## 6. ספרייה או מימוש שלנו
 
 **מה ספרייה נותנת:** בעיקר המשך אוטומטי אחרי קריסה (durable execution). אצלנו הוחלט שאחרי קריסה **לא ממשיכים

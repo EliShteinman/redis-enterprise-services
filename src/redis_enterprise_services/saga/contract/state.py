@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from redis_enterprise_services.saga.models import SagaRecord
+from redis_enterprise_services.saga.contract.models import SagaRecord
 
 
 class SagaStateRepository(Protocol):

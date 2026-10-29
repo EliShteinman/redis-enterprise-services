@@ -1,6 +1,6 @@
 from redis_enterprise_services.exceptions.saga import InvalidPlanError
-from redis_enterprise_services.saga.kind import StepKind
-from redis_enterprise_services.saga.runnable import RunnableStep
+from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.plan.runnable import RunnableStep
 
 KIND_ORDER: dict[StepKind, int] = {StepKind.COMPENSATABLE: 0, StepKind.PIVOT: 1, StepKind.RETRIABLE: 2}
 

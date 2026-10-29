@@ -2,9 +2,9 @@ from typing import Protocol
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.saga.context import SagaContext
-from redis_enterprise_services.saga.kind import StepKind
-from redis_enterprise_services.saga.models import ObtainedBy
+from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.models import ObtainedBy
+from redis_enterprise_services.saga.plan.context import SagaContext
 
 
 class OnKept(Protocol):

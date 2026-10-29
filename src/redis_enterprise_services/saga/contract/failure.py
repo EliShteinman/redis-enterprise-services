@@ -15,7 +15,3 @@ class FailureClassifier(Protocol):
     def classify(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
 
     def classify_lookup(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
-
-
-def describe(*, error: RedisEnterpriseServicesError) -> str:
-    return f"{error.code}: {error.message}"
