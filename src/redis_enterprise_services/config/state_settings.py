@@ -14,6 +14,5 @@ class StateSettings(BaseModel):
     prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
     socket_timeout_seconds: PositiveFloat
-    command_retries: NonNegativeInt
     finished_ttl_seconds: PositiveInt
     lock: LockSettings
