@@ -6,6 +6,7 @@ database:
     - name
   active_status: active
   creation_failed_status: creation-failed
+  default_tags: []
   wait:
     interval_seconds: 1
     timeout_seconds: 120
