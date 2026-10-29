@@ -33,15 +33,15 @@ def repository() -> MagicMock:
 
 
 @pytest.fixture
-def active_waiter() -> MagicMock:
+def readiness() -> MagicMock:
     return create_autospec(spec=DatabaseReadiness, instance=True)
 
 
 @pytest.fixture
-def update(repository: MagicMock, active_waiter: MagicMock) -> DatabaseUpdate:
+def update(repository: MagicMock, readiness: MagicMock) -> DatabaseUpdate:
     return DatabaseUpdate(
         repository=repository,
-        readiness=active_waiter,
+        readiness=readiness,
         credentials=SharedCredentialsProvider(credentials=CREDENTIALS),
     )
 
@@ -73,11 +73,11 @@ def test_execute_puts_the_new_values_with_the_snapshot_state_id(
 
 
 def test_execute_waits_for_active_after_the_put(
-    repository: MagicMock, active_waiter: MagicMock, update: DatabaseUpdate
+    repository: MagicMock, readiness: MagicMock, update: DatabaseUpdate
 ) -> None:
     steps: MagicMock = MagicMock()
     steps.attach_mock(mock=repository.update, attribute="update")
-    steps.attach_mock(mock=active_waiter.wait, attribute="wait")
+    steps.attach_mock(mock=readiness.wait, attribute="wait")
 
     run(update=update)
 
@@ -135,13 +135,13 @@ def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
 
 
 def test_find_outcome_waits_for_active_before_reporting_the_update_done(
-    repository: MagicMock, active_waiter: MagicMock, update: DatabaseUpdate
+    repository: MagicMock, readiness: MagicMock, update: DatabaseUpdate
 ) -> None:
     repository.get_fields.side_effect = [CURRENT]
 
     update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT)
 
-    active_waiter.wait.assert_called_once_with(target=TARGET, uid=UID)
+    readiness.wait.assert_called_once_with(target=TARGET, uid=UID)
 
 
 def test_compensate_skips_the_put_when_the_old_values_are_still_there(

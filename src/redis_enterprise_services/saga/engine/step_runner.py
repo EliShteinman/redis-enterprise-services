@@ -28,13 +28,6 @@ class Check(StrEnum):
     MANUAL = "manual"
 
 
-CHECK_OUTCOMES: dict[Check, StepOutcome] = {
-    Check.FOUND: StepOutcome.DONE,
-    Check.FAILED: StepOutcome.FAILED,
-    Check.MANUAL: StepOutcome.MANUAL,
-}
-
-
 class StepRunner:
     def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier) -> None:
         self._settings: SagaSettings = settings
@@ -91,16 +84,21 @@ class StepRunner:
             return StepOutcome.MANUAL
         if failure is not Failure.UNKNOWN and not step.has_result:
             return StepOutcome.FAILED if failure is Failure.FAILED else None
-        checked: Check = self._check(step=step, recorder=recorder)
-        if checked is not Check.NOT_FOUND:
-            return CHECK_OUTCOMES[checked]
-        return StepOutcome.FAILED if step.has_result and failure is not Failure.TRANSIENT else None
+        match self._check(step=step, recorder=recorder):
+            case Check.FOUND:
+                return StepOutcome.DONE
+            case Check.FAILED:
+                return StepOutcome.FAILED
+            case Check.MANUAL:
+                return StepOutcome.MANUAL
+            case Check.NOT_FOUND:
+                return StepOutcome.FAILED if step.has_result and failure is not Failure.TRANSIENT else None
 
     def _attempt(self, *, step: PreparedStep, recorder: StepRecorder) -> Failure | None:
         try:
             step.execute(on_kept=recorder.kept)
         except RedisEnterpriseServicesError as error:
-            logger.warning(msg=f"step {step.key} failed: {error.code}: {error.message}")
+            logger.warning(msg=f"step {step.key} failed: {error.describe()}")
             recorder.failed_attempt(error=error.describe())
             return self._classifier.classify(error=error)
         return None
@@ -109,7 +107,7 @@ class StepRunner:
         try:
             return Check.FOUND if step.resolve(on_kept=recorder.kept) else Check.NOT_FOUND
         except RedisEnterpriseServicesError as error:
-            logger.error(msg=f"checking step {step.key} failed: {error.code}: {error.message}")
+            logger.error(msg=f"checking step {step.key} failed: {error.describe()}")
             recorder.failed_attempt(error=error.describe())
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED

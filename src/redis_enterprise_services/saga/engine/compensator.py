@@ -43,8 +43,8 @@ class Compensator:
             try:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
-                logger.warning(msg=f"compensation of {step.key} failed: {error.describe()}")
                 last_error = error.describe()
+                logger.warning(msg=f"compensation of {step.key} failed: {last_error}")
                 if attempt < attempts:
                     pause(retry=self._settings.compensation_retry, attempt=attempt)
                 continue
