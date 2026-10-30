@@ -8,7 +8,7 @@ from redis_enterprise_services.databases.new_database import NewDatabase
 class DatabaseUserRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1)
+    name: str = Field(pattern=r"^[^-]+$")
     password: str = Field(min_length=1)
     acl: str = Field(min_length=1)
 
