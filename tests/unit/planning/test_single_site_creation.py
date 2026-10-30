@@ -83,6 +83,13 @@ def test_the_plan_locks_the_database_name_on_its_cluster() -> None:
     assert plan(users=[]).lock_keys == ["c1/orders"]
 
 
+def test_each_acl_is_named_from_the_config_and_carries_the_requested_rules() -> None:
+    assert inputs_after_earlier_steps()["acl/report"] == {
+        "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
+        "spec": {"name": "orders-report-acl", "acl": "+@read ~orders:*"},
+    }
+
+
 def test_each_role_is_limited_to_the_new_database() -> None:
     assert inputs_after_earlier_steps()["role/report"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
@@ -113,3 +120,17 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
 def test_a_user_requested_twice_is_refused() -> None:
     with pytest.raises(expected_exception=ValidationError):
         DatabaseRequest(database=DATABASE, users=[USERS[0], USERS[0]])
+
+
+@pytest.mark.parametrize(
+    argnames="template",
+    argvalues=[
+        pytest.param("{db}-{user}-acl", id="unknown placeholder"),
+        pytest.param("{database}-acl", id="same name for every user"),
+    ],
+)
+def test_a_name_template_that_does_not_name_each_user_is_refused(template: str) -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        DecompositionSettings(
+            acl_name=template, role_name="{database}-{user}-role", role_management="db_viewer"
+        )

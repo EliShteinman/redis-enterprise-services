@@ -7,6 +7,7 @@ from redis_enterprise_services.config.decomposition_settings import Decompositio
 from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.databases.role_permission import ROLES_PERMISSIONS_FIELD, RolePermission
 from redis_enterprise_services.planning.database_request import DatabaseUserRequest
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.roles.models import NewRole
@@ -108,11 +109,11 @@ class SingleSiteCreationPlanner:
                 cluster=address,
                 uid=uid_of(context=context, key=DATABASE_KEY),
                 values={
-                    "roles_permissions": [
-                        {
-                            "role_uid": uid_of(context=context, key=role_key(user=user)),
-                            "redis_acl_uid": uid_of(context=context, key=acl_key(user=user)),
-                        }
+                    ROLES_PERMISSIONS_FIELD: [
+                        RolePermission(
+                            role_uid=uid_of(context=context, key=role_key(user=user)),
+                            redis_acl_uid=uid_of(context=context, key=acl_key(user=user)),
+                        ).model_dump(mode="json")
                         for user in users
                     ]
                 },
