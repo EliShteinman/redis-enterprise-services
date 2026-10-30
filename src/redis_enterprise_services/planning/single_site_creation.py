@@ -65,41 +65,54 @@ class SingleSiteCreationPlanner:
     def _user_steps(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> list[RunnableStep]:
+        return [
+            self._acl_step(address=address, database=database, user=user),
+            self._role_step(address=address, database=database, user=user),
+            self._user_step(address=address, user=user),
+        ]
+
+    def _acl_step(
+        self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
+    ) -> RunnableStep:
         acl_name: str = self._name(template=self._settings.acl_name, database=database, user=user)
         acl: NewAcl = NewAcl(name=acl_name, acl=user.acl)
+        return PlannedStep(
+            key=acl_key(user=user),
+            step=self._create_acl,
+            build_input=lambda context: CreateResourceInput(cluster=address, spec=acl),
+        )
+
+    def _role_step(
+        self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
+    ) -> RunnableStep:
         role_name: str = self._name(template=self._settings.role_name, database=database, user=user)
         management: RoleManagement = self._settings.role_management
-        return [
-            PlannedStep(
-                key=acl_key(user=user),
-                step=self._create_acl,
-                build_input=lambda context: CreateResourceInput(cluster=address, spec=acl),
-            ),
-            PlannedStep(
-                key=role_key(user=user),
-                step=self._create_role,
-                build_input=lambda context: CreateResourceInput(
-                    cluster=address,
-                    spec=NewRole(
-                        name=role_name,
-                        management=management,
-                        database_uids=[uid_of(context=context, key=DATABASE_KEY)],
-                    ),
+        return PlannedStep(
+            key=role_key(user=user),
+            step=self._create_role,
+            build_input=lambda context: CreateResourceInput(
+                cluster=address,
+                spec=NewRole(
+                    name=role_name,
+                    management=management,
+                    database_uids=[uid_of(context=context, key=DATABASE_KEY)],
                 ),
             ),
-            PlannedStep(
-                key=user_key(user=user),
-                step=self._create_user,
-                build_input=lambda context: CreateResourceInput(
-                    cluster=address,
-                    spec=NewUser(
-                        name=user.name,
-                        password=user.password,
-                        role_uids=[uid_of(context=context, key=role_key(user=user))],
-                    ),
+        )
+
+    def _user_step(self, *, address: ClusterAddress, user: DatabaseUserRequest) -> RunnableStep:
+        return PlannedStep(
+            key=user_key(user=user),
+            step=self._create_user,
+            build_input=lambda context: CreateResourceInput(
+                cluster=address,
+                spec=NewUser(
+                    name=user.name,
+                    password=user.password,
+                    role_uids=[uid_of(context=context, key=role_key(user=user))],
                 ),
             ),
-        ]
+        )
 
     def _permissions_step(self, *, address: ClusterAddress, users: list[DatabaseUserRequest]) -> RunnableStep:
         return PlannedStep(
