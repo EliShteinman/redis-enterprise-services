@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from redis_enterprise_services.roles.models import RoleManagement
+from redis_enterprise_services.config.role_management import RoleManagement
 
 
 class RoleResource(BaseModel):

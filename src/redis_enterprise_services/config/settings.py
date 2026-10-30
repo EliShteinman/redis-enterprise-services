@@ -13,6 +13,7 @@ from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.clusters_settings import ClusterList
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
             "config/server.yaml",
             "config/clusters.yaml",
             "config/database_defaults.yaml",
+            "config/decomposition.yaml",
         ),
         env_prefix="RES_",
         env_nested_delimiter="__",
@@ -61,6 +63,7 @@ class Settings(BaseSettings):
     server: ServerSettings
     clusters: ClusterList
     database_defaults: DatabaseDefaultsSettings
+    decomposition: DecompositionSettings
 
     @classmethod
     def settings_customise_sources(
