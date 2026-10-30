@@ -1,10 +1,7 @@
-from typing import Literal
-
 from pydantic import Field
 
+from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.resources.spec import NamedSpec
-
-type RoleManagement = Literal["db_viewer", "db_member"]
 
 
 class NewRole(NamedSpec):

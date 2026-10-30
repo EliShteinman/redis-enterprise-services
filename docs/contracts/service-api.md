@@ -96,12 +96,12 @@
 
 ### `body.users[]`
 
-| שדה | סוג | חובה | ברירת מחדל |
-|---|---|---|---|
-| `users` | list | | `[]` |
-| `users[].name` | str | ✅ | |
-| `users[].password` | str | ✅ | |
-| `users[].acl` | str | ✅ | |
+| שדה | סוג | חובה | ברירת מחדל | הערה |
+|---|---|---|---|---|
+| `users` | list | | `[]` | |
+| `users[].name` | str | ✅ | | בלי `-` |
+| `users[].password` | str | ✅ | | |
+| `users[].acl` | str | ✅ | | |
 
 `acl` הוא מחרוזת ACL של Redis, למשל `+@all ~orders:*`.
 
@@ -165,7 +165,7 @@
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
 | `users` | list | ✅ | **הרשימה המלאה אחרי העריכה.** יוזר שלא ברשימה נמחק |
-| `users[].name` | str | ✅ | |
+| `users[].name` | str | ✅ | בלי `-` |
 | `users[].acl` | str | ✅ | |
 | `users[].password` | str | ראו טבלה | |
 | `users[].old_password` | str | ראו טבלה | |
