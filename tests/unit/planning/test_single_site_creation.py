@@ -127,6 +127,7 @@ def test_a_user_requested_twice_is_refused() -> None:
     argvalues=[
         pytest.param("{db}-{user}-acl", id="unknown placeholder"),
         pytest.param("{database}-acl", id="same name for every user"),
+        pytest.param("{database}_{user}-acl", id="placeholders not joined by the separator"),
     ],
 )
 def test_a_name_template_that_does_not_name_each_user_is_refused(template: str) -> None:
