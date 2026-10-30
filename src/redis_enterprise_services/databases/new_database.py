@@ -28,10 +28,9 @@ type EvictionPolicy = Literal[
 ]
 
 
-class NewDatabase(NamedSpec):
+class DatabaseOptions(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    memory_size: PositiveInt
     version: str | None = None
     replication: bool | None = None
     sharding: bool | None = None
@@ -44,3 +43,7 @@ class NewDatabase(NamedSpec):
     shards_placement: Literal["dense", "sparse"] | None = None
     proxy_policy: Literal["single", "all-master-shards", "all-nodes"] | None = None
     slave_ha: bool | None = None
+
+
+class NewDatabase(NamedSpec, DatabaseOptions):
+    memory_size: PositiveInt

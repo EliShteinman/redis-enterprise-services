@@ -67,6 +67,7 @@ exhaustive = true
 layers = [
     "app",
     "api",
+    "planning",
     "steps | state",
     "users | roles | acls | databases",
     "resources",

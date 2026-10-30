@@ -83,7 +83,7 @@
 | `data_persistence` | `disabled` / `aof` / `snapshot` | | `aof` |
 | `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | | `appendfsync-every-sec` |
 | `snapshot_policy` | list | | רק כש-`data_persistence` הוא `snapshot` |
-| `replication` | bool | | |
+| `replication` | bool | | `true`, וב-DEV `false` |
 | `sharding` | bool | | |
 | `shards_count` | int | | |
 | `shard_key_regex` | list | | רק כש-`sharding` הוא `true` |
@@ -92,7 +92,7 @@
 | `proxy_policy` | str | | `all-master-shards` |
 | `slave_ha` | bool | | |
 
-שדה בלי ערך בעמודת ברירת המחדל הוא אופציונלי. אם לא נשלח, ה-DB נוצר עם ברירת המחדל של Redis.
+שדה בלי ערך בעמודת ברירת המחדל הוא אופציונלי. אם לא נשלח, ה-DB נוצר עם ברירת המחדל של Redis. שדה שנשלח כ-`null` נחשב כאילו לא נשלח.
 
 ### `body.users[]`
 
