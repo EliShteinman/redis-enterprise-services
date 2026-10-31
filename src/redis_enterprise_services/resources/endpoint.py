@@ -46,16 +46,18 @@ class ResourceEndpoint(ResourceCalls):
         return self._action_uid(body=answer)
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
+        return [resource for resource in self.list_named(target=target) if resource.name == name]
+
+    def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
         answer: JsonValue = self._api.send(
             target=target, method="GET", path=self._settings.collection_path, query=self._list_query()
         ).body
         try:
-            resources: list[NamedResource] = NAMED_RESOURCE_LIST.validate_python(answer)
+            return NAMED_RESOURCE_LIST.validate_python(answer)
         except ValidationError as error:
             raise UnreadableAnswerError(
                 message=f"cannot read {self._settings.collection_path}, fields {failed_fields(error=error)}"
             ) from error
-        return [resource for resource in resources if resource.name == name]
 
     def _list_query(self) -> str | None:
         if not self._settings.list_fields:
