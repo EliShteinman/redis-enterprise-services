@@ -8,6 +8,7 @@ from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.role_permission import ROLES_PERMISSIONS_FIELD, RolePermission
+from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.database_request import DatabaseUserRequest
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
@@ -49,7 +50,7 @@ class SingleSiteCreationPlanner:
     def plan(
         self, *, cluster: ClusterEntry, database: NewDatabase, users: list[DatabaseUserRequest]
     ) -> SagaPlan:
-        address: ClusterAddress = ClusterAddress(network=cluster.network, api_url=cluster.api_url)
+        address: ClusterAddress = address_of(cluster=cluster)
         steps: list[RunnableStep] = [self._database_step(address=address, database=database)]
         for user in users:
             steps.extend(self._user_steps(address=address, database=database, user=user))
