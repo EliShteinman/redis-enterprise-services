@@ -7,3 +7,8 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 class UnknownClusterError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unknown_cluster"
     status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+class InvalidNameError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "invalid_name"
+    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_ENTITY
