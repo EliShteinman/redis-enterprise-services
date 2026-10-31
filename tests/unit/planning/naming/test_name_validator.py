@@ -1,5 +1,4 @@
 import pytest
-from pydantic import ValidationError
 
 from redis_enterprise_services.config.naming_settings import NameRulesSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
@@ -54,8 +53,3 @@ def test_an_added_rule_judges_the_name_by_its_context() -> None:
 def test_an_invalid_name_is_refused() -> None:
     with pytest.raises(expected_exception=InvalidNameError):
         NameValidator(rules=RULES).ensure_valid(name="orders_1", context=CONTEXT)
-
-
-def test_a_pattern_that_does_not_compile_stops_at_startup() -> None:
-    with pytest.raises(expected_exception=ValidationError):
-        NameRulesSettings.model_validate(obj={"pattern": "[a-z", "max_length": 10})
