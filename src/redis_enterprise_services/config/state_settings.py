@@ -10,7 +10,7 @@ class StateSettings(BaseModel):
     host: str
     port: PositiveInt
     username: str
-    password: SecretStr
+    password: SecretStr = Field(min_length=1)
     prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
     socket_timeout_seconds: PositiveFloat
