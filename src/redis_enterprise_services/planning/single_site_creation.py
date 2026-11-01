@@ -25,6 +25,7 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 DATABASE_KEY: str = "database"
 PERMISSIONS_KEY: str = "permissions"
+USER_LOCK: str = "user"
 
 
 class SingleSiteCreationPlanner:
@@ -57,7 +58,13 @@ class SingleSiteCreationPlanner:
         if users:
             steps.append(self._permissions_step(address=address, users=users))
         logger.info(msg=f"database {database.name} on {cluster.name} plans {len(steps)} steps")
-        return SagaPlan(steps=steps, lock_keys=[f"{cluster.name}/{database.name}"])
+        return SagaPlan(
+            steps=steps,
+            lock_keys=[
+                f"{cluster.name}/{database.name}",
+                *(f"{cluster.name}/{USER_LOCK}/{user.name}" for user in users),
+            ],
+        )
 
     def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> RunnableStep:
         return PlannedStep(

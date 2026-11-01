@@ -90,7 +90,6 @@ class Services:
                     create_user=cluster.create_user,
                     update_database=cluster.update_database,
                 ),
-                lock=lock,
                 executor=saga_executor(settings=settings, lock=lock, state=saga_state),
                 outcome=CreationOutcome(names=names, errors=errors),
                 errors=errors,

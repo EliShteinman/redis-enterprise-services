@@ -24,7 +24,6 @@ from redis_enterprise_services.planning.database_request import DatabaseRequest,
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.lock import DatabaseLock
 from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
@@ -71,15 +70,14 @@ class Creation:
         self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
-        self.lock: MagicMock = create_autospec(spec=DatabaseLock, instance=True)
+        self.planner: MagicMock = create_autospec(spec=SingleSiteCreationPlanner, instance=True)
         self.records: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.records.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
             scope=ChosenClusterScope(),
             availability=self.availability,
             names=create_autospec(spec=CreationNames, instance=True),
-            planner=create_autospec(spec=SingleSiteCreationPlanner, instance=True),
-            lock=self.lock,
+            planner=self.planner,
             executor=self.executor,
             outcome=CreationOutcome(names=ResourceNames(settings=DECOMPOSITION), errors=ERRORS),
             errors=ERRORS,
@@ -118,14 +116,13 @@ def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) 
 
 def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
     creation: Creation = Creation()
-    creation.availability.ensure_free.side_effect = NameTakenError(message="database orders exists on c1")
+    creation.executor.run.side_effect = NameTakenError(message="database orders exists on c1")
 
     operation: Operation = creation.run()
 
-    assert (operation.status, operation.error and operation.error.code, creation.executor.run.called) == (
+    assert (operation.status, operation.error and operation.error.code) == (
         OperationStatus.REJECTED,
         "name_taken",
-        False,
     )
 
 
@@ -135,10 +132,7 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
 )
 def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServicesError) -> None:
     creation: Creation = Creation()
-    if isinstance(outcome, SagaRecord):
-        creation.executor.run.return_value = outcome
-    else:
-        creation.lock.acquire.side_effect = outcome
+    creation.executor.run.side_effect = [outcome]
 
     operation: Operation = creation.run()
 
@@ -148,14 +142,17 @@ def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServ
 @pytest.mark.parametrize(
     argnames=("failing", "status"),
     argvalues=[
-        ("availability", OperationStatus.REJECTED),
+        ("planner", OperationStatus.REJECTED),
         ("executor", OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
 def test_an_unexpected_error_still_ends_the_operation(failing: str, status: OperationStatus) -> None:
     creation: Creation = Creation()
-    creation.availability.ensure_free.side_effect = RuntimeError("bug") if failing == "availability" else None
+    creation.planner.plan.side_effect = RuntimeError("bug") if failing == "planner" else None
     creation.executor.run.side_effect = RuntimeError("bug") if failing == "executor" else None
+    creation.records.find.return_value = (
+        saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION) if failing == "executor" else None
+    )
 
     operation: Operation = creation.run()
 
@@ -179,23 +176,11 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
     ]
 
 
-def test_the_names_are_checked_while_the_database_is_locked() -> None:
+def test_the_names_are_checked_before_the_saga_starts() -> None:
     creation: Creation = Creation()
-    calls: MagicMock = MagicMock()
-    calls.attach_mock(mock=creation.lock.acquire, attribute="acquire")
-    calls.attach_mock(mock=creation.availability.ensure_free, attribute="ensure_free")
-    calls.attach_mock(mock=creation.executor.run, attribute="run")
     creation.executor.run.return_value = saga_record(status=SagaStatus.SUCCEEDED)
 
     creation.run()
+    creation.executor.run.call_args.kwargs["before_start"]()
 
-    assert [name for name, _, _ in calls.mock_calls] == ["acquire", "ensure_free", "run"]
-
-
-def test_taken_names_release_the_lock() -> None:
-    creation: Creation = Creation()
-    creation.availability.ensure_free.side_effect = NameTakenError(message="database orders exists on c1")
-
-    creation.run()
-
-    assert creation.lock.release.called
+    assert creation.availability.ensure_free.called

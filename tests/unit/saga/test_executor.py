@@ -775,3 +775,46 @@ def test_a_failed_undo_keeps_the_error_that_failed_the_step(
         stopped.error and stopped.error.message,
         stopped.compensation_error and stopped.compensation_error.message,
     ) == ("no", "two found")
+
+
+def test_a_check_before_start_that_fails_releases_the_lock_and_runs_no_step(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def refuse() -> None:
+        raise REJECTED
+
+    executor: SagaExecutor = SagaExecutor(
+        state=state,
+        lock=lock,
+        runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
+        compensator=Compensator(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
+    )
+
+    with pytest.raises(expected_exception=FakeError):
+        executor.run(
+            saga_id=SAGA_ID,
+            plan=SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=LOCK_KEYS),
+            before_start=refuse,
+        )
+
+    assert (journal, lock.held_by, state.saved) == ([], None, None)
+
+
+def test_the_check_before_start_runs_under_the_lock(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    held_during_check: list[str | None] = []
+    executor: SagaExecutor = SagaExecutor(
+        state=state,
+        lock=lock,
+        runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
+        compensator=Compensator(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
+    )
+
+    executor.run(
+        saga_id=SAGA_ID,
+        plan=SagaPlan(steps=[planned(step=FakeStep(journal=journal), name="a")], lock_keys=LOCK_KEYS),
+        before_start=lambda: held_during_check.append(lock.held_by),
+    )
+
+    assert held_during_check == [SAGA_ID]
