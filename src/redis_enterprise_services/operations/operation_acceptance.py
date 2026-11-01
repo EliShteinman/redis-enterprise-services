@@ -2,8 +2,8 @@ import logging
 from collections.abc import Callable
 
 from redis_enterprise_services.background.task_runner import TaskRunner
+from redis_enterprise_services.liveness.live_operations import LiveOperations
 from redis_enterprise_services.operations.admission import Admission
-from redis_enterprise_services.operations.live_operations import LiveOperations
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore

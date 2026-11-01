@@ -9,7 +9,7 @@ from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
-from redis_enterprise_services.operations.live_operations import LiveOperations
+from redis_enterprise_services.liveness.live_operations import LiveOperations
 from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
@@ -46,7 +46,10 @@ class Services:
         client: Redis = build_redis_client(settings=settings.state)
         keys: RedisKeys = RedisKeys(prefix=settings.state.prefix, hash_tag=settings.state.hash_tag)
         self.operations: OperationStore = RedisOperationStore(
-            client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
+            client=client,
+            keys=keys,
+            finished_ttl_seconds=settings.state.finished_ttl_seconds,
+            heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
         )
         self.runner: ThreadPoolRunner = ThreadPoolRunner(settings=settings.background)
         live: LiveOperations = LiveOperations(

@@ -77,7 +77,7 @@ layers = [
     "edge",
     "connection",
     "saga | operations",
-    "logger | telemetry | timing | background",
+    "logger | telemetry | timing | background | liveness",
     "config | exceptions",
 ]
 

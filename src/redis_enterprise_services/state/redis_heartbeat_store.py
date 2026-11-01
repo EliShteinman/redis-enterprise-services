@@ -3,7 +3,7 @@ import logging
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.operations.heartbeat_store import HeartbeatStore
+from redis_enterprise_services.liveness.heartbeat_store import HeartbeatStore
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)

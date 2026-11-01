@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
-from redis_enterprise_services.operations.heartbeat_store import HeartbeatStore
-from redis_enterprise_services.operations.live_operations import LiveOperations
+from redis_enterprise_services.liveness.heartbeat_store import HeartbeatStore
+from redis_enterprise_services.liveness.live_operations import LiveOperations
 
 
 def fail() -> object:
