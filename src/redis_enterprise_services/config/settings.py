@@ -50,6 +50,8 @@ class Settings(BaseSettings):
             "config/operation.yaml",
             "config/background.yaml",
         ),
+        env_file=".env",
+        env_file_encoding="utf-8",
         env_prefix="RES_",
         env_nested_delimiter="__",
         extra="forbid",
@@ -85,7 +87,12 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return init_settings, env_settings, YamlConfigSettingsSource(settings_cls=settings_cls)
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            YamlConfigSettingsSource(settings_cls=settings_cls),
+        )
 
 
 def load_settings() -> Settings:
