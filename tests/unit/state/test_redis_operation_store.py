@@ -14,7 +14,7 @@ class Scripts:
         self.open: MagicMock = MagicMock()
         self.finished: MagicMock = MagicMock()
         client: MagicMock = create_autospec(spec=Redis, instance=True)
-        client.register_script.side_effect = [self.open, self.finished]
+        client.register_script.side_effect = [self.open, self.finished, MagicMock()]
         self.store: RedisOperationStore = RedisOperationStore(
             client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_ttl_seconds=600
         )

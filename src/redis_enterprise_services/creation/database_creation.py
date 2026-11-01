@@ -4,7 +4,7 @@ from redis_enterprise_services.creation.creation_execution import CreationExecut
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.creation_request import CreationRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.admission import Admission
 from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
 
 
@@ -20,7 +20,10 @@ class DatabaseCreation:
         self._execution: CreationExecution = execution
         self._acceptance: OperationAcceptance = acceptance
 
-    def accept(self, *, trace_id: str, request: CreationRequest) -> Operation:
+    def accept(self, *, trace_id: str, request: CreationRequest) -> Admission:
+        repeated: Admission | None = self._acceptance.repeated(trace_id=trace_id)
+        if repeated is not None:
+            return repeated
         creation: PreparedCreation = self._preparation.prepare(request=request)
         return self._acceptance.accept(
             trace_id=trace_id,
