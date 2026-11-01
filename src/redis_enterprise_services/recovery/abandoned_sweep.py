@@ -1,5 +1,7 @@
 import logging
 
+from pydantic import ValidationError
+
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_errors import PublicErrors
@@ -20,7 +22,10 @@ class AbandonedSweep:
         trace_ids: list[str] = self._store.without_heartbeat()
         logger.debug(msg=f"checking {len(trace_ids)} open operations without a heartbeat")
         for trace_id in trace_ids:
-            self._check(trace_id=trace_id)
+            try:
+                self._check(trace_id=trace_id)
+            except ValidationError:
+                logger.exception(msg=f"the records of operation {trace_id} cannot be read, it is skipped")
 
     def _check(self, *, trace_id: str) -> None:
         saga: StoredSaga | None = self._store.saga_of(trace_id=trace_id)

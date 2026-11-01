@@ -69,3 +69,28 @@ def test_an_ended_saga_is_left_as_it_is(status: SagaStatus) -> None:
     operation, saga = Sweep(saga=saga_record(status=status)).marked()
 
     assert (operation.status, saga) == (OperationStatus.REQUIRES_MANUAL_INTERVENTION, None)
+
+
+def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
+    store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
+    store.without_heartbeat.return_value = ["trace-bad", "trace-good"]
+
+    def saga_of(*, trace_id: str) -> StoredSaga | None:
+        if trace_id == "trace-bad":
+            SagaRecord.model_validate_json(json_data="{}")
+        return None
+
+    store.saga_of.side_effect = saga_of
+    store.mark_abandoned.return_value = MarkResult.MARKED
+
+    AbandonedSweep(
+        store=store,
+        errors=PublicErrors(
+            settings=OperationSettings(public_error_codes={}, cluster_error_codes=frozenset()),
+            internal_error_message="internal error",
+        ),
+    ).sweep()
+
+    assert [call.kwargs["operation"].trace_id for call in store.mark_abandoned.call_args_list] == [
+        "trace-good"
+    ]

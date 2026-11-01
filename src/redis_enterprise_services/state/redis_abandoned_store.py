@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import cast
 
@@ -15,6 +16,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 KEEP_OPEN: int = 0
+STATUS_FIELD: str = "status"
 NO_SAGA: str = ""
 RESULTS: dict[int, MarkResult] = {0: MarkResult.SKIPPED, 1: MarkResult.MARKED, 2: MarkResult.SAGA_CHANGED}
 
@@ -70,11 +72,8 @@ class RedisAbandonedStore(AbandonedStore):
         return StoredSaga(raw=raw, record=SagaRecord.model_validate_json(json_data=raw))
 
     def _running(self, *, trace_id: str) -> bool:
-        stored: str | bytes | None = self._client.get(name=self._keys.operation(trace_id=trace_id))
-        return (
-            stored is None
-            or Operation.model_validate_json(json_data=stored).status is OperationStatus.RUNNING
-        )
+        stored: str | None = cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
+        return stored is None or json.loads(stored).get(STATUS_FIELD) == OperationStatus.RUNNING.value
 
     def mark_abandoned(
         self, *, operation: Operation, read_saga: StoredSaga | None, stopped_saga: SagaRecord | None
