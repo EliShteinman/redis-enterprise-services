@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 
-class OperationError(BaseModel):
+class ErrorInfo(BaseModel):
     code: str
     message: str

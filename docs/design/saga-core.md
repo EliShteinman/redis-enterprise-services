@@ -161,6 +161,7 @@ PlannedStep(
 | `res:{state}sagas:unfinished` | set | מזהי ה-Sagas שעוד רצים, לזיהוי אחרי קריסה |
 | `res:{state}lock:{cluster}/{db}` | string | ה-`saga_id` שמחזיק בנעילה |
 | `res:{state}operation:{trace_id}` | string (JSON) | מה ששאילתת הסטטוס מחזירה (`service-api.md` סעיף 8). TTL מהקונפיג כשהפעולה `succeeded`, `rejected` או `rolled_back`. `running` ו-`requires_manual_intervention` בלי TTL |
+| `res:{state}operations:open` | set | ה-`trace_id` של פעולות שעוד לא הסתיימו (`running`, `requires_manual_intervention`), לזיהוי אחרי קריסה |
 
 - **נעילה:** `SET` בלי TTL. סקריפט Lua אחד נועל את כל המפתחות של ה-Saga, או אף אחד מהם אם אחד תפוס (ב-AA יש כמה).
   שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
@@ -205,6 +206,10 @@ PlannedStep(
 - **כל המפתחות עם אותו hash tag אחרי ה-prefix** (`res:{state}saga:...`), כדי שהסקריפטים יעבדו גם ב-DB עם כמה shards.
 - **רשומת הפעולה נפרדת מה-saga record.** `rejected` (לפני שה-Saga התחיל) ועץ ה-DB הם לא מושגים של ה-Saga, ולכן המנוע
   נשאר גנרי. הרשומה (`operations/`) והממשק `OperationStore` משמשים כל פקודה: יצירה, עריכה ומחיקה.
+  התשובה המיידית לשגיאה היא אותה רשומה, עם `rejected` (החוזה, סעיף 8).
+- **פעולה פתוחה ב-`operations:open`,** בדיוק כמו Saga ב-`sagas:unfinished`. ייתכן ש-pod יקרוס לפני שה-Saga התחיל
+  (בבדיקות שרצות ברקע), או אחרי שה-Saga הסתיים ולפני שהפעולה נשמרה. בשני המקרים רק ה-set הזה מראה שהפעולה נשארה
+  פתוחה. בדיקת הקריסה (8ד) תסרוק את שני ה-sets.
 - **רק Saga שהצליח או בוטל מקבל TTL ויוצא מ-`sagas:unfinished`.** Saga להתערבות ידנית נשמר בלי TTL ונשאר ב-set,
   כי ה-record שלו הוא הצעד הראשון בשחרור הידני, והנעילה שלו נשארת.
 - **נבדק מול ה-Redis של הסביבה המקומית** (2026-10-29): Saga שהצליח ושבוטל נשמרו עם TTL, יצאו מ-`sagas:unfinished`,
