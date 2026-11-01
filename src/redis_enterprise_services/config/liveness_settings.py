@@ -7,6 +7,7 @@ class LivenessSettings(BaseModel):
     heartbeat_interval_seconds: PositiveFloat
     heartbeat_ttl_seconds: PositiveInt
     min_beats_per_ttl: PositiveInt
+    sweep_interval_seconds: PositiveFloat
 
     @model_validator(mode="after")
     def beats_before_expiry(self) -> Self:

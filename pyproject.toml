@@ -76,6 +76,7 @@ layers = [
     "cluster",
     "edge",
     "connection",
+    "recovery",
     "saga | operations",
     "logger | telemetry | timing | background | liveness",
     "config | exceptions",

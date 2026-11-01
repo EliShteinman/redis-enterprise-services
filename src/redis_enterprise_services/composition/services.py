@@ -26,9 +26,11 @@ from redis_enterprise_services.planning.naming.name_validator import NameValidat
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
+from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
+from redis_enterprise_services.state.redis_abandoned_store import RedisAbandonedStore
 from redis_enterprise_services.state.redis_client import build_redis_client
 from redis_enterprise_services.state.redis_database_lock import RedisDatabaseLock
 from redis_enterprise_services.state.redis_heartbeat_store import RedisHeartbeatStore
@@ -76,6 +78,17 @@ class Services:
         )
         saga_state: RedisSagaState = RedisSagaState(
             client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
+        )
+        self.sweep: PeriodicTask = PeriodicTask(
+            name="abandoned operations sweep",
+            interval_seconds=settings.liveness.sweep_interval_seconds,
+            action=AbandonedSweep(
+                store=RedisAbandonedStore(
+                    client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
+                ),
+                records=saga_state,
+                errors=errors,
+            ).sweep,
         )
         self.database_creation: DatabaseCreation = DatabaseCreation(
             preparation=CreationPreparation(

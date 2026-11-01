@@ -173,9 +173,16 @@ PlannedStep(
 - **`before_start`:** `SagaExecutor.run` מקבל בדיקה שרצה אחרי הנעילה ולפני הצעד הראשון ולפני שה-record נשמר. נכשלה ⇐
   הנעילה משתחררת והשגיאה עולה, ושום צעד לא רץ. כך הבדיקה המוקדמת רצה תחת הנעילה, בלי שהנעילה תאפשר לנעול פעמיים. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
-- **קריסה (D5, עוד לא נבנה, נבנה באבן 8ד):** pod אחר מוצא ב-`operations:open` פעולה ב-`running` שמפתח ה-heartbeat
-  שלה פג. פעולה ב-`requires_manual_intervention` נשארת ב-set בלי מפתח, ולא נחשבת קריסה. הוא מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB
-  במצב חלקי לא משתנה עד שמישהו מטפל בו.
+- **קריסה (D5, נבנה, 8ד):** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (`liveness.yaml`). הוא
+  לוקח מ-`operations:open` את הפעולות בלי מפתח heartbeat, קורא את ה-saga record של כל אחת, ומסמן אותה בסקריפט Lua אחד,
+  שכותב רק אם המפתח עדיין חסר והפעולה עדיין `running`. כך pod חי, ופעולה שכבר סומנה, לא נוגעים בהן:
+  - **אין saga record** (ה-Saga לא התחיל, למשל ריצה שבוטלה בכיבוי) ⇐ הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת
+    מה-set.
+  - **ה-Saga `running`** ⇐ ה-Saga מסומן `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה
+    `requires_manual_intervention` עם `internal_error`. שניהם נשארים ב-sets ובלי TTL, נרשם CRITICAL, ו**הנעילה נשארת**.
+  - **ה-Saga כבר הסתיים** (הקריסה הייתה בין סוף ה-Saga לשמירת הפעולה) ⇐ הפעולה `requires_manual_intervention`, וה-record
+    לא משתנה. מי שבודק ימצא Saga שהסתיים.
+  נבדק מול cluster1: השירות נהרג ב-`kill -9` באמצע צעד ה-DB, ו-pod חדש סימן את הפעולה ואת ה-Saga, והנעילה נשארה.
 - **relay שלא זמין (הוחלט):** גם הבדיקה (`find_outcome`) לא מגיעה לקלאסטר, ולכן התוצאה נשארת לא ידועה וה-Saga
   עובר להתערבות ידנית עם הנעילה. לא מבטלים לבד, כי גם "לא נשלח" לא אמין: חיבור מוצפן שנשבר אחרי השליחה (למשל
   `SSLEOFError`) נראה בדיוק כך, גם בלי בדיקת תעודות.
@@ -184,6 +191,8 @@ PlannedStep(
   2. בודקים בקלאסטר מה באמת קיים (לפי השמות שבקלט), ומשלימים או מבטלים ידנית.
   3. מוחקים את כל מפתחות הנעילה שה-`saga_id` מחזיק (`res:{state}lock:{cluster}/{db}`, ו-`res:{state}lock:{cluster}/user/{user}`
      לכל יוזר), רק אחרי שהקלאסטר במצב נקי או מלא.
+  4. מוציאים את ה-trace מ-`sagas:unfinished` ומ-`operations:open`, ומעדכנים את הפעולה (`res:{state}operation:{trace_id}`)
+     לתוצאה שנקבעה, כדי ששאילתת הסטטוס תחזיר אותה.
   כלי לזה (endpoint או פקודה) ייבנה בהמשך. עד אז זה נעשה ב-`redis-cli` של מי שמורשה.
 - **Saga שהצליח אבל השמירה האחרונה שלו נכשלה:** הנעילה כבר שוחררה, אבל ב-Redis ה-record נשאר `running`. בדיקת
   הקריסה תסמן אותו להתערבות ידנית. מי שבודק ימצא שכל הצעדים `done` והקלאסטר מלא, ויסגור אותו.
