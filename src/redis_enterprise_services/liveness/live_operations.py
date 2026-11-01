@@ -16,7 +16,6 @@ class LiveOperations:
     def track(self, *, trace_id: str) -> None:
         with self._lock:
             self._trace_ids.add(trace_id)
-            self._store.beat(trace_ids=[trace_id])
 
     def release(self, *, trace_id: str) -> None:
         with self._lock:
