@@ -777,19 +777,17 @@ def test_a_failed_undo_keeps_the_error_that_failed_the_step(
     ) == ("no", "two found")
 
 
-def test_a_check_before_start_that_fails_releases_the_lock_and_runs_no_step(
-    journal: list[str], state: MemoryState, lock: MemoryLock
-) -> None:
-    def refuse() -> None:
-        raise REJECTED
+def refuse() -> None:
+    raise REJECTED
 
+
+def run_refused_at_start(*, journal: list[str], state: MemoryState, lock: MemoryLock) -> None:
     executor: SagaExecutor = SagaExecutor(
         state=state,
         lock=lock,
         runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
         compensator=Compensator(settings=SETTINGS, classifier=FakeClassifier(), sleeper=RecordingSleeper()),
     )
-
     with pytest.raises(expected_exception=FakeError):
         executor.run(
             saga_id=SAGA_ID,
@@ -797,7 +795,29 @@ def test_a_check_before_start_that_fails_releases_the_lock_and_runs_no_step(
             before_start=refuse,
         )
 
-    assert (journal, lock.held_by, state.saved) == ([], None, None)
+
+def test_a_check_before_start_that_fails_releases_the_lock(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    run_refused_at_start(journal=journal, state=state, lock=lock)
+
+    assert lock.held_by is None
+
+
+def test_a_check_before_start_that_fails_runs_no_step(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    run_refused_at_start(journal=journal, state=state, lock=lock)
+
+    assert journal == []
+
+
+def test_a_check_before_start_that_fails_stores_no_record(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    run_refused_at_start(journal=journal, state=state, lock=lock)
+
+    assert state.saved is None
 
 
 def test_the_check_before_start_runs_under_the_lock(
