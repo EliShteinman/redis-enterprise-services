@@ -25,7 +25,7 @@ POST /v1/databases/create
 
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
-| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: הכנה, ואז `OperationAcceptance` |
+| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationAcceptance.admit` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
 | `OperationAcceptance` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-core.md` סעיף 8) |
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
@@ -107,10 +107,11 @@ POST /v1/databases/create
 | ה-Saga הצליח | `succeeded` עם עץ ה-DB (`creation_result.py`): ה-uids מהתוצאות של הצעדים |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס) | `rejected` עם הקוד שלה |
-| שגיאה לא צפויה | לפי ה-saga record שנשמר. אין record ⇐ `rejected`. record שלא נקרא ⇐ `requires_manual_intervention`. בכולם `internal_error` |
+| שגיאה לא צפויה | אין saga record ⇐ `rejected` עם `internal_error`. יש record ⇐ כמו בסוף רגיל, מתוך ה-record. record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error` |
 
 - **`not_rolled_back`** (`CreationOutcome`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
+  `error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
   `internal_error` ו-WARNING. `cluster` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_error_codes`.
 - **סדר השמירה:** המנוע משחרר את הנעילה, ורק אחר כך הפעולה נשמרת.

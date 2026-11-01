@@ -77,6 +77,8 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
   שדה לא קיים ⇐ `400 invalid_schema`. `PUT` עם `uid` ⇐ `500`.
 - `tags`: הקלאסטר מוסיף לכל tag `isSystem: false`. `[]` מנקה. `null` ⇐ `400 invalid_schema`.
 - בגרסה 8.x כל DB נוצר עם `bf`, `ReJSON`, `timeseries` ו-`search`.
+- **לא קובעים `uid` ביצירה.** לפי התיעוד, מי שקובע uid חייב לקבוע אותו בכל ה-DBs שאחריו, כי המספור האוטומטי עלול
+  להתנגש בו.
 
 **הפיכות של שדות** (על DB עם נתונים):
 
@@ -94,21 +96,38 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 
 רשימה בתוך ה-bdb: `[{role_uid, redis_acl_uid}]`. `PUT` שולח את הרשימה המלאה ומחליף את הקודמת.
 
+ההחזרה של ה-snapshot בביטול בטוחה כי לפי החוזה הרשאות לא נערכות יחד עם שינויים אחרים ב-DB, והנעילה מונעת ריצה
+אחרת של השירות. שינוי מבחוץ (ה-UI של Redis) בין ה-`PUT` שלנו לביטול היה נדרס.
+
+### dry_run
+
+- קיים ביצירה ובעריכה של `bdbs`, `users`, `roles`, `redis_acls` ו-`crdbs`, ולא יוצר כלום.
+- ב-`bdbs`: `POST /v1/bdbs?dry_run=1`. יש מקום ⇐ `200`. אין זיכרון ⇐ `406 insufficient_resources`. חריגה מה-shards
+  של הרישיון ⇐ `400 invalid_license`.
+- `provisional_memory` מ-`GET /v1/cluster/stats/last` (הזיכרון שעוד אפשר להקצות) תואם אותו: 7.52GB פנויים, dry_run
+  עבר ב-1GB ונכשל ב-8GB.
+- צעד שתלוי בתוצאה של צעד קודם (למשל יוזר עם `role_uids` של role שעוד לא נוצר) לא ניתן לבדיקה מראש.
+
 ### CRDB
 
 - הבקשה ליצירה כוללת לכל קלאסטר URL, FQDN (`name`) ופרטי גישה. התשובה כוללת סיסמאות לכל instance.
-- `X-Task-ID` חייב להיות UUID תקני (גרסאות 1–5). אותו `X-Task-ID` פעמיים ⇐ `406 job_exists`, ולא נוצר CRDB שני.
-  תוצאת task נשמרת 500 שניות כברירת מחדל, ולכן שולחים `X-Result-TTL` ארוך יותר.
+- `X-Task-ID` חייב להיות UUID תקני (גרסאות 1–5); ערך אחר ⇐ `400`. אותו `X-Task-ID` פעמיים ⇐ `406 job_exists`, ולא
+  נוצר CRDB שני. תוצאת task נשמרת 500 שניות כברירת מחדל, ולכן שולחים `X-Result-TTL` ארוך יותר. אם ה-task כבר לא
+  שמור, מאתרים לפי שם ב-`GET /v1/crdbs`.
+- את ה-`guid` הקלאסטר מייצר. אפשר לקבוע אותו ביצירה, אבל לא משתמשים בזה.
 - dry_run: `dry_run=true` בלבד (`dry_run=1` נדחה). התשובה תמיד `200` עם task `queued`, והתוצאה רק ב-task. הוא בודק
   בכל אתר מקום, פורט ופרטי גישה. כשכמה אתרים בעייתיים, מדווח רק הראשון.
 - יצירה שנכשלת באתר אחד (בשלב הבדיקה) לא משאירה כלום באף אתר.
 - אתר שנופל באמצע יצירה: ה-task נשאר `started` בלי הגבלה, באתרים התקינים כבר יש bdb מקומי, וה-CRDB לא מופיע ב-
   `GET /v1/crdbs`. `POST /v1/crdb_tasks/{id}/actions/cancel` נכנס לתוקף כשהאתר חוזר, וה-bdb החלקי נמחק. בלי cancel
-  היצירה מסתיימת.
+  היצירה מסתיימת. לא משתמשים ב-`force`, כי הוא עלול לשבור את ה-CRDB.
 - מחיקה: `DELETE /v1/crdbs/{guid}` עם task. כ-10 שניות.
-- `GET /v1/crdbs` מחזיר `{"crdbs": [...]}`. ה-uid של ה-bdb המקומי ידוע רק לקלאסטר עצמו.
+- `GET /v1/crdbs` מחזיר `{"crdbs": [...]}`.
+- ה-uid של ה-bdb המקומי ידוע רק לקלאסטר עצמו: `local_databases` או `instances[].db_uid` של `GET /v1/crdbs/{guid}`
+  באותו קלאסטר. לכן שואלים כל קלאסטר בנפרד. ה-`id` של כל instance ושם הקלאסטר שלו ב-`instances`.
 - `instances[].db_config` דורס את `default_db_config` רק באותו קלאסטר. `PATCH` ל-`default_db_config` לא דורס override כזה.
-- `PATCH` עם `instances[].db_config.roles_permissions` מעדכן כל bdb מקומי עם הזוגות שלו (כ-7 שניות).
+- `PATCH` עם `instances: [{id, db_config: {roles_permissions}}]` מעדכן כל bdb מקומי עם הזוגות שלו (כ-7 שניות),
+  וה-CRDB שומר אותם. `[]` בכל instance מחזיר את שניהם לרשימה ריקה. התיעוד לא מזכיר את השדה ב-`db_config`.
 - `tags` דרך `default_db_config` מגיעים לכל הקלאסטרים. `PUT` ל-bdb מקומי נשאר רק בו.
 - ה-CRDB נוצר עם `search` ו-`ReJSON` בלבד.
 
