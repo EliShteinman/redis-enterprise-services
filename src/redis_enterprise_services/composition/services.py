@@ -8,6 +8,7 @@ from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
+from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
@@ -88,8 +89,7 @@ class Services:
                 records=saga_state,
                 store=self.operations,
             ),
-            store=self.operations,
-            runner=self.runner,
+            acceptance=OperationAcceptance(store=self.operations, runner=self.runner, errors=errors),
         )
 
 

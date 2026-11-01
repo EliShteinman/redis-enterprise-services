@@ -107,10 +107,13 @@ database_defaults:
 - **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** כדי שהיא לא תישאר `running`: לפני ה-Saga ⇐ `rejected`, ואחרי
   שהתחיל ⇐ `requires_manual_intervention`, כמו ה-saga record. בשניהם `internal_error`, והפרטים בלוג.
 - **עד ש-AA ייבנה:** הבקשה מתקבלת רק עם `active_active: false` ואתר אחד. אחרת `validation_error`.
-- **`DatabaseCreation.accept`** (ה-route קורא לו): ההכנה, שמירת הפעולה כ-`running`, ושליחת הריצה ל-`TaskRunner`. רק אחרי
-  השמירה, כך ששאילתת הסטטוס תמצא אותה מיד. `ThreadPoolRunner` מריץ ב-thread pool בגודל מהקונפיג (`background.yaml`),
-  מעביר את ה-context (ה-trace ID ממשיך בלוגים ובקריאות לשירות הקצה), ורושם CRITICAL על כל שגיאה שיצאה מהמשימה.
-  בכיבוי השירות הוא מחכה למשימות שרצות.
+- **`DatabaseCreation.accept`** (ה-route קורא לו): ההכנה, ואז `OperationAcceptance`, שמשותף לכל פקודה: שומר את הפעולה
+  כ-`running` ורק אחר כך שולח את הריצה ל-`TaskRunner`, כך ששאילתת הסטטוס תמצא אותה מיד, וריצה מהירה לא תידרס ב-`running`.
+  אם השליחה נכשלת, הפעולה נשמרת כ-`rejected` עם `internal_error`.
+- **`ThreadPoolRunner`:** thread pool בגודל מהקונפיג (`background.yaml`). מעביר את ה-context (ה-trace ID ממשיך בלוגים
+  ובקריאות לשירות הקצה), ורושם CRITICAL על כל שגיאה שיצאה מהמשימה. בכיבוי השירות הוא מחכה לריצות שכבר התחילו,
+  ומבטל את אלה שעוד לא התחילו. הן נשארות `running` ב-`operations:open`, ובדיקת הקריסה (8ד) תסמן אותן.
+- **`traceparent`:** dependency אחד (`require_traceparent`) על כל router. התבנית בקונפיג (`api.yaml`).
 - **נקודת ההרכבה:** `composition/` בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 **מזהה בקשה:** ה-trace ID (`traceparent`) שנפתח ב-UI ועובר דרך שירות הביניים. לכל פעולה ב-UI יש בקשה אחת

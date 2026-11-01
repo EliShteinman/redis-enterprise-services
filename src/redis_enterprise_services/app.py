@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import cast
@@ -62,5 +63,5 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     telemetry.start()
     configure_logging(settings=settings.log)
     yield
-    services.runner.shutdown()
+    await asyncio.to_thread(services.runner.shutdown)
     telemetry.shutdown()

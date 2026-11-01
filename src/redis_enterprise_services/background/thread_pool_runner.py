@@ -21,7 +21,7 @@ class ThreadPoolRunner(TaskRunner):
 
     def shutdown(self) -> None:
         logger.info(msg="waiting for the background tasks to end")
-        self._pool.shutdown(wait=True)
+        self._pool.shutdown(wait=True, cancel_futures=True)
 
 
 def log_failure(*, name: str, done: Future[object]) -> None:
