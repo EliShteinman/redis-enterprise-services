@@ -1,0 +1,61 @@
+import logging
+
+from redis_enterprise_services.config.saga_settings import SagaSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
+from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.models import ObtainedBy, StepError
+from redis_enterprise_services.saga.engine.recorder import StepRecorder
+from redis_enterprise_services.saga.engine.retry import pause
+from redis_enterprise_services.saga.plan.runnable import PreparedStep
+from redis_enterprise_services.timing.sleeper import Sleeper
+
+logger: logging.Logger = logging.getLogger(name=__name__)
+
+
+RETRIED_UNDO_FAILURES: frozenset[Failure] = frozenset({Failure.TRANSIENT, Failure.UNKNOWN})
+
+
+class Compensator:
+    def __init__(self, *, settings: SagaSettings, classifier: FailureClassifier, sleeper: Sleeper) -> None:
+        self._settings: SagaSettings = settings
+        self._classifier: FailureClassifier = classifier
+        self._sleeper: Sleeper = sleeper
+
+    def compensate(self, *, steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
+        all_undone: bool = True
+        for step, recorder in reversed(steps):
+            if step.kind is not StepKind.COMPENSATABLE or not step.has_result:
+                continue
+            all_undone = self._compensate(step=step, recorder=recorder) and all_undone
+        return all_undone
+
+    def _compensate(self, *, step: PreparedStep, recorder: StepRecorder) -> bool:
+        if step.obtained_by is ObtainedBy.FOUND:
+            logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
+        recorder.compensating()
+        last_error: StepError | None = self._last_error_of_attempts(step=step)
+        if last_error is None:
+            logger.info(msg=f"step {step.key} compensated")
+            recorder.compensated()
+            return True
+        logger.error(msg=f"compensation of {step.key} gave up: {last_error.code}: {last_error.message}")
+        recorder.compensation_failed(error=last_error)
+        return False
+
+    def _last_error_of_attempts(self, *, step: PreparedStep) -> StepError | None:
+        attempts: int = self._settings.compensation_retry.attempts
+        last_error: StepError | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                step.compensate()
+            except RedisEnterpriseServicesError as error:
+                last_error = StepError.of(error=error)
+                logger.warning(msg=f"compensation of {step.key} failed: {error.describe()}")
+                if self._classifier.classify(error=error) not in RETRIED_UNDO_FAILURES:
+                    return last_error
+                if attempt < attempts:
+                    pause(retry=self._settings.compensation_retry, attempt=attempt, sleeper=self._sleeper)
+                continue
+            return None
+        return last_error

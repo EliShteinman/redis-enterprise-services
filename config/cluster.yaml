@@ -1,0 +1,12 @@
+cluster:
+  fields:
+    status: status
+    error_code: error_code
+    action_uid: action_uid
+  fields_query:
+    name: fields
+    separator: ","
+  transient_error_codes:
+    - busy
+    - db_busy
+    - wrong_cluster_state_id

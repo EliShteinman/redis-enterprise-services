@@ -1,0 +1,11 @@
+database_defaults:
+  values:
+    version: "8.4"
+    replication: true
+    data_persistence: aof
+    aof_policy: appendfsync-every-sec
+    shards_placement: dense
+    proxy_policy: all-master-shards
+  overrides:
+    - when: {environment: DEV}
+      values: {replication: false}

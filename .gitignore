@@ -33,3 +33,6 @@ logs/
 # Redis Software license
 docker/license/*
 !docker/license/.gitkeep
+
+# Local reference material (not part of the project)
+docs/reference/

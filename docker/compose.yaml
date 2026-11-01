@@ -31,6 +31,7 @@ services:
       - "${CLUSTER1_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
+        ipv4_address: ${CLUSTER1_IP}
         aliases:
           - ${CLUSTER1_NAME}
           - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER1_NAME}
@@ -48,6 +49,9 @@ services:
     <<: *cluster-node
     hostname: ${CLUSTER1_NODE2_NAME}
     profiles: [multinode]
+    networks:
+      default:
+        ipv4_address: ${CLUSTER1_NODE2_IP}
 
   cluster1-node2-join:
     <<: *cluster-bootstrap
@@ -69,6 +73,7 @@ services:
       - "${CLUSTER2_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
+        ipv4_address: ${CLUSTER2_IP}
         aliases:
           - ${CLUSTER2_NAME}
           - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER2_NAME}
@@ -81,3 +86,10 @@ services:
       <<: *bootstrap-environment
       CLUSTER_HOST: cluster2
       CLUSTER_NAME: ${CLUSTER2_NAME}
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${CLUSTER_SUBNET}
+          ip_range: ${CLUSTER_DYNAMIC_IP_RANGE}

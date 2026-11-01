@@ -1,0 +1,7 @@
+telemetry:
+  service_name: redis-enterprise-services
+  export_enabled: false
+  otlp_endpoint: http://localhost:4318
+  metrics_export_interval_ms: 60000
+  traces_path: /v1/traces
+  metrics_path: /v1/metrics

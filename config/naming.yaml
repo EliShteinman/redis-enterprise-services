@@ -1,0 +1,4 @@
+naming:
+  database:
+    pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+    max_length: 20
