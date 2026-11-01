@@ -31,5 +31,5 @@ class PublicErrors:
     def public_code(self, *, code: str) -> str:
         public: str = self._settings.public_error_codes.get(code, RedisEnterpriseServicesError.code)
         if public != code:
-            logger.info(msg=f"error {code} is published as {public}")
+            logger.debug(msg=f"error {code} is published as {public}")
         return public
