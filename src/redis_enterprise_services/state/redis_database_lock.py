@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from redis import Redis
 from redis.commands.core import Script
@@ -42,6 +43,7 @@ class RedisDatabaseLock(DatabaseLock):
     def __init__(
         self, *, client: Redis, keys: RedisKeys, settings: LockSettings, sleeper: Sleeper, clock: Clock
     ) -> None:
+        self._client: Redis = client
         self._keys: RedisKeys = keys
         self._settings: LockSettings = settings
         self._sleeper: Sleeper = sleeper
@@ -61,6 +63,14 @@ class RedisDatabaseLock(DatabaseLock):
             self._sleeper.sleep(seconds=self._settings.poll_seconds)
             holder = self._acquire_all(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
         logger.info(msg=f"{keys} locked by {owner}")
+
+    def confirm(self, *, keys: list[str], owner: str) -> None:
+        holders: list[str | None] = cast(
+            list[str | None], self._client.mget(keys=[self._keys.lock(key=key) for key in keys])
+        )
+        if any(holder != owner for holder in holders):
+            logger.error(msg=f"{keys} are no longer held by {owner}: {holders}")
+            raise DatabaseLockedError(message=f"{keys} are no longer held by {owner}")
 
     def release(self, *, keys: list[str], owner: str) -> None:
         released: int = self._release_owned(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])

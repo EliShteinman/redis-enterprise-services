@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from pydantic import BaseModel
 
@@ -155,6 +157,10 @@ class MemoryLock(DatabaseLock):
         if self.held_by == owner:
             self.held_by = None
 
+    def confirm(self, *, keys: list[str], owner: str) -> None:
+        if self.held_by != owner:
+            raise DatabaseLockedError(message=f"{keys} locked by {self.held_by}")
+
 
 def planned(
     *, step: FakeStep, name: str, build: BuildInput[FakeInput] | None = None
@@ -188,6 +194,7 @@ def run(
     state: MemoryState,
     lock: MemoryLock,
     sleeper: Sleeper | None = None,
+    before_start: Callable[[], None] = lambda: None,
 ) -> SagaRecord:
     waits: Sleeper = RecordingSleeper() if sleeper is None else sleeper
     executor: SagaExecutor = SagaExecutor(
@@ -196,7 +203,9 @@ def run(
         runner=StepRunner(settings=SETTINGS, classifier=FakeClassifier(), sleeper=waits),
         compensator=Compensator(settings=SETTINGS, classifier=FakeClassifier(), sleeper=waits),
     )
-    return executor.run(saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS))
+    return executor.run(
+        saga_id=SAGA_ID, plan=SagaPlan(steps=list(steps), lock_keys=LOCK_KEYS), before_start=before_start
+    )
 
 
 def statuses(record: SagaRecord) -> list[StepStatus]:
@@ -838,3 +847,19 @@ def test_the_check_before_start_runs_under_the_lock(
     )
 
     assert held_during_check == [SAGA_ID]
+
+
+def test_a_saga_whose_lock_was_taken_over_before_it_started_does_not_start(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def lose_the_lock() -> None:
+        lock.held_by = "other-saga"
+
+    with pytest.raises(expected_exception=DatabaseLockedError):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a")],
+            state=state,
+            lock=lock,
+            before_start=lose_the_lock,
+        )
+    assert state.saved is None

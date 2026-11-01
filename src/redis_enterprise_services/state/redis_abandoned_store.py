@@ -50,8 +50,8 @@ if ARGV[6] == '' then
         if redis.call('GET', KEYS[i]) == ARGV[2] then
             redis.call('DEL', KEYS[i])
         end
+        redis.call('SREM', KEYS[5], KEYS[i])
     end
-    redis.call('DEL', KEYS[5])
 end
 return 1
 """
