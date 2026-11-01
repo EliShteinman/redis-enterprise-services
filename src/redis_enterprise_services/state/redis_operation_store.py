@@ -16,6 +16,16 @@ redis.call('SADD', KEYS[2], ARGV[2])
 return true
 """
 
+START_OPEN: str = """
+local existing = redis.call('GET', KEYS[1])
+if existing then
+    return existing
+end
+redis.call('SET', KEYS[1], ARGV[1])
+redis.call('SADD', KEYS[2], ARGV[2])
+return false
+"""
+
 SAVE_FINISHED: str = """
 redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
 redis.call('SREM', KEYS[2], ARGV[2])
@@ -30,9 +40,21 @@ class RedisOperationStore(OperationStore):
         self._finished_ttl_seconds: int = finished_ttl_seconds
         self._save_open: Script = client.register_script(script=SAVE_OPEN)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
+        self._start_open: Script = client.register_script(script=START_OPEN)
+
+    def start(self, *, operation: Operation) -> Operation | None:
+        existing: str | None = self._start_open(
+            keys=self._record_keys(trace_id=operation.trace_id),
+            args=[operation.model_dump_json(), operation.trace_id],
+        )
+        if existing is None:
+            logger.info(msg=f"operation {operation.trace_id} started")
+            return None
+        logger.info(msg=f"operation {operation.trace_id} already exists")
+        return Operation.model_validate_json(json_data=existing)
 
     def save(self, *, operation: Operation) -> None:
-        keys: list[str] = [self._keys.operation(trace_id=operation.trace_id), self._keys.open_operations()]
+        keys: list[str] = self._record_keys(trace_id=operation.trace_id)
         if operation.status in EXPIRING:
             self._save_finished(
                 keys=keys, args=[operation.model_dump_json(), operation.trace_id, self._finished_ttl_seconds]
@@ -47,3 +69,6 @@ class RedisOperationStore(OperationStore):
             logger.info(msg=f"operation {trace_id} is not known")
             return None
         return Operation.model_validate_json(json_data=stored)
+
+    def _record_keys(self, *, trace_id: str) -> list[str]:
+        return [self._keys.operation(trace_id=trace_id), self._keys.open_operations()]
