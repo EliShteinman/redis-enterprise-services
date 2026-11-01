@@ -86,7 +86,6 @@ class Services:
                 store=RedisAbandonedStore(
                     client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
                 ),
-                records=saga_state,
                 errors=errors,
             ).sweep,
         )

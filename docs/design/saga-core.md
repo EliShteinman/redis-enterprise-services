@@ -175,8 +175,9 @@ PlannedStep(
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
 - **קריסה (D5, נבנה, 8ד):** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (`liveness.yaml`). הוא
   לוקח מ-`operations:open` את הפעולות ב-`running` בלי מפתח heartbeat, קורא את ה-saga record של כל אחת, ומסמן אותה בסקריפט
-  Lua אחד. הסקריפט כותב רק אם המפתח עדיין חסר, הפעולה עדיין `running`, וה-saga record עדיין בדיוק כמו שנקרא (או עדיין לא
-  קיים). אחרת לא נוגעים, והסריקה הבאה תבדוק שוב:
+  Lua אחד. הסקריפט כותב רק אם המפתח עדיין חסר, הפעולה עדיין `running`, וה-saga record עדיין אותה מחרוזת בדיוק שנקראה
+  מ-Redis (או עדיין לא קיים). ההשוואה היא למחרוזת הגולמית ולא ל-record שנבנה ממנה מחדש, כדי ש-record שנכתב בגרסה קודמת
+  (בלי שדות חדשים) לא ייתקע. Saga שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדוק שוב:
   - **אין saga record** (ה-Saga לא התחיל, למשל ריצה שבוטלה בכיבוי) ⇐ הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת
     מה-set.
   - **ה-Saga `running`** ⇐ ה-Saga מסומן `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה

@@ -8,20 +8,22 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
+from redis_enterprise_services.recovery.mark_result import MarkResult
+from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
-from redis_enterprise_services.saga.contract.state import SagaRecordReader
 
 
 class Sweep:
     def __init__(self, *, saga: SagaRecord | None) -> None:
         self.store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
         self.store.without_heartbeat.return_value = ["trace-1"]
-        records: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
-        records.find.return_value = saga
+        self.store.saga_of.return_value = (
+            None if saga is None else StoredSaga(raw=saga.model_dump_json(), record=saga)
+        )
+        self.store.mark_abandoned.return_value = MarkResult.MARKED
         AbandonedSweep(
             store=self.store,
-            records=records,
             errors=PublicErrors(
                 settings=OperationSettings(public_error_codes={}, cluster_error_codes=frozenset()),
                 internal_error_message="internal error",
