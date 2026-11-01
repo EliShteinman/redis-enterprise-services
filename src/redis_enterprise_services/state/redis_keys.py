@@ -8,5 +8,11 @@ class RedisKeys:
     def unfinished(self) -> str:
         return f"{self._prefix}sagas:unfinished"
 
+    def operation(self, *, trace_id: str) -> str:
+        return f"{self._prefix}operation:{trace_id}"
+
+    def open_operations(self) -> str:
+        return f"{self._prefix}operations:open"
+
     def lock(self, *, key: str) -> str:
         return f"{self._prefix}lock:{key}"
