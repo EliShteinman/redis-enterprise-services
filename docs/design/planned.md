@@ -42,6 +42,8 @@
 
 **יצירה:**
 
+![יצירת AA](../diagrams/planned/p1-seq-create-active-active.drawio.svg)
+
 | # | צעד | סוג |
 |---|---|---|
 | 1 | `POST /v1/crdbs` עם `X-Task-ID` שאנחנו קובעים, המתנה ל-task | הפיך: `DELETE` + task |
@@ -83,6 +85,8 @@
 
 ## 5. מחיקה
 
+![מחיקה](../diagrams/planned/p2-seq-delete.drawio.svg)
+
 `POST /v1/databases/delete`.
 
 **הכלל: כל מה שהפיך קודם, ומחיקת ה-DB אחרונה.** כשל לפניה מחזיר הכל, והתשובה "המחיקה נכשלה, שום דבר לא השתנה".
@@ -101,6 +105,14 @@
   את הזוגות שלהם מ-`roles_permissions`, ולכן הביטול מחזיר גם אותם.
 
 ## 6. עריכה
+
+![עריכת DB](../diagrams/planned/p3-seq-edit-database.drawio.svg)
+
+![עריכת AA](../diagrams/planned/p5-seq-edit-active-active.drawio.svg)
+
+![עריכת יוזרים](../diagrams/planned/p4-seq-edit-users.drawio.svg)
+
+![מודלי עריכה](../diagrams/planned/p6-api-models-edit.drawio.svg)
 
 **עריכת DB** (`POST /v1/databases/update`): כל שדה של ה-DB חוץ מ-`name`, לפחות אחד. ברירות מחדל לא מוחלות.
 

@@ -57,6 +57,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
 **הצעדים שקיימים:**
 
+![steps ומשאבים](../diagrams/07-layer-steps-resources.drawio.svg)
+
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
 | `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `AmbiguousResourceError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
@@ -106,6 +108,8 @@ PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
 
 ## 5. מיון כשלים
 
+![מיון כשלים](../diagrams/14-flow-failure.drawio.svg)
+
 המנוע לא מכיר את השגיאות של הקלאסטר. `FailureClassifier` ממיין כל שגיאה לאחת מארבע קטגוריות. המימוש לקלאסטר הוא
 `ClusterFailureClassifier` (`steps/failure_classifier.py`):
 
@@ -132,22 +136,7 @@ PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
 
 ### מחזור החיים של צעד
 
-```mermaid
-stateDiagram-v2
-    [*] --> pending
-    pending --> running : הקלט נבנה
-    pending --> failed : אי אפשר לבנות את הקלט
-    running --> running : שגיאה זמנית, או תוצאה לא ידועה שלא נמצאה
-    running --> done : הצליח, או נמצא ב-find_outcome
-    running --> failed : כישלון ידוע, או נגמרו הניסיונות
-    running --> unresolved : התוצאה נשארה לא ידועה, כמה משאבים באותו שם, או Saga שנעצר באמצע הצעד
-    done --> compensating : צעד מאוחר יותר נכשל
-    failed --> compensating : שמר תוצאה לפני שנכשל
-    compensating --> compensated
-    compensating --> compensation_failed : כישלון ידוע או נגמרו הניסיונות
-    unresolved --> [*] : התערבות ידנית
-    compensation_failed --> [*] : התערבות ידנית
-```
+![סטטוס של צעד](../diagrams/15-state-step.drawio.svg)
 
 צעד שנשאר `compensating` כשה-Saga נעצר: ייתכן שהביטול שלו בוצע בחלקו. זה שונה מ-`unresolved`, שבו ייתכן שהצעד
 עצמו לא רץ.
@@ -173,6 +162,8 @@ stateDiagram-v2
 ---
 
 ## 7. Redis
+
+![מפתחות ב-Redis](../diagrams/18-redis-keys.drawio.svg)
 
 ה-Redis של המצב הוא Redis Enterprise של צוות אחר, ונחשב זמין. אין טיפול בנפילה שלו.
 
@@ -209,6 +200,8 @@ stateDiagram-v2
 
 ## 8. רשומת הפעולה
 
+![סטטוס של פעולה](../diagrams/16-state-operation.drawio.svg)
+
 הפעולה (`operations/`) נפרדת מה-saga record. `rejected` (לפני שה-Saga התחיל) ועץ ה-DB הם לא מושגים של ה-Saga, וכך
 המנוע נשאר גנרי.
 
@@ -239,6 +232,8 @@ stateDiagram-v2
 ---
 
 ## 9. heartbeat וזיהוי קריסה
+
+![זיהוי קריסה](../diagrams/17-flow-crash.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
 כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicTask`) מחדש את המפתחות של
@@ -283,6 +278,10 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 ---
 
 ## 11. מבנה הקוד
+
+![שכבת saga](../diagrams/06-layer-saga.drawio.svg)
+
+![state, liveness, recovery](../diagrams/09-layer-state.drawio.svg)
 
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|

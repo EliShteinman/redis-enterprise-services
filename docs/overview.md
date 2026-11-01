@@ -25,6 +25,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | cluster-relay | העברת כל קריאה לקלאסטר בתוך רשת היעד | פרויקט נפרד |
 | Redis של המצב | saga records, נעילות, תוצאות, heartbeats | Redis Enterprise של צוות אחר |
 
+![הקשר](diagrams/02-context.drawio.svg)
+
 - **השירות לעולם לא פונה ישירות לקלאסטר.** כל קריאה עוברת דרך cluster-relay של הרשת, מאחורי חומת אש
   (`contracts/edge-service.md`).
 - **השירות לא בודק הרשאות עסקיות.** הבקשה כבר אושרה ב-UI.
@@ -74,6 +76,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 
 ## 4. מבנה הקוד
 
+![שכבות הקוד](diagrams/01-layers.drawio.svg)
+
 `src/redis_enterprise_services/`. כיווני הייבוא נאכפים ב-`import-linter` (`pyproject.toml`), מלמעלה למטה. כל שורה
 בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `resources` מתחת לארבע חבילות המשאבים, ו-`recovery` מעל
 `saga` ו-`operations`) נמצא ב-`pyproject.toml`.
@@ -109,3 +113,22 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | `design/db-model.md` | שדות ה-DB והיוזרים, ומה נשאר בחוץ |
 | `design/cluster-api.md` | התנהגויות של ה-REST API של הקלאסטר שהעיצוב נשען עליהן |
 | `design/planned.md` | כל מה שלא בנוי, ושאלות פתוחות |
+
+### דיאגרמות
+
+כל הדיאגרמות ב-`docs/diagrams/`, כקבצי `.drawio.svg`: נפתחים כתמונה, ונערכים ב-draw.io.
+
+| דיאגרמה | מה היא מראה |
+|---|---|
+| `01-layers` | כל השכבות, מלמעלה למטה, והגורמים החיצוניים |
+| `02-context` | מי קורא למי, ומה מתוכנן |
+| `03`–`09` `layer-*` | כל שכבה מבפנים: מי משתמש בה, מה יש בה, ובמה היא משתמשת |
+| `10-seq-create`, `11-seq-rollback` | יצירה מוצלחת, וביטול אחרי כישלון |
+| `12-flow-admission` | קבלה, trace חוזר, נעילה ובדיקת שמות |
+| `13-flow-cluster-and-defaults` | מציאת הקלאסטר וברירות המחדל |
+| `14-flow-failure` | מה המנוע עושה בכל סוג כישלון |
+| `15-state-step`, `16-state-operation` | הסטטוסים של צעד ושל פעולה |
+| `17-flow-crash` | heartbeat וזיהוי קריסה |
+| `18-redis-keys` | המפתחות ב-Redis |
+| `19-api-models` | מודלי הבקשה והתוצאה |
+| `planned/p1`–`p6` | העיצוב של מה שעוד לא בנוי: Active-Active, מחיקה, עריכה |
