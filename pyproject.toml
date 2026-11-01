@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "redis-enterprise-services"
 version = "0.1.0"
-description = "Creates Redis Enterprise databases with their users as one operation that fully succeeds or rolls back"
+description = "Creates Redis Enterprise databases with their users as one operation that succeeds, rolls back, or stops for manual intervention"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.162.0",

@@ -92,5 +92,9 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 docker compose -f docker/compose.yaml up -d
 ```
 
-The saga-state Redis is not created by the compose file; create a database for it on one of the clusters, with the
-user from `config/state.yaml`.
+The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
+12000-12010):
+
+- a database listening on port `12005` (`state.port`);
+- an ACL `+@all -@dangerous +info ~res:*`, a role with that ACL on the database, and a user `saga-service`
+  (`state.username`) with that role and the password in `RES_STATE__PASSWORD`.
