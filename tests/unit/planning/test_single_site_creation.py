@@ -5,6 +5,7 @@ from redis_enterprise_services.config.clusters_settings import ClusterEntry
 from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.database_request import DatabaseRequest, DatabaseUserRequest
+from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.kind import StepKind
@@ -30,10 +31,12 @@ class IdleStep[TInput: BaseModel, TResult: BaseModel]:
         pass
 
 
+DECOMPOSITION: DecompositionSettings = DecompositionSettings(
+    acl_name="{database}-{user}-acl", role_name="{database}-{user}-role", role_management="db_viewer"
+)
 PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
-    settings=DecompositionSettings(
-        acl_name="{database}-{user}-acl", role_name="{database}-{user}-role", role_management="db_viewer"
-    ),
+    settings=DECOMPOSITION,
+    names=ResourceNames(settings=DECOMPOSITION),
     create_database=IdleStep(),
     create_acl=IdleStep(),
     create_role=IdleStep(),

@@ -8,7 +8,9 @@ from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.role_permission import ROLES_PERMISSIONS_FIELD, RolePermission
+from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.database_request import DatabaseUserRequest
+from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
@@ -30,6 +32,7 @@ class SingleSiteCreationPlanner:
         self,
         *,
         settings: DecompositionSettings,
+        names: ResourceNames,
         create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource],
         create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
         create_role: SagaStep[CreateResourceInput[NewRole], CreatedResource],
@@ -37,6 +40,7 @@ class SingleSiteCreationPlanner:
         update_database: SagaStep[DatabaseUpdateInput, DatabaseFields],
     ) -> None:
         self._settings: DecompositionSettings = settings
+        self._names: ResourceNames = names
         self._create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource] = create_database
         self._create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource] = create_acl
         self._create_role: SagaStep[CreateResourceInput[NewRole], CreatedResource] = create_role
@@ -46,7 +50,7 @@ class SingleSiteCreationPlanner:
     def plan(
         self, *, cluster: ClusterEntry, database: NewDatabase, users: list[DatabaseUserRequest]
     ) -> SagaPlan:
-        address: ClusterAddress = ClusterAddress(network=cluster.network, api_url=cluster.api_url)
+        address: ClusterAddress = address_of(cluster=cluster)
         steps: list[RunnableStep] = [self._database_step(address=address, database=database)]
         for user in users:
             steps.extend(self._user_steps(address=address, database=database, user=user))
@@ -74,7 +78,7 @@ class SingleSiteCreationPlanner:
     def _acl_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> RunnableStep:
-        acl_name: str = self._name(template=self._settings.acl_name, database=database, user=user)
+        acl_name: str = self._names.acl(database=database.name, user=user.name)
         acl: NewAcl = NewAcl(name=acl_name, acl=user.acl)
         return PlannedStep(
             key=acl_key(user=user),
@@ -85,7 +89,7 @@ class SingleSiteCreationPlanner:
     def _role_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> RunnableStep:
-        role_name: str = self._name(template=self._settings.role_name, database=database, user=user)
+        role_name: str = self._names.role(database=database.name, user=user.name)
         management: RoleManagement = self._settings.role_management
         return PlannedStep(
             key=role_key(user=user),
@@ -132,10 +136,6 @@ class SingleSiteCreationPlanner:
                 },
             ),
         )
-
-    @staticmethod
-    def _name(*, template: str, database: NewDatabase, user: DatabaseUserRequest) -> str:
-        return template.format(database=database.name, user=user.name)
 
 
 def uid_of(*, context: SagaContext, key: str) -> int:
