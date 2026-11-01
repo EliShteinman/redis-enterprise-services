@@ -77,10 +77,13 @@ class CreationExecution:
             return self._needs_manual_intervention(trace_id=trace_id)
 
     def _stopped_saga(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
-        stored: SagaRecord | None = self._records.find(saga_id=trace_id)
-        if stored is None:
-            return self._needs_manual_intervention(trace_id=trace_id)
-        return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
+        try:
+            stored: SagaRecord | None = self._records.find(saga_id=trace_id)
+            if stored is not None:
+                return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
+        except Exception:
+            logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
+        return self._needs_manual_intervention(trace_id=trace_id)
 
     def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
         return Operation(

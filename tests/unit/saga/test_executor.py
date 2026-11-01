@@ -747,28 +747,31 @@ def test_a_bug_during_compensation_leaves_that_step_compensating(
     assert state.saved is not None and state.saved.steps[0].status is StepStatus.COMPENSATING
 
 
-def test_a_failed_step_that_kept_a_result_is_the_step_that_stopped_the_saga_after_its_undo(
-    journal: list[str], state: MemoryState, lock: MemoryLock
-) -> None:
+def failed_step_whose_undo_fails(*, journal: list[str], state: MemoryState, lock: MemoryLock) -> SagaRecord:
     steps: list[PlannedStep[FakeInput, FakeResult]] = [
         planned(step=FakeStep(journal=journal), name="a"),
         planned(
-            step=FakeStep(journal=journal, executions=["keep then rejected"], compensations=[REJECTED]),
+            step=FakeStep(journal=journal, executions=["keep then rejected"], compensations=[AMBIGUOUS]),
             name="b",
         ),
     ]
+    return run(steps=steps, state=state, lock=lock)
 
-    record: SagaRecord = run(steps=steps, state=state, lock=lock)
 
-    stopped: StepRecord = record.steps[1]
+def test_a_failed_step_that_kept_a_result_is_still_the_step_that_stopped_the_saga_after_its_undo(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    record: SagaRecord = failed_step_whose_undo_fails(journal=journal, state=state, lock=lock)
+
+    assert record.stopped_at == "b"
+
+
+def test_a_failed_undo_keeps_the_error_that_failed_the_step(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    stopped: StepRecord = failed_step_whose_undo_fails(journal=journal, state=state, lock=lock).steps[1]
+
     assert (
-        record.stopped_at,
-        stopped.status,
-        stopped.error is not None,
-        stopped.compensation_error is not None,
-    ) == (
-        "b",
-        StepStatus.COMPENSATION_FAILED,
-        True,
-        True,
-    )
+        stopped.error and stopped.error.message,
+        stopped.compensation_error and stopped.compensation_error.message,
+    ) == ("no", "two found")
