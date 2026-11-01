@@ -2,7 +2,17 @@ from pydantic import BaseModel, Field
 
 
 class ErrorInfo(BaseModel):
-    code: str = Field(description="The error code from the contract.", examples=["step_rejected"])
+    code: str = Field(
+        description="What kind of failure. At once: validation_error (the request does not match), "
+        "invalid_name (a name breaks the naming rules), "
+        "unknown_cluster (no configured cluster for the target), "
+        "not_found (unknown trace or path), internal_error (a bug in the service). "
+        "In the status: name_taken, "
+        "database_locked (another operation holds the database), step_rejected (a cluster refused a step), "
+        "cluster_unavailable (the cluster or the edge service cannot be reached), cluster_timeout "
+        "(the cluster did not finish in time), internal_error.",
+        examples=["step_rejected"],
+    )
     message: str = Field(
         description="What went wrong, for people; not for parsing.",
         examples=["cluster answered 406: Cannot allocate nodes for shards"],

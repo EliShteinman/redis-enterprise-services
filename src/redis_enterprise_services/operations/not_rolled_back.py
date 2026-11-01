@@ -13,9 +13,12 @@ class NotRolledBack(BaseModel):
         description="The resource name. For permissions: the database name.", examples=["orders-app-acl"]
     )
     uid: int | None = Field(
-        description="The resource uid on the cluster, or null when it is unknown whether it was created.",
+        description="The resource uid on the cluster, or null when it is unknown whether it was created. "
+        "For permissions: the database uid.",
         examples=[11],
     )
     error: str | None = Field(
-        description="Why it was not undone, or null.", examples=["cluster_unavailable: relay is down"]
+        description="The last error of the resource: of its undo when the undo failed, "
+        "otherwise of its step. Null when there was none.",
+        examples=["cluster_unavailable: relay is down"],
     )

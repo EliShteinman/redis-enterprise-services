@@ -109,7 +109,8 @@ class DatabaseOptions(BaseModel):
 class NewDatabase(NamedSpec, DatabaseOptions):
     name: str = Field(
         description="The database name. Letters, digits and '-' (not first or last), "
-        "up to the configured length. Not taken on the cluster.",
+        "up to the configured length. A name that breaks these rules is refused at once with invalid_name. "
+        "A name already taken on the cluster ends the operation as rejected with name_taken.",
         examples=["orders"],
     )
     memory_size: PositiveInt = Field(

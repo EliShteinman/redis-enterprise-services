@@ -18,7 +18,7 @@ class DatabaseUserRequest(BaseModel):
     )
     password: str = Field(
         min_length=1,
-        description="The user's password. Kept by the service: it is part of the connection details.",
+        description="The user's password. Never returned in any response.",
         examples=["S3cure-Passw0rd"],
     )
     acl: str = Field(
