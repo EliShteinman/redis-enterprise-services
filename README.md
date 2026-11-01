@@ -1,6 +1,16 @@
 # redis-enterprise-services
 
-Creates, edits and deletes Redis Enterprise databases. Each operation fully succeeds or rolls back.
+Creates Redis Enterprise databases with their users, as a saga: each operation fully succeeds, rolls back, or stops
+for manual intervention. Today: single-site creation. Planned: Active-Active, edit, delete. What exists and what is
+missing: `docs/overview.md`.
+
+## Requirements
+
+- Python 3.14 and [uv](https://docs.astral.sh/uv/).
+- A Redis for the saga state, reachable at `state.host:state.port` (`config/state.yaml`), with a user that has
+  `+@all -@dangerous +info ~res:*`.
+- cluster-relay running for each network in `config/edge.yaml` (locally: `http://127.0.0.1:8000/`).
+- Redis Enterprise clusters listed in `config/clusters.yaml`.
 
 ## Installation
 
@@ -28,6 +38,9 @@ curl localhost:8080/v1/operations/4bf92f3577b34da6a3ce929d0e0e4736 \
   -H 'traceparent: 00-5c8a1e2f3b4d6e7f8091a2b3c4d5e6f7-1a2b3c4d5e6f7081-01'
 ```
 
+Every command needs its own trace id: the same trace id again returns the existing operation (`200`) instead of
+starting a new one. The OpenAPI docs, with request examples, are at `/docs`.
+
 In a deployment, uvicorn builds the app through the factory:
 
 ```bash
@@ -48,6 +61,7 @@ Secrets are passed only through environment variables. Required:
 - `RES_STATE__PASSWORD`: the password of the Redis that keeps the saga state.
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
 - `RES_CLUSTER_ACCESS__USERNAME`, `RES_CLUSTER_ACCESS__PASSWORD`: the admin user of the clusters.
+- `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
 
 Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
 the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed, holds only `RES_` variables, and an environment variable with the same name wins over
@@ -55,7 +69,11 @@ it.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
-## Lint
+## Tests and lint
+
+```bash
+uv run pytest
+```
 
 ```bash
 uv run ruff check . && uv run ruff format .
@@ -73,3 +91,10 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 ```bash
 docker compose -f docker/compose.yaml up -d
 ```
+
+The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
+12000-12010):
+
+- a database listening on port `12005` (`state.port`);
+- an ACL `+@all -@dangerous +info ~res:*`, a role with that ACL on the database, and a user `saga-service`
+  (`state.username`) with that role and the password in `RES_STATE__PASSWORD`.
