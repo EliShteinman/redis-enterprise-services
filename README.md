@@ -49,6 +49,10 @@ Secrets are passed only through environment variables. Required:
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
 - `RES_CLUSTER_ACCESS__USERNAME`, `RES_CLUSTER_ACCESS__PASSWORD`: the admin user of the clusters.
 
+Locally they can be kept in a `.env` file in the project root instead: copy `.env.example` to `.env` and fill it
+in. `.env` is never committed, holds only `RES_` variables, and an environment variable with the same name wins over
+it.
+
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
 ## Lint
