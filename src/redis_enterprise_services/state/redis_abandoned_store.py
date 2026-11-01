@@ -45,6 +45,14 @@ end
 if ARGV[4] ~= '' then
     redis.call('SET', KEYS[4], ARGV[4])
 end
+if ARGV[6] == '' then
+    for i = 6, #KEYS do
+        if redis.call('GET', KEYS[i]) == ARGV[2] then
+            redis.call('DEL', KEYS[i])
+        end
+    end
+    redis.call('DEL', KEYS[5])
+end
 return 1
 """
 
@@ -79,12 +87,15 @@ class RedisAbandonedStore(AbandonedStore):
         self, *, operation: Operation, read_saga: StoredSaga | None, stopped_saga: SagaRecord | None
     ) -> MarkResult:
         trace_id: str = operation.trace_id
+        held_locks: str = self._keys.held_locks(owner=trace_id)
         marked: int = self._mark_abandoned(
             keys=[
                 self._keys.operation(trace_id=trace_id),
                 self._keys.open_operations(),
                 self._keys.heartbeat(trace_id=trace_id),
                 self._keys.saga(saga_id=trace_id),
+                held_locks,
+                *sorted(cast(set[str], self._client.smembers(name=held_locks))),
             ],
             args=[
                 operation.model_dump_json(),

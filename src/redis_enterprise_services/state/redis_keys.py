@@ -19,3 +19,6 @@ class RedisKeys:
 
     def lock(self, *, key: str) -> str:
         return f"{self._prefix}lock:{key}"
+
+    def held_locks(self, *, owner: str) -> str:
+        return f"{self._prefix}locks:{owner}"
