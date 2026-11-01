@@ -27,6 +27,10 @@ end
 if cjson.decode(stored)['status'] ~= ARGV[5] then
     return 0
 end
+local saga = redis.call('GET', KEYS[4])
+if (saga or '') ~= ARGV[6] then
+    return 0
+end
 if ARGV[3] == '0' then
     redis.call('SET', KEYS[1], ARGV[1])
 else
@@ -53,9 +57,19 @@ class RedisAbandonedStore(AbandonedStore):
             trace_id
             for trace_id in open_ids
             if not self._client.exists(self._keys.heartbeat(trace_id=trace_id))
+            and self._running(trace_id=trace_id)
         )
 
-    def mark_abandoned(self, *, operation: Operation, stopped_saga: SagaRecord | None) -> bool:
+    def _running(self, *, trace_id: str) -> bool:
+        stored: str | bytes | None = self._client.get(name=self._keys.operation(trace_id=trace_id))
+        return (
+            stored is None
+            or Operation.model_validate_json(json_data=stored).status is OperationStatus.RUNNING
+        )
+
+    def mark_abandoned(
+        self, *, operation: Operation, read_saga: SagaRecord | None, stopped_saga: SagaRecord | None
+    ) -> bool:
         trace_id: str = operation.trace_id
         marked: int = self._mark_abandoned(
             keys=[
@@ -70,6 +84,7 @@ class RedisAbandonedStore(AbandonedStore):
                 self._finished_ttl_seconds if operation.status in EXPIRING else KEEP_OPEN,
                 NO_SAGA if stopped_saga is None else stopped_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
+                NO_SAGA if read_saga is None else read_saga.model_dump_json(),
             ],
         )
         logger.debug(msg=f"operation {trace_id} {'marked' if marked else 'left as it is'}")

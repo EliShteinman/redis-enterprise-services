@@ -29,7 +29,7 @@ class AbandonedSweep:
             status=OperationStatus.REJECTED if saga is None else OperationStatus.REQUIRES_MANUAL_INTERVENTION,
             error=self._errors.internal(),
         )
-        if self._store.mark_abandoned(operation=operation, stopped_saga=stopped(saga=saga)):
+        if self._store.mark_abandoned(operation=operation, read_saga=saga, stopped_saga=stopped(saga=saga)):
             logger.critical(
                 msg=f"operation {trace_id} was left by a pod that stopped, marked {operation.status.value}"
             )
