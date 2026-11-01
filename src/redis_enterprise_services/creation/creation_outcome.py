@@ -13,11 +13,16 @@ from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import DATABASE_KEY, PERMISSIONS_KEY
 from redis_enterprise_services.resources.models import CreatedResource
-from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.models import (
+    SagaRecord,
+    SagaStatus,
+    StepError,
+    StepRecord,
+    StepStatus,
+)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-STOPPING: frozenset[StepStatus] = frozenset({StepStatus.FAILED, StepStatus.UNRESOLVED})
 LEFT_BEHIND: frozenset[StepStatus] = frozenset(
     {StepStatus.DONE, StepStatus.UNRESOLVED, StepStatus.COMPENSATING, StepStatus.COMPENSATION_FAILED}
 )
@@ -43,7 +48,7 @@ class CreationOutcome:
 
     def _error(self, *, creation: PreparedCreation, record: SagaRecord) -> ErrorInfo:
         stopped: StepRecord | None = next(
-            (step for step in reversed(record.steps) if step.status in STOPPING and step.error), None
+            (step for step in record.steps if step.key == record.stopped_at), None
         )
         if stopped is None or stopped.error is None:
             logger.error(msg=f"saga {record.saga_id} ended {record.status.value} with no failed step")
@@ -63,11 +68,15 @@ class CreationOutcome:
                 type=resources[step.key].type,
                 name=resources[step.key].name,
                 uid=resource_uid(record=record, step=step),
-                error=f"{step.error.code}: {step.error.message}" if step.error else None,
+                error=described(error=step.compensation_error or step.error),
             )
             for step in record.steps
             if step.status in LEFT_BEHIND
         ]
+
+
+def described(*, error: StepError | None) -> str | None:
+    return None if error is None else f"{error.code}: {error.message}"
 
 
 def resource_uid(*, record: SagaRecord, step: StepRecord) -> int | None:

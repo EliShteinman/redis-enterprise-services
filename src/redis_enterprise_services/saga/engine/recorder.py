@@ -46,7 +46,7 @@ class StepRecorder:
         self._mark(status=StepStatus.COMPENSATED)
 
     def compensation_failed(self, *, error: StepError) -> None:
-        self._step.error = error
+        self._step.compensation_error = error
         self._mark(status=StepStatus.COMPENSATION_FAILED)
 
     def _mark(self, *, status: StepStatus) -> None:

@@ -27,7 +27,13 @@ DECOMPOSITION: DecompositionSettings = DecompositionSettings(
 OUTCOME: CreationOutcome = CreationOutcome(
     names=ResourceNames(settings=DECOMPOSITION),
     errors=PublicErrors(
-        settings=OperationSettings(public_error_codes={"cluster_error": "step_rejected"}),
+        settings=OperationSettings(
+            public_error_codes={
+                "cluster_error": "step_rejected",
+                "cluster_unavailable": "cluster_unavailable",
+            },
+            cluster_error_codes=frozenset({"step_rejected", "cluster_unavailable"}),
+        ),
         internal_error_message="internal error",
     ),
 )
@@ -47,27 +53,40 @@ UNDO_FAILED: StepError = StepError(code="cluster_unavailable", message="relay is
 
 
 def step(
-    *, key: str, status: StepStatus, uid: int | None = None, error: StepError | None = None
+    *,
+    key: str,
+    status: StepStatus,
+    uid: int | None = None,
+    error: StepError | None = None,
+    compensation_error: StepError | None = None,
 ) -> StepRecord:
     result: JsonValue = None if uid is None else {"uid": uid, "name": key, "action_uid": None}
-    return StepRecord(key=key, kind=StepKind.COMPENSATABLE, status=status, result=result, error=error)
-
-
-def outcome(*, status: SagaStatus, steps: list[StepRecord]) -> Operation:
-    return OUTCOME.of(
-        trace_id="trace-1",
-        creation=CREATION,
-        record=SagaRecord(saga_id="trace-1", status=status, steps=steps),
+    return StepRecord(
+        key=key,
+        kind=StepKind.COMPENSATABLE,
+        status=status,
+        result=result,
+        error=error,
+        compensation_error=compensation_error,
     )
 
 
-def test_a_rolled_back_creation_reports_the_cluster_error_of_the_failed_step() -> None:
+def outcome(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
+    return OUTCOME.of(
+        trace_id="trace-1",
+        creation=CREATION,
+        record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),
+    )
+
+
+def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopped_it() -> None:
     operation: Operation = outcome(
         status=SagaStatus.ROLLED_BACK,
         steps=[
-            step(key="database", status=StepStatus.COMPENSATED, uid=7),
-            step(key="user/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),
+            step(key="database", status=StepStatus.COMPENSATED, uid=7, error=REJECTED_BY_CLUSTER),
+            step(key="acl/app", status=StepStatus.PENDING),
         ],
+        stopped_at="database",
     )
 
     assert (operation.error, operation.not_rolled_back) == (
@@ -86,10 +105,17 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
             step(key="database", status=StepStatus.DONE, uid=7),
-            step(key="acl/app", status=StepStatus.COMPENSATION_FAILED, uid=11, error=UNDO_FAILED),
+            step(
+                key="acl/app",
+                status=StepStatus.COMPENSATION_FAILED,
+                uid=11,
+                error=REJECTED_BY_CLUSTER,
+                compensation_error=UNDO_FAILED,
+            ),
             step(key="role/app", status=StepStatus.COMPENSATED, uid=12),
             step(key="user/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),
         ],
+        stopped_at="user/app",
     )
 
     assert operation.not_rolled_back == [

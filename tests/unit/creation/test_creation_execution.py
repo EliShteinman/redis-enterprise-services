@@ -24,7 +24,8 @@ from redis_enterprise_services.planning.database_request import DatabaseRequest,
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord
+from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
 
 CREATION: PreparedCreation = PreparedCreation(
@@ -40,7 +41,9 @@ DECOMPOSITION: DecompositionSettings = DecompositionSettings(
     acl_name="{database}-{user}-acl", role_name="{database}-{user}-role", role_management="db_viewer"
 )
 ERRORS: PublicErrors = PublicErrors(
-    settings=OperationSettings(public_error_codes={"name_taken": "name_taken"}),
+    settings=OperationSettings(
+        public_error_codes={"name_taken": "name_taken"}, cluster_error_codes=frozenset()
+    ),
     internal_error_message="internal error",
 )
 UIDS: dict[str, int] = {"database": 7, "acl/app": 11, "role/app": 12, "user/app": 13, "permissions": 7}
@@ -52,7 +55,10 @@ def saga_record(*, status: SagaStatus) -> SagaRecord:
         status=status,
         steps=[
             StepRecord(
-                key=key, kind=StepKind.COMPENSATABLE, result={"uid": uid, "name": key, "action_uid": None}
+                key=key,
+                kind=StepKind.COMPENSATABLE,
+                status=StepStatus.DONE,
+                result={"uid": uid, "name": key, "action_uid": None},
             )
             for key, uid in UIDS.items()
         ],
@@ -64,6 +70,8 @@ class Creation:
         self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
+        self.records: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
+        self.records.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
             scope=ChosenClusterScope(),
             availability=self.availability,
@@ -72,6 +80,7 @@ class Creation:
             executor=self.executor,
             outcome=CreationOutcome(names=ResourceNames(settings=DECOMPOSITION), errors=ERRORS),
             errors=ERRORS,
+            records=self.records,
             store=self.store,
         )
 
@@ -145,3 +154,20 @@ def test_an_unexpected_error_still_ends_the_operation(failing: str, status: Oper
     operation: Operation = creation.run()
 
     assert (operation.status, operation.error and operation.error.code) == (status, "internal_error")
+
+
+def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
+    creation: Creation = Creation()
+    creation.executor.run.side_effect = RuntimeError("bug")
+    creation.records.find.return_value = saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION)
+
+    operation: Operation = creation.run()
+
+    assert operation.not_rolled_back is not None
+    assert [left.type for left in operation.not_rolled_back] == [
+        "database",
+        "acl",
+        "role",
+        "user",
+        "permissions",
+    ]

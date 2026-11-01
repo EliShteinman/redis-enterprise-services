@@ -7,7 +7,7 @@ from redis_enterprise_services.exceptions.saga import DatabaseLockedError, Inval
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.lock import DatabaseLock
-from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepStatus
+from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
@@ -745,3 +745,30 @@ def test_a_bug_during_compensation_leaves_that_step_compensating(
         run(steps=steps, state=state, lock=lock)
 
     assert state.saved is not None and state.saved.steps[0].status is StepStatus.COMPENSATING
+
+
+def test_a_failed_step_that_kept_a_result_is_the_step_that_stopped_the_saga_after_its_undo(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(step=FakeStep(journal=journal), name="a"),
+        planned(
+            step=FakeStep(journal=journal, executions=["keep then rejected"], compensations=[REJECTED]),
+            name="b",
+        ),
+    ]
+
+    record: SagaRecord = run(steps=steps, state=state, lock=lock)
+
+    stopped: StepRecord = record.steps[1]
+    assert (
+        record.stopped_at,
+        stopped.status,
+        stopped.error is not None,
+        stopped.compensation_error is not None,
+    ) == (
+        "b",
+        StepStatus.COMPENSATION_FAILED,
+        True,
+        True,
+    )

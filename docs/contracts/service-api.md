@@ -274,9 +274,9 @@
 | `type` | `database`, `acl`, `role`, `user` או `permissions` |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
-| `error` | השגיאה האחרונה של המשאב (של הביטול שלו, או של הצעד אם התוצאה לא ידועה), או `null` |
+| `error` | השגיאה האחרונה של המשאב (של הביטול שלו אם נכשל, אחרת של הצעד), או `null` |
 
-`cluster` ו-`cluster_error_code` ב-`error` מופיעים רק כששגיאה הגיעה מקלאסטר. הקודים בטבלה הם היחידים שחוזרים; שגיאה פנימית אחרת חוזרת כ-`internal_error`, עם התיאור המלא ב-`message`. המיפוי מהקודים הפנימיים בקונפיג (`config/operation.yaml`).
+`cluster` ו-`cluster_error_code` ב-`error` מופיעים רק בקודים שמגיעים מקלאסטר: `step_rejected`, `cluster_unavailable`, `cluster_timeout`. השגיאה ב-`error` היא של הצעד שעצר את הפעולה. גם כשהשירות נעצר על שגיאה לא צפויה, `not_rolled_back` נבנה מהרישום של הריצה. הקודים בטבלה הם היחידים שחוזרים; שגיאה פנימית אחרת חוזרת כ-`internal_error`, עם התיאור המלא ב-`message`. המיפוי מהקודים הפנימיים בקונפיג (`config/operation.yaml`).
 
 ### `error.code`
 

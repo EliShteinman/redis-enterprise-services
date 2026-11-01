@@ -14,6 +14,7 @@ from redis_enterprise_services.planning.availability.name_availability import Na
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
@@ -31,6 +32,7 @@ class CreationExecution:
         executor: SagaExecutor,
         outcome: CreationOutcome,
         errors: PublicErrors,
+        records: SagaRecordReader,
         store: OperationStore,
     ) -> None:
         self._scope: NameCheckScope = scope
@@ -40,6 +42,7 @@ class CreationExecution:
         self._executor: SagaExecutor = executor
         self._outcome: CreationOutcome = outcome
         self._errors: PublicErrors = errors
+        self._records: SagaRecordReader = records
         self._store: OperationStore = store
 
     def run(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
@@ -51,7 +54,9 @@ class CreationExecution:
         try:
             plan: SagaPlan = self._checked_plan(creation=creation)
         except RedisEnterpriseServicesError as error:
-            return rejected(trace_id=trace_id, error=self._errors.of(error=error))
+            return rejected(
+                trace_id=trace_id, error=self._errors.of(error=error, cluster=creation.cluster.api_url)
+            )
         except Exception:
             logger.exception(msg=f"creating {creation.request.database.name} failed before its saga")
             return rejected(trace_id=trace_id, error=self._errors.internal())
@@ -61,7 +66,7 @@ class CreationExecution:
             return rejected(trace_id=trace_id, error=self._errors.of(error=error))
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
-            return self._needs_manual_intervention(trace_id=trace_id)
+            return self._stopped_saga(trace_id=trace_id, creation=creation)
         try:
             return self._outcome.of(trace_id=trace_id, creation=creation, record=record)
         except Exception:
@@ -70,6 +75,12 @@ class CreationExecution:
                 exc_info=True,
             )
             return self._needs_manual_intervention(trace_id=trace_id)
+
+    def _stopped_saga(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
+        stored: SagaRecord | None = self._records.find(saga_id=trace_id)
+        if stored is None:
+            return self._needs_manual_intervention(trace_id=trace_id)
+        return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
 
     def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
         return Operation(

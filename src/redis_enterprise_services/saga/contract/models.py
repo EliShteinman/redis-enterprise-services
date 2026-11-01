@@ -51,12 +51,14 @@ class StepRecord(BaseModel):
     result: JsonValue = None
     obtained_by: ObtainedBy | None = None
     error: StepError | None = None
+    compensation_error: StepError | None = None
 
 
 class SagaRecord(BaseModel):
     saga_id: str
     status: SagaStatus = SagaStatus.RUNNING
     steps: list[StepRecord]
+    stopped_at: str | None = None
 
     def stop_running(self) -> None:
         self.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION

@@ -12,3 +12,7 @@ operation:
     cluster_action_timeout: cluster_timeout
     database_not_active: cluster_timeout
     database_still_exists: cluster_timeout
+  cluster_error_codes:
+    - step_rejected
+    - cluster_unavailable
+    - cluster_timeout
