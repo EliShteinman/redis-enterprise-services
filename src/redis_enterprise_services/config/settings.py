@@ -17,6 +17,7 @@ from redis_enterprise_services.config.decomposition_settings import Decompositio
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.naming_settings import NamingSettings
+from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.config.server_settings import ServerSettings
@@ -44,6 +45,7 @@ class Settings(BaseSettings):
             "config/database_defaults.yaml",
             "config/decomposition.yaml",
             "config/naming.yaml",
+            "config/operation.yaml",
         ),
         env_prefix="RES_",
         env_nested_delimiter="__",
@@ -67,6 +69,7 @@ class Settings(BaseSettings):
     database_defaults: DatabaseDefaultsSettings
     decomposition: DecompositionSettings
     naming: NamingSettings
+    operation: OperationSettings
 
     @classmethod
     def settings_customise_sources(

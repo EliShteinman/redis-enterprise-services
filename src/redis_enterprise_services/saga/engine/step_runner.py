@@ -7,6 +7,7 @@ from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.models import StepError
 from redis_enterprise_services.saga.engine.recorder import StepRecorder
 from redis_enterprise_services.saga.engine.retry import pause
 from redis_enterprise_services.saga.plan.context import SagaContext
@@ -43,7 +44,11 @@ class StepRunner:
             prepared: PreparedStep = step.prepare(context=context)
         except (RedisEnterpriseServicesError, ValidationError) as error:
             logger.error(msg=f"cannot build the input of step {step.key}: {error}")
-            recorder.failed_attempt(error=f"cannot build the input: {error}")
+            recorder.failed_attempt(
+                error=StepError(
+                    code=RedisEnterpriseServicesError.code, message=f"cannot build the input: {error}"
+                )
+            )
             recorder.failed()
             return None
         recorder.started(step_input=prepared.step_input)
@@ -101,7 +106,7 @@ class StepRunner:
             step.execute(on_kept=recorder.kept)
         except RedisEnterpriseServicesError as error:
             logger.warning(msg=f"step {step.key} failed: {error.describe()}")
-            recorder.failed_attempt(error=error.describe())
+            recorder.failed_attempt(error=StepError.of(error=error))
             return self._classifier.classify(error=error)
         return None
 
@@ -110,7 +115,7 @@ class StepRunner:
             return Check.FOUND if step.resolve(on_kept=recorder.kept) else Check.NOT_FOUND
         except RedisEnterpriseServicesError as error:
             logger.error(msg=f"checking step {step.key} failed: {error.describe()}")
-            recorder.failed_attempt(error=error.describe())
+            recorder.failed_attempt(error=StepError.of(error=error))
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL

@@ -266,7 +266,17 @@
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל. `not_rolled_back` מפרט מה נשאר |
 | `pending_cleanup` | timeout ביצירת AA. נשלח ביטול, והשאילתה הבאה תראה אם הוא הסתיים |
 
-`not_rolled_back[]`: `cluster`, `type`, `name`, `uid`, `error`.
+`not_rolled_back[]`: מה שנשאר בקלאסטר. מופיע ב-`rolled_back` (ריק) וב-`requires_manual_intervention`.
+
+| שדה | הערה |
+|---|---|
+| `cluster` | כתובת הקלאסטר |
+| `type` | `database`, `acl`, `role`, `user` או `permissions` |
+| `name` | שם המשאב. ב-`permissions`: שם ה-DB |
+| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
+| `error` | השגיאה האחרונה של המשאב (של הביטול שלו, או של הצעד אם התוצאה לא ידועה), או `null` |
+
+`cluster` ו-`cluster_error_code` ב-`error` מופיעים רק כששגיאה הגיעה מקלאסטר. הקודים בטבלה הם היחידים שחוזרים; שגיאה פנימית אחרת חוזרת כ-`internal_error`, עם התיאור המלא ב-`message`. המיפוי מהקודים הפנימיים בקונפיג (`config/operation.yaml`).
 
 ### `error.code`
 
@@ -287,8 +297,9 @@
 | `name_taken` | בסטטוס, `rejected` | שם DB או יוזר תפוס |
 | `insufficient_resources` | בסטטוס, `rejected` | אין מקום באף קלאסטר מתאים |
 | `database_locked` | בסטטוס, `rejected` | פעולה אחרת רצה על ה-DB, ולא הסתיימה בזמן |
-| `step_rejected` | בסטטוס, `rolled_back` | הקלאסטר דחה צעד. הקוד שלו ב-`error.cluster_error_code` |
-| `cluster_unavailable` | בסטטוס, `rolled_back` | הקלאסטר או שירות הקצה לא זמינים |
+| `step_rejected` | בסטטוס, `rolled_back` או `requires_manual_intervention` (ובבדיקה המוקדמת: `rejected`) | הקלאסטר דחה בקשה. הקוד שלו ב-`error.cluster_error_code`, והכתובת שלו ב-`error.cluster` |
+| `cluster_unavailable` | בסטטוס, `rolled_back` או `requires_manual_intervention` (ובבדיקה המוקדמת: `rejected`) | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
+| `cluster_timeout` | בסטטוס, `rolled_back` או `requires_manual_intervention` | הקלאסטר לא סיים פעולה בזמן (למשל DB שלא הגיע ל-`active`) |
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
 

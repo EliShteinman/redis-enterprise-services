@@ -13,6 +13,9 @@ class ClusterRequestError(RedisEnterpriseServicesError):
         self.cluster_status_code: int = cluster_status_code
         self.error_code: str | None = error_code
 
+    def remote_code(self) -> str | None:
+        return self.error_code
+
 
 class DatabaseNotActiveError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "database_not_active"

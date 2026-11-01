@@ -1,0 +1,14 @@
+operation:
+  public_error_codes:
+    name_taken: name_taken
+    database_locked: database_locked
+    invalid_name: invalid_name
+    unknown_cluster: unknown_cluster
+    cluster_unavailable: cluster_unavailable
+    unreadable_cluster_answer: cluster_unavailable
+    cluster_error: step_rejected
+    database_creation_failed: step_rejected
+    cluster_action_failed: step_rejected
+    cluster_action_timeout: cluster_timeout
+    database_not_active: cluster_timeout
+    database_still_exists: cluster_timeout

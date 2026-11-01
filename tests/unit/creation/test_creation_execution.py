@@ -3,7 +3,10 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
+from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
+from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -13,10 +16,12 @@ from redis_enterprise_services.operations.database_result import DatabaseResult,
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
+from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
 from redis_enterprise_services.planning.availability.creation_names import CreationNames
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.database_request import DatabaseRequest, DatabaseUserRequest
+from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord
@@ -30,6 +35,13 @@ CREATION: PreparedCreation = PreparedCreation(
         database=NewDatabase(name="orders", memory_size=104857600),
         users=[DatabaseUserRequest(name="app", password="p1", acl="+@all ~orders:*")],
     ),
+)
+DECOMPOSITION: DecompositionSettings = DecompositionSettings(
+    acl_name="{database}-{user}-acl", role_name="{database}-{user}-role", role_management="db_viewer"
+)
+ERRORS: PublicErrors = PublicErrors(
+    settings=OperationSettings(public_error_codes={"name_taken": "name_taken"}),
+    internal_error_message="internal error",
 )
 UIDS: dict[str, int] = {"database": 7, "acl/app": 11, "role/app": 12, "user/app": 13, "permissions": 7}
 
@@ -58,8 +70,9 @@ class Creation:
             names=create_autospec(spec=CreationNames, instance=True),
             planner=create_autospec(spec=SingleSiteCreationPlanner, instance=True),
             executor=self.executor,
+            outcome=CreationOutcome(names=ResourceNames(settings=DECOMPOSITION), errors=ERRORS),
+            errors=ERRORS,
             store=self.store,
-            internal_error_message="internal error",
         )
 
     def run(self) -> Operation:

@@ -1,6 +1,12 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.saga.contract.models import ObtainedBy, SagaRecord, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.models import (
+    ObtainedBy,
+    SagaRecord,
+    StepError,
+    StepRecord,
+    StepStatus,
+)
 from redis_enterprise_services.saga.contract.state import SagaStateRepository
 
 
@@ -19,7 +25,7 @@ class StepRecorder:
         self._step.obtained_by = obtained_by
         self._state.save(record=self._record)
 
-    def failed_attempt(self, *, error: str) -> None:
+    def failed_attempt(self, *, error: StepError) -> None:
         self._step.error = error
         self._state.save(record=self._record)
 
@@ -39,7 +45,7 @@ class StepRecorder:
     def compensated(self) -> None:
         self._mark(status=StepStatus.COMPENSATED)
 
-    def compensation_failed(self, *, error: str) -> None:
+    def compensation_failed(self, *, error: StepError) -> None:
         self._step.error = error
         self._mark(status=StepStatus.COMPENSATION_FAILED)
 

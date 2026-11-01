@@ -139,6 +139,7 @@ PlannedStep(
 | `saga_id` | ה-trace ID של הבקשה |
 | `status` | `running`, `succeeded`, `rolled_back`, `requires_manual_intervention` |
 | `steps[]` | `key`, `kind`, `status`, `step_input`, `result`, `obtained_by`, `error` |
+| `steps[].error` | השגיאה האחרונה של הצעד או של הביטול שלו, כשדות: `code` (הקוד שלנו), `message`, ו-`remote_code` (הקוד שהמערכת המרוחקת נתנה, למשל `name_already_exists` של הקלאסטר). המנוע לא מכיר את הקלאסטר: הוא קורא `remote_code()` מהשגיאה, וכל שגיאה שיש לה קוד מרוחק מחזירה אותו |
 | `heartbeat_at` | עוד לא נבנה, נבנה באבן 8ד |
 
 - **השמירה ב-Redis כבר משלב 1** (S4). ה-record נכתב לפני כל צעד, מיד כשיש תוצאה, ובסוף הצעד.
