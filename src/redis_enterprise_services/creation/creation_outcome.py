@@ -68,15 +68,14 @@ class CreationOutcome:
                 type=resources[step.key].type,
                 name=resources[step.key].name,
                 uid=resource_uid(record=record, step=step),
-                error=described(error=step.compensation_error or step.error),
+                error=self._described(error=step.compensation_error or step.error),
             )
             for step in record.steps
             if step.status in LEFT_BEHIND
         ]
 
-
-def described(*, error: StepError | None) -> str | None:
-    return None if error is None else f"{error.code}: {error.message}"
+    def _described(self, *, error: StepError | None) -> str | None:
+        return None if error is None else f"{self._errors.public_code(code=error.code)}: {error.message}"
 
 
 def resource_uid(*, record: SagaRecord, step: StepRecord) -> int | None:

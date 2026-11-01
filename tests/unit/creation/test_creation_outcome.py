@@ -128,3 +128,22 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
             error="cluster_unavailable: relay is down",
         ),
     ]
+
+
+def test_what_was_not_rolled_back_reports_the_public_error_code() -> None:
+    operation: Operation = outcome(
+        status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        steps=[
+            step(
+                key="database",
+                status=StepStatus.COMPENSATION_FAILED,
+                uid=7,
+                compensation_error=REJECTED_BY_CLUSTER,
+            ),
+            step(key="acl/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),
+        ],
+        stopped_at="acl/app",
+    )
+
+    assert operation.not_rolled_back is not None
+    assert operation.not_rolled_back[0].error == "step_rejected: user name is taken"
