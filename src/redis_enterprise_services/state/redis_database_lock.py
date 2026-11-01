@@ -15,7 +15,7 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 ACQUIRE_ALL: str = """
 for _, key in ipairs(KEYS) do
     local holder = redis.call('GET', key)
-    if holder then
+    if holder and holder ~= ARGV[1] then
         return holder
     end
 end

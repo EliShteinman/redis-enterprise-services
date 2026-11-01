@@ -167,7 +167,8 @@ PlannedStep(
 | `res:{state}operations:open` | set | ה-`trace_id` של פעולות שעוד לא הסתיימו (`running`, `requires_manual_intervention`), לזיהוי אחרי קריסה |
 
 - **נעילה:** `SET` בלי TTL. סקריפט Lua אחד נועל את כל המפתחות של ה-Saga, או אף אחד מהם אם אחד תפוס (ב-AA יש כמה).
-  שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
+  שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. מי שכבר מחזיק במפתח יכול לנעול אותו
+  שוב (אותו `saga_id`), כדי שפקודה תנעל לפני הבדיקה המוקדמת וה-Saga שלה ימשיך באותה נעילה. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
 - **קריסה (D5, עוד לא נבנה, נבנה באבן 8ד):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at`
   שלו ישן מהסף בקונפיג. הוא מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB

@@ -3,7 +3,6 @@ import logging
 from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.saga import DatabaseLockedError
 from redis_enterprise_services.operations.error_info import ErrorInfo
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -13,6 +12,7 @@ from redis_enterprise_services.planning.availability.creation_names import Creat
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
+from redis_enterprise_services.saga.contract.lock import DatabaseLock
 from redis_enterprise_services.saga.contract.models import SagaRecord
 from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
@@ -29,6 +29,7 @@ class CreationExecution:
         availability: NameAvailability,
         names: CreationNames,
         planner: SingleSiteCreationPlanner,
+        lock: DatabaseLock,
         executor: SagaExecutor,
         outcome: CreationOutcome,
         errors: PublicErrors,
@@ -39,6 +40,7 @@ class CreationExecution:
         self._availability: NameAvailability = availability
         self._names: CreationNames = names
         self._planner: SingleSiteCreationPlanner = planner
+        self._lock: DatabaseLock = lock
         self._executor: SagaExecutor = executor
         self._outcome: CreationOutcome = outcome
         self._errors: PublicErrors = errors
@@ -52,7 +54,7 @@ class CreationExecution:
 
     def _finished(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
         try:
-            plan: SagaPlan = self._checked_plan(creation=creation)
+            plan: SagaPlan = self._locked_and_checked_plan(trace_id=trace_id, creation=creation)
         except RedisEnterpriseServicesError as error:
             return rejected(
                 trace_id=trace_id, error=self._errors.of(error=error, cluster=creation.cluster.api_url)
@@ -62,8 +64,6 @@ class CreationExecution:
             return rejected(trace_id=trace_id, error=self._errors.internal())
         try:
             record: SagaRecord = self._executor.run(saga_id=trace_id, plan=plan)
-        except DatabaseLockedError as error:
-            return rejected(trace_id=trace_id, error=self._errors.of(error=error))
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
             return self._stopped_saga(trace_id=trace_id, creation=creation)
@@ -92,14 +92,20 @@ class CreationExecution:
             error=self._errors.internal(),
         )
 
-    def _checked_plan(self, *, creation: PreparedCreation) -> SagaPlan:
-        self._availability.ensure_free(
-            clusters=self._scope.clusters(chosen=creation.cluster),
-            names=self._names.of(request=creation.request),
-        )
-        return self._planner.plan(
+    def _locked_and_checked_plan(self, *, trace_id: str, creation: PreparedCreation) -> SagaPlan:
+        plan: SagaPlan = self._planner.plan(
             cluster=creation.cluster, database=creation.request.database, users=creation.request.users
         )
+        self._lock.acquire(keys=plan.lock_keys, owner=trace_id)
+        try:
+            self._availability.ensure_free(
+                clusters=self._scope.clusters(chosen=creation.cluster),
+                names=self._names.of(request=creation.request),
+            )
+        except Exception:
+            self._lock.release(keys=plan.lock_keys, owner=trace_id)
+            raise
+        return plan
 
 
 def rejected(*, trace_id: str, error: ErrorInfo) -> Operation:

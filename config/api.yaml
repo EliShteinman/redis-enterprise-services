@@ -1,5 +1,5 @@
 api:
   validation_error_message: the request does not match the contract
   internal_error_message: internal error
-  traceparent_pattern: "^[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$"
+  traceparent_pattern: "^(?!ff)[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$"
   traceparent_message: the traceparent header is missing or not in the W3C format

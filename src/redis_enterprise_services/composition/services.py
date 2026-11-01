@@ -51,6 +51,13 @@ class Services:
         errors: PublicErrors = PublicErrors(
             settings=settings.operation, internal_error_message=settings.api.internal_error_message
         )
+        lock: RedisDatabaseLock = RedisDatabaseLock(
+            client=client,
+            keys=keys,
+            settings=settings.state.lock,
+            sleeper=SystemSleeper(),
+            clock=MonotonicClock(),
+        )
         saga_state: RedisSagaState = RedisSagaState(
             client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
         )
@@ -83,7 +90,8 @@ class Services:
                     create_user=cluster.create_user,
                     update_database=cluster.update_database,
                 ),
-                executor=saga_executor(settings=settings, client=client, keys=keys, state=saga_state),
+                lock=lock,
+                executor=saga_executor(settings=settings, lock=lock, state=saga_state),
                 outcome=CreationOutcome(names=names, errors=errors),
                 errors=errors,
                 records=saga_state,
@@ -93,18 +101,14 @@ class Services:
         )
 
 
-def saga_executor(
-    *, settings: Settings, client: Redis, keys: RedisKeys, state: RedisSagaState
-) -> SagaExecutor:
+def saga_executor(*, settings: Settings, lock: RedisDatabaseLock, state: RedisSagaState) -> SagaExecutor:
     classifier: ClusterFailureClassifier = ClusterFailureClassifier(
         transient_codes=settings.cluster.transient_error_codes
     )
     sleeper: SystemSleeper = SystemSleeper()
     return SagaExecutor(
         state=state,
-        lock=RedisDatabaseLock(
-            client=client, keys=keys, settings=settings.state.lock, sleeper=sleeper, clock=MonotonicClock()
-        ),
+        lock=lock,
         runner=StepRunner(settings=settings.saga, classifier=classifier, sleeper=sleeper),
         compensator=Compensator(settings=settings.saga, classifier=classifier, sleeper=sleeper),
     )

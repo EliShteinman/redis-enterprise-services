@@ -24,6 +24,7 @@ from redis_enterprise_services.planning.database_request import DatabaseRequest,
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.lock import DatabaseLock
 from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
@@ -70,6 +71,7 @@ class Creation:
         self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
+        self.lock: MagicMock = create_autospec(spec=DatabaseLock, instance=True)
         self.records: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.records.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
@@ -77,6 +79,7 @@ class Creation:
             availability=self.availability,
             names=create_autospec(spec=CreationNames, instance=True),
             planner=create_autospec(spec=SingleSiteCreationPlanner, instance=True),
+            lock=self.lock,
             executor=self.executor,
             outcome=CreationOutcome(names=ResourceNames(settings=DECOMPOSITION), errors=ERRORS),
             errors=ERRORS,
@@ -132,7 +135,10 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
 )
 def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServicesError) -> None:
     creation: Creation = Creation()
-    creation.executor.run.side_effect = [outcome]
+    if isinstance(outcome, SagaRecord):
+        creation.executor.run.return_value = outcome
+    else:
+        creation.lock.acquire.side_effect = outcome
 
     operation: Operation = creation.run()
 
@@ -171,3 +177,25 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
         "user",
         "permissions",
     ]
+
+
+def test_the_names_are_checked_while_the_database_is_locked() -> None:
+    creation: Creation = Creation()
+    calls: MagicMock = MagicMock()
+    calls.attach_mock(mock=creation.lock.acquire, attribute="acquire")
+    calls.attach_mock(mock=creation.availability.ensure_free, attribute="ensure_free")
+    calls.attach_mock(mock=creation.executor.run, attribute="run")
+    creation.executor.run.return_value = saga_record(status=SagaStatus.SUCCEEDED)
+
+    creation.run()
+
+    assert [name for name, _, _ in calls.mock_calls] == ["acquire", "ensure_free", "run"]
+
+
+def test_taken_names_release_the_lock() -> None:
+    creation: Creation = Creation()
+    creation.availability.ensure_free.side_effect = NameTakenError(message="database orders exists on c1")
+
+    creation.run()
+
+    assert creation.lock.release.called
