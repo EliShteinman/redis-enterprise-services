@@ -11,6 +11,9 @@ class RedisKeys:
     def operation(self, *, trace_id: str) -> str:
         return f"{self._prefix}operation:{trace_id}"
 
+    def heartbeat(self, *, trace_id: str) -> str:
+        return f"{self._prefix}heartbeat:{trace_id}"
+
     def open_operations(self) -> str:
         return f"{self._prefix}operations:open"
 

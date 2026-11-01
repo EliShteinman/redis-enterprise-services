@@ -23,6 +23,7 @@ if existing then
 end
 redis.call('SET', KEYS[1], ARGV[1])
 redis.call('SADD', KEYS[2], ARGV[2])
+redis.call('SET', KEYS[3], 'alive', 'EX', ARGV[3])
 return false
 """
 
@@ -34,18 +35,24 @@ return true
 
 
 class RedisOperationStore(OperationStore):
-    def __init__(self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int) -> None:
+    def __init__(
+        self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int, heartbeat_ttl_seconds: int
+    ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
         self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
         self._save_open: Script = client.register_script(script=SAVE_OPEN)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
         self._start_open: Script = client.register_script(script=START_OPEN)
 
     def start(self, *, operation: Operation) -> Operation | None:
         existing: str | None = self._start_open(
-            keys=self._record_keys(trace_id=operation.trace_id),
-            args=[operation.model_dump_json(), operation.trace_id],
+            keys=[
+                *self._record_keys(trace_id=operation.trace_id),
+                self._keys.heartbeat(trace_id=operation.trace_id),
+            ],
+            args=[operation.model_dump_json(), operation.trace_id, self._heartbeat_ttl_seconds],
         )
         if existing is None:
             logger.info(msg=f"operation {operation.trace_id} started")

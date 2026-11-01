@@ -62,6 +62,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     telemetry: Telemetry = Telemetry(settings=settings.telemetry)
     telemetry.start()
     configure_logging(settings=settings.log)
+    services.heartbeat.start()
     yield
     await asyncio.to_thread(services.runner.shutdown)
+    await asyncio.to_thread(services.heartbeat.stop)
     telemetry.shutdown()
