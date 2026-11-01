@@ -288,7 +288,7 @@
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות (תבנית ואורך מקסימלי מהקונפיג). הכללים שהופרו ב-`error.message` |
 | `unknown_cluster` | מיד, `422` | כתובת או יעד לא מוכרים |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות |
-| `internal_error` | מיד, `500`, או בסטטוס | שגיאה לא צפויה בשירות. הפרטים בלוג, לפי `trace_id`. בסטטוס: `rejected` אם ה-Saga עוד לא התחיל, ו-`requires_manual_intervention` אם כבר התחיל |
+| `internal_error` | מיד, `500`, או בסטטוס | שגיאה לא צפויה בשירות. הפרטים בלוג, לפי `trace_id`. בסטטוס: `rejected` אם ה-Saga עוד לא התחיל. אחרי שהתחיל: `rolled_back` אם הצעד נכשל בשגיאה פנימית והביטול הצליח, ו-`requires_manual_intervention` אם לא |
 | `not_found` | מיד, `404` | כתובת לא קיימת |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `database_not_found` | בסטטוס, `rejected` | `db_id` לא נמצא |
