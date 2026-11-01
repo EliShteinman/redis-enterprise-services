@@ -70,13 +70,14 @@ class Creation:
         self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
+        self.planner: MagicMock = create_autospec(spec=SingleSiteCreationPlanner, instance=True)
         self.records: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.records.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
             scope=ChosenClusterScope(),
             availability=self.availability,
             names=create_autospec(spec=CreationNames, instance=True),
-            planner=create_autospec(spec=SingleSiteCreationPlanner, instance=True),
+            planner=self.planner,
             executor=self.executor,
             outcome=CreationOutcome(names=ResourceNames(settings=DECOMPOSITION), errors=ERRORS),
             errors=ERRORS,
@@ -115,14 +116,13 @@ def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) 
 
 def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
     creation: Creation = Creation()
-    creation.availability.ensure_free.side_effect = NameTakenError(message="database orders exists on c1")
+    creation.executor.run.side_effect = NameTakenError(message="database orders exists on c1")
 
     operation: Operation = creation.run()
 
-    assert (operation.status, operation.error and operation.error.code, creation.executor.run.called) == (
+    assert (operation.status, operation.error and operation.error.code) == (
         OperationStatus.REJECTED,
         "name_taken",
-        False,
     )
 
 
@@ -142,14 +142,17 @@ def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServ
 @pytest.mark.parametrize(
     argnames=("failing", "status"),
     argvalues=[
-        ("availability", OperationStatus.REJECTED),
+        ("planner", OperationStatus.REJECTED),
         ("executor", OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
 def test_an_unexpected_error_still_ends_the_operation(failing: str, status: OperationStatus) -> None:
     creation: Creation = Creation()
-    creation.availability.ensure_free.side_effect = RuntimeError("bug") if failing == "availability" else None
+    creation.planner.plan.side_effect = RuntimeError("bug") if failing == "planner" else None
     creation.executor.run.side_effect = RuntimeError("bug") if failing == "executor" else None
+    creation.records.find.return_value = (
+        saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION) if failing == "executor" else None
+    )
 
     operation: Operation = creation.run()
 
@@ -171,3 +174,13 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
         "user",
         "permissions",
     ]
+
+
+def test_the_names_are_checked_before_the_saga_starts() -> None:
+    creation: Creation = Creation()
+    creation.executor.run.return_value = saga_record(status=SagaStatus.SUCCEEDED)
+
+    creation.run()
+    creation.executor.run.call_args.kwargs["before_start"]()
+
+    assert creation.availability.ensure_free.called

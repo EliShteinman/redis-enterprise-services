@@ -18,6 +18,16 @@ uv run python run.py
 curl localhost:8080/health
 ```
 
+Create a database (the request is in `docs/contracts/service-api.md`), then ask for its status by the returned
+`trace_id`:
+
+```bash
+curl -X POST localhost:8080/v1/databases/create -H 'content-type: application/json' \
+  -H 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' -d @request.json
+curl localhost:8080/v1/operations/4bf92f3577b34da6a3ce929d0e0e4736 \
+  -H 'traceparent: 00-5c8a1e2f3b4d6e7f8091a2b3c4d5e6f7-1a2b3c4d5e6f7081-01'
+```
+
 In a deployment, uvicorn builds the app through the factory:
 
 ```bash
@@ -26,9 +36,7 @@ uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0
 
 ## Configuration
 
-Settings are in `config/`, one YAML file per topic (`log.yaml`, `api.yaml`, `telemetry.yaml`, `edge.yaml`,
-`action.yaml`, `acl.yaml`, `cluster.yaml`, `database.yaml`, `role.yaml`, `saga.yaml`, `state.yaml`,
-`user.yaml`), read from the working directory. Any value can be overridden by an environment variable with the
+Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by an environment variable with the
 `RES_` prefix and `__` between levels, for example:
 
 ```bash
@@ -39,6 +47,7 @@ Secrets are passed only through environment variables. Required:
 
 - `RES_STATE__PASSWORD`: the password of the Redis that keeps the saga state.
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
+- `RES_CLUSTER_ACCESS__USERNAME`, `RES_CLUSTER_ACCESS__PASSWORD`: the admin user of the clusters.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 

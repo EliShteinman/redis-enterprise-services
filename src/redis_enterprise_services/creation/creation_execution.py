@@ -1,9 +1,9 @@
 import logging
+from functools import partial
 
 from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.saga import DatabaseLockedError
 from redis_enterprise_services.operations.error_info import ErrorInfo
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -16,7 +16,6 @@ from redis_enterprise_services.planning.single_site_creation import SingleSiteCr
 from redis_enterprise_services.saga.contract.models import SagaRecord
 from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
-from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -52,18 +51,17 @@ class CreationExecution:
 
     def _finished(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
         try:
-            plan: SagaPlan = self._checked_plan(creation=creation)
+            record: SagaRecord = self._executor.run(
+                saga_id=trace_id,
+                plan=self._planner.plan(
+                    cluster=creation.cluster, database=creation.request.database, users=creation.request.users
+                ),
+                before_start=partial(self._ensure_names_free, creation=creation),
+            )
         except RedisEnterpriseServicesError as error:
             return rejected(
                 trace_id=trace_id, error=self._errors.of(error=error, cluster=creation.cluster.api_url)
             )
-        except Exception:
-            logger.exception(msg=f"creating {creation.request.database.name} failed before its saga")
-            return rejected(trace_id=trace_id, error=self._errors.internal())
-        try:
-            record: SagaRecord = self._executor.run(saga_id=trace_id, plan=plan)
-        except DatabaseLockedError as error:
-            return rejected(trace_id=trace_id, error=self._errors.of(error=error))
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
             return self._stopped_saga(trace_id=trace_id, creation=creation)
@@ -76,29 +74,31 @@ class CreationExecution:
             )
             return self._needs_manual_intervention(trace_id=trace_id)
 
+    def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
+        self._availability.ensure_free(
+            clusters=self._scope.clusters(chosen=creation.cluster),
+            names=self._names.of(request=creation.request),
+        )
+
     def _stopped_saga(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
         try:
             stored: SagaRecord | None = self._records.find(saga_id=trace_id)
-            if stored is not None:
-                return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
         except Exception:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
-        return self._needs_manual_intervention(trace_id=trace_id)
+            return self._needs_manual_intervention(trace_id=trace_id)
+        if stored is None:
+            return rejected(trace_id=trace_id, error=self._errors.internal())
+        try:
+            return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
+        except Exception:
+            logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
+            return self._needs_manual_intervention(trace_id=trace_id)
 
     def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
         return Operation(
             trace_id=trace_id,
             status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
             error=self._errors.internal(),
-        )
-
-    def _checked_plan(self, *, creation: PreparedCreation) -> SagaPlan:
-        self._availability.ensure_free(
-            clusters=self._scope.clusters(chosen=creation.cluster),
-            names=self._names.of(request=creation.request),
-        )
-        return self._planner.plan(
-            cluster=creation.cluster, database=creation.request.database, users=creation.request.users
         )
 
 

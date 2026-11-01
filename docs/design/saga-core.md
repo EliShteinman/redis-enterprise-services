@@ -163,11 +163,14 @@ PlannedStep(
 | `res:{state}saga:{saga_id}` | string (JSON) | ה-saga record. TTL מהקונפיג אחרי שה-Saga הסתיים, כדי ששאילתת הסטטוס תענה עוד זמן מה |
 | `res:{state}sagas:unfinished` | set | מזהי ה-Sagas שעוד רצים, לזיהוי אחרי קריסה |
 | `res:{state}lock:{cluster}/{db}` | string | ה-`saga_id` שמחזיק בנעילה |
+| `res:{state}lock:{cluster}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת. שמות ה-ACL וה-role נגזרים משם ה-DB, ולכן הנעילה של ה-DB מכסה אותם |
 | `res:{state}operation:{trace_id}` | string (JSON) | מה ששאילתת הסטטוס מחזירה (`service-api.md` סעיף 8). TTL מהקונפיג כשהפעולה `succeeded`, `rejected` או `rolled_back`. `running` ו-`requires_manual_intervention` בלי TTL |
 | `res:{state}operations:open` | set | ה-`trace_id` של פעולות שעוד לא הסתיימו (`running`, `requires_manual_intervention`), לזיהוי אחרי קריסה |
 
 - **נעילה:** `SET` בלי TTL. סקריפט Lua אחד נועל את כל המפתחות של ה-Saga, או אף אחד מהם אם אחד תפוס (ב-AA יש כמה).
-  שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה. אם ה-DB
+  שחרור רק על ידי מי שמחזיק בה, בסקריפט Lua שבודק את ה-`saga_id` לפני המחיקה.
+- **`before_start`:** `SagaExecutor.run` מקבל בדיקה שרצה אחרי הנעילה ולפני הצעד הראשון ולפני שה-record נשמר. נכשלה ⇐
+  הנעילה משתחררת והשגיאה עולה, ושום צעד לא רץ. כך הבדיקה המוקדמת רצה תחת הנעילה, בלי שהנעילה תאפשר לנעול פעמיים. אם ה-DB
   נעול, ממתינים עד ה-timeout מהקונפיג, ואז `rejected` עם `database_locked`.
 - **קריסה (D5, עוד לא נבנה, נבנה באבן 8ד):** pod אחר מוצא ב-`sagas:unfinished` Saga ב-`running` שה-`heartbeat_at`
   שלו ישן מהסף בקונפיג. הוא מסמן אותו `requires_manual_intervention`, רושם CRITICAL, ו**לא משחרר את הנעילה**. כך DB
@@ -178,7 +181,8 @@ PlannedStep(
 - **שחרור ידני של Saga שנעצר:**
   1. קוראים את ה-record (`res:{state}saga:{saga_id}`): אילו צעדים `done`, איזה `unresolved`, ומה הקלט והתוצאה שלהם.
   2. בודקים בקלאסטר מה באמת קיים (לפי השמות שבקלט), ומשלימים או מבטלים ידנית.
-  3. מוחקים את הנעילה (`res:{state}lock:{cluster}/{db}`), רק אחרי שהקלאסטר במצב נקי או מלא.
+  3. מוחקים את כל מפתחות הנעילה שה-`saga_id` מחזיק (`res:{state}lock:{cluster}/{db}`, ו-`res:{state}lock:{cluster}/user/{user}`
+     לכל יוזר), רק אחרי שהקלאסטר במצב נקי או מלא.
   כלי לזה (endpoint או פקודה) ייבנה בהמשך. עד אז זה נעשה ב-`redis-cli` של מי שמורשה.
 - **Saga שהצליח אבל השמירה האחרונה שלו נכשלה:** הנעילה כבר שוחררה, אבל ב-Redis ה-record נשאר `running`. בדיקת
   הקריסה תסמן אותו להתערבות ידנית. מי שבודק ימצא שכל הצעדים `done` והקלאסטר מלא, ויסגור אותו.

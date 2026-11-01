@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.lock import DatabaseLock
@@ -33,8 +34,16 @@ class SagaExecutor:
         self._runner: StepRunner = runner
         self._compensator: Compensator = compensator
 
-    def run(self, *, saga_id: str, plan: SagaPlan) -> SagaRecord:
+    def run(
+        self, *, saga_id: str, plan: SagaPlan, before_start: Callable[[], None] = lambda: None
+    ) -> SagaRecord:
         self._lock.acquire(keys=plan.lock_keys, owner=saga_id)
+        try:
+            before_start()
+        except Exception:
+            logger.info(msg=f"saga {saga_id} did not start, {plan.lock_keys} released")
+            self._lock.release(keys=plan.lock_keys, owner=saga_id)
+            raise
         record: SagaRecord = SagaRecord(
             saga_id=saga_id, steps=[StepRecord(key=step.key, kind=step.kind) for step in plan.steps]
         )

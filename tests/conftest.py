@@ -5,3 +5,5 @@ import pytest
 def state_password(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(name="RES_STATE__PASSWORD", value="unused-in-unit-tests")
     monkeypatch.setenv(name="RES_DATABASE__DEFAULT_USER_PASSWORD", value="unused-in-unit-tests")
+    monkeypatch.setenv(name="RES_CLUSTER_ACCESS__USERNAME", value="unused-in-unit-tests")
+    monkeypatch.setenv(name="RES_CLUSTER_ACCESS__PASSWORD", value="unused-in-unit-tests")

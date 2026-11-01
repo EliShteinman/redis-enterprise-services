@@ -9,6 +9,8 @@ from pydantic_settings import (
 
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
+from redis_enterprise_services.config.background_settings import BackgroundSettings
+from redis_enterprise_services.config.cluster_access_settings import ClusterAccessSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.clusters_settings import ClusterList
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
@@ -46,6 +48,7 @@ class Settings(BaseSettings):
             "config/decomposition.yaml",
             "config/naming.yaml",
             "config/operation.yaml",
+            "config/background.yaml",
         ),
         env_prefix="RES_",
         env_nested_delimiter="__",
@@ -70,6 +73,8 @@ class Settings(BaseSettings):
     decomposition: DecompositionSettings
     naming: NamingSettings
     operation: OperationSettings
+    background: BackgroundSettings
+    cluster_access: ClusterAccessSettings
 
     @classmethod
     def settings_customise_sources(
