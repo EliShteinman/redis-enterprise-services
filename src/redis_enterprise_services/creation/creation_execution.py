@@ -56,16 +56,24 @@ class CreationExecution:
             return rejected(trace_id=trace_id, error=self._internal_error)
         try:
             record: SagaRecord = self._executor.run(saga_id=trace_id, plan=plan)
-            return finished_operation(trace_id=trace_id, creation=creation, record=record)
         except DatabaseLockedError as error:
             return rejected(trace_id=trace_id, error=ErrorInfo(code=error.code, message=error.message))
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
-            return Operation(
-                trace_id=trace_id,
-                status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
-                error=self._internal_error,
+            return self._needs_manual_intervention(trace_id=trace_id)
+        try:
+            return finished_operation(trace_id=trace_id, creation=creation, record=record)
+        except Exception:
+            logger.critical(
+                msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
+                exc_info=True,
             )
+            return self._needs_manual_intervention(trace_id=trace_id)
+
+    def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
+        return Operation(
+            trace_id=trace_id, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=self._internal_error
+        )
 
     def _checked_plan(self, *, creation: PreparedCreation) -> SagaPlan:
         self._availability.ensure_free(
