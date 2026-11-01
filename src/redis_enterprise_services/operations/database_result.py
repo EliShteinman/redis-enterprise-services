@@ -14,7 +14,7 @@ class DatabaseUserResult(BaseModel):
 
 class ClusterDatabase(BaseModel):
     url: str = Field(
-        description="The cluster address. Send it in target.clusters to edit or delete the database.",
+        description="The API address of the cluster.",
         examples=["https://cluster-a.net-a:9443"],
     )
     network: str = Field(description="The network of the cluster.", examples=["net-a"])
@@ -26,10 +26,12 @@ class ClusterDatabase(BaseModel):
 
 class DatabaseResult(BaseModel):
     name: str = Field(description="The database name.", examples=["orders"])
-    active_active: bool = Field(description="Whether the database is Active-Active.", examples=[False])
+    active_active: bool = Field(
+        description="Whether the database is Active-Active. Always false for now.", examples=[False]
+    )
     db_id: int | UUID = Field(
-        description="The database id: its uid on a single site, the CRDB UUID in Active-Active. "
-        "Send it in target.db_id to edit or delete the database.",
+        description="The database id: its uid on the cluster. A UUID is reserved for Active-Active, "
+        "which is not supported yet.",
         examples=[7],
     )
-    clusters: list[ClusterDatabase] = Field(description="One entry per site.")
+    clusters: list[ClusterDatabase] = Field(description="One entry per site. One site for now.")

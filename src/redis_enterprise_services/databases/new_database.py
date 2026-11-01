@@ -11,6 +11,8 @@ UNSET_MEANS_DEFAULT: str = (
 
 
 class ShardKeyRegex(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
     regex: str = Field(
         description="A regex whose named group `tag` is the part of the key that picks the shard.",
         examples=[".*\\{(?<tag>.*)\\}.*"],
@@ -18,6 +20,8 @@ class ShardKeyRegex(BaseModel):
 
 
 class SnapshotPolicy(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
     secs: PositiveInt = Field(description="Seconds since the last snapshot.", examples=[3600])
     writes: PositiveInt = Field(description="Keys changed since the last snapshot.", examples=[1])
 
