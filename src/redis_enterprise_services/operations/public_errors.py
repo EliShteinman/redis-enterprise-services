@@ -29,7 +29,12 @@ class PublicErrors:
         return ErrorInfo(code=public, message=message, cluster=cluster, cluster_error_code=remote_code)
 
     def public_code(self, *, code: str) -> str:
-        public: str = self._settings.public_error_codes.get(code, RedisEnterpriseServicesError.code)
+        internal: str = RedisEnterpriseServicesError.code
+        public: str | None = self._settings.public_error_codes.get(code)
+        if public is None:
+            if code != internal:
+                logger.warning(msg=f"error {code} has no public code and is published as {internal}")
+            return internal
         if public != code:
             logger.debug(msg=f"error {code} is published as {public}")
         return public

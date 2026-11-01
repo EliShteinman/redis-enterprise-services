@@ -30,7 +30,6 @@ OUTCOME: CreationOutcome = CreationOutcome(
         settings=OperationSettings(
             public_error_codes={
                 "cluster_error": "step_rejected",
-                "cluster_unavailable": "cluster_unavailable",
                 "unreadable_cluster_answer": "cluster_unavailable",
             },
             cluster_error_codes=frozenset({"step_rejected", "cluster_unavailable"}),
