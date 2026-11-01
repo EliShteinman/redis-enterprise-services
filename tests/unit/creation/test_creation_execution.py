@@ -59,6 +59,7 @@ class Creation:
             planner=create_autospec(spec=SingleSiteCreationPlanner, instance=True),
             executor=self.executor,
             store=self.store,
+            internal_error_message="internal error",
         )
 
     def run(self) -> Operation:
@@ -114,3 +115,20 @@ def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServ
     operation: Operation = creation.run()
 
     creation.store.save.assert_called_once_with(operation=operation)
+
+
+@pytest.mark.parametrize(
+    argnames=("failing", "status"),
+    argvalues=[
+        ("availability", OperationStatus.REJECTED),
+        ("executor", OperationStatus.REQUIRES_MANUAL_INTERVENTION),
+    ],
+)
+def test_an_unexpected_error_still_ends_the_operation(failing: str, status: OperationStatus) -> None:
+    creation: Creation = Creation()
+    creation.availability.ensure_free.side_effect = RuntimeError("bug") if failing == "availability" else None
+    creation.executor.run.side_effect = RuntimeError("bug") if failing == "executor" else None
+
+    operation: Operation = creation.run()
+
+    assert (operation.status, operation.error and operation.error.code) == (status, "internal_error")

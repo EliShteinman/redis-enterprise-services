@@ -104,6 +104,8 @@ database_defaults:
   כשל כאן הוא תשובה מיידית (`invalid_name`, `unknown_cluster`).
 - **`CreationExecution`, ברקע:** בדיקה שהשמות פנויים, פירוק לצעדים, הרצת ה-Saga, ושמירת רשומת הפעולה. שגיאה
   לפני שה-Saga התחיל, או נעילה תפוסה, ⇐ `rejected` עם הקוד שלה. Saga שהצליח ⇐ עץ ה-DB, עם ה-uids מהתוצאות של הצעדים.
+- **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** כדי שהיא לא תישאר `running`: לפני ה-Saga ⇐ `rejected`, ואחרי
+  שהתחיל ⇐ `requires_manual_intervention`, כמו ה-saga record. בשניהם `internal_error`, והפרטים בלוג.
 - **עד ש-AA ייבנה:** הבקשה מתקבלת רק עם `active_active: false` ואתר אחד. אחרת `validation_error`.
 
 **מזהה בקשה:** ה-trace ID (`traceparent`) שנפתח ב-UI ועובר דרך שירות הביניים. לכל פעולה ב-UI יש בקשה אחת
