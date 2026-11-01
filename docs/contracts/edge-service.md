@@ -26,6 +26,8 @@
 
 ## 2. הבקשה
 
+![cluster, edge, connection](../diagrams/08-layer-transport.drawio.svg)
+
 ```
 POST <edge.networks.<רשת>.url>
 <header האימות של חומת האש>: Basic <פרטי הרשת>     (אם מוגדר)

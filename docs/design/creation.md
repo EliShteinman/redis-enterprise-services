@@ -9,6 +9,8 @@
 
 ## 1. המסלול
 
+![קבלה](../diagrams/12-flow-admission.drawio.svg)
+
 ```
 POST /v1/databases/create
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
@@ -32,11 +34,17 @@ POST /v1/databases/create
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
 | `CreationOutcome` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
 
+![שכבת creation](../diagrams/04-layer-creation.drawio.svg)
+
+![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
+
 **נקודת ההרכבה:** `composition/` (`services.py`, `cluster_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 ---
 
 ## 2. ההכנה (לפני `202`)
+
+![קלאסטר וברירות מחדל](../diagrams/13-flow-cluster-and-defaults.drawio.svg)
 
 1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
 2. **הקלאסטר** (`ClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
@@ -66,6 +74,8 @@ POST /v1/databases/create
 ---
 
 ## 3. התוכנית
+
+![יצירה](../diagrams/10-seq-create.drawio.svg)
 
 | # | מפתח | צעד | מה נשלח | ביטול |
 |---|---|---|---|---|
@@ -99,6 +109,8 @@ POST /v1/databases/create
 ---
 
 ## 4. התוצאה
+
+![ביטול](../diagrams/11-seq-rollback.drawio.svg)
 
 `CreationExecution` מתרגם כל סוף לרשומת פעולה, ושומר אותה:
 
