@@ -107,6 +107,11 @@ database_defaults:
 - **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** כדי שהיא לא תישאר `running`: לפני ה-Saga ⇐ `rejected`, ואחרי
   שהתחיל ⇐ `requires_manual_intervention`, כמו ה-saga record. בשניהם `internal_error`, והפרטים בלוג.
 - **עד ש-AA ייבנה:** הבקשה מתקבלת רק עם `active_active: false` ואתר אחד. אחרת `validation_error`.
+- **`DatabaseCreation.accept`** (ה-route קורא לו): ההכנה, שמירת הפעולה כ-`running`, ושליחת הריצה ל-`TaskRunner`. רק אחרי
+  השמירה, כך ששאילתת הסטטוס תמצא אותה מיד. `ThreadPoolRunner` מריץ ב-thread pool בגודל מהקונפיג (`background.yaml`),
+  מעביר את ה-context (ה-trace ID ממשיך בלוגים ובקריאות לשירות הקצה), ורושם CRITICAL על כל שגיאה שיצאה מהמשימה.
+  בכיבוי השירות הוא מחכה למשימות שרצות.
+- **נקודת ההרכבה:** `composition/` בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 **מזהה בקשה:** ה-trace ID (`traceparent`) שנפתח ב-UI ועובר דרך שירות הביניים. לכל פעולה ב-UI יש בקשה אחת
 אלינו, ולכן ה-trace ID מזהה בקשה עסקית אחת:
