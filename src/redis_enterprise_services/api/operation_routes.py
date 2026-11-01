@@ -4,15 +4,18 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.dependencies import operation_store
+from redis_enterprise_services.api.rejected_response import STATUS_REJECTIONS
 from redis_enterprise_services.api.traceparent import require_traceparent
 from redis_enterprise_services.exceptions.operations import OperationNotFoundError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 
-router: APIRouter = APIRouter(dependencies=[Depends(dependency=require_traceparent)])
+router: APIRouter = APIRouter(
+    dependencies=[Depends(dependency=require_traceparent)], responses=STATUS_REJECTIONS
+)
 
 
-@router.get(path="/v1/operations/{trace_id}")
+@router.get(path="/v1/operations/{trace_id}", response_model=Operation)
 def operation_status(
     trace_id: str, store: Annotated[OperationStore, Depends(dependency=operation_store)]
 ) -> JSONResponse:
