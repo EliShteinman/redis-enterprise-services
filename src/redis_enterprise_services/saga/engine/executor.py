@@ -40,6 +40,7 @@ class SagaExecutor:
         self._lock.acquire(keys=plan.lock_keys, owner=saga_id)
         try:
             before_start()
+            self._lock.confirm(keys=plan.lock_keys, owner=saga_id)
         except Exception:
             logger.info(msg=f"saga {saga_id} did not start, {plan.lock_keys} released")
             self._lock.release(keys=plan.lock_keys, owner=saga_id)

@@ -12,6 +12,11 @@ operation:
     cluster_action_timeout: cluster_timeout
     database_not_active: cluster_timeout
     database_still_exists: cluster_timeout
+    ambiguous_resource: internal_error
+    unrestorable_fields: internal_error
+    configuration_error: internal_error
+    invalid_plan: internal_error
+    missing_step_result: internal_error
   cluster_error_codes:
     - step_rejected
     - cluster_unavailable

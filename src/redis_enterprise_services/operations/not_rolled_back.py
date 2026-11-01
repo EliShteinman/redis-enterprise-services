@@ -18,7 +18,7 @@ class NotRolledBack(BaseModel):
         examples=[11],
     )
     error: str | None = Field(
-        description="The last error of the resource: of its undo when the undo failed, "
-        "otherwise of its step. Null when there was none.",
+        description="The last error of the resource, as '<code>: <message>': of its undo when the undo "
+        "failed, otherwise of its step. The code is one of the error.code values. Null when there was none.",
         examples=["cluster_unavailable: relay is down"],
     )

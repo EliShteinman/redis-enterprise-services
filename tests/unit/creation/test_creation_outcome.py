@@ -30,7 +30,7 @@ OUTCOME: CreationOutcome = CreationOutcome(
         settings=OperationSettings(
             public_error_codes={
                 "cluster_error": "step_rejected",
-                "cluster_unavailable": "cluster_unavailable",
+                "unreadable_cluster_answer": "cluster_unavailable",
             },
             cluster_error_codes=frozenset({"step_rejected", "cluster_unavailable"}),
         ),
@@ -49,7 +49,7 @@ CREATION: PreparedCreation = PreparedCreation(
 REJECTED_BY_CLUSTER: StepError = StepError(
     code="cluster_error", message="user name is taken", remote_code="name_already_exists"
 )
-UNDO_FAILED: StepError = StepError(code="cluster_unavailable", message="relay is down")
+UNDO_FAILED: StepError = StepError(code="unreadable_cluster_answer", message="relay is down")
 
 
 def step(
