@@ -266,7 +266,17 @@
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל. `not_rolled_back` מפרט מה נשאר |
 | `pending_cleanup` | timeout ביצירת AA. נשלח ביטול, והשאילתה הבאה תראה אם הוא הסתיים |
 
-`not_rolled_back[]`: `cluster`, `type`, `name`, `uid`, `error`.
+`not_rolled_back[]`: מה שנשאר בקלאסטר. מופיע ב-`rolled_back` (ריק) וב-`requires_manual_intervention`.
+
+| שדה | הערה |
+|---|---|
+| `cluster` | כתובת הקלאסטר |
+| `type` | `database`, `acl`, `role`, `user` או `permissions` |
+| `name` | שם המשאב. ב-`permissions`: שם ה-DB |
+| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
+| `error` | השגיאה האחרונה של המשאב (של הביטול שלו אם נכשל, אחרת של הצעד), או `null` |
+
+`cluster` ו-`cluster_error_code` ב-`error` מופיעים רק בקודים שמגיעים מקלאסטר: `step_rejected`, `cluster_unavailable`, `cluster_timeout`. השגיאה ב-`error` היא של הצעד שעצר את הפעולה. גם כשהשירות נעצר על שגיאה לא צפויה, `not_rolled_back` נבנה מהרישום של הריצה. הקודים בטבלה הם היחידים שחוזרים; שגיאה פנימית אחרת חוזרת כ-`internal_error`, עם התיאור המלא ב-`message`. המיפוי מהקודים הפנימיים בקונפיג (`config/operation.yaml`).
 
 ### `error.code`
 
@@ -278,7 +288,7 @@
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות (תבנית ואורך מקסימלי מהקונפיג). הכללים שהופרו ב-`error.message` |
 | `unknown_cluster` | מיד, `422` | כתובת או יעד לא מוכרים |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות |
-| `internal_error` | מיד, `500`, או בסטטוס | שגיאה לא צפויה בשירות. הפרטים בלוג, לפי `trace_id`. בסטטוס: `rejected` אם ה-Saga עוד לא התחיל, ו-`requires_manual_intervention` אם כבר התחיל |
+| `internal_error` | מיד, `500`, או בסטטוס | שגיאה לא צפויה בשירות. הפרטים בלוג, לפי `trace_id`. בסטטוס: `rejected` אם ה-Saga עוד לא התחיל. אחרי שהתחיל: `rolled_back` אם הצעד נכשל בשגיאה פנימית והביטול הצליח, ו-`requires_manual_intervention` אם לא |
 | `not_found` | מיד, `404` | כתובת לא קיימת |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `database_not_found` | בסטטוס, `rejected` | `db_id` לא נמצא |
@@ -287,8 +297,9 @@
 | `name_taken` | בסטטוס, `rejected` | שם DB או יוזר תפוס |
 | `insufficient_resources` | בסטטוס, `rejected` | אין מקום באף קלאסטר מתאים |
 | `database_locked` | בסטטוס, `rejected` | פעולה אחרת רצה על ה-DB, ולא הסתיימה בזמן |
-| `step_rejected` | בסטטוס, `rolled_back` | הקלאסטר דחה צעד. הקוד שלו ב-`error.cluster_error_code` |
-| `cluster_unavailable` | בסטטוס, `rolled_back` | הקלאסטר או שירות הקצה לא זמינים |
+| `step_rejected` | בסטטוס, `rolled_back` או `requires_manual_intervention` (ובבדיקה המוקדמת: `rejected`) | הקלאסטר דחה בקשה. הקוד שלו ב-`error.cluster_error_code`, והכתובת שלו ב-`error.cluster` |
+| `cluster_unavailable` | בסטטוס, `rolled_back` או `requires_manual_intervention` (ובבדיקה המוקדמת: `rejected`) | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
+| `cluster_timeout` | בסטטוס, `rolled_back` או `requires_manual_intervention` | הקלאסטר לא סיים פעולה בזמן (למשל DB שלא הגיע ל-`active`) |
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
 

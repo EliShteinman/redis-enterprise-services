@@ -10,5 +10,8 @@ class RedisEnterpriseServicesError(Exception):
         super().__init__(message)
         self.message: str = message
 
+    def remote_code(self) -> str | None:
+        return None
+
     def describe(self) -> str:
         return f"{self.code}: {self.message}"

@@ -60,6 +60,7 @@ class SagaExecutor:
             if outcome is StepOutcome.DONE:
                 past_no_return = past_no_return or step.kind is not StepKind.COMPENSATABLE
                 continue
+            record.stopped_at = step.key
             return self._stopped(outcome=outcome, past_no_return=past_no_return, started=started)
         return SagaStatus.SUCCEEDED
 
