@@ -12,7 +12,7 @@ from redis_enterprise_services.operations.operation_store import OperationStore
 router: APIRouter = APIRouter(dependencies=[Depends(dependency=require_traceparent)])
 
 
-@router.get(path="/v1/operations/{trace_id}")
+@router.get(path="/v1/operations/{trace_id}", response_model=Operation)
 def operation_status(
     trace_id: str, store: Annotated[OperationStore, Depends(dependency=operation_store)]
 ) -> JSONResponse:

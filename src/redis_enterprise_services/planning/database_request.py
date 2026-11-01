@@ -10,9 +10,22 @@ from redis_enterprise_services.databases.new_database import NewDatabase
 class DatabaseUserRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    name: str = Field(pattern=f"^[^{re.escape(NAME_SEPARATOR)}]+$")
-    password: str = Field(min_length=1)
-    acl: str = Field(min_length=1)
+    name: str = Field(
+        pattern=f"^[^{re.escape(NAME_SEPARATOR)}]+$",
+        description="The user name in the cluster, used to connect to the database. "
+        "Without '-', and not taken on the cluster.",
+        examples=["app"],
+    )
+    password: str = Field(
+        min_length=1,
+        description="The user's password. Kept by the service: it is part of the connection details.",
+        examples=["S3cure-Passw0rd"],
+    )
+    acl: str = Field(
+        min_length=1,
+        description="A Redis ACL rule for this user on this database: which commands and which keys.",
+        examples=["+@all ~orders:*"],
+    )
 
 
 def unique_user_names(users: list[DatabaseUserRequest]) -> list[DatabaseUserRequest]:
@@ -29,5 +42,9 @@ type DatabaseUsers = Annotated[list[DatabaseUserRequest], AfterValidator(unique_
 class DatabaseRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    database: NewDatabase
-    users: DatabaseUsers = Field(default_factory=list)
+    database: NewDatabase = Field(description="The database to create.")
+    users: DatabaseUsers = Field(
+        default_factory=list,
+        description="Users to create with the database, each with its own role and ACL "
+        "limited to this database. Each name once.",
+    )

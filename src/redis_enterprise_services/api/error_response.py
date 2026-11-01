@@ -8,12 +8,18 @@ from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 
 class FieldError(BaseModel):
-    field: str
-    message: str
+    field: str = Field(
+        description="Where the problem is in the request.", examples=["body.body.database.memory_size"]
+    )
+    message: str = Field(description="What is wrong there.", examples=["Field required"])
 
 
 class ErrorDetail(ErrorInfo):
-    details: list[FieldError] | None = Field(default=None, exclude_if=lambda details: details is None)
+    details: list[FieldError] | None = Field(
+        default=None,
+        exclude_if=lambda details: details is None,
+        description="Only for validation_error: every field that does not match the contract.",
+    )
 
 
 def error_response(*, status_code: int, error: ErrorDetail) -> JSONResponse:
