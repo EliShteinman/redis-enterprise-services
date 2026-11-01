@@ -17,6 +17,7 @@ from redis_enterprise_services.config.database_defaults_settings import Database
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
+from redis_enterprise_services.config.liveness_settings import LivenessSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.naming_settings import NamingSettings
 from redis_enterprise_services.config.operation_settings import OperationSettings
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
             "config/naming.yaml",
             "config/operation.yaml",
             "config/background.yaml",
+            "config/liveness.yaml",
         ),
         env_file=".env",
         env_file_encoding="utf-8",
@@ -76,6 +78,7 @@ class Settings(BaseSettings):
     naming: NamingSettings
     operation: OperationSettings
     background: BackgroundSettings
+    liveness: LivenessSettings
     cluster_access: ClusterAccessSettings
 
     @classmethod

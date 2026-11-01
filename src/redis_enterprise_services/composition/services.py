@@ -1,5 +1,6 @@
 from redis import Redis
 
+from redis_enterprise_services.background.periodic_task import PeriodicTask
 from redis_enterprise_services.background.thread_pool_runner import ThreadPoolRunner
 from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
 from redis_enterprise_services.config.settings import Settings
@@ -8,6 +9,7 @@ from redis_enterprise_services.creation.creation_outcome import CreationOutcome
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
+from redis_enterprise_services.operations.live_operations import LiveOperations
 from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
@@ -29,6 +31,7 @@ from redis_enterprise_services.saga.engine.executor import SagaExecutor
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
 from redis_enterprise_services.state.redis_client import build_redis_client
 from redis_enterprise_services.state.redis_database_lock import RedisDatabaseLock
+from redis_enterprise_services.state.redis_heartbeat_store import RedisHeartbeatStore
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.redis_saga_state import RedisSagaState
@@ -46,6 +49,16 @@ class Services:
             client=client, keys=keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
         )
         self.runner: ThreadPoolRunner = ThreadPoolRunner(settings=settings.background)
+        live: LiveOperations = LiveOperations(
+            store=RedisHeartbeatStore(
+                client=client, keys=keys, ttl_seconds=settings.liveness.heartbeat_ttl_seconds
+            )
+        )
+        self.heartbeat: PeriodicTask = PeriodicTask(
+            name="heartbeat",
+            interval_seconds=settings.liveness.heartbeat_interval_seconds,
+            action=live.beat_all,
+        )
         cluster: ClusterWiring = ClusterWiring(settings=settings)
         names: ResourceNames = ResourceNames(settings=settings.decomposition)
         errors: PublicErrors = PublicErrors(
@@ -96,7 +109,9 @@ class Services:
                 records=saga_state,
                 store=self.operations,
             ),
-            acceptance=OperationAcceptance(store=self.operations, runner=self.runner, errors=errors),
+            acceptance=OperationAcceptance(
+                store=self.operations, runner=self.runner, live=live, errors=errors
+            ),
         )
 
 

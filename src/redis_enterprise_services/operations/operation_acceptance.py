@@ -3,6 +3,7 @@ from collections.abc import Callable
 
 from redis_enterprise_services.background.task_runner import TaskRunner
 from redis_enterprise_services.operations.admission import Admission
+from redis_enterprise_services.operations.live_operations import LiveOperations
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -13,9 +14,12 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class OperationAcceptance:
-    def __init__(self, *, store: OperationStore, runner: TaskRunner, errors: PublicErrors) -> None:
+    def __init__(
+        self, *, store: OperationStore, runner: TaskRunner, live: LiveOperations, errors: PublicErrors
+    ) -> None:
         self._store: OperationStore = store
         self._runner: TaskRunner = runner
+        self._live: LiveOperations = live
         self._errors: PublicErrors = errors
 
     def admit(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> Admission:
@@ -29,10 +33,14 @@ class OperationAcceptance:
         existing: Operation | None = self._store.start(operation=accepted)
         if existing is not None:
             return repeat(operation=existing)
+        self._live.track(trace_id=trace_id)
         try:
-            self._runner.submit(name=run.name, task=run.task)
+            self._runner.submit(
+                name=run.name, task=self._live.released_after(trace_id=trace_id, task=run.task)
+            )
         except RuntimeError:
             logger.critical(msg=f"{run.name} cannot run in the background", exc_info=True)
+            self._live.release(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
                     trace_id=trace_id, status=OperationStatus.REJECTED, error=self._errors.internal()
