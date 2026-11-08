@@ -48,7 +48,7 @@ CREATION: PreparedCreation = PreparedCreation(
     ),
     request=DatabaseCreationRequest(
         database=NewDatabase(name="orders", memory_size=104857600),
-        users=[DatabaseUserRequest(name="app", password="p1", acl="+@all ~orders:*")],
+        users=[DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*")],
     ),
 )
 REJECTED_BY_CLUSTER: StepError = StepError(
