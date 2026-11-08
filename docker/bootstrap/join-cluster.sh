@@ -8,8 +8,8 @@ read_state() {
         | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
 }
 
-wait_for_state() {
-    until state="$(read_state)" && [ -n "${state}" ] && [ "${state}" != "$1" ]; do
+wait_for_first_state() {
+    until state="$(read_state)" && [ -n "${state}" ]; do
         sleep "${POLL_INTERVAL_SECONDS}"
     done
     echo "${state}"
@@ -22,7 +22,7 @@ join_cluster() {
         --data @- <<EOF
 {
   "action": "join_cluster",
-  "cluster": {"nodes": ["${cluster_address}"]},
+  "cluster": {"nodes": ["${cluster_node_ip}"]},
   "node": {"paths": {"persistent_path": "${PERSISTENT_PATH}", "ephemeral_path": "${EPHEMERAL_PATH}"}},
   "credentials": {"username": "${ADMIN_USERNAME}", "password": "${ADMIN_PASSWORD}"}
 }
@@ -30,15 +30,15 @@ EOF
 }
 
 echo "Waiting for ${NODE_HOST} to accept bootstrap requests"
-state="$(wait_for_state "")"
+state="$(wait_for_first_state)"
 
 if [ "${state}" = "completed" ]; then
     echo "${NODE_HOST} already belongs to a cluster"
     exit 0
 fi
 
-cluster_address="$(getent hosts "${CLUSTER_HOST}" | cut -d ' ' -f 1)"
-echo "Joining ${NODE_HOST} to ${CLUSTER_HOST} (${cluster_address})"
+cluster_node_ip="$(getent hosts "${CLUSTER_NODE_HOST}" | cut -d ' ' -f 1)"
+echo "Joining ${NODE_HOST} to ${CLUSTER_NODE_HOST} (${cluster_node_ip})"
 join_cluster
 
 state="$(read_state)"
@@ -52,4 +52,4 @@ while [ "${state}" != "completed" ]; do
     state="$(read_state)"
 done
 
-echo "${NODE_HOST} joined ${CLUSTER_HOST}"
+echo "${NODE_HOST} joined ${CLUSTER_NODE_HOST}"
