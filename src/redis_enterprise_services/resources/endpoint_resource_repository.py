@@ -8,7 +8,7 @@ from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 
 
-class EndpointRepository[TSpec: NamedSpec](ResourceRepository[TSpec], NamedResourceLister):
+class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], NamedResourceLister):
     def __init__(self, *, endpoint: ResourceEndpoint) -> None:
         self._endpoint: ResourceEndpoint = endpoint
 

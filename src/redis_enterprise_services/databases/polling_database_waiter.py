@@ -51,16 +51,18 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
 
     def wait_until_deleted(self, *, target: ClusterTarget, uid: int, action_uid: str | None) -> None:
         if poll_until_done_or_timeout(
-            wait_settings=self._settings.wait, is_done=lambda: self._is_gone(target=target, uid=uid)
+            wait_settings=self._settings.wait, is_done=lambda: self._is_deleted(target=target, uid=uid)
         ):
             return
         raise DatabaseDeletionTimeoutError(
             message=f"database {uid} still exists after {self._settings.wait.timeout_seconds} seconds"
         )
 
-    def _is_gone(self, *, target: ClusterTarget, uid: int) -> bool:
+    def _is_deleted(self, *, target: ClusterTarget, uid: int) -> bool:
         try:
-            self._fields_reader.get_fields(target=target, uid=uid, fields=[self._cluster_api.fields.status])
+            self._fields_reader.get_fields(
+                target=target, uid=uid, field_names=[self._cluster_api.fields.status]
+            )
         except ClusterRejectedRequestError as error:
             if error.cluster_status_code == HTTPStatus.NOT_FOUND:
                 return True
@@ -81,7 +83,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         status_field: str = self._cluster_api.fields.status
         try:
             values: dict[str, JsonValue] = self._fields_reader.get_fields(
-                target=target, uid=uid, fields=[status_field]
+                target=target, uid=uid, field_names=[status_field]
             ).values
         except RedisEnterpriseServicesError as error:
             return self._raise_unless_transient(uid=uid, error=error)

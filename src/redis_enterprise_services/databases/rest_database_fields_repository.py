@@ -15,7 +15,7 @@ from redis_enterprise_services.exceptions.cluster import UnreadableClusterRespon
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class ClusterDatabaseFieldsRepository(DatabaseFieldsRepository):
+class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
     def __init__(
         self, *, api: ClusterApiCaller, settings: DatabaseSettings, cluster_api: ClusterApiSettings
     ) -> None:
@@ -23,12 +23,12 @@ class ClusterDatabaseFieldsRepository(DatabaseFieldsRepository):
         self._settings: DatabaseSettings = settings
         self._cluster_api: ClusterApiSettings = cluster_api
 
-    def get_fields(self, *, target: ClusterTarget, uid: int, fields: list[str]) -> DatabaseFields:
+    def get_fields(self, *, target: ClusterTarget, uid: int, field_names: list[str]) -> DatabaseFields:
         response: SuccessfulClusterResponse = self._api.send(
             target=target,
             method="GET",
             path=self._settings.path.format(uid=uid),
-            query=self._fields_query_string(fields=fields),
+            query=self._fields_query_string(field_names=field_names),
         )
         try:
             return DatabaseFields.model_validate(
@@ -39,8 +39,8 @@ class ClusterDatabaseFieldsRepository(DatabaseFieldsRepository):
                 message=f"database {uid} answered with unreadable fields {invalid_field_paths(error=error)}"
             ) from error
 
-    def _fields_query_string(self, *, fields: list[str]) -> str:
-        return fields_query(settings=self._cluster_api.fields_query, fields=fields)
+    def _fields_query_string(self, *, field_names: list[str]) -> str:
+        return fields_query(settings=self._cluster_api.fields_query, fields=field_names)
 
     def update_fields(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int

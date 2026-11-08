@@ -7,7 +7,7 @@ from redis_enterprise_services.databases.models import DatabaseFields
 
 
 class DatabaseFieldsReader(Protocol):
-    def get_fields(self, *, target: ClusterTarget, uid: int, fields: list[str]) -> DatabaseFields: ...
+    def get_fields(self, *, target: ClusterTarget, uid: int, field_names: list[str]) -> DatabaseFields: ...
 
 
 class DatabaseFieldsRepository(DatabaseFieldsReader, Protocol):

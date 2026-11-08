@@ -38,7 +38,7 @@ class RestResourceEndpoint(ResourceEndpoint):
         except ValidationError as error:
             raise UnreadableClusterResponseError(
                 message=f"created {body.get('name')}, "
-                f"unreadable response_body fields {invalid_field_paths(error=error)}"
+                f"unreadable response fields {invalid_field_paths(error=error)}"
             ) from error
         return CreatedResource(
             uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=response_body)
@@ -56,7 +56,10 @@ class RestResourceEndpoint(ResourceEndpoint):
 
     def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
         response_body: JsonValue = self._api.send(
-            target=target, method="GET", path=self._settings.collection_path, query=self._list_query()
+            target=target,
+            method="GET",
+            path=self._settings.collection_path,
+            query=self._list_fields_query_string(),
         ).body
         try:
             return NAMED_RESOURCE_LIST_ADAPTER.validate_python(response_body)
@@ -66,7 +69,7 @@ class RestResourceEndpoint(ResourceEndpoint):
                 f"fields {invalid_field_paths(error=error)}"
             ) from error
 
-    def _list_query(self) -> str | None:
+    def _list_fields_query_string(self) -> str | None:
         if not self._settings.list_fields:
             return None
         return fields_query(settings=self._cluster_api.fields_query, fields=self._settings.list_fields)
