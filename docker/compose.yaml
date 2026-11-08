@@ -31,7 +31,7 @@ services:
       - "${CLUSTER1_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
-        ipv4_address: ${CLUSTER1_IP}
+        ipv4_address: ${CLUSTER1_NODE1_IP}
         aliases:
           - ${CLUSTER1_NAME}
           - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER1_NAME}
@@ -73,7 +73,7 @@ services:
       - "${CLUSTER2_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
-        ipv4_address: ${CLUSTER2_IP}
+        ipv4_address: ${CLUSTER2_NODE1_IP}
         aliases:
           - ${CLUSTER2_NAME}
           - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER2_NAME}
@@ -91,5 +91,5 @@ networks:
   default:
     ipam:
       config:
-        - subnet: ${CLUSTER_SUBNET}
-          ip_range: ${CLUSTER_DYNAMIC_IP_RANGE}
+        - subnet: ${NETWORK_SUBNET}
+          ip_range: ${NETWORK_DYNAMIC_IP_RANGE}

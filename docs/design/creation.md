@@ -1,7 +1,7 @@
 # יצירת DB: איך בקשה רצה
 
 מה קורה מרגע ש-`POST /v1/databases/create` מגיע ועד שהתוצאה נשמרת. החוזה עצמו (שדות, קודים): `contracts/service-api.md`.
-המנוע, ה-Redis וההתאוששות: `saga-core.md`.
+המנוע, ה-Redis וההתאוששות: `saga-engine-and-state.md`.
 
 **בנוי:** יצירה באתר אחד. **לא בנוי:** `planned.md`.
 
@@ -28,7 +28,7 @@ POST /v1/databases/create
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
 | `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationAcceptance.admit` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
-| `OperationAcceptance` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-core.md` סעיף 8) |
+| `OperationAcceptance` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
@@ -75,7 +75,7 @@ POST /v1/databases/create
 
 ## 3. התוכנית
 
-![יצירה](../diagrams/10-seq-create.drawio.svg)
+![יצירה](../diagrams/10-seq-create-single-site.drawio.svg)
 
 | # | מפתח | צעד | מה נשלח | ביטול |
 |---|---|---|---|---|
@@ -88,7 +88,7 @@ POST /v1/databases/create
 - צעדים 2–4 חוזרים לכל יוזר, לפי הסדר בבקשה. צעד 5 אחד לכל היוזרים, ורק כשיש יוזרים.
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
 - ה-role נוצר אחרי ה-DB כי `resources` חייב uid של DB קיים, והיוזר אחרי ה-role כי הוא חייב role.
-- ה-uids עוברים בין צעדים דרך ה-`SagaContext` (`saga-core.md` סעיף 3).
+- ה-uids עוברים בין צעדים דרך ה-`SagaContext` (`saga-engine-and-state.md` סעיף 3).
 - שמות ה-ACL וה-role וה-`management` מ-`config/decomposition.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
@@ -110,7 +110,7 @@ POST /v1/databases/create
 
 ## 4. התוצאה
 
-![ביטול](../diagrams/11-seq-rollback.drawio.svg)
+![ביטול](../diagrams/11-seq-rollback-single-site.drawio.svg)
 
 `CreationExecution` מתרגם כל סוף לרשומת פעולה, ושומר אותה:
 
