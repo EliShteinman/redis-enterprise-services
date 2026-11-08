@@ -2,15 +2,16 @@ import logging
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
+from redis_enterprise_services.config.cluster_settings import ClusterFieldSettings
 from redis_enterprise_services.config.clusters_settings import ClusterEntry
 from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
 from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.databases.role_permission import ROLES_PERMISSIONS_FIELD, RolePermission
 from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.database_request import DatabaseUserRequest
 from redis_enterprise_services.planning.resource_names import ResourceNames
+from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
@@ -33,6 +34,7 @@ class SingleSiteCreationPlanner:
         self,
         *,
         settings: DecompositionSettings,
+        fields: ClusterFieldSettings,
         names: ResourceNames,
         create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource],
         create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
@@ -41,6 +43,7 @@ class SingleSiteCreationPlanner:
         update_database: SagaStep[DatabaseUpdateInput, DatabaseFields],
     ) -> None:
         self._settings: DecompositionSettings = settings
+        self._fields: ClusterFieldSettings = fields
         self._names: ResourceNames = names
         self._create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource] = create_database
         self._create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource] = create_acl
@@ -133,7 +136,7 @@ class SingleSiteCreationPlanner:
                 cluster=address,
                 uid=uid_of(context=context, key=DATABASE_KEY),
                 values={
-                    ROLES_PERMISSIONS_FIELD: [
+                    self._fields.roles_permissions: [
                         RolePermission(
                             role_uid=uid_of(context=context, key=role_key(user=user)),
                             redis_acl_uid=uid_of(context=context, key=acl_key(user=user)),

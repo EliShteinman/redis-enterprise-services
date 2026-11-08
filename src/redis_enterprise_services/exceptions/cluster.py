@@ -26,6 +26,10 @@ class UnrestorableFieldsError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unrestorable_fields"
 
 
+class UpdateOutcomeUnclearError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "update_outcome_unclear"
+
+
 class DatabaseStillExistsError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "database_still_exists"
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT

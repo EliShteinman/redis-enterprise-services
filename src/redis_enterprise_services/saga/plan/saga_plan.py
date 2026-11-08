@@ -12,8 +12,8 @@ class SagaPlan:
         validate_order(steps=steps)
         if not lock_keys:
             raise InvalidPlanError(message="a plan locks at least one database")
-        self.steps: list[RunnableStep] = steps
-        self.lock_keys: list[str] = lock_keys
+        self.steps: list[RunnableStep] = list(steps)
+        self.lock_keys: list[str] = list(lock_keys)
 
 
 def validate_order(*, steps: list[RunnableStep]) -> None:

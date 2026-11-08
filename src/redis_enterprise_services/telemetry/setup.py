@@ -48,7 +48,11 @@ class Telemetry:
     def start(self) -> None:
         trace.set_tracer_provider(tracer_provider=self._tracer_provider)
         metrics.set_meter_provider(meter_provider=self._meter_provider)
-        LoggingInstrumentor().instrument(tracer_provider=self._tracer_provider, inject_trace_context=True)
+        LoggingInstrumentor().instrument(
+            tracer_provider=self._tracer_provider,
+            inject_trace_context=True,
+            enable_log_auto_instrumentation=False,
+        )
         set_global_response_propagator(propagator=TraceResponsePropagator())
         RequestsInstrumentor().instrument(
             tracer_provider=self._tracer_provider, meter_provider=self._meter_provider

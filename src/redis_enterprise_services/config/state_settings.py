@@ -1,15 +1,18 @@
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveFloat, PositiveInt, SecretStr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PositiveInt, SecretStr
+
+from redis_enterprise_services.config.config_model import ConfigModel
+from redis_enterprise_services.config.port import Port
 
 
-class LockSettings(BaseModel):
-    wait_timeout_seconds: NonNegativeInt
+class LockSettings(ConfigModel):
+    wait_timeout_seconds: NonNegativeFloat
     poll_seconds: PositiveFloat
 
 
-class StateSettings(BaseModel):
-    host: str
-    port: PositiveInt
-    username: str
+class StateSettings(ConfigModel):
+    host: str = Field(min_length=1)
+    port: Port
+    username: str = Field(min_length=1)
     password: SecretStr = Field(min_length=1)
     prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
