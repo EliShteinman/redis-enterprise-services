@@ -1,8 +1,8 @@
 import logging
 
-from redis_enterprise_services.cluster.credentials import ClusterCredentialsProvider
+from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.name_lookups import NameLookups
 from redis_enterprise_services.planning.availability.requested_name import NameKind, RequestedName
@@ -13,9 +13,9 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class NameAvailability:
-    def __init__(self, *, lookups: NameLookups, credentials: ClusterCredentialsProvider) -> None:
+    def __init__(self, *, lookups: NameLookups, credentials: ClusterTargetResolver) -> None:
         self._lookups: NameLookups = lookups
-        self._credentials: ClusterCredentialsProvider = credentials
+        self._credentials: ClusterTargetResolver = credentials
 
     def taken(self, *, clusters: list[ClusterEntry], names: list[RequestedName]) -> list[TakenName]:
         by_kind: dict[NameKind, set[str]] = names_by_kind(names=names)

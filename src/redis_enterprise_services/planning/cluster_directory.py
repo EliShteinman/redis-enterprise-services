@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.clusters_settings import ClusterEntry, ClusterType
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry, ClusterType
 from redis_enterprise_services.planning.site_target import SiteTarget
 
 

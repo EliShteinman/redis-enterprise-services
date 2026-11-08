@@ -1,12 +1,12 @@
-from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
+from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 
 
 class ResourceNames:
-    def __init__(self, *, settings: DecompositionSettings) -> None:
-        self._settings: DecompositionSettings = settings
+    def __init__(self, *, settings: UserResourcesSettings) -> None:
+        self._settings: UserResourcesSettings = settings
 
     def acl(self, *, database: str, user: str) -> str:
-        return self._settings.acl_name.format(database=database, user=user)
+        return self._settings.acl_name_template.format(database=database, user=user)
 
     def role(self, *, database: str, user: str) -> str:
-        return self._settings.role_name.format(database=database, user=user)
+        return self._settings.role_name_template.format(database=database, user=user)

@@ -1,10 +1,10 @@
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.credentials import SharedCredentialsProvider
+from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
-from redis_enterprise_services.connection.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
@@ -49,7 +49,7 @@ def availability(*, databases: set[tuple[str, str]], users: CountingLister) -> N
             role=lookup(lister=CountingLister(names=set())),
             user=lookup(lister=users),
         ),
-        credentials=SharedCredentialsProvider(
+        credentials=SharedCredentialsTargetResolver(
             credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
         ),
     )

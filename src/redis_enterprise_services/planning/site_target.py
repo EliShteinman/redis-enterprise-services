@@ -2,7 +2,7 @@ from typing import ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from redis_enterprise_services.config.clusters_settings import ClusterType, Environment
+from redis_enterprise_services.config.cluster_inventory import ClusterType, Environment
 
 
 class ClusterChoice(BaseModel):

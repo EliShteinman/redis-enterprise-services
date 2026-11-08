@@ -2,10 +2,10 @@ import logging
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_settings import ClusterFieldSettings
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
-from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.role_management import RoleManagement
+from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.cluster_address import address_of
@@ -15,11 +15,11 @@ from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
-from redis_enterprise_services.saga.plan.context import SagaContext
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
-from redis_enterprise_services.saga.plan.runnable import RunnableStep
+from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
-from redis_enterprise_services.steps.database_update import DatabaseUpdateInput
+from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
+from redis_enterprise_services.steps.update_database import UpdateDatabaseInput
 from redis_enterprise_services.users.models import NewUser
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -33,29 +33,29 @@ class SingleSiteCreationPlanner:
     def __init__(
         self,
         *,
-        settings: DecompositionSettings,
+        settings: UserResourcesSettings,
         fields: ClusterFieldSettings,
         names: ResourceNames,
         create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource],
         create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
         create_role: SagaStep[CreateResourceInput[NewRole], CreatedResource],
         create_user: SagaStep[CreateResourceInput[NewUser], CreatedResource],
-        update_database: SagaStep[DatabaseUpdateInput, DatabaseFields],
+        update_database: SagaStep[UpdateDatabaseInput, DatabaseFields],
     ) -> None:
-        self._settings: DecompositionSettings = settings
+        self._settings: UserResourcesSettings = settings
         self._fields: ClusterFieldSettings = fields
         self._names: ResourceNames = names
         self._create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource] = create_database
         self._create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource] = create_acl
         self._create_role: SagaStep[CreateResourceInput[NewRole], CreatedResource] = create_role
         self._create_user: SagaStep[CreateResourceInput[NewUser], CreatedResource] = create_user
-        self._update_database: SagaStep[DatabaseUpdateInput, DatabaseFields] = update_database
+        self._update_database: SagaStep[UpdateDatabaseInput, DatabaseFields] = update_database
 
     def plan(
         self, *, cluster: ClusterEntry, database: NewDatabase, users: list[DatabaseUserRequest]
     ) -> SagaPlan:
         address: ClusterAddress = address_of(cluster=cluster)
-        steps: list[RunnableStep] = [self._database_step(address=address, database=database)]
+        steps: list[PreparableStep] = [self._database_step(address=address, database=database)]
         for user in users:
             steps.extend(self._user_steps(address=address, database=database, user=user))
         if users:
@@ -69,7 +69,7 @@ class SingleSiteCreationPlanner:
             ],
         )
 
-    def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> RunnableStep:
+    def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> PreparableStep:
         return PlannedStep(
             key=DATABASE_KEY,
             step=self._create_database,
@@ -78,7 +78,7 @@ class SingleSiteCreationPlanner:
 
     def _user_steps(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
-    ) -> list[RunnableStep]:
+    ) -> list[PreparableStep]:
         return [
             self._acl_step(address=address, database=database, user=user),
             self._role_step(address=address, database=database, user=user),
@@ -87,7 +87,7 @@ class SingleSiteCreationPlanner:
 
     def _acl_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
-    ) -> RunnableStep:
+    ) -> PreparableStep:
         acl_name: str = self._names.acl(database=database.name, user=user.name)
         acl: NewAcl = NewAcl(name=acl_name, acl=user.acl)
         return PlannedStep(
@@ -98,7 +98,7 @@ class SingleSiteCreationPlanner:
 
     def _role_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
-    ) -> RunnableStep:
+    ) -> PreparableStep:
         role_name: str = self._names.role(database=database.name, user=user.name)
         management: RoleManagement = self._settings.role_management
         return PlannedStep(
@@ -114,7 +114,7 @@ class SingleSiteCreationPlanner:
             ),
         )
 
-    def _user_step(self, *, address: ClusterAddress, user: DatabaseUserRequest) -> RunnableStep:
+    def _user_step(self, *, address: ClusterAddress, user: DatabaseUserRequest) -> PreparableStep:
         return PlannedStep(
             key=user_key(user=user),
             step=self._create_user,
@@ -128,11 +128,13 @@ class SingleSiteCreationPlanner:
             ),
         )
 
-    def _permissions_step(self, *, address: ClusterAddress, users: list[DatabaseUserRequest]) -> RunnableStep:
+    def _permissions_step(
+        self, *, address: ClusterAddress, users: list[DatabaseUserRequest]
+    ) -> PreparableStep:
         return PlannedStep(
             key=PERMISSIONS_KEY,
             step=self._update_database,
-            build_input=lambda context: DatabaseUpdateInput(
+            build_input=lambda context: UpdateDatabaseInput(
                 cluster=address,
                 uid=uid_of(context=context, key=DATABASE_KEY),
                 values={

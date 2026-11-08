@@ -1,7 +1,7 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from redis_enterprise_services.config.clusters_settings import (
+from redis_enterprise_services.config.cluster_inventory import (
     ClusterEntry,
     ClusterList,
     ClusterType,

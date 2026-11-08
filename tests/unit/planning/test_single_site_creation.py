@@ -1,17 +1,17 @@
 import pytest
 from pydantic import BaseModel, JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_settings import ClusterFieldSettings
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
-from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.database_request import DatabaseRequest, DatabaseUserRequest
 from redis_enterprise_services.planning.resource_names import ResourceNames
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
 from redis_enterprise_services.resources.models import CreatedResource
-from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.result import KeepResult
-from redis_enterprise_services.saga.plan.context import SagaContext
+from redis_enterprise_services.saga.contract.keep_result import KeepResult
+from redis_enterprise_services.saga.contract.step_kind import StepKind
+from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 
@@ -24,26 +24,28 @@ class IdleStep[TInput: BaseModel, TResult: BaseModel]:
         pass
 
     def find_outcome(
-        self, *, step_input: TInput, kept: TResult | None, keep_found: KeepResult[TResult]
+        self, *, step_input: TInput, kept_result: TResult | None, keep_found_result: KeepResult[TResult]
     ) -> TResult | None:
-        return kept
+        return kept_result
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None:
         pass
 
 
-DECOMPOSITION: DecompositionSettings = DecompositionSettings(
-    acl_name="{database}-{user}-acl", role_name="{database}-{user}-role", role_management="db_viewer"
+USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
+    acl_name_template="{database}-{user}-acl",
+    role_name_template="{database}-{user}-role",
+    role_management="db_viewer",
 )
 PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
-    settings=DECOMPOSITION,
+    settings=USER_RESOURCES,
     fields=ClusterFieldSettings(
         status="status",
         error_code="error_code",
         action_uid="action_uid",
         roles_permissions="roles_permissions",
     ),
-    names=ResourceNames(settings=DECOMPOSITION),
+    names=ResourceNames(settings=USER_RESOURCES),
     create_database=IdleStep(),
     create_acl=IdleStep(),
     create_role=IdleStep(),
@@ -142,6 +144,8 @@ def test_a_user_requested_twice_is_refused() -> None:
 )
 def test_a_name_template_that_does_not_name_each_user_is_refused(template: str) -> None:
     with pytest.raises(expected_exception=ValidationError):
-        DecompositionSettings(
-            acl_name=template, role_name="{database}-{user}-role", role_management="db_viewer"
+        UserResourcesSettings(
+            acl_name_template=template,
+            role_name_template="{database}-{user}-role",
+            role_management="db_viewer",
         )

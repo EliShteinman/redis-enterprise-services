@@ -2,10 +2,10 @@ import logging
 
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
-    DefaultsMatch,
+    OverrideClusterSelector,
 )
 from redis_enterprise_services.databases.new_database import DatabaseOptions, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
@@ -28,13 +28,13 @@ class DatabaseDefaults:
         return NewDatabase.model_validate(obj=values)
 
 
-def applies(*, match: DefaultsMatch, cluster: ClusterEntry) -> bool:
+def applies(*, match: OverrideClusterSelector, cluster: ClusterEntry) -> bool:
     labels: dict[str, str] = {
         "network": cluster.network,
         "environment": cluster.environment,
         "site": cluster.site,
         "type": cluster.type,
-        "cluster": cluster.name,
+        "cluster_name": cluster.name,
     }
     return match.model_dump(exclude_none=True).items() <= labels.items()
 

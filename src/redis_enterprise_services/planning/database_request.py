@@ -3,7 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.decomposition_settings import NAME_SEPARATOR
+from redis_enterprise_services.config.user_resources_settings import NAME_SEPARATOR
 from redis_enterprise_services.databases.new_database import NewDatabase
 
 

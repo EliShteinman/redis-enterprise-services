@@ -1,11 +1,11 @@
 import pytest
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.clusters_settings import ClusterEntry, Environment
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
-    DefaultsMatch,
     DefaultsOverride,
+    OverrideClusterSelector,
 )
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
@@ -14,7 +14,9 @@ from redis_enterprise_services.planning.database_defaults import DatabaseDefault
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
         values={"replication": True, "data_persistence": "aof"},
-        overrides=[DefaultsOverride(when=DefaultsMatch(environment="DEV"), values={"replication": False})],
+        overrides=[
+            DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values={"replication": False})
+        ],
     )
 )
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
@@ -52,8 +54,12 @@ def test_a_later_override_beats_an_earlier_one() -> None:
         settings=DatabaseDefaultsSettings(
             values={},
             overrides=[
-                DefaultsOverride(when=DefaultsMatch(environment="DEV"), values={"shards_placement": "dense"}),
-                DefaultsOverride(when=DefaultsMatch(site="dc1"), values={"shards_placement": "sparse"}),
+                DefaultsOverride(
+                    when=OverrideClusterSelector(environment="DEV"), values={"shards_placement": "dense"}
+                ),
+                DefaultsOverride(
+                    when=OverrideClusterSelector(site="dc1"), values={"shards_placement": "sparse"}
+                ),
             ],
         )
     )
@@ -70,7 +76,7 @@ def test_an_override_applies_only_when_all_its_labels_match() -> None:
             values={"replication": True},
             overrides=[
                 DefaultsOverride(
-                    when=DefaultsMatch(environment="DEV", site="dc2"), values={"replication": False}
+                    when=OverrideClusterSelector(environment="DEV", site="dc2"), values={"replication": False}
                 )
             ],
         )
@@ -96,7 +102,8 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
     with pytest.raises(expected_exception=ConfigurationError):
         DatabaseDefaults(
             settings=DatabaseDefaultsSettings(
-                values={}, overrides=[DefaultsOverride(when=DefaultsMatch(environment="DEV"), values=values)]
+                values={},
+                overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
             )
         )
 
@@ -111,4 +118,4 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
 )
 def test_an_override_that_can_never_match_is_refused(when: dict[str, str]) -> None:
     with pytest.raises(expected_exception=ValidationError):
-        DefaultsMatch.model_validate(obj=when)
+        OverrideClusterSelector.model_validate(obj=when)
