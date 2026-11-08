@@ -1,5 +1,6 @@
-from typing import ClassVar
+from typing import ClassVar, Self
 
+from pydantic import model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,6 +21,7 @@ from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.liveness_settings import LivenessSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.naming_settings import NamingSettings
+from redis_enterprise_services.config.network_coverage import networks_without_relay
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
@@ -80,6 +82,13 @@ class Settings(BaseSettings):
     background: BackgroundSettings
     liveness: LivenessSettings
     cluster_access: ClusterAccessSettings
+
+    @model_validator(mode="after")
+    def every_cluster_network_has_a_relay(self) -> Self:
+        missing: list[str] = networks_without_relay(clusters=self.clusters, networks=self.edge.networks)
+        if missing:
+            raise ValueError(f"networks in clusters with no entry in edge.networks: {missing}")
+        return self
 
     @classmethod
     def settings_customise_sources(
