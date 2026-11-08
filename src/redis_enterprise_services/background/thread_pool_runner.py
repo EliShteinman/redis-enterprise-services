@@ -20,11 +20,14 @@ class ThreadPoolRunner(TaskRunner):
         logger.info(msg=f"{name} runs in the background")
 
     def shutdown(self) -> None:
-        logger.info(msg="waiting for the background tasks to end")
+        logger.info(msg="cancelling the queued background tasks and waiting for the running ones to end")
         self._pool.shutdown(wait=True, cancel_futures=True)
 
 
 def log_failure(*, name: str, done: Future[object]) -> None:
+    if done.cancelled():
+        logger.warning(msg=f"{name} was cancelled before it started, it is left to the abandoned sweep")
+        return
     error: BaseException | None = done.exception()
     if error is not None:
         logger.critical(msg=f"{name} failed in the background", exc_info=error)
