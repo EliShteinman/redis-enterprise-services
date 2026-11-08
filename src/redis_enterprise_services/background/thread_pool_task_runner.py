@@ -21,10 +21,12 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
                 log_if_cancelled_or_failed, task_name=task_name, future=finished_future
             )
         )
-        logger.info(msg=f"{task_name} runs in the background")
+        logger.info(msg=f"{task_name} is queued to run in the background")
 
-    def cancel_queued_and_wait_for_running(self) -> None:
-        logger.info(msg="cancelling the queued background tasks and waiting for the running ones to end")
+    def close_cancelling_queued_and_waiting_for_running(self) -> None:
+        logger.info(
+            msg="closing the background runner: cancelling the queued tasks, waiting for the running ones"
+        )
         self._pool.shutdown(wait=True, cancel_futures=True)
 
 

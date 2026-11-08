@@ -31,13 +31,13 @@ def test_the_heartbeat_is_deleted_when_the_task_fails() -> None:
         heartbeat_store=heartbeat_store
     )
     operation_heartbeats.track(trace_id="trace-1")
-    untracking_and_deleting_task: Callable[[], object] = (
+    task_untracking_and_deleting_heartbeat: Callable[[], object] = (
         operation_heartbeats.untracking_and_deleting_heartbeat_when_done(
             trace_id="trace-1", task=failing_task
         )
     )
 
     with pytest.raises(expected_exception=RuntimeError):
-        untracking_and_deleting_task()
+        task_untracking_and_deleting_heartbeat()
 
     heartbeat_store.delete.assert_called_once_with(trace_id="trace-1")
