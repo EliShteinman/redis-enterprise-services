@@ -26,7 +26,7 @@ class SweepHarness:
             store=self.store,
             public_errors=PublicErrors(
                 settings=OperationSettings(
-                    public_code_by_error_code={}, cluster_caused_public_codes=frozenset()
+                    public_code_by_internal_code={}, public_codes_with_cluster_details=frozenset()
                 ),
                 internal_error_message="internal error",
             ),
@@ -103,7 +103,9 @@ def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
     AbandonedSweep(
         store=store,
         public_errors=PublicErrors(
-            settings=OperationSettings(public_code_by_error_code={}, cluster_caused_public_codes=frozenset()),
+            settings=OperationSettings(
+                public_code_by_internal_code={}, public_codes_with_cluster_details=frozenset()
+            ),
             internal_error_message="internal error",
         ),
     ).sweep()

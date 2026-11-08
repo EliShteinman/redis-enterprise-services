@@ -34,7 +34,7 @@ class PublicErrors:
         cluster_error_code: str | None = None,
     ) -> PublicError:
         public_code: str = self.public_code(error_code=error_code)
-        if public_code not in self._settings.cluster_caused_public_codes:
+        if public_code not in self._settings.public_codes_with_cluster_details:
             return PublicError(code=public_code, message=message)
         return PublicError(
             code=public_code, message=message, cluster_url=cluster_url, cluster_error_code=cluster_error_code
@@ -42,7 +42,7 @@ class PublicErrors:
 
     def public_code(self, *, error_code: str) -> str:
         internal_code: str = RedisEnterpriseServicesError.code
-        mapped_public_code: str | None = self._settings.public_code_by_error_code.get(error_code)
+        mapped_public_code: str | None = self._settings.public_code_by_internal_code.get(error_code)
         if mapped_public_code is None:
             if error_code != internal_code:
                 logger.warning(

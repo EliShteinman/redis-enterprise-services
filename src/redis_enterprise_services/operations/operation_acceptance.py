@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
-from redis_enterprise_services.liveness.live_operations import LiveOperations
+from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
 from redis_enterprise_services.operations.acceptance_result import AcceptanceResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -19,12 +19,12 @@ class OperationAcceptance:
         *,
         store: OperationStore,
         runner: BackgroundTaskRunner,
-        live_operations: LiveOperations,
+        operation_heartbeats: InProcessOperationHeartbeats,
         public_errors: PublicErrors,
     ) -> None:
         self._store: OperationStore = store
         self._runner: BackgroundTaskRunner = runner
-        self._live_operations: LiveOperations = live_operations
+        self._operation_heartbeats: InProcessOperationHeartbeats = operation_heartbeats
         self._public_errors: PublicErrors = public_errors
 
     def accept(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> AcceptanceResult:
@@ -38,15 +38,17 @@ class OperationAcceptance:
         existing: Operation | None = self._store.save_if_absent(operation=running)
         if existing is not None:
             return acceptance_of_existing(operation=existing)
-        self._live_operations.track(trace_id=trace_id)
+        self._operation_heartbeats.track(trace_id=trace_id)
         try:
             self._runner.submit(
-                name=run.task_name,
-                task=self._live_operations.untracking_when_done(trace_id=trace_id, task=run.task),
+                task_name=run.task_name,
+                task=self._operation_heartbeats.untracking_and_deleting_heartbeat_when_done(
+                    trace_id=trace_id, task=run.task
+                ),
             )
         except Exception:
             logger.critical(msg=f"{run.task_name} cannot run in the background", exc_info=True)
-            self._live_operations.untrack_and_delete_heartbeat(trace_id=trace_id)
+            self._operation_heartbeats.untrack_and_delete_heartbeat(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
                     trace_id=trace_id,

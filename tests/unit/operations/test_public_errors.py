@@ -5,11 +5,11 @@ from redis_enterprise_services.operations.public_errors import PublicErrors
 
 PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(
-        public_code_by_error_code={
+        public_code_by_internal_code={
             "cluster_rejected_request": "cluster_request_failed",
             "name_taken": "name_taken",
         },
-        cluster_caused_public_codes=frozenset({"cluster_request_failed"}),
+        public_codes_with_cluster_details=frozenset({"cluster_request_failed"}),
     ),
     internal_error_message="internal error",
 )
