@@ -4,7 +4,7 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import EXPIRING
+from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
@@ -16,7 +16,7 @@ redis.call('SADD', KEYS[2], ARGV[2])
 return true
 """
 
-START_OPEN: str = """
+SAVE_IF_ABSENT_WITH_HEARTBEAT: str = """
 local existing = redis.call('GET', KEYS[1])
 if existing then
     return existing
@@ -36,20 +36,27 @@ return true
 
 class RedisOperationStore(OperationStore):
     def __init__(
-        self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int, heartbeat_ttl_seconds: int
+        self,
+        *,
+        client: Redis,
+        keys: RedisKeys,
+        finished_operation_ttl_seconds: int,
+        heartbeat_ttl_seconds: int,
     ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._finished_operation_ttl_seconds: int = finished_operation_ttl_seconds
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
         self._save_open: Script = client.register_script(script=SAVE_OPEN)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
-        self._start_open: Script = client.register_script(script=START_OPEN)
+        self._save_if_absent_with_heartbeat: Script = client.register_script(
+            script=SAVE_IF_ABSENT_WITH_HEARTBEAT
+        )
 
-    def start(self, *, operation: Operation) -> Operation | None:
-        existing: str | None = self._start_open(
+    def save_if_absent(self, *, operation: Operation) -> Operation | None:
+        existing: str | None = self._save_if_absent_with_heartbeat(
             keys=[
-                *self._record_keys(trace_id=operation.trace_id),
+                *self._record_and_open_set_keys(trace_id=operation.trace_id),
                 self._keys.heartbeat(trace_id=operation.trace_id),
             ],
             args=[operation.model_dump_json(), operation.trace_id, self._heartbeat_ttl_seconds],
@@ -61,10 +68,11 @@ class RedisOperationStore(OperationStore):
         return Operation.model_validate_json(json_data=existing)
 
     def save(self, *, operation: Operation) -> None:
-        keys: list[str] = self._record_keys(trace_id=operation.trace_id)
-        if operation.status in EXPIRING:
+        keys: list[str] = self._record_and_open_set_keys(trace_id=operation.trace_id)
+        if operation.status in EXPIRING_STATUSES:
             self._save_finished(
-                keys=keys, args=[operation.model_dump_json(), operation.trace_id, self._finished_ttl_seconds]
+                keys=keys,
+                args=[operation.model_dump_json(), operation.trace_id, self._finished_operation_ttl_seconds],
             )
         else:
             self._save_open(keys=keys, args=[operation.model_dump_json(), operation.trace_id])
@@ -77,5 +85,5 @@ class RedisOperationStore(OperationStore):
             return None
         return Operation.model_validate_json(json_data=stored)
 
-    def _record_keys(self, *, trace_id: str) -> list[str]:
+    def _record_and_open_set_keys(self, *, trace_id: str) -> list[str]:
         return [self._keys.operation(trace_id=trace_id), self._keys.open_operations()]

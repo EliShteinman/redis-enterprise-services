@@ -1,0 +1,4 @@
+user_resources:
+  acl_name_template: "{database}-{user}-acl"
+  role_name_template: "{database}-{user}-role"
+  role_management: db_viewer

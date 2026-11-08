@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
-from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
 class StoredSaga(BaseModel):
-    raw: str
+    raw_json: str
     record: SagaRecord
