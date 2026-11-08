@@ -5,94 +5,63 @@ import pytest
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
-from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
+from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep, operation_after_crash
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
-
-class SweepHarness:
-    def __init__(self, *, saga: SagaRecord | None) -> None:
-        self.store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
-        self.store.running_trace_ids_without_heartbeat.return_value = ["trace-1"]
-        self.store.find_saga.return_value = (
-            None if saga is None else StoredSaga(raw_json=saga.model_dump_json(), record=saga)
-        )
-        self.store.finalize_if_still_abandoned.return_value = FinalizeAbandonedResult.FINALIZED
-        AbandonedSweep(
-            store=self.store,
-            public_errors=PublicErrors(
-                settings=OperationSettings(
-                    public_code_by_internal_code={}, public_codes_with_cluster_details=frozenset()
-                ),
-                internal_error_message="internal error",
-            ),
-        ).sweep()
-
-    def finalize_arguments(self) -> tuple[Operation, SagaRecord | None]:
-        kwargs: dict[str, object] = self.store.finalize_if_still_abandoned.call_args.kwargs
-        operation: object = kwargs["operation"]
-        saga: object = kwargs["interrupted_saga"]
-        assert isinstance(operation, Operation)
-        assert saga is None or isinstance(saga, SagaRecord)
-        return operation, saga
+INTERNAL_ERROR: PublicError = PublicError(code="internal_error", message="internal error")
 
 
-def saga_record(*, status: SagaStatus) -> SagaRecord:
-    return SagaRecord(
+def stored_saga(*, status: SagaStatus) -> StoredSaga:
+    record: SagaRecord = SagaRecord(
         saga_id="trace-1",
         status=status,
         steps=[StepRecord(key="database", kind=StepKind.COMPENSATABLE, status=StepStatus.RUNNING)],
     )
+    return StoredSaga(raw_json=record.model_dump_json(), record=record)
 
 
 def test_an_operation_whose_saga_never_started_is_rejected() -> None:
-    operation, interrupted_saga = SweepHarness(saga=None).finalize_arguments()
+    operation: Operation = operation_after_crash(trace_id="trace-1", saga=None, error=INTERNAL_ERROR)
 
-    assert (operation.status, interrupted_saga) == (OperationStatus.REJECTED, None)
-
-
-def test_a_running_saga_is_marked_interrupted() -> None:
-    operation, interrupted_saga = SweepHarness(
-        saga=saga_record(status=SagaStatus.RUNNING)
-    ).finalize_arguments()
-
-    assert interrupted_saga is not None
-    assert (operation.status, interrupted_saga.status, interrupted_saga.steps[0].status) == (
-        OperationStatus.REQUIRES_MANUAL_INTERVENTION,
-        SagaStatus.REQUIRES_MANUAL_INTERVENTION,
-        StepStatus.UNRESOLVED,
-    )
+    assert operation.status is OperationStatus.REJECTED
 
 
 @pytest.mark.parametrize(
     argnames=("saga_status", "operation_status"),
     argvalues=[
+        (SagaStatus.RUNNING, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
         (SagaStatus.SUCCEEDED, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
         (SagaStatus.ROLLED_BACK, OperationStatus.ROLLED_BACK),
         (SagaStatus.REQUIRES_MANUAL_INTERVENTION, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
-def test_an_ended_saga_sets_its_operation_status_and_is_not_rewritten(
+def test_the_saga_status_after_a_crash_sets_the_operation_status(
     saga_status: SagaStatus, operation_status: OperationStatus
 ) -> None:
-    operation, interrupted_saga = SweepHarness(saga=saga_record(status=saga_status)).finalize_arguments()
+    operation: Operation = operation_after_crash(
+        trace_id="trace-1", saga=stored_saga(status=saga_status), error=INTERNAL_ERROR
+    )
 
-    assert (operation.status, interrupted_saga) == (operation_status, None)
+    assert operation.status is operation_status
 
 
 def test_an_operation_whose_saga_rolled_back_lists_nothing_left_behind() -> None:
-    operation, _ = SweepHarness(saga=saga_record(status=SagaStatus.ROLLED_BACK)).finalize_arguments()
+    operation: Operation = operation_after_crash(
+        trace_id="trace-1", saga=stored_saga(status=SagaStatus.ROLLED_BACK), error=INTERNAL_ERROR
+    )
 
     assert operation.not_rolled_back == []
 
 
 def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
     store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
-    store.running_trace_ids_without_heartbeat.return_value = ["trace-bad", "trace-good"]
+    store.abandoned_candidate_trace_ids.return_value = ["trace-bad", "trace-good"]
 
     def find_saga(*, trace_id: str) -> StoredSaga | None:
         if trace_id == "trace-bad":
