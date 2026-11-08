@@ -8,13 +8,13 @@ from redis_enterprise_services.telemetry.trace_id import current_trace_id_or_zer
 
 
 class FieldError(BaseModel):
-    field: str = Field(
+    location: str = Field(
         description="Where the problem is in the request.", examples=["body.spec.database.memory_size"]
     )
     message: str = Field(description="What is wrong there.", examples=["Field required"])
 
 
-class DetailedPublicError(PublicError):
+class RejectionError(PublicError):
     details: list[FieldError] | None = Field(
         default=None,
         exclude_if=lambda details: details is None,
@@ -22,7 +22,7 @@ class DetailedPublicError(PublicError):
     )
 
 
-def rejection_response(*, status_code: int, error: DetailedPublicError) -> JSONResponse:
+def rejection_response(*, status_code: int, error: RejectionError) -> JSONResponse:
     rejected_operation: Operation = Operation(
         trace_id=current_trace_id_or_zeros(), status=OperationStatus.REJECTED, error=error
     )

@@ -60,7 +60,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 root_package = "redis_enterprise_services"
 
 [[tool.importlinter.contracts]]
-name = "every top-level package has a place in the layers (a new package fails until it is added); packages joined by | do not import each other"
+name = "top-level packages and modules import only downward in this order; every one must be listed; those joined by | do not import each other"
 type = "layers"
 containers = ["redis_enterprise_services"]
 exhaustive = true
@@ -83,7 +83,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "saga folders: engine over plan over contract"
+name = "saga subpackages import only downward: engine, then plan, then contract"
 type = "layers"
 layers = [
     "redis_enterprise_services.saga.engine",
@@ -92,7 +92,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "repositories and transport do not know the saga"
+name = "edge, the cluster API and the repositories do not import the saga, not even indirectly"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.edge",
@@ -106,13 +106,13 @@ source_modules = [
 forbidden_modules = ["redis_enterprise_services.saga"]
 
 [[tool.importlinter.contracts]]
-name = "steps use only the saga contract"
+name = "steps import from the saga only its contract, never the engine or plan"
 type = "forbidden"
 source_modules = ["redis_enterprise_services.steps"]
 forbidden_modules = ["redis_enterprise_services.saga.engine", "redis_enterprise_services.saga.plan"]
 
 [[tool.importlinter.contracts]]
-name = "the state store uses only the saga contract, and nothing of the clusters"
+name = "state does not import the saga engine or plan, or edge, the cluster API or the repositories, not even indirectly"
 type = "forbidden"
 source_modules = ["redis_enterprise_services.state"]
 forbidden_modules = [
@@ -128,7 +128,7 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "above the cluster API, nothing imports the transport directly"
+name = "above the cluster API, only the composition imports edge directly"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.resources",
@@ -148,7 +148,7 @@ forbidden_modules = ["redis_enterprise_services.edge"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
-name = "layers use interfaces; only the composition builds the concrete classes"
+name = "only the composition imports the concrete edge client, cluster REST/polling classes, DatabaseRepository and Redis stores; the listed packages import their interfaces"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.steps",

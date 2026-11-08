@@ -46,20 +46,24 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         silence_insecure_request_warnings()
         redis_client: Redis = build_redis_client(settings=settings.state)
-        keys: RedisKeys = RedisKeys(key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag)
+        redis_keys: RedisKeys = RedisKeys(
+            key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
+        )
         self.operation_store: OperationStore = RedisOperationStore(
             client=redis_client,
-            keys=keys,
+            keys=redis_keys,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
             heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
         )
         self.task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
         operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
             heartbeat_store=RedisHeartbeatStore(
-                client=redis_client, keys=keys, heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds
+                client=redis_client,
+                keys=redis_keys,
+                heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
             )
         )
-        self.heartbeat_thread: PeriodicThread = PeriodicThread(
+        self.operation_heartbeat_thread: PeriodicThread = PeriodicThread(
             name="heartbeat",
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
             task=operation_heartbeats.mark_tracked_alive,
@@ -71,14 +75,14 @@ class AppWiring:
         )
         saga_lock: RedisSagaLock = RedisSagaLock(
             client=redis_client,
-            keys=keys,
+            keys=redis_keys,
             settings=settings.state.lock,
             sleeper=SystemSleeper(),
             clock=MonotonicClock(),
         )
         saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
-            keys=keys,
+            keys=redis_keys,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
         )
         self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
@@ -87,7 +91,7 @@ class AppWiring:
             task=AbandonedSweep(
                 store=RedisAbandonedStore(
                     client=redis_client,
-                    keys=keys,
+                    keys=redis_keys,
                     finished_ttl_seconds=settings.state.finished_ttl_seconds,
                 ),
                 public_errors=public_errors,

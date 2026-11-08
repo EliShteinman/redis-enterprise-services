@@ -5,9 +5,9 @@ from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.accepted_operation import AcceptedOperation
-from redis_enterprise_services.api.app_state_dependencies import database_creation
+from redis_enterprise_services.api.app_state_dependencies import database_creation_from_app_state
 from redis_enterprise_services.api.creation_examples import CREATION_EXAMPLES
-from redis_enterprise_services.api.rejected_operation import CREATION_ROUTE_REJECTIONS
+from redis_enterprise_services.api.rejected_operation import CREATION_ROUTE_REJECTION_RESPONSES
 from redis_enterprise_services.api.traceparent_header import require_traceparent
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
@@ -16,7 +16,7 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 router: APIRouter = APIRouter(
-    dependencies=[Depends(dependency=require_traceparent)], responses=CREATION_ROUTE_REJECTIONS
+    dependencies=[Depends(dependency=require_traceparent)], responses=CREATION_ROUTE_REJECTION_RESPONSES
 )
 
 
@@ -33,9 +33,9 @@ router: APIRouter = APIRouter(
         }
     },
 )
-def create_database(
+def find_or_start_database_creation(
     creation_request: Annotated[CreateDatabaseRequest, Body(openapi_examples=CREATION_EXAMPLES)],
-    database_creation: Annotated[DatabaseCreation, Depends(dependency=database_creation)],
+    database_creation: Annotated[DatabaseCreation, Depends(dependency=database_creation_from_app_state)],
 ) -> AcceptedOperation | JSONResponse:
     find_or_start_result: FindOrStartResult = database_creation.find_or_start(
         trace_id=current_trace_id(), creation_request=creation_request

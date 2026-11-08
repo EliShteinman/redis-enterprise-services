@@ -5,7 +5,7 @@ from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
-from redis_enterprise_services.api.rejection_response import DetailedPublicError, rejection_response
+from redis_enterprise_services.api.rejection_response import RejectionError, rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
@@ -25,7 +25,7 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
             trace.get_current_span().record_exception(exception=error)
             return rejection_response(
                 status_code=RedisEnterpriseServicesError.status_code,
-                error=DetailedPublicError(
+                error=RejectionError(
                     code=RedisEnterpriseServicesError.code,
                     message=self._settings.internal_error_message,
                 ),

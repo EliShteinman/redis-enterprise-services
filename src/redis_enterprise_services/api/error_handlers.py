@@ -6,8 +6,8 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
 from redis_enterprise_services.api.rejection_response import (
-    DetailedPublicError,
     FieldError,
+    RejectionError,
     rejection_response,
 )
 from redis_enterprise_services.config.api_settings import ApiSettings
@@ -19,7 +19,7 @@ FIELD_PATH_SEPARATOR: str = "."
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-def field_path(*, location: tuple[int | str, ...]) -> str:
+def dotted_location(*, location: tuple[int | str, ...]) -> str:
     return FIELD_PATH_SEPARATOR.join(str(part) for part in location)
 
 
@@ -27,7 +27,8 @@ async def service_error_handler(request: Request, error: RedisEnterpriseServices
     level: int = logging.ERROR if error.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR else logging.WARNING
     logger.log(level=level, msg=f"{error.code}: {error.message}")
     return rejection_response(
-        status_code=error.status_code, error=DetailedPublicError(code=error.code, message=error.message)
+        status_code=error.status_code,
+        error=RejectionError(code=error.code, message=error.message),
     )
 
 
@@ -37,13 +38,13 @@ class ValidationErrorHandler:
 
     async def __call__(self, request: Request, error: RequestValidationError) -> Response:
         field_errors: list[FieldError] = [
-            FieldError(field=field_path(location=detail["loc"]), message=detail["msg"])
+            FieldError(location=dotted_location(location=detail["loc"]), message=detail["msg"])
             for detail in error.errors()
         ]
-        logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in field_errors]}")
+        logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.location for detail in field_errors]}")
         return rejection_response(
             status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
-            error=DetailedPublicError(
+            error=RejectionError(
                 code=VALIDATION_ERROR_CODE,
                 message=self._settings.validation_error_message,
                 details=field_errors,
@@ -55,7 +56,7 @@ async def http_exception_handler(request: Request, error: HTTPException) -> Resp
     code: str = HTTPStatus(value=error.status_code).name.lower()
     logger.info(msg=f"{code}: {request.method} {request.url.path}")
     response: Response = rejection_response(
-        status_code=error.status_code, error=DetailedPublicError(code=code, message=str(error.detail))
+        status_code=error.status_code, error=RejectionError(code=code, message=str(error.detail))
     )
     response.headers.update(error.headers or {})
     return response

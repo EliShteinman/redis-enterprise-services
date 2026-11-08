@@ -37,9 +37,11 @@ class ClusterWiring:
         cluster_api_caller: EdgeClusterApiCaller = EdgeClusterApiCaller(
             edge_transport=edge_transport, settings=settings.cluster_api
         )
-        password: SecretStr = settings.cluster_credentials.password
+        cluster_password: SecretStr = settings.cluster_credentials.password
         self.target_resolver: ClusterTargetResolver = SharedCredentialsTargetResolver(
-            credentials=ClusterCredentials(username=settings.cluster_credentials.username, password=password)
+            credentials=ClusterCredentials(
+                username=settings.cluster_credentials.username, password=cluster_password
+            )
         )
         self.database_repository: DatabaseRepository = DatabaseRepository(
             endpoint=RestResourceEndpoint(
@@ -77,7 +79,7 @@ class ClusterWiring:
             settings=settings.database,
             cluster_api_settings=settings.cluster_api,
         )
-        database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
+        polling_database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
             fields_reader=database_fields_repository,
             settings=settings.database,
             cluster_api_settings=settings.cluster_api,
@@ -91,7 +93,7 @@ class ClusterWiring:
         )
         self.create_database: CreateResourceStep[NewDatabase] = CreateResourceStep(
             repository=self.database_repository,
-            completion_waiter=database_waiter,
+            completion_waiter=polling_database_waiter,
             target_resolver=self.target_resolver,
         )
         self.create_acl: CreateResourceStep[NewAcl] = CreateResourceStep(
@@ -111,7 +113,7 @@ class ClusterWiring:
         )
         self.update_database: UpdateDatabaseStep = UpdateDatabaseStep(
             repository=database_fields_repository,
-            activation_waiter=database_waiter,
+            activation_waiter=polling_database_waiter,
             target_resolver=self.target_resolver,
             order_insensitive_fields=settings.database.order_insensitive_fields,
         )

@@ -6,9 +6,9 @@ from redis_enterprise_services.creation.database_creation import DatabaseCreatio
 from redis_enterprise_services.operations.operation_store import OperationStore
 
 
-def database_creation(request: Request) -> DatabaseCreation:
+def database_creation_from_app_state(request: Request) -> DatabaseCreation:
     return cast(DatabaseCreation, request.app.state.database_creation)
 
 
-def operation_store(request: Request) -> OperationStore:
+def operation_store_from_app_state(request: Request) -> OperationStore:
     return cast(OperationStore, request.app.state.operation_store)
