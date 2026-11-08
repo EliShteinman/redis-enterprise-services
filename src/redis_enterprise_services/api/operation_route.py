@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.app_state_dependencies import operation_store
-from redis_enterprise_services.api.rejected_operation import STATUS_ROUTE_REJECTIONS
+from redis_enterprise_services.api.rejected_operation import OPERATION_ROUTE_REJECTIONS
 from redis_enterprise_services.api.trace_id_path import checked_trace_id
 from redis_enterprise_services.api.traceparent_header import require_traceparent
 from redis_enterprise_services.exceptions.operation import OperationNotFoundError
@@ -12,7 +12,7 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 
 router: APIRouter = APIRouter(
-    dependencies=[Depends(dependency=require_traceparent)], responses=STATUS_ROUTE_REJECTIONS
+    dependencies=[Depends(dependency=require_traceparent)], responses=OPERATION_ROUTE_REJECTIONS
 )
 
 

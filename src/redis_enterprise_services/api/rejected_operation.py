@@ -33,7 +33,7 @@ CREATION_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejection_openapi_r
         "request) or internal_error (a bug). The details are in the service log, by trace_id.",
     }
 )
-STATUS_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
+OPERATION_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
     statuses={
         HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired.",
         HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed, or the trace_id "

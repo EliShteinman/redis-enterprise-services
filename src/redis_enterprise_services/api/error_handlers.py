@@ -36,15 +36,17 @@ class ValidationErrorHandler:
         self._settings: ApiSettings = settings
 
     async def __call__(self, request: Request, error: RequestValidationError) -> Response:
-        details: list[FieldError] = [
+        field_errors: list[FieldError] = [
             FieldError(field=field_path(location=detail["loc"]), message=detail["msg"])
             for detail in error.errors()
         ]
-        logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in details]}")
+        logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in field_errors]}")
         return rejection_response(
             status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
             error=DetailedPublicError(
-                code=VALIDATION_ERROR_CODE, message=self._settings.validation_error_message, details=details
+                code=VALIDATION_ERROR_CODE,
+                message=self._settings.validation_error_message,
+                details=field_errors,
             ),
         )
 

@@ -39,28 +39,30 @@ class ClusterWiring:
         self.target_resolver: ClusterTargetResolver = SharedCredentialsTargetResolver(
             credentials=ClusterCredentials(username=settings.cluster_credentials.username, password=password)
         )
-        self.databases: DatabaseRepository = DatabaseRepository(
+        self.database_repository: DatabaseRepository = DatabaseRepository(
             endpoint=RestResourceEndpoint(
                 api=api, settings=settings.database, cluster_api=settings.cluster_api
             ),
             default_user_password=settings.database.default_user_password,
             default_tags=settings.database.default_tags,
         )
-        self.acls: AclRepository = AclRepository(
+        self.acl_repository: AclRepository = AclRepository(
             endpoint=RestResourceEndpoint(api=api, settings=settings.acl, cluster_api=settings.cluster_api)
         )
-        self.roles: RoleRepository = RoleRepository(
+        self.role_repository: RoleRepository = RoleRepository(
             endpoint=RestResourceEndpoint(api=api, settings=settings.role, cluster_api=settings.cluster_api),
             settings=settings.role,
         )
-        self.users: UserRepository = UserRepository(
+        self.user_repository: UserRepository = UserRepository(
             endpoint=RestResourceEndpoint(api=api, settings=settings.user, cluster_api=settings.cluster_api)
         )
-        database_fields: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
+        database_fields_repository: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
             api=api, settings=settings.database, cluster_api=settings.cluster_api
         )
         database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
-            fields_reader=database_fields, settings=settings.database, cluster_api=settings.cluster_api
+            fields_reader=database_fields_repository,
+            settings=settings.database,
+            cluster_api=settings.cluster_api,
         )
         action_completion_waiter: ActionCompletionWaiter = ActionCompletionWaiter(
             action_waiter=PollingActionWaiter(
@@ -68,25 +70,27 @@ class ClusterWiring:
             )
         )
         self.create_database: CreateResourceStep[NewDatabase] = CreateResourceStep(
-            repository=self.databases, completion_waiter=database_waiter, target_resolver=self.target_resolver
+            repository=self.database_repository,
+            completion_waiter=database_waiter,
+            target_resolver=self.target_resolver,
         )
         self.create_acl: CreateResourceStep[NewAcl] = CreateResourceStep(
-            repository=self.acls,
+            repository=self.acl_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
         )
         self.create_role: CreateResourceStep[NewRole] = CreateResourceStep(
-            repository=self.roles,
+            repository=self.role_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
         )
         self.create_user: CreateResourceStep[NewUser] = CreateResourceStep(
-            repository=self.users,
+            repository=self.user_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
         )
         self.update_database: UpdateDatabaseStep = UpdateDatabaseStep(
-            repository=database_fields,
+            repository=database_fields_repository,
             activation_waiter=database_waiter,
             target_resolver=self.target_resolver,
             unordered_fields=settings.database.unordered_fields,

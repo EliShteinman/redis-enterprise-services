@@ -59,7 +59,7 @@ class AppWiring:
                 client=redis_client, keys=keys, heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds
             )
         )
-        self.heartbeat: PeriodicThread = PeriodicThread(
+        self.heartbeat_thread: PeriodicThread = PeriodicThread(
             name="heartbeat",
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
             task=live_operations.refresh_heartbeats,
@@ -76,12 +76,12 @@ class AppWiring:
             sleeper=SystemSleeper(),
             clock=MonotonicClock(),
         )
-        saga_records: RedisSagaRecordStore = RedisSagaRecordStore(
+        saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
             keys=keys,
             finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
         )
-        self.sweep: PeriodicThread = PeriodicThread(
+        self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
             name="abandoned operations sweep",
             interval_seconds=settings.liveness.sweep_interval_seconds,
             task=AbandonedSweep(
@@ -105,10 +105,10 @@ class AppWiring:
                 name_check_scope=ChosenClusterScope(),
                 name_availability=NameAvailability(
                     lookups=NameLookupsByKind(
-                        database=ListedNameLookup(lister=cluster_wiring.databases),
-                        acl=ListedNameLookup(lister=cluster_wiring.acls),
-                        role=ListedNameLookup(lister=cluster_wiring.roles),
-                        user=ListedNameLookup(lister=cluster_wiring.users),
+                        database=ListedNameLookup(lister=cluster_wiring.database_repository),
+                        acl=ListedNameLookup(lister=cluster_wiring.acl_repository),
+                        role=ListedNameLookup(lister=cluster_wiring.role_repository),
+                        user=ListedNameLookup(lister=cluster_wiring.user_repository),
                     ),
                     target_resolver=cluster_wiring.target_resolver,
                 ),
@@ -124,13 +124,13 @@ class AppWiring:
                     update_database=cluster_wiring.update_database,
                 ),
                 executor=build_saga_executor(
-                    settings=settings, saga_lock=saga_lock, saga_records=saga_records
+                    settings=settings, saga_lock=saga_lock, saga_record_store=saga_record_store
                 ),
                 outcome_translator=CreationOutcomeTranslator(
                     resource_names=user_resource_names, public_errors=public_errors
                 ),
                 public_errors=public_errors,
-                record_reader=saga_records,
+                record_reader=saga_record_store,
                 store=self.operation_store,
             ),
             acceptance=OperationAcceptance(
@@ -143,14 +143,14 @@ class AppWiring:
 
 
 def build_saga_executor(
-    *, settings: Settings, saga_lock: RedisSagaLock, saga_records: RedisSagaRecordStore
+    *, settings: Settings, saga_lock: RedisSagaLock, saga_record_store: RedisSagaRecordStore
 ) -> SagaExecutor:
     failure_classifier: ClusterFailureClassifier = ClusterFailureClassifier(
         transient_error_codes=settings.cluster_api.transient_error_codes
     )
     sleeper: SystemSleeper = SystemSleeper()
     return SagaExecutor(
-        record_writer=saga_records,
+        record_writer=saga_record_store,
         lock=saga_lock,
         runner=StepRunner(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),
         compensator=Compensator(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),

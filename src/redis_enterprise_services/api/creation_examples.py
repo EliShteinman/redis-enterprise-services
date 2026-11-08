@@ -3,8 +3,8 @@ from fastapi.openapi.models import Example
 CREATION_EXAMPLES: dict[str, Example] = {
     "full": {
         "summary": "Every field: a sharded database with two users, on a named cluster",
-        "description": "Every field the request accepts. Only target, database.name and "
-        "database.memory_size are required; any other database field that is left out "
+        "description": "Every field the request accepts. Only target, spec.database.name and "
+        "spec.database.memory_size are required; any other database field that is left out "
         "takes the service default for the target. "
         "aof_policy applies only with aof, and snapshot_policy only with snapshot.",
         "value": {
@@ -19,7 +19,7 @@ CREATION_EXAMPLES: dict[str, Example] = {
                     }
                 ],
             },
-            "body": {
+            "spec": {
                 "database": {
                     "name": "orders",
                     "memory_size": 1073741824,
@@ -37,8 +37,8 @@ CREATION_EXAMPLES: dict[str, Example] = {
                     "slave_ha": True,
                 },
                 "users": [
-                    {"name": "app", "password": "S3cure-Passw0rd", "acl": "+@all ~orders:*"},
-                    {"name": "reporter", "password": "An0ther-Passw0rd", "acl": "+@read ~orders:*"},
+                    {"name": "app", "password": "S3cure-Passw0rd", "acl_rule": "+@all ~orders:*"},
+                    {"name": "reporter", "password": "An0ther-Passw0rd", "acl_rule": "+@read ~orders:*"},
                 ],
             },
         },
@@ -54,9 +54,9 @@ CREATION_EXAMPLES: dict[str, Example] = {
                     {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
                 ],
             },
-            "body": {
+            "spec": {
                 "database": {"name": "orders", "memory_size": 1073741824},
-                "users": [{"name": "app", "password": "S3cure-Passw0rd", "acl": "+@all ~orders:*"}],
+                "users": [{"name": "app", "password": "S3cure-Passw0rd", "acl_rule": "+@all ~orders:*"}],
             },
         },
     },

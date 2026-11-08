@@ -9,13 +9,13 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import creation_route, health_route, status_route
+from redis_enterprise_services.api import creation_route, health_route, operation_route
 from redis_enterprise_services.api.error_handlers import (
     ValidationErrorHandler,
     http_exception_handler,
     service_error_handler,
 )
-from redis_enterprise_services.api.middleware.unexpected_errors import UnexpectedErrorMiddleware
+from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
     add_error_handling(app=app, settings=settings.api)
     app.include_router(router=health_route.router)
     app.include_router(router=creation_route.router)
-    app.include_router(router=status_route.router)
+    app.include_router(router=operation_route.router)
     FastAPIInstrumentor.instrument_app(app=app)
     return app
 
@@ -63,11 +63,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     telemetry: TelemetryProviders = TelemetryProviders(settings=settings.telemetry)
     telemetry.install()
     try:
-        wiring.heartbeat.start()
-        wiring.sweep.start()
+        wiring.heartbeat_thread.start()
+        wiring.abandoned_sweep_thread.start()
         yield
     finally:
-        await asyncio.to_thread(wiring.sweep.stop)
+        await asyncio.to_thread(wiring.abandoned_sweep_thread.stop)
         await asyncio.to_thread(wiring.task_runner.shutdown)
-        await asyncio.to_thread(wiring.heartbeat.stop)
+        await asyncio.to_thread(wiring.heartbeat_thread.stop)
         telemetry.shutdown()
