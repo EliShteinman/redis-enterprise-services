@@ -116,8 +116,7 @@ class StepRunner:
         try:
             return Check.FOUND if step.resolve(on_kept=recorder.kept) else Check.NOT_FOUND
         except RedisEnterpriseServicesError as error:
-            logger.error(msg=f"checking step {step.key} failed: {error.describe()}")
-            recorder.failed_attempt(error=StepError.of(error=error))
+            logger.error(msg=f"checking step {step.key} failed, its own error stays: {error.describe()}")
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL
