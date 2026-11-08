@@ -5,7 +5,7 @@ state:
   key_prefix: "res:"
   hash_tag: state
   socket_timeout_seconds: 5
-  finished_operation_ttl_seconds: 604800
+  finished_ttl_seconds: 604800
   lock:
     wait_timeout_seconds: 30
     poll_interval_seconds: 1

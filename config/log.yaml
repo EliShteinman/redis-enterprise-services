@@ -1,7 +1,7 @@
 log:
   level: INFO
-  line_pattern: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
-  line_pattern_defaults:
+  line_format: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
+  line_format_defaults:
     otelTraceID: "0"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
   stream: ext://sys.stdout
