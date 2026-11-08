@@ -160,6 +160,17 @@ def test_find_outcome_waits_for_active_before_reporting_the_update_done(
     readiness.wait.assert_called_once_with(target=TARGET, uid=UID)
 
 
+def test_compensate_does_not_restore_over_a_change_made_after_the_update(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [
+        DatabaseFields(values={"memory_size": 150, "eviction_policy": "noeviction"}, cluster_state_id=8)
+    ]
+
+    with pytest.raises(expected_exception=UpdateOutcomeUnclearError):
+        update.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
+
+
 def test_compensate_skips_the_put_when_the_old_values_are_still_there(
     repository: MagicMock, update: DatabaseUpdate
 ) -> None:

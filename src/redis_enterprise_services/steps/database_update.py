@@ -72,6 +72,10 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         if self._same(stored=current.values, wanted=result.values):
             logger.info(msg=f"database {step_input.uid} already has its old values")
             return
+        if not self._same(stored=current.values, wanted=step_input.values):
+            raise UpdateOutcomeUnclearError(
+                message=f"database {step_input.uid} changed after the update, not restored over that change"
+            )
         self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)
 
     def _not_applied(
