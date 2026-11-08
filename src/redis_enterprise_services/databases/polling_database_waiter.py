@@ -1,25 +1,24 @@
 import logging
 from collections.abc import Callable
-from http import HTTPStatus
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster.read_again import tolerate_read_again_errors
+from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.rejection_kind import is_not_found
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_activation_waiter import DatabaseActivationWaiter
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsReader
+from redis_enterprise_services.databases.database_status import is_active_or_raise_if_creation_failed
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     DatabaseActivationTimeoutError,
-    DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
-    UnreadableClusterResponseError,
 )
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.resources.resource_completion_waiter import ResourceCompletionWaiter
-from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -29,12 +28,12 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         self,
         *,
         fields_reader: DatabaseFieldsReader,
-        deadline_polling: DeadlinePolling,
+        read_again_polling: ReadAgainPolling,
         settings: DatabaseSettings,
         cluster_api_settings: ClusterApiSettings,
     ) -> None:
         self._fields_reader: DatabaseFieldsReader = fields_reader
-        self._deadline_polling: DeadlinePolling = deadline_polling
+        self._read_again_polling: ReadAgainPolling = read_again_polling
         self._settings: DatabaseSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
@@ -59,14 +58,8 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         )
 
     def _poll_until(self, *, is_done: Callable[[], bool], uid: int) -> bool:
-        return self._deadline_polling.poll_until(
-            is_done=tolerate_read_again_errors(
-                is_done=is_done,
-                transient_error_codes=self._cluster_api_settings.transient_error_codes,
-                subject=f"database {uid}",
-            ),
-            timeout_seconds=self._settings.wait.timeout_seconds,
-            poll_interval_seconds=self._settings.wait.poll_interval_seconds,
+        return self._read_again_polling.poll_until(
+            is_done=is_done, wait=self._settings.wait, subject=f"database {uid}"
         )
 
     def _read_whether_deleted(self, *, target: ClusterTarget, uid: int) -> bool:
@@ -75,7 +68,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
                 target=target, uid=uid, field_names=[self._cluster_api_settings.fields.status]
             )
         except ClusterRejectedRequestError as error:
-            if error.cluster_status_code == HTTPStatus.NOT_FOUND:
+            if is_not_found(error=error):
                 return True
             raise
         return False
@@ -85,10 +78,8 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         values: dict[str, JsonValue] = self._fields_reader.read_fields(
             target=target, uid=uid, field_names=[status_field]
         ).values
-        status: JsonValue = values.get(status_field)
-        if status is None:
-            raise UnreadableClusterResponseError(message=f"database {uid} answered without {status_field}")
+        status: str = required_string_field(
+            body=values, name=status_field, missing_message=f"database {uid} answered without {status_field}"
+        )
         logger.debug(msg=f"database {uid} is {status}")
-        if status == self._settings.creation_failed_status:
-            raise DatabaseCreationFailedError(message=f"database {uid} is {status}")
-        return status == self._settings.active_status
+        return is_active_or_raise_if_creation_failed(uid=uid, status=status, settings=self._settings)

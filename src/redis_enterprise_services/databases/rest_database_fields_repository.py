@@ -1,16 +1,19 @@
 import logging
 
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
 from redis_enterprise_services.cluster.fields_query_string import fields_query_string
-from redis_enterprise_services.cluster.invalid_field_paths import invalid_field_paths
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsRepository
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
-from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
+
+DATABASE_FIELDS_SNAPSHOT_ADAPTER: TypeAdapter[DatabaseFieldsSnapshot] = TypeAdapter(
+    type=DatabaseFieldsSnapshot
+)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -36,14 +39,7 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
             path=self._settings.item_path.format(uid=uid),
             query_string=self._fields_query_string(field_names=field_names),
         )
-        try:
-            return DatabaseFieldsSnapshot.model_validate(
-                obj={"values": response.body, "cluster_state_id": response.cluster_state_id}
-            )
-        except ValidationError as error:
-            raise UnreadableClusterResponseError(
-                message=f"database {uid} answered with unreadable fields {invalid_field_paths(error=error)}"
-            ) from error
+        return fields_snapshot(response=response, uid=uid)
 
     def _fields_query_string(self, *, field_names: list[str]) -> str:
         return fields_query_string(settings=self._cluster_api_settings.fields_query, field_names=field_names)
@@ -59,3 +55,11 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
             body=values,
             cluster_state_id=cluster_state_id,
         )
+
+
+def fields_snapshot(*, response: SuccessfulClusterResponse, uid: int) -> DatabaseFieldsSnapshot:
+    return parse_cluster_body(
+        body={"values": response.body, "cluster_state_id": response.cluster_state_id},
+        adapter=DATABASE_FIELDS_SNAPSHOT_ADAPTER,
+        message_prefix=f"database {uid} answered with unreadable fields",
+    )
