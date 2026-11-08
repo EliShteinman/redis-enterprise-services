@@ -71,6 +71,7 @@ class StepRunner:
         attempts: int = self._settings.step_retry.attempts
         after_unknown: bool = False
         for attempt in range(1, attempts + 1):
+            forget_unfound_result(step=step, recorder=recorder)
             failure: Failure | None = self._attempt(step=step, recorder=recorder)
             if failure is None:
                 return StepOutcome.DONE
@@ -119,6 +120,13 @@ class StepRunner:
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL
+
+
+def forget_unfound_result(*, step: PreparedStep, recorder: StepRecorder) -> None:
+    if step.has_result:
+        logger.warning(msg=f"step {step.key} kept a result that was not found, it runs again without it")
+        step.forget_result()
+        recorder.result_forgotten()
 
 
 def not_found_outcome(*, step: PreparedStep, failure: Failure) -> StepOutcome | None:

@@ -414,6 +414,16 @@ def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
     assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
 
 
+def test_a_step_run_again_after_its_kept_result_was_not_found_keeps_the_new_result(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert record.steps[0].result == FakeResult(name="a", attempt=2).model_dump(mode="json")
+
+
 @pytest.mark.parametrize(argnames="failing", argvalues=["keep then rejected", "keep then unknown"])
 def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock, failing: str
