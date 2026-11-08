@@ -77,8 +77,8 @@ class EdgeResponseReader:
 
 def edge_error_type_for(*, edge_error_code: str, codes: EdgeErrorCodeSettings) -> type[EdgeError]:
     error_type_by_code: dict[str, type[EdgeError]] = {
-        codes.response_rejected: EdgeRejectedResponseError,
         codes.invalid_request: EdgeRejectedRequestError,
         codes.connection_failed: EdgeConnectionFailedError,
+        codes.response_rejected: EdgeRejectedResponseError,
     }
     return error_type_by_code.get(edge_error_code, EdgeOutcomeUnknownError)

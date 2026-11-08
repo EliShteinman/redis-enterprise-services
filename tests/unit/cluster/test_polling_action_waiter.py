@@ -92,6 +92,16 @@ def test_a_transient_cluster_rejection_while_reading_the_action_is_read_again(
     assert api.send.call_count == 2
 
 
+def test_a_permanent_cluster_rejection_while_reading_the_action_fails_at_once() -> None:
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.side_effect = ClusterRejectedRequestError(
+        message="not found", cluster_status_code=404, cluster_error_code=None
+    )
+
+    with pytest.raises(expected_exception=ClusterRejectedRequestError):
+        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+
+
 def test_a_relay_rejected_action_response_fails_at_once() -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = EdgeRejectedResponseError(message="schema", cluster_status_code=200)

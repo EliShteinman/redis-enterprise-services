@@ -11,8 +11,7 @@ def is_safe_to_read_again(
     if isinstance(error, (EdgeConnectionFailedError, EdgeOutcomeUnknownError)):
         return True
     if isinstance(error, ClusterRejectedRequestError):
-        server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-        return server_failed or has_transient_error_code(
+        return is_server_failure(error=error) or has_transient_error_code(
             error=error, transient_error_codes=transient_error_codes
         )
     return False
@@ -22,3 +21,7 @@ def has_transient_error_code(
     *, error: ClusterRejectedRequestError, transient_error_codes: frozenset[str]
 ) -> bool:
     return error.cluster_error_code in transient_error_codes
+
+
+def is_server_failure(*, error: ClusterRejectedRequestError) -> bool:
+    return error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
