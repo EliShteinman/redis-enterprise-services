@@ -47,7 +47,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         *,
         step_input: CreateResourceInput[TSpec],
         kept_result: CreatedResource | None,
-        keep_found_result: KeepResult[CreatedResource],
+        keep_result_if_none_kept: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         created: CreatedResource | None = (
@@ -56,7 +56,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
             else self._find_only_one_by_name(target=target, step_input=step_input)
         )
         if created is not None:
-            keep_found_result(result=created)
+            keep_result_if_none_kept(result=created)
             self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
         return created
 

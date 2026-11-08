@@ -16,7 +16,7 @@ redis.call('SADD', KEYS[2], ARGV[2])
 return true
 """
 
-START_IF_ABSENT: str = """
+CREATE_IF_ABSENT: str = """
 local existing = redis.call('GET', KEYS[1])
 if existing then
     return existing
@@ -53,10 +53,10 @@ class RedisOperationStore(OperationStore):
         self._save_with_expiry_and_remove_from_open_set: Script = client.register_script(
             script=SAVE_WITH_EXPIRY_AND_REMOVE_FROM_OPEN_SET
         )
-        self._start_if_absent_script: Script = client.register_script(script=START_IF_ABSENT)
+        self._create_if_absent_script: Script = client.register_script(script=CREATE_IF_ABSENT)
 
-    def start_if_absent(self, *, operation: Operation) -> Operation | None:
-        existing: str | None = self._start_if_absent_script(
+    def create_if_absent(self, *, operation: Operation) -> Operation | None:
+        existing: str | None = self._create_if_absent_script(
             keys=[
                 *self._record_and_open_set_keys(trace_id=operation.trace_id),
                 self._keys.heartbeat(trace_id=operation.trace_id),

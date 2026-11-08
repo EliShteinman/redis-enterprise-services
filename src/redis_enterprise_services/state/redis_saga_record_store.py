@@ -3,7 +3,7 @@ import logging
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.saga.contract.saga_record import CLEANLY_ENDED_STATUSES, SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader, SagaRecordWriter
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
@@ -42,7 +42,7 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
         logger.debug(msg=f"saga {record.saga_id} saved")
 
     def save_final(self, *, record: SagaRecord) -> None:
-        if record.status not in CLEANLY_ENDED_STATUSES:
+        if not record.has_ended_cleanly():
             self.save(record=record)
             logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")
             return

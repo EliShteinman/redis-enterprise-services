@@ -60,7 +60,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         *,
         step_input: UpdateDatabaseInput,
         kept_result: DatabaseFieldsSnapshot | None,
-        keep_found_result: KeepResult[DatabaseFieldsSnapshot],
+        keep_result_if_none_kept: KeepResult[DatabaseFieldsSnapshot],
     ) -> DatabaseFieldsSnapshot | None:
         if kept_result is None:
             return None

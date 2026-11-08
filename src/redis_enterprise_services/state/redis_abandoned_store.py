@@ -71,7 +71,7 @@ class RedisAbandonedStore(AbandonedStore):
             script=FINALIZE_IF_STILL_ABANDONED
         )
 
-    def running_trace_ids_without_heartbeat(self) -> list[str]:
+    def abandoned_candidate_trace_ids(self) -> list[str]:
         open_trace_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
         return sorted(
             trace_id

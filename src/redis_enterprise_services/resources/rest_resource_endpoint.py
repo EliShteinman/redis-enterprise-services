@@ -1,21 +1,21 @@
 import logging
 
-from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
+from pydantic import ConfigDict, JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
 from redis_enterprise_services.cluster.fields_query_string import fields_query_string
-from redis_enterprise_services.cluster.invalid_field_paths import invalid_field_paths
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
-from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 
 NAMED_RESOURCE_LIST_ADAPTER: TypeAdapter[list[NamedResource]] = TypeAdapter(
     type=list[NamedResource], config=ConfigDict(hide_input_in_errors=True)
 )
+NAMED_RESOURCE_ADAPTER: TypeAdapter[NamedResource] = TypeAdapter(type=NamedResource)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -39,15 +39,10 @@ class RestResourceEndpoint(ResourceEndpoint):
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target, method="POST", path=self._settings.collection_path, body=creation_body
         ).body
-        try:
-            resource: NamedResource = NamedResource.model_validate(obj=response_body)
-        except ValidationError as error:
-            raise UnreadableClusterResponseError(
-                message=f"created {creation_body.get('name')}, "
-                f"unreadable response fields {invalid_field_paths(error=error)}"
-            ) from error
-        return CreatedResource(
-            uid=resource.uid, name=resource.name, action_uid=self._action_uid(response_body=response_body)
+        return created_resource(
+            response_body=response_body,
+            requested_name=creation_body.get("name"),
+            action_uid=self._action_uid(response_body=response_body),
         )
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
@@ -57,9 +52,6 @@ class RestResourceEndpoint(ResourceEndpoint):
         ).body
         return self._action_uid(response_body=response_body)
 
-    def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
-        return [resource for resource in self.list_uids_and_names(target=target) if resource.name == name]
-
     def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target,
@@ -67,13 +59,11 @@ class RestResourceEndpoint(ResourceEndpoint):
             path=self._settings.collection_path,
             query_string=self._list_fields_query_string(),
         ).body
-        try:
-            return NAMED_RESOURCE_LIST_ADAPTER.validate_python(response_body)
-        except ValidationError as error:
-            raise UnreadableClusterResponseError(
-                message=f"cannot read {self._settings.collection_path}, "
-                f"fields {invalid_field_paths(error=error)}"
-            ) from error
+        return parse_cluster_body(
+            body=response_body,
+            adapter=NAMED_RESOURCE_LIST_ADAPTER,
+            message_prefix=f"cannot read {self._settings.collection_path}, fields",
+        )
 
     def _list_fields_query_string(self) -> str | None:
         if not self._settings.list_fields:
@@ -84,3 +74,14 @@ class RestResourceEndpoint(ResourceEndpoint):
 
     def _action_uid(self, *, response_body: JsonValue) -> str | None:
         return string_field(body=response_body, name=self._cluster_api_settings.fields.action_uid)
+
+
+def created_resource(
+    *, response_body: JsonValue, requested_name: JsonValue, action_uid: str | None
+) -> CreatedResource:
+    resource: NamedResource = parse_cluster_body(
+        body=response_body,
+        adapter=NAMED_RESOURCE_ADAPTER,
+        message_prefix=f"created {requested_name}, unreadable response fields",
+    )
+    return CreatedResource(uid=resource.uid, name=resource.name, action_uid=action_uid)
