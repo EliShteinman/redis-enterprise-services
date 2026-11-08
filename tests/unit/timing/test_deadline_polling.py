@@ -1,18 +1,5 @@
-from unittest.mock import MagicMock, create_autospec
-
-from redis_enterprise_services.timing.clock import Clock
-from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
-from redis_enterprise_services.timing.sleeper import Sleeper
+from redis_enterprise_services.timing.deadline_polling import another_poll_fits
 
 
-def test_polling_gives_up_when_the_next_poll_would_end_past_the_deadline() -> None:
-    clock: MagicMock = create_autospec(spec=Clock, instance=True)
-    clock.monotonic_seconds.side_effect = [0.0, 0.0, 7.0]
-    sleeper: MagicMock = create_autospec(spec=Sleeper, instance=True)
-    polling: DeadlinePolling = DeadlinePolling(clock=clock, sleeper=sleeper)
-
-    finished: bool = polling.poll_until(
-        is_done=lambda: False, timeout_seconds=10.0, poll_interval_seconds=4.0
-    )
-
-    assert (finished, sleeper.sleep.call_count) == (False, 1)
+def test_a_poll_that_would_end_exactly_at_the_deadline_does_not_fit() -> None:
+    assert not another_poll_fits(now=6.0, deadline=10.0, poll_interval_seconds=4.0)
