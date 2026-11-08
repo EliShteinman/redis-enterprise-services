@@ -44,7 +44,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 - **`step_input` ו-`result` הם מודלי Pydantic,** ועותק שלהם נשמר ב-record. המנוע מחזיק את האובייקטים בזיכרון; ה-record
   לא נקרא בחזרה כדי להמשיך ריצה.
 - **`step_input` מחזיק רק כתובת קלאסטר** (רשת ו-URL), בלי פרטי גישה. הצעד מקבל אותם בזמן הריצה מ-
-  `ClusterCredentialsProvider`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsProvider` נותן את אותם פרטי admin
+  `ClusterTargetResolver`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin
   לכל קלאסטר.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה לסיום הפעולה בקלאסטר. צעד שיש לו תוצאה מבוטל גם אם לא הגיע
   ל-`done`. רק ה-`keep_result` הראשון של צעד נשמר, כך שניסיון חוזר לא מחליף snapshot.
@@ -61,8 +61,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
-| `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `AmbiguousResourceError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
-| `DatabaseUpdate` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום |
+| `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `DuplicateResourceNameError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
+| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
 
 ---
 
@@ -86,14 +86,14 @@ PlannedStep(
 
 ## 4. המנוע
 
-`SagaExecutor.run(saga_id, plan, before_start)`:
+`SagaExecutor.run(saga_id, plan, check_before_start)`:
 
 1. **נועל** את כל מפתחות הנעילה של התוכנית (סעיף 6). תפוס ⇐ מחכה עד `state.lock.wait_timeout_seconds` (30), ואז
-   `DatabaseLockedError`.
-2. **`before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
+   `ResourcesLockedError`.
+2. **`check_before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
-3. **מוודא שהנעילה עדיין שלו** (`DatabaseLock.confirm`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
-   הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `DatabaseLockedError`.
+3. **מוודא שהנעילה עדיין שלו** (`SagaLock.ensure_held`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
+   הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `ResourcesLockedError`.
 4. **לכל צעד:** בונה קלט, שומר `running`, מריץ `execute`. הצליח ⇐ `done`. נכשל ⇐ לפי המיון (סעיף 5).
 5. **צעד נכשל:** מבטל בסדר הפוך כל צעד `COMPENSATABLE` שיש לו תוצאה.
 6. **סוף:** `succeeded`, `rolled_back` או `requires_manual_intervention`. הנעילה משתחררת רק ב-`succeeded` וב-
@@ -119,12 +119,12 @@ PlannedStep(
 
 | קטגוריה | שגיאות | המנוע |
 |---|---|---|
-| **זמנית** | שגיאת קלאסטר עם `error_code` מ-`cluster.transient_error_codes` (`busy`, `db_busy`, `wrong_cluster_state_id`) | ניסיון חוזר. אם יש תוצאה שמורה, קודם `find_outcome`: נמצא ⇐ `done` |
+| **זמנית** | שגיאת קלאסטר עם `error_code` מ-`cluster_api.transient_error_codes` (`busy`, `db_busy`, `wrong_cluster_state_id`) | ניסיון חוזר. אם יש תוצאה שמורה, קודם `find_outcome`: נמצא ⇐ `done` |
 | **נכשלה** | כל שגיאת קלאסטר אחרת; `invalid_request` של שירות הקצה; DB ב-`creation-failed`; action שהסתיים ב-`failed`; כל שגיאה אחרת של הפרויקט | הצעד `failed` ⇐ ביטול. אם הצעד כבר שמר תוצאה: `find_outcome` קודם. נמצא ⇐ `done`. לא נמצא ⇐ `failed` |
 | **לא ידועה** | כל שגיאה אחרת של שירות הקצה או של התקשורת אליו; timeout של המתנה; תשובה שלא נקראת | `find_outcome` פעם אחת. נמצא ⇐ `done`. לא נמצא, אין תוצאה שמורה ונשארו ניסיונות ⇐ ניסיון חוזר אחד, וכל כישלון אחריו ⇐ התערבות ידנית. לא נמצא ויש תוצאה שמורה, או שזה היה הניסיון האחרון ⇐ התערבות ידנית |
-| **ידנית** | `AmbiguousResourceError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
+| **ידנית** | `DuplicateResourceNameError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
 
-- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_lookup`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`AmbiguousResourceError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
+- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_find_outcome_error`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`DuplicateResourceNameError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
 - **אחרי תוצאה לא ידועה, כל מה שאינו הצלחה ⇐ התערבות ידנית.** הבקשה הראשונה אולי עוד תגיע לקלאסטר.
 - **"לא נשלח" לא אמין:** חיבור מוצפן שנשבר אחרי השליחה נראה כמו כישלון התחברות. לכן גם שירות קצה שלא זמין הוא
   תוצאה לא ידועה, וה-Saga עובר להתערבות ידנית עם הנעילה, ולא מבטל לבד.
@@ -215,21 +215,21 @@ PlannedStep(
 | `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
 | `succeeded`, `rolled_back`, `requires_manual_intervention` | הסטטוס של ה-Saga |
 
-**`OperationAcceptance.admit`**, משותף לכל פקודה:
+**`OperationAcceptance.accept`**, משותף לכל פקודה:
 1. חיפוש לפי trace. קיימת ⇐ מוחזרת כמו שהיא (`200`).
 2. ההכנה של הפקודה, בלי שינוי בקלאסטר. נכשלה ⇐ תשובה מיידית, ושום דבר לא נשמר.
 3. התחלה אטומית (Lua). רשומה שנוצרה בינתיים ⇐ מוחזרת, ושום דבר לא נשלח לרקע.
-4. העברה ל-`TaskRunner`. נכשלה ⇐ הפעולה נשמרת `rejected` עם `internal_error`.
+4. העברה ל-`BackgroundTaskRunner`. נכשלה ⇐ הפעולה נשמרת `rejected` עם `internal_error`.
 
 הפעולה נשמרת כ-`running` לפני ההעברה לרקע, כך ששאילתת הסטטוס מוצאת אותה מיד, וריצה מהירה לא נדרסת.
 
 **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** והפרטים בלוג:
 - לפני שה-Saga התחיל (אין record) ⇐ `rejected` עם `internal_error`.
 - אחרי שהתחיל ⇐ הפעולה נבנית מה-saga record שנשמר, כמו בסוף רגיל: הסטטוס שלו, ה-`error` של הצעד שעצר (למשל
-  `step_rejected`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
+  `cluster_request_failed`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
 - record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error`.
 
-**הרצה ברקע:** `ThreadPoolRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
+**הרצה ברקע:** `ThreadPoolTaskRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
 לשירות הקצה), ורושם `CRITICAL` על כל שגיאה שיצאה ממשימה. בכיבוי מחכה לריצות שהתחילו ומבטל את אלה שבתור. הן נשארות
 `running`, וזיהוי הקריסה מסמן אותן.
 
@@ -240,9 +240,9 @@ PlannedStep(
 ![זיהוי קריסה](../diagrams/17-flow-heartbeat-and-abandoned-sweep.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
-כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicTask`) מחדש את המפתחות של
+כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
-לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_beats_per_ttl` (3) חידושים בתוך TTL אחד.
+לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
 **הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
 מרווח אחד, לא בעלייה. היא לוקחת מ-`operations:open` פעולות ב-`running` בלי heartbeat, קוראת את ה-saga record של כל
@@ -258,7 +258,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
-  - נעצר אחרי הנעילה ולפני `confirm`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `confirm` לשמירה הראשונה של
+  - נעצר אחרי הנעילה ולפני `ensure_held`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `ensure_held` לשמירה הראשונה של
     ה-record (שתי קריאות Redis רצופות): הוא מריץ את ה-Saga בלי נעילה.
   - נעצר לפני הנעילה: הפעולה כבר סומנה `rejected` ויצאה מ-`operations:open`, אבל הוא נועל ומריץ את ה-Saga, והתוצאה
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
@@ -290,8 +290,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
-| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `Failure`, `FailureClassifier`, `DatabaseLock`, `SagaStateRepository`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
-| `saga/plan/` | `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
+| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `FailureCategory`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
+| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
 | `liveness/` | `LiveOperations`, `HeartbeatStore` | |
