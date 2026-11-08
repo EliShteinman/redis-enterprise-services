@@ -38,14 +38,16 @@ class PollingActionWaiter(ClusterActionWaiter):
             return
         if poll_until_done_or_timeout(
             wait_settings=self._settings.wait,
-            is_done=lambda: self._read_whether_completed(target=target, action_uid=action_uid),
+            is_done=lambda: self._read_whether_completed_or_raise_if_failed(
+                target=target, action_uid=action_uid
+            ),
         ):
             return
         raise ClusterActionTimeoutError(
             message=f"action {action_uid} did not complete in {self._settings.wait.timeout_seconds} seconds"
         )
 
-    def _read_whether_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
+    def _read_whether_completed_or_raise_if_failed(self, *, target: ClusterTarget, action_uid: str) -> bool:
         try:
             action_body: JsonValue = self._cluster_api_caller.send(
                 target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
