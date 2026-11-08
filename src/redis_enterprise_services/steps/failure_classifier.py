@@ -8,6 +8,7 @@ from redis_enterprise_services.exceptions.cluster import (
     DatabaseNotActiveError,
     DatabaseStillExistsError,
     UnreadableAnswerError,
+    UpdateOutcomeUnclearError,
 )
 from redis_enterprise_services.exceptions.edge import EdgeError, InvalidEdgeRequestError
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
@@ -42,7 +43,7 @@ class ClusterFailureClassifier(FailureClassifier):
         return Failure.FAILED
 
     def classify_lookup(self, *, error: RedisEnterpriseServicesError) -> Failure:
-        if isinstance(error, AmbiguousResourceError):
+        if isinstance(error, AmbiguousResourceError | UpdateOutcomeUnclearError):
             return Failure.MANUAL
         if isinstance(error, ClusterActionFailedError | DatabaseCreationFailedError):
             return Failure.FAILED
