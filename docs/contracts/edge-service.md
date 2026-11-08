@@ -100,7 +100,7 @@ cluster-state-id: 155          (אופציונלי)
 | `/v1/bdbs`, `/v1/bdbs/{uid}` | GET (גם עם `fields`), POST, PUT, DELETE | bdb או רשימה |
 | `/v1/redis_acls[/{uid}]` | GET, POST, DELETE | ACL או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/roles[/{uid}]` | GET, POST, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
-| `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה |
+| `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/actions/{uid}` | GET | action |
 | כל endpoint | כל שיטה | גוף שגיאה של הקלאסטר: `{error_code, description}` |
 
