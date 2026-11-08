@@ -27,7 +27,7 @@ class StepRecorder:
         self._step_record.obtained_by = obtained_by
         self._record_writer.save(record=self._record)
 
-    def forget_result(self) -> None:
+    def clear_saved_result(self) -> None:
         self._step_record.result = None
         self._step_record.obtained_by = None
         self._record_writer.save(record=self._record)

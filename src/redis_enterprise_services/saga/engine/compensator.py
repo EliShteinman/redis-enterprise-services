@@ -34,7 +34,10 @@ class Compensator:
 
     def _compensate_step(self, *, step: PreparedStep, recorder: StepRecorder) -> bool:
         if step.obtained_by is ObtainedBy.FOUND:
-            logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
+            logger.warning(
+                msg=f"compensating {step.key}, which was found by find_outcome, not kept by execute, "
+                "and may not be ours"
+            )
         recorder.mark_compensating()
         last_error: StepError | None = self._compensate_with_retries(step=step)
         if last_error is None:
@@ -53,7 +56,7 @@ class Compensator:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
                 last_error = StepError.from_exception(error=error)
-                logger.warning(msg=f"compensation of {step.key} failed: {error.coded_message()}")
+                logger.warning(msg=f"a compensation attempt of {step.key} failed: {error.coded_message()}")
                 if self._classifier.classify_step_error(error=error) not in RETRIED_COMPENSATION_FAILURES:
                     return last_error
                 if attempt < attempts:

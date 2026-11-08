@@ -41,7 +41,7 @@ class PreparedSagaStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
     def execute(self, *, on_result_kept: OnResultKept) -> None:
         self._step.execute(
             step_input=self._step_input,
-            keep_result=lambda result: self._keep(
+            keep_result=lambda result: self._keep_if_none_kept(
                 result=result, obtained_by=ObtainedBy.KEPT, on_result_kept=on_result_kept
             ),
         )
@@ -50,13 +50,13 @@ class PreparedSagaStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         found: TResult | None = self._step.find_outcome(
             step_input=self._step_input,
             kept_result=self._result,
-            keep_found_result=lambda result: self._keep(
+            keep_found_result=lambda result: self._keep_if_none_kept(
                 result=result, obtained_by=ObtainedBy.FOUND, on_result_kept=on_result_kept
             ),
         )
         if found is None:
             return False
-        self._keep(result=found, obtained_by=ObtainedBy.FOUND, on_result_kept=on_result_kept)
+        self._keep_if_none_kept(result=found, obtained_by=ObtainedBy.FOUND, on_result_kept=on_result_kept)
         return True
 
     def compensate(self) -> None:
@@ -68,7 +68,9 @@ class PreparedSagaStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         self._obtained_by = None
         self._step_results.forget(key=self._key)
 
-    def _keep(self, *, result: TResult, obtained_by: ObtainedBy, on_result_kept: OnResultKept) -> None:
+    def _keep_if_none_kept(
+        self, *, result: TResult, obtained_by: ObtainedBy, on_result_kept: OnResultKept
+    ) -> None:
         if self._result is not None:
             return
         self._result = result

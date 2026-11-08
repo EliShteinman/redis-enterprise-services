@@ -116,7 +116,7 @@ class StepRunner:
         try:
             step.execute(on_result_kept=recorder.save_result)
         except RedisEnterpriseServicesError as error:
-            logger.warning(msg=f"step {step.key} failed: {error.coded_message()}")
+            logger.warning(msg=f"an attempt of step {step.key} failed: {error.coded_message()}")
             recorder.save_error(error=StepError.from_exception(error=error))
             return self._classifier.classify_step_error(error=error)
         return None
@@ -129,7 +129,10 @@ class StepRunner:
                 else FindOutcomeVerdict.NOT_FOUND
             )
         except RedisEnterpriseServicesError as error:
-            logger.error(msg=f"checking step {step.key} failed, its own error stays: {error.coded_message()}")
+            logger.error(
+                msg=f"finding the outcome of step {step.key} failed, the step's own error stays: "
+                f"{error.coded_message()}"
+            )
             if self._classifier.classify_find_outcome_error(error=error) is FailureCategory.FAILED:
                 return FindOutcomeVerdict.FAILED
             return FindOutcomeVerdict.REQUIRES_MANUAL_INTERVENTION
@@ -145,7 +148,7 @@ def forget_kept_result(*, step: PreparedStep, recorder: StepRecorder) -> None:
     if step.has_result:
         logger.warning(msg=f"step {step.key} kept a result that was not found, it runs again without it")
         step.forget_result()
-        recorder.forget_result()
+        recorder.clear_saved_result()
 
 
 def outcome_when_not_found(*, step: PreparedStep, failure: FailureCategory) -> StepOutcome | None:

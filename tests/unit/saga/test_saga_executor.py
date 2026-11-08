@@ -88,22 +88,24 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         )
         self._found_during_find_outcome: FakeResult | None = found_during_find_outcome
         self._compensation_script: list[RedisEnterpriseServicesError | None] = compensation_script or [None]
-        self.executed: int = 0
-        self.compensated: int = 0
+        self.execute_calls: int = 0
+        self.compensate_calls: int = 0
 
     @property
     def kind(self) -> StepKind:
         return self._kind
 
     def execute(self, *, step_input: FakeInput, keep_result: KeepResult[FakeResult]) -> None:
-        action: ScriptedExecution = self._execute_script[min(self.executed, len(self._execute_script) - 1)]
-        self.executed += 1
+        action: ScriptedExecution = self._execute_script[
+            min(self.execute_calls, len(self._execute_script) - 1)
+        ]
+        self.execute_calls += 1
         self._calls.append(f"execute {step_input.name}")
         if isinstance(action, RedisEnterpriseServicesError):
             raise action
         if action == "interrupt":
             raise SystemExit(1)
-        keep_result(result=FakeResult(name=step_input.name, attempt=self.executed))
+        keep_result(result=FakeResult(name=step_input.name, attempt=self.execute_calls))
         if action == "keep then busy":
             raise BUSY
         if action == "keep then failed":
@@ -130,9 +132,9 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
     def compensate(self, *, step_input: FakeInput, result: FakeResult) -> None:
         self._calls.append(f"compensate {step_input.name}")
         error: RedisEnterpriseServicesError | None = self._compensation_script[
-            min(self.compensated, len(self._compensation_script) - 1)
+            min(self.compensate_calls, len(self._compensation_script) - 1)
         ]
-        self.compensated += 1
+        self.compensate_calls += 1
         if error is not None:
             raise error
 
@@ -259,7 +261,7 @@ def test_a_transient_error_is_retried(
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+    assert (record.status, step.execute_calls) == (SagaStatus.SUCCEEDED, 2)
 
 
 def test_an_unknown_outcome_that_is_found_is_done_without_running_again(
@@ -271,7 +273,11 @@ def test_an_unknown_outcome_that_is_found_is_done_without_running_again(
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.executed, record.steps[0].obtained_by) == (SagaStatus.SUCCEEDED, 1, "found")
+    assert (record.status, step.execute_calls, record.steps[0].obtained_by) == (
+        SagaStatus.SUCCEEDED,
+        1,
+        "found",
+    )
 
 
 def test_an_unknown_outcome_that_is_not_found_runs_the_step_again(
@@ -283,7 +289,7 @@ def test_an_unknown_outcome_that_is_not_found_runs_the_step_again(
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+    assert (record.status, step.execute_calls) == (SagaStatus.SUCCEEDED, 2)
 
 
 def test_an_ambiguous_outcome_stops_for_manual_intervention_and_keeps_the_lock(
@@ -313,7 +319,7 @@ def test_a_step_that_fails_for_manual_intervention_runs_once(
 
     run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert step.executed == 1
+    assert step.execute_calls == 1
 
 
 def test_a_step_that_fails_for_manual_intervention_is_unresolved(
@@ -418,7 +424,7 @@ def test_a_step_with_a_kept_result_finds_its_outcome_instead_of_running_again(
 
     run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert step.executed == 1
+    assert step.execute_calls == 1
 
 
 def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
@@ -430,7 +436,7 @@ def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
+    assert (record.status, step.execute_calls) == (SagaStatus.SUCCEEDED, 2)
 
 
 def test_a_step_run_again_after_its_kept_result_was_not_found_keeps_the_new_result(
@@ -457,7 +463,7 @@ def test_a_pivot_whose_kept_result_is_not_found_after_a_busy_cluster_is_not_run_
 
     run(steps=[planned(step=step, key="p")], record_writer=record_writer, lock=lock)
 
-    assert step.executed == 1
+    assert step.execute_calls == 1
 
 
 @pytest.mark.parametrize(argnames="failing", argvalues=["keep then failed", "keep then outcome unknown"])
@@ -468,10 +474,10 @@ def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_ru
 
     run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert step.executed == 1
+    assert step.execute_calls == 1
 
 
-def test_a_find_outcome_that_fails_needs_manual_intervention_without_a_second_find(
+def test_a_find_outcome_with_an_unknown_outcome_needs_manual_intervention_without_a_second_find(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
     step: FakeStep = FakeStep(
@@ -485,7 +491,7 @@ def test_a_find_outcome_that_fails_needs_manual_intervention_without_a_second_fi
     assert (record.status, lock.held_by) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, SAGA_ID)
 
 
-def test_an_interrupted_saga_keeps_the_lock(
+def test_an_interrupted_saga_keeps_the_lock_and_leaves_its_running_step_unresolved(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
     interrupted: FakeStep = FakeStep(calls=calls, execute_script=["interrupt"])
@@ -625,7 +631,7 @@ def test_repeated_step_keys_are_refused(calls: list[str]) -> None:
         )
 
 
-def test_a_missing_earlier_result_fails_the_step_and_compensates_the_rest(
+def test_a_missing_earlier_result_fails_the_step_and_compensates_the_earlier_steps(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
     def needs_missing(step_results: StepResults) -> FakeInput:
@@ -641,7 +647,7 @@ def test_a_missing_earlier_result_fails_the_step_and_compensates_the_rest(
     assert (record.status, calls[-1]) == (SagaStatus.ROLLED_BACK, "compensate a")
 
 
-def test_a_step_that_stops_the_saga_is_marked_unresolved(
+def test_an_ambiguous_find_outcome_marks_the_step_unresolved(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
     step: FakeStep = FakeStep(calls=calls, execute_script=[OUTCOME_UNKNOWN], find_outcome_answers=[AMBIGUOUS])
@@ -770,7 +776,7 @@ def test_a_failure_after_a_kept_result_lets_the_step_find_its_outcome(
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 1)
+    assert (record.status, step.execute_calls) == (SagaStatus.SUCCEEDED, 1)
 
 
 def test_only_the_first_kept_result_of_a_step_is_recorded(
@@ -806,7 +812,7 @@ def test_an_unknown_outcome_after_a_kept_result_that_is_not_found_needs_manual_i
 
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
-    assert (record.status, step.compensated, lock.held_by) == (
+    assert (record.status, step.compensate_calls, lock.held_by) == (
         SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         0,
         SAGA_ID,
