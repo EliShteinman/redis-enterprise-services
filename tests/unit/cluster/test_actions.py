@@ -13,6 +13,7 @@ from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
+    ClusterRequestError,
     UnreadableAnswerError,
 )
 from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
@@ -54,6 +55,18 @@ def test_a_relay_error_while_reading_the_action_is_read_again() -> None:
     api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
     api.send.side_effect = [
         OutcomeUnknownError(message="relay timed out"),
+        ClusterAnswer(body={"status": "completed"}, cluster_state_id=None),
+    ]
+
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
+
+    assert api.send.call_count == 2
+
+
+def test_a_busy_cluster_while_reading_the_action_is_read_again() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = [
+        ClusterRequestError(message="busy", cluster_status_code=409, error_code="busy"),
         ClusterAnswer(body={"status": "completed"}, cluster_state_id=None),
     ]
 

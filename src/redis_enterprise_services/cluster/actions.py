@@ -12,6 +12,7 @@ from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
+    ClusterRequestError,
     UnreadableAnswerError,
 )
 from redis_enterprise_services.exceptions.edge import (
@@ -47,6 +48,11 @@ class ActionWaiter(ActionTracker):
             ).body
         except (RequestNotSentError, OutcomeUnknownError, ResponseRejectedError) as error:
             logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
+            return False
+        except ClusterRequestError as error:
+            if error.error_code not in self._cluster.transient_error_codes:
+                raise
+            logger.warning(msg=f"the cluster is busy reading action {action_uid}, it is read again")
             return False
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
         if status is None:
