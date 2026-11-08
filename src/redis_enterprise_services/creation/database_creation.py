@@ -1,8 +1,8 @@
 from functools import partial
 
+from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
-from redis_enterprise_services.creation.creation_request import CreationRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.operations.find_or_start_result import FindOrStartResult
 from redis_enterprise_services.operations.operation_starter import OperationStarter
@@ -15,20 +15,27 @@ class DatabaseCreation:
         *,
         preparation: CreationPreparation,
         execution: CreationExecution,
-        acceptance: OperationStarter,
+        operation_starter: OperationStarter,
     ) -> None:
         self._preparation: CreationPreparation = preparation
         self._execution: CreationExecution = execution
-        self._acceptance: OperationStarter = acceptance
+        self._operation_starter: OperationStarter = operation_starter
 
-    def accept(self, *, trace_id: str, request: CreationRequest) -> FindOrStartResult:
-        return self._acceptance.find_or_start(
-            trace_id=trace_id, prepare_run=partial(self._prepared_run, trace_id=trace_id, request=request)
+    def find_or_start(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> FindOrStartResult:
+        return self._operation_starter.find_or_start(
+            trace_id=trace_id,
+            prepare_run=partial(self._prepare_run, trace_id=trace_id, creation_request=creation_request),
         )
 
-    def _prepared_run(self, *, trace_id: str, request: CreationRequest) -> PreparedRun:
-        creation: PreparedCreation = self._preparation.prepare(request=request)
+    def _prepare_run(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> PreparedRun:
+        prepared_creation: PreparedCreation = (
+            self._preparation.validate_name_resolve_cluster_and_fill_defaults(
+                creation_request=creation_request
+            )
+        )
         return PreparedRun(
-            task_name=f"creating {creation.spec.database.name}",
-            task=partial(self._execution.run, trace_id=trace_id, creation=creation),
+            task_name=f"creating {prepared_creation.spec.database.name}",
+            task=partial(
+                self._execution.run_and_save, trace_id=trace_id, prepared_creation=prepared_creation
+            ),
         )

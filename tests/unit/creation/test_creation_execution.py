@@ -31,7 +31,7 @@ from redis_enterprise_services.saga.contract.saga_record_store import SagaRecord
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
-CREATION: PreparedCreation = PreparedCreation(
+PREPARED_CREATION: PreparedCreation = PreparedCreation(
     cluster=ConfiguredCluster(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
     ),
@@ -79,7 +79,7 @@ def saga_record_with_every_step_done(*, status: SagaStatus) -> SagaRecord:
 
 class ExecutionHarness:
     def __init__(self) -> None:
-        self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
+        self.name_availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
         self.planner: MagicMock = create_autospec(spec=SingleSiteCreationPlanner, instance=True)
@@ -87,27 +87,27 @@ class ExecutionHarness:
         self.record_reader.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
             name_check_scope=ChosenClusterScope(),
-            name_availability=self.availability,
+            name_availability=self.name_availability,
             creation_naming=create_autospec(spec=CreationNaming, instance=True),
             planner=self.planner,
-            executor=self.executor,
+            saga_executor=self.executor,
             outcome_translator=CreationOutcomeTranslator(
                 resource_naming=UserResourceNaming(settings=USER_RESOURCES), public_errors=PUBLIC_ERRORS
             ),
             public_errors=PUBLIC_ERRORS,
-            record_reader=self.record_reader,
-            store=self.store,
+            saga_record_reader=self.record_reader,
+            operation_store=self.store,
         )
 
-    def run(self) -> Operation:
-        return self.execution.run(trace_id="trace-1", creation=CREATION)
+    def run_and_save(self) -> Operation:
+        return self.execution.run_and_save(trace_id="trace-1", prepared_creation=PREPARED_CREATION)
 
 
 def test_a_created_database_returns_the_uids_of_each_user() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
 
-    database: DatabaseResult | None = harness.run().database
+    database: DatabaseResult | None = harness.run_and_save().database
 
     assert database is not None
     assert (database.db_id, database.clusters[0].users) == (
@@ -123,7 +123,7 @@ def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) 
     harness: ExecutionHarness = ExecutionHarness()
     harness.executor.run.return_value = saga_record_with_every_step_done(status=status)
 
-    operation: Operation = harness.run()
+    operation: Operation = harness.run_and_save()
 
     assert (operation.status.value, operation.database) == (status.value, None)
 
@@ -132,7 +132,7 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.executor.run.side_effect = NameTakenError(message="database orders exists on c1")
 
-    operation: Operation = harness.run()
+    operation: Operation = harness.run_and_save()
 
     assert (operation.status, operation.error and operation.error.code) == (
         OperationStatus.REJECTED,
@@ -147,7 +147,7 @@ def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() ->
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION
     )
 
-    assert harness.run().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
+    assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
 def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -> None:
@@ -155,7 +155,7 @@ def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -
     harness.executor.run.side_effect = RuntimeError("bug while finishing")
     harness.record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
 
-    assert harness.run().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
+    assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
 @pytest.mark.parametrize(
@@ -169,7 +169,7 @@ def test_the_final_operation_is_stored(executor_result: SagaRecord | RedisEnterp
     harness: ExecutionHarness = ExecutionHarness()
     harness.executor.run.side_effect = [executor_result]
 
-    operation: Operation = harness.run()
+    operation: Operation = harness.run_and_save()
 
     harness.store.save.assert_called_once_with(operation=operation)
 
@@ -193,7 +193,7 @@ def test_an_unexpected_error_still_ends_the_operation(
         else None
     )
 
-    operation: Operation = harness.run()
+    operation: Operation = harness.run_and_save()
 
     assert (operation.status, operation.error and operation.error.code) == (status, "internal_error")
 
@@ -205,7 +205,7 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() 
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION
     )
 
-    operation: Operation = harness.run()
+    operation: Operation = harness.run_and_save()
 
     assert operation.not_rolled_back is not None
     assert [remaining.resource_type for remaining in operation.not_rolled_back] == [
@@ -217,11 +217,11 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() 
     ]
 
 
-def test_the_names_are_checked_before_the_saga_starts() -> None:
+def test_the_check_before_start_looks_for_taken_names() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
 
-    harness.run()
+    harness.run_and_save()
     harness.executor.run.call_args.kwargs["check_before_start"]()
 
-    assert harness.availability.find_taken_and_raise_if_any.called
+    assert harness.name_availability.find_taken_and_raise_if_any.called

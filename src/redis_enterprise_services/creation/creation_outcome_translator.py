@@ -36,23 +36,27 @@ class CreationOutcomeTranslator:
         self._resource_naming: UserResourceNaming = resource_naming
         self._public_errors: PublicErrors = public_errors
 
-    def operation_for(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
-        settled: SagaRecord = settled_record(record=record)
-        status: OperationStatus = OperationStatus(settled.status.value)
-        if settled.status is SagaStatus.SUCCEEDED:
+    def operation_from_record(
+        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+    ) -> Operation:
+        ended_record: SagaRecord = record_interrupted_if_running(record=record)
+        status: OperationStatus = OperationStatus(ended_record.status.value)
+        if ended_record.status is SagaStatus.SUCCEEDED:
             return Operation(
                 trace_id=trace_id,
                 status=status,
-                database=created_database_result(creation=creation, record=settled),
+                database=created_database_result(prepared_creation=prepared_creation, record=ended_record),
             )
         return Operation(
             trace_id=trace_id,
             status=status,
-            error=self._stopped_step_error(creation=creation, record=settled),
-            not_rolled_back=self._not_rolled_back_resources(creation=creation, record=settled),
+            error=self._stopped_step_error(prepared_creation=prepared_creation, record=ended_record),
+            not_rolled_back=self._not_rolled_back_resources(
+                prepared_creation=prepared_creation, record=ended_record
+            ),
         )
 
-    def _stopped_step_error(self, *, creation: PreparedCreation, record: SagaRecord) -> PublicError:
+    def _stopped_step_error(self, *, prepared_creation: PreparedCreation, record: SagaRecord) -> PublicError:
         stopped_step: StepRecord | None = next(
             (step for step in record.steps if step.key == record.stopped_at), None
         )
@@ -62,22 +66,22 @@ class CreationOutcomeTranslator:
         return self._public_errors.from_code(
             internal_code=stopped_step.error.code,
             message=stopped_step.error.message,
-            cluster_url=creation.cluster.api_url,
+            cluster_url=prepared_creation.cluster.api_url,
             cluster_error_code=stopped_step.error.remote_code,
         )
 
     def _not_rolled_back_resources(
-        self, *, creation: PreparedCreation, record: SagaRecord
+        self, *, prepared_creation: PreparedCreation, record: SagaRecord
     ) -> list[RemainingResource]:
         planned_by_step_key: dict[str, PlannedResource] = planned_resources_by_step_key(
-            spec=creation.spec, resource_naming=self._resource_naming
+            spec=prepared_creation.spec, resource_naming=self._resource_naming
         )
         return [
             RemainingResource(
-                cluster_url=creation.cluster.api_url,
+                cluster_url=prepared_creation.cluster.api_url,
                 resource_type=planned_by_step_key[step.key].resource_type,
                 name=planned_by_step_key[step.key].name,
-                uid=resource_uid(record=record, step=step),
+                uid=recorded_uid_or_none(record=record, step=step),
                 last_error=self._last_error_text(error=step.compensation_error or step.error),
             )
             for step in record.steps
@@ -92,7 +96,7 @@ class CreationOutcomeTranslator:
         )
 
 
-def resource_uid(*, record: SagaRecord, step: StepRecord) -> int | None:
+def recorded_uid_or_none(*, record: SagaRecord, step: StepRecord) -> int | None:
     uid_step: StepRecord = (
         next(found for found in record.steps if found.key == DATABASE_STEP_KEY)
         if step.key == PERMISSIONS_STEP_KEY
@@ -104,7 +108,7 @@ def resource_uid(*, record: SagaRecord, step: StepRecord) -> int | None:
         return None
 
 
-def settled_record(*, record: SagaRecord) -> SagaRecord:
+def record_interrupted_if_running(*, record: SagaRecord) -> SagaRecord:
     if record.status is not SagaStatus.RUNNING:
         return record
     logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")

@@ -42,7 +42,7 @@ TRANSLATOR: CreationOutcomeTranslator = CreationOutcomeTranslator(
         internal_error_message="internal error",
     ),
 )
-CREATION: PreparedCreation = PreparedCreation(
+PREPARED_CREATION: PreparedCreation = PreparedCreation(
     cluster=ConfiguredCluster(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
     ),
@@ -77,9 +77,9 @@ def step_record(
 
 
 def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
-    return TRANSLATOR.operation_for(
+    return TRANSLATOR.operation_from_record(
         trace_id="trace-1",
-        creation=CREATION,
+        prepared_creation=PREPARED_CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),
     )
 
