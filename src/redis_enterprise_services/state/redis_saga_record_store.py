@@ -1,56 +1,37 @@
 import logging
 
 from redis import Redis
-from redis.commands.core import Script
 
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader, SagaRecordWriter
+from redis_enterprise_services.state.record_expiry import KEEP_OPEN_WITHOUT_EXPIRY, finished_ttl_or_keep_open
 from redis_enterprise_services.state.redis_keys import RedisKeys
+from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-SAVE_WITHOUT_EXPIRY_AND_ADD_TO_UNFINISHED_SET: str = """
-redis.call('SET', KEYS[1], ARGV[1])
-redis.call('SADD', KEYS[2], ARGV[2])
-return true
-"""
-
-SAVE_WITH_EXPIRY_AND_REMOVE_FROM_UNFINISHED_SET: str = """
-redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
-redis.call('SREM', KEYS[2], ARGV[2])
-return true
-"""
-
 
 class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
-    def __init__(self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int) -> None:
+    def __init__(
+        self, *, client: Redis, keys: RedisKeys, record_writer: TrackedRecordWriter, finished_ttl_seconds: int
+    ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
+        self._record_writer: TrackedRecordWriter = record_writer
         self._finished_ttl_seconds: int = finished_ttl_seconds
-        self._save_without_expiry_and_add_to_unfinished_set: Script = client.register_script(
-            script=SAVE_WITHOUT_EXPIRY_AND_ADD_TO_UNFINISHED_SET
-        )
-        self._save_with_expiry_and_remove_from_unfinished_set: Script = client.register_script(
-            script=SAVE_WITH_EXPIRY_AND_REMOVE_FROM_UNFINISHED_SET
-        )
 
     def save(self, *, record: SagaRecord) -> None:
-        self._save_without_expiry_and_add_to_unfinished_set(
-            keys=self._record_and_unfinished_set_keys(record=record),
-            args=[record.model_dump_json(), record.saga_id],
-        )
+        self._write(record=record, ttl_seconds=KEEP_OPEN_WITHOUT_EXPIRY)
         logger.debug(msg=f"saga {record.saga_id} saved")
 
     def save_final(self, *, record: SagaRecord) -> None:
-        if not record.has_ended_cleanly():
-            self.save(record=record)
-            logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")
-            return
-        self._save_with_expiry_and_remove_from_unfinished_set(
-            keys=self._record_and_unfinished_set_keys(record=record),
-            args=[record.model_dump_json(), record.saga_id, self._finished_ttl_seconds],
+        self._write(
+            record=record,
+            ttl_seconds=finished_ttl_or_keep_open(
+                has_ended=record.has_ended_cleanly(), finished_ttl_seconds=self._finished_ttl_seconds
+            ),
         )
-        logger.info(msg=f"saga {record.saga_id} stored as {record.status.value}")
+        log_final_save(record=record)
 
     def find(self, *, saga_id: str) -> SagaRecord | None:
         stored: str | bytes | None = self._client.get(name=self._keys.saga_record(saga_id=saga_id))
@@ -59,5 +40,18 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
             return None
         return SagaRecord.model_validate_json(json_data=stored)
 
-    def _record_and_unfinished_set_keys(self, *, record: SagaRecord) -> list[str]:
-        return [self._keys.saga_record(saga_id=record.saga_id), self._keys.unfinished_saga_ids()]
+    def _write(self, *, record: SagaRecord, ttl_seconds: int) -> None:
+        self._record_writer.save(
+            record_key=self._keys.saga_record(saga_id=record.saga_id),
+            tracking_set_key=self._keys.unfinished_saga_ids(),
+            member=record.saga_id,
+            record_json=record.model_dump_json(),
+            ttl_seconds=ttl_seconds,
+        )
+
+
+def log_final_save(*, record: SagaRecord) -> None:
+    if record.has_ended_cleanly():
+        logger.info(msg=f"saga {record.saga_id} stored as {record.status.value}")
+        return
+    logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")

@@ -6,15 +6,11 @@ from redis.commands.core import Script
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES
 from redis_enterprise_services.operations.operation_store import OperationStore
+from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
 from redis_enterprise_services.state.redis_keys import RedisKeys
+from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 
 logger: logging.Logger = logging.getLogger(name=__name__)
-
-SAVE_WITHOUT_EXPIRY_AND_ADD_TO_OPEN_SET: str = """
-redis.call('SET', KEYS[1], ARGV[1])
-redis.call('SADD', KEYS[2], ARGV[2])
-return true
-"""
 
 CREATE_IF_ABSENT: str = """
 local existing = redis.call('GET', KEYS[1])
@@ -27,12 +23,6 @@ redis.call('SET', KEYS[3], 'alive', 'EX', ARGV[3])
 return false
 """
 
-SAVE_WITH_EXPIRY_AND_REMOVE_FROM_OPEN_SET: str = """
-redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
-redis.call('SREM', KEYS[2], ARGV[2])
-return true
-"""
-
 
 class RedisOperationStore(OperationStore):
     def __init__(
@@ -40,19 +30,15 @@ class RedisOperationStore(OperationStore):
         *,
         client: Redis,
         keys: RedisKeys,
+        record_writer: TrackedRecordWriter,
         finished_ttl_seconds: int,
         heartbeat_ttl_seconds: int,
     ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
+        self._record_writer: TrackedRecordWriter = record_writer
         self._finished_ttl_seconds: int = finished_ttl_seconds
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
-        self._save_without_expiry_and_add_to_open_set: Script = client.register_script(
-            script=SAVE_WITHOUT_EXPIRY_AND_ADD_TO_OPEN_SET
-        )
-        self._save_with_expiry_and_remove_from_open_set: Script = client.register_script(
-            script=SAVE_WITH_EXPIRY_AND_REMOVE_FROM_OPEN_SET
-        )
         self._create_if_absent_script: Script = client.register_script(script=CREATE_IF_ABSENT)
 
     def create_if_absent(self, *, operation: Operation) -> Operation | None:
@@ -70,16 +56,16 @@ class RedisOperationStore(OperationStore):
         return Operation.model_validate_json(json_data=existing)
 
     def save(self, *, operation: Operation) -> None:
-        keys: list[str] = self._record_and_open_set_keys(trace_id=operation.trace_id)
-        if operation.status in EXPIRING_STATUSES:
-            self._save_with_expiry_and_remove_from_open_set(
-                keys=keys,
-                args=[operation.model_dump_json(), operation.trace_id, self._finished_ttl_seconds],
-            )
-        else:
-            self._save_without_expiry_and_add_to_open_set(
-                keys=keys, args=[operation.model_dump_json(), operation.trace_id]
-            )
+        self._record_writer.save(
+            record_key=self._keys.operation(trace_id=operation.trace_id),
+            tracking_set_key=self._keys.open_trace_ids(),
+            member=operation.trace_id,
+            record_json=operation.model_dump_json(),
+            ttl_seconds=finished_ttl_or_keep_open(
+                has_ended=operation.status in EXPIRING_STATUSES,
+                finished_ttl_seconds=self._finished_ttl_seconds,
+            ),
+        )
         logger.info(msg=f"operation {operation.trace_id} stored as {operation.status.value}")
 
     def find(self, *, trace_id: str) -> Operation | None:

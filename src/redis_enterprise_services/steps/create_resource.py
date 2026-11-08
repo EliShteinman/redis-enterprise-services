@@ -1,14 +1,12 @@
 import logging
-from http import HTTPStatus
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.exceptions.cluster import (
-    ClusterRejectedRequestError,
-    DuplicateResourceNameError,
-)
-from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
+from redis_enterprise_services.cluster.rejection_kind import is_not_found
+from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
+from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.resources.named_spec import NamedSpec
+from redis_enterprise_services.resources.only_one_named import only_one_named
 from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.resources.resource_completion_waiter import ResourceCompletionWaiter
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
@@ -50,28 +48,27 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         keep_result_if_none_kept: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
-        created: CreatedResource | None = (
-            kept_result
-            if kept_result is not None
-            else self._find_only_one_by_name(target=target, step_input=step_input)
+        created: CreatedResource | None = self._kept_or_found_by_name(
+            target=target, step_input=step_input, kept_result=kept_result
         )
         if created is not None:
             keep_result_if_none_kept(result=created)
             self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
         return created
 
-    def _find_only_one_by_name(
-        self, *, target: ClusterTarget, step_input: CreateResourceInput[TSpec]
+    def _kept_or_found_by_name(
+        self,
+        *,
+        target: ClusterTarget,
+        step_input: CreateResourceInput[TSpec],
+        kept_result: CreatedResource | None,
     ) -> CreatedResource | None:
-        found: list[NamedResource] = self._repository.find_by_name(target=target, name=step_input.spec.name)
-        if not found:
-            return None
-        if len(found) > 1:
-            uids: list[int] = [resource.uid for resource in found]
-            raise DuplicateResourceNameError(
-                message=f"{len(found)} resources named {step_input.spec.name}: {uids}"
-            )
-        return CreatedResource(uid=found[0].uid, name=found[0].name, action_uid=None)
+        if kept_result is not None:
+            return kept_result
+        return only_one_named(
+            found=self._repository.find_by_name(target=target, name=step_input.spec.name),
+            name=step_input.spec.name,
+        )
 
     def compensate(self, *, step_input: CreateResourceInput[TSpec], result: CreatedResource) -> None:
         logger.info(msg=f"removing created {result.name}")
@@ -79,7 +76,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         try:
             action_uid: str | None = self._repository.start_deletion(target=target, uid=result.uid)
         except ClusterRejectedRequestError as error:
-            if error.cluster_status_code != HTTPStatus.NOT_FOUND:
+            if not is_not_found(error=error):
                 raise
             logger.info(msg=f"{result.name} is already gone")
             return

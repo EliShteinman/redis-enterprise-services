@@ -11,11 +11,11 @@ from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
+from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-KEEP_OPEN_WITHOUT_EXPIRY: int = 0
 STATUS_FIELD: str = "status"
 NO_INTERRUPTED_SAGA: str = ""
 NO_EXPECTED_SAGA: str = ""
@@ -72,12 +72,8 @@ class RedisAbandonedStore(AbandonedStore):
         )
 
     def abandoned_candidate_trace_ids(self) -> list[str]:
-        open_trace_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
         return sorted(
-            trace_id
-            for trace_id in open_trace_ids
-            if not self._client.exists(self._keys.heartbeat(trace_id=trace_id))
-            and self._running_or_not_recorded(trace_id=trace_id)
+            trace_id for trace_id in self._open_trace_ids() if self._is_abandoned_candidate(trace_id=trace_id)
         )
 
     def find_saga(self, *, trace_id: str) -> StoredSaga | None:
@@ -86,45 +82,88 @@ class RedisAbandonedStore(AbandonedStore):
             return None
         return StoredSaga(raw_json=raw, record=SagaRecord.model_validate_json(json_data=raw))
 
-    def _running_or_not_recorded(self, *, trace_id: str) -> bool:
-        stored: str | None = cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
-        if stored is None:
-            return True
-        try:
-            parsed: object = json.loads(stored)
-        except json.JSONDecodeError:
-            logger.error(msg=f"operation {trace_id} cannot be read, it is skipped")
-            return False
-        if not isinstance(parsed, dict):
-            logger.error(msg=f"operation {trace_id} is not a JSON object, it is skipped")
-            return False
-        return cast(dict[str, object], parsed).get(STATUS_FIELD) == OperationStatus.RUNNING.value
-
     def finalize_if_still_abandoned(
         self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
     ) -> FinalizeAbandonedResult:
         trace_id: str = operation.trace_id
-        held_locks: str = self._keys.held_locks(owner=trace_id)
         result_code: int = self._finalize_if_still_abandoned_script(
-            keys=[
-                self._keys.operation(trace_id=trace_id),
-                self._keys.open_trace_ids(),
-                self._keys.heartbeat(trace_id=trace_id),
-                self._keys.saga_record(saga_id=trace_id),
-                held_locks,
-                *sorted(cast(set[str], self._client.smembers(name=held_locks))),
-            ],
-            args=[
-                operation.model_dump_json(),
-                trace_id,
-                self._finished_ttl_seconds
-                if operation.status in EXPIRING_STATUSES
-                else KEEP_OPEN_WITHOUT_EXPIRY,
-                NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
-                OperationStatus.RUNNING.value,
-                NO_EXPECTED_SAGA if expected_saga is None else expected_saga.raw_json,
-            ],
+            keys=finalize_script_keys(
+                keys=self._keys, trace_id=trace_id, held_lock_keys=self._held_lock_keys(trace_id=trace_id)
+            ),
+            args=finalize_script_args(
+                operation=operation,
+                expected_saga=expected_saga,
+                interrupted_saga=interrupted_saga,
+                finished_ttl_seconds=self._finished_ttl_seconds,
+            ),
         )
         result: FinalizeAbandonedResult = FINALIZE_ABANDONED_RESULT_BY_CODE[result_code]
         logger.debug(msg=f"operation {trace_id}: {result.value}")
         return result
+
+    def _is_abandoned_candidate(self, *, trace_id: str) -> bool:
+        if self._has_heartbeat(trace_id=trace_id):
+            return False
+        return is_running_or_unrecorded(
+            trace_id=trace_id, stored_json=self._stored_operation_json(trace_id=trace_id)
+        )
+
+    def _open_trace_ids(self) -> set[str]:
+        return cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
+
+    def _has_heartbeat(self, *, trace_id: str) -> bool:
+        return bool(self._client.exists(self._keys.heartbeat(trace_id=trace_id)))
+
+    def _stored_operation_json(self, *, trace_id: str) -> str | None:
+        return cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
+
+    def _held_lock_keys(self, *, trace_id: str) -> list[str]:
+        return sorted(cast(set[str], self._client.smembers(name=self._keys.held_locks(owner=trace_id))))
+
+
+def is_running_or_unrecorded(*, trace_id: str, stored_json: str | None) -> bool:
+    if stored_json is None:
+        return True
+    return stored_status(trace_id=trace_id, stored_json=stored_json) == OperationStatus.RUNNING.value
+
+
+def stored_status(*, trace_id: str, stored_json: str) -> object:
+    try:
+        parsed: object = json.loads(stored_json)
+    except json.JSONDecodeError:
+        logger.error(msg=f"operation {trace_id} cannot be read, it is skipped")
+        return None
+    if not isinstance(parsed, dict):
+        logger.error(msg=f"operation {trace_id} is not a JSON object, it is skipped")
+        return None
+    return cast(dict[str, object], parsed).get(STATUS_FIELD)
+
+
+def finalize_script_keys(*, keys: RedisKeys, trace_id: str, held_lock_keys: list[str]) -> list[str]:
+    return [
+        keys.operation(trace_id=trace_id),
+        keys.open_trace_ids(),
+        keys.heartbeat(trace_id=trace_id),
+        keys.saga_record(saga_id=trace_id),
+        keys.held_locks(owner=trace_id),
+        *held_lock_keys,
+    ]
+
+
+def finalize_script_args(
+    *,
+    operation: Operation,
+    expected_saga: StoredSaga | None,
+    interrupted_saga: SagaRecord | None,
+    finished_ttl_seconds: int,
+) -> list[str | int]:
+    return [
+        operation.model_dump_json(),
+        operation.trace_id,
+        finished_ttl_or_keep_open(
+            has_ended=operation.status in EXPIRING_STATUSES, finished_ttl_seconds=finished_ttl_seconds
+        ),
+        NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
+        OperationStatus.RUNNING.value,
+        NO_EXPECTED_SAGA if expected_saga is None else expected_saga.raw_json,
+    ]

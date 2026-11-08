@@ -1,22 +1,19 @@
-from unittest.mock import MagicMock, create_autospec
+import pytest
 
-from redis import Redis
-
-from redis_enterprise_services.state.redis_abandoned_store import RedisAbandonedStore
-from redis_enterprise_services.state.redis_keys import RedisKeys
+from redis_enterprise_services.state.redis_abandoned_store import is_running_or_unrecorded
 
 
-def test_an_unreadable_operation_is_skipped_and_the_others_are_still_found() -> None:
-    client: MagicMock = create_autospec(spec=Redis, instance=True)
-    client.smembers.return_value = {"trace-bad", "trace-good"}
-    client.exists.return_value = 0
-
-    def stored(*, name: str) -> str:
-        return "{not json" if "trace-bad" in name else '{"status": "running"}'
-
-    client.get.side_effect = stored
-    store: RedisAbandonedStore = RedisAbandonedStore(
-        client=client, keys=RedisKeys(key_prefix="res:", hash_tag="state"), finished_ttl_seconds=600
-    )
-
-    assert store.abandoned_candidate_trace_ids() == ["trace-good"]
+@pytest.mark.parametrize(
+    argnames=("stored_json", "candidate"),
+    argvalues=[
+        (None, True),
+        ('{"status": "running"}', True),
+        ('{"status": "succeeded"}', False),
+        ("{not json", False),
+        ('["running"]', False),
+    ],
+)
+def test_only_a_running_or_unrecorded_operation_is_an_abandoned_candidate(
+    stored_json: str | None, candidate: bool
+) -> None:
+    assert is_running_or_unrecorded(trace_id="trace-1", stored_json=stored_json) is candidate

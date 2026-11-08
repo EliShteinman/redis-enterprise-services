@@ -12,7 +12,7 @@ from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
-from redis_enterprise_services.steps.same_values import same_values
+from redis_enterprise_services.steps.held_values import HeldValues, held_values
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -51,7 +51,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         )
         reject_fields_missing_from_snapshot(step_input=step_input, snapshot=snapshot)
         keep_result(result=snapshot)
-        self._update_if_state_unchanged_and_wait_until_active(
+        self._apply_values(
             step_input=step_input, values=step_input.values, cluster_state_id=snapshot.cluster_state_id
         )
 
@@ -67,49 +67,50 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         current: DatabaseFieldsSnapshot = self._read_fields(
             step_input=step_input, field_names=list(step_input.values)
         )
-        if not self._same(current=current.values, expected=step_input.values):
-            self._raise_unless_old_values_remain(
-                step_input=step_input, current=current, kept_result=kept_result
-            )
-            return None
-        self._activation_waiter.wait_until_active(
-            target=self._target(step_input=step_input), uid=step_input.uid
-        )
-        return kept_result
+        match self._held_values(current=current, step_input=step_input, old_values=kept_result.values):
+            case HeldValues.NEW | HeldValues.BOTH:
+                self._activation_waiter.wait_until_active(
+                    target=self._target(step_input=step_input), uid=step_input.uid
+                )
+                return kept_result
+            case HeldValues.OLD:
+                return None
+            case HeldValues.NEITHER:
+                raise UpdateOutcomeUnclearError(
+                    message=f"database {step_input.uid} holds neither the old nor the new values of "
+                    f"{sorted(step_input.values)}"
+                )
 
     def compensate(self, *, step_input: UpdateDatabaseInput, result: DatabaseFieldsSnapshot) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
         current: DatabaseFieldsSnapshot = self._read_fields(
             step_input=step_input, field_names=list(result.values)
         )
-        if self._same(current=current.values, expected=result.values):
-            logger.info(msg=f"database {step_input.uid} already has its old values")
-            return
-        if not self._same(current=current.values, expected=step_input.values):
-            raise UpdateOutcomeUnclearError(
-                message=f"database {step_input.uid} changed after the update, not restored over that change"
-            )
-        self._update_if_state_unchanged_and_wait_until_active(
-            step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id
-        )
+        match self._held_values(current=current, step_input=step_input, old_values=result.values):
+            case HeldValues.OLD | HeldValues.BOTH:
+                logger.info(msg=f"database {step_input.uid} already has its old values")
+            case HeldValues.NEW:
+                self._apply_values(
+                    step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id
+                )
+            case HeldValues.NEITHER:
+                raise UpdateOutcomeUnclearError(
+                    message=f"database {step_input.uid} changed after the update, "
+                    "not restored over that change"
+                )
 
-    def _raise_unless_old_values_remain(
+    def _held_values(
         self,
         *,
-        step_input: UpdateDatabaseInput,
         current: DatabaseFieldsSnapshot,
-        kept_result: DatabaseFieldsSnapshot,
-    ) -> None:
-        if self._same(current=current.values, expected=kept_result.values):
-            return
-        fields: list[str] = sorted(step_input.values)
-        raise UpdateOutcomeUnclearError(
-            message=f"database {step_input.uid} holds neither the old nor the new values of {fields}"
-        )
-
-    def _same(self, *, current: dict[str, JsonValue], expected: dict[str, JsonValue]) -> bool:
-        return same_values(
-            current=current, expected=expected, order_insensitive_fields=self._order_insensitive_fields
+        step_input: UpdateDatabaseInput,
+        old_values: dict[str, JsonValue],
+    ) -> HeldValues:
+        return held_values(
+            current=current.values,
+            new_values=step_input.values,
+            old_values=old_values,
+            order_insensitive_fields=self._order_insensitive_fields,
         )
 
     def _read_fields(
@@ -119,7 +120,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
             target=self._target(step_input=step_input), uid=step_input.uid, field_names=field_names
         )
 
-    def _update_if_state_unchanged_and_wait_until_active(
+    def _apply_values(
         self, *, step_input: UpdateDatabaseInput, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
         target: ClusterTarget = self._target(step_input=step_input)

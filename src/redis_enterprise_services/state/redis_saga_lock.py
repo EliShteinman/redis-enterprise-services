@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from typing import cast
 
 from redis import Redis
@@ -52,30 +53,21 @@ class RedisSagaLock(SagaLock):
         self._release_owned: Script = client.register_script(script=RELEASE_OWNED)
 
     def acquire(self, *, lock_keys: list[str], owner: str) -> None:
-        last_holder: str | None = None
-
-        def acquired_now() -> bool:
-            nonlocal last_holder
-            holder: str | None = self._try_acquire(lock_keys=lock_keys, owner=owner)
-            if holder is not None and last_holder is None:
-                logger.warning(msg=f"{lock_keys} locked by {holder}, waiting")
-            last_holder = holder
-            return holder is None
-
+        attempts: LockAttempts = LockAttempts(
+            lock_keys=lock_keys, try_acquire=lambda: self._try_acquire(lock_keys=lock_keys, owner=owner)
+        )
         if not self._deadline_polling.poll_until(
-            is_done=acquired_now,
+            is_done=attempts.acquired_now,
             timeout_seconds=self._settings.wait_timeout_seconds,
             poll_interval_seconds=self._settings.poll_interval_seconds,
         ):
-            logger.error(msg=f"{lock_keys} still locked by {last_holder}")
-            raise ResourcesLockedError(message=f"{lock_keys} locked by {last_holder}")
+            logger.error(msg=f"{lock_keys} still locked by {attempts.last_holder}")
+            raise ResourcesLockedError(message=f"{lock_keys} locked by {attempts.last_holder}")
         logger.info(msg=f"{lock_keys} locked by {owner}")
 
     def raise_unless_held(self, *, lock_keys: list[str], owner: str) -> None:
-        holders: list[str | None] = cast(
-            list[str | None], self._client.mget(keys=[self._keys.lock(lock_key=key) for key in lock_keys])
-        )
-        if any(holder != owner for holder in holders):
+        holders: list[str | None] = self._holders(lock_keys=lock_keys)
+        if not all_held_by(holders=holders, owner=owner):
             logger.error(msg=f"{lock_keys} are no longer held by {owner}: {holders}")
             raise ResourcesLockedError(message=f"{lock_keys} are no longer held by {owner}")
 
@@ -85,6 +77,11 @@ class RedisSagaLock(SagaLock):
         )
         logger.info(msg=f"{released} of {lock_keys} released by {owner}")
 
+    def _holders(self, *, lock_keys: list[str]) -> list[str | None]:
+        return cast(
+            list[str | None], self._client.mget(keys=[self._keys.lock(lock_key=key) for key in lock_keys])
+        )
+
     def _try_acquire(self, *, lock_keys: list[str], owner: str) -> str | None:
         return self._acquire_all_or_return_holder(
             keys=self._held_set_and_lock_keys(lock_keys=lock_keys, owner=owner), args=[owner]
@@ -92,3 +89,25 @@ class RedisSagaLock(SagaLock):
 
     def _held_set_and_lock_keys(self, *, lock_keys: list[str], owner: str) -> list[str]:
         return [self._keys.held_locks(owner=owner), *(self._keys.lock(lock_key=key) for key in lock_keys)]
+
+
+class LockAttempts:
+    def __init__(self, *, lock_keys: list[str], try_acquire: Callable[[], str | None]) -> None:
+        self._lock_keys: list[str] = lock_keys
+        self._try_acquire: Callable[[], str | None] = try_acquire
+        self.last_holder: str | None = None
+
+    def acquired_now(self) -> bool:
+        holder: str | None = self._try_acquire()
+        if is_first_wait(holder=holder, last_holder=self.last_holder):
+            logger.warning(msg=f"{self._lock_keys} locked by {holder}, waiting")
+        self.last_holder = holder
+        return holder is None
+
+
+def is_first_wait(*, holder: str | None, last_holder: str | None) -> bool:
+    return holder is not None and last_holder is None
+
+
+def all_held_by(*, holders: list[str | None], owner: str) -> bool:
+    return all(holder == owner for holder in holders)
