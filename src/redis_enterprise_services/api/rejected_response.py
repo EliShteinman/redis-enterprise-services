@@ -36,6 +36,9 @@ COMMAND_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
 STATUS_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
     statuses={
         HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired.",
-        HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed.",
+        HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed, or the trace_id "
+        "is not 32 lowercase hex characters.",
+        HTTPStatus.INTERNAL_SERVER_ERROR: "internal_error (a bug). The details are in the service log, by "
+        "trace_id.",
     }
 )

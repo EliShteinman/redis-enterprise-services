@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.dependencies import operation_store
 from redis_enterprise_services.api.rejected_response import STATUS_REJECTIONS
+from redis_enterprise_services.api.trace_id_path import valid_trace_id
 from redis_enterprise_services.api.traceparent import require_traceparent
 from redis_enterprise_services.exceptions.operations import OperationNotFoundError
 from redis_enterprise_services.operations.operation import Operation
@@ -17,7 +18,8 @@ router: APIRouter = APIRouter(
 
 @router.get(path="/v1/operations/{trace_id}", response_model=Operation)
 def operation_status(
-    trace_id: str, store: Annotated[OperationStore, Depends(dependency=operation_store)]
+    trace_id: Annotated[str, Depends(dependency=valid_trace_id)],
+    store: Annotated[OperationStore, Depends(dependency=operation_store)],
 ) -> JSONResponse:
     operation: Operation | None = store.find(trace_id=trace_id)
     if operation is None:
