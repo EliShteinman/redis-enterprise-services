@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import ClassVar, Self
 
 from pydantic import model_validator
@@ -29,31 +30,33 @@ from redis_enterprise_services.config.server_settings import ServerSettings
 from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
+YAML_FILES: tuple[str, ...] = (
+    "config/log.yaml",
+    "config/api.yaml",
+    "config/telemetry.yaml",
+    "config/edge.yaml",
+    "config/action.yaml",
+    "config/acl.yaml",
+    "config/cluster.yaml",
+    "config/database.yaml",
+    "config/saga.yaml",
+    "config/state.yaml",
+    "config/role.yaml",
+    "config/user.yaml",
+    "config/server.yaml",
+    "config/clusters.yaml",
+    "config/database_defaults.yaml",
+    "config/decomposition.yaml",
+    "config/naming.yaml",
+    "config/operation.yaml",
+    "config/background.yaml",
+    "config/liveness.yaml",
+)
+
 
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        yaml_file=(
-            "config/log.yaml",
-            "config/api.yaml",
-            "config/telemetry.yaml",
-            "config/edge.yaml",
-            "config/action.yaml",
-            "config/acl.yaml",
-            "config/cluster.yaml",
-            "config/database.yaml",
-            "config/saga.yaml",
-            "config/state.yaml",
-            "config/role.yaml",
-            "config/user.yaml",
-            "config/server.yaml",
-            "config/clusters.yaml",
-            "config/database_defaults.yaml",
-            "config/decomposition.yaml",
-            "config/naming.yaml",
-            "config/operation.yaml",
-            "config/background.yaml",
-            "config/liveness.yaml",
-        ),
+        yaml_file=YAML_FILES,
         env_file=".env",
         env_file_encoding="utf-8",
         env_prefix="RES_",
@@ -108,4 +111,7 @@ class Settings(BaseSettings):
 
 
 def load_settings() -> Settings:
+    missing: list[str] = [path for path in YAML_FILES if not Path(path).is_file()]
+    if missing:
+        raise FileNotFoundError(f"config files not found under {Path.cwd()}: {missing}")
     return Settings()  # pyright: ignore[reportCallIssue]
