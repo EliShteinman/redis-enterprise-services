@@ -9,30 +9,30 @@
 
 ## 1. המסלול
 
-![קבלה](../diagrams/12-flow-admission.drawio.svg)
+![קבלה](../diagrams/12-flow-find-or-start.drawio.svg)
 
 ```
 POST /v1/databases/create
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
- ├─ OperationAcceptance.admit
+ ├─ OperationAcceptance.accept
  │   ├─ יש פעולה לאותו trace?                           ⇐ 200 עם המצב שלה
  │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
  │   ├─ התחלה אטומית: running + heartbeat
- │   └─ העברה ל-ThreadPoolRunner                          ⇐ 202
+ │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
  └─ ברקע: CreationExecution
      ├─ SingleSiteCreationPlanner: תוכנית צעדים
      ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים ⇐ צעדים
-     └─ CreationOutcome: התוצאה ⇐ OperationStore
+     └─ CreationOutcomeTranslator: התוצאה ⇐ OperationStore
 ```
 
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
-| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationAcceptance.admit` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
+| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationAcceptance.accept` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
 | `OperationAcceptance` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
-| `CreationOutcome` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
+| `CreationOutcomeTranslator` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
 
 ![שכבת creation](../diagrams/04-layer-creation.drawio.svg)
 
@@ -47,7 +47,7 @@ POST /v1/databases/create
 ![קלאסטר וברירות מחדל](../diagrams/13-flow-cluster-and-defaults.drawio.svg)
 
 1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
-2. **הקלאסטר** (`ClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
+2. **הקלאסטר** (`SiteClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
    `environment`, `site`, `type` ו-`api_url`. ההתאמה היא לפי השדות, ולכן אין היררכיה קבועה בין רשת, סביבה ואתר.
    - `dedicated`: הקלאסטר עם אותם רשת, סביבה, אתר ושם.
    - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
@@ -65,7 +65,7 @@ POST /v1/databases/create
 
    - הסדר: `values`, אחריהן כל דריסה שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף השדות שהבקשה
      שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
-   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster` (השם).
+   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות.
 
@@ -83,7 +83,7 @@ POST /v1/databases/create
 | 2 | `acl/{user}` | `CreateResourceStep` | `POST /v1/redis_acls` `{name: {db}-{user}-acl, acl}` | `DELETE` |
 | 3 | `role/{user}` | `CreateResourceStep` | `POST /v1/roles` `{name: {db}-{user}-role, management: db_viewer, resources: [ה-DB]}` | `DELETE` |
 | 4 | `user/{user}` | `CreateResourceStep` | `POST /v1/users` `{name, password, role_uids: [ה-role]}` | `DELETE` |
-| 5 | `permissions` | `DatabaseUpdate` | `PUT /v1/bdbs/{uid}` עם `roles_permissions`: זוג role ↔ ACL לכל יוזר | `PUT` של הרשימה הקודמת |
+| 5 | `permissions` | `UpdateDatabaseStep` | `PUT /v1/bdbs/{uid}` עם `roles_permissions`: זוג role ↔ ACL לכל יוזר | `PUT` של הרשימה הקודמת |
 
 - צעדים 2–4 חוזרים לכל יוזר, לפי הסדר בבקשה. צעד 5 אחד לכל היוזרים, ורק כשיש יוזרים.
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
@@ -100,7 +100,7 @@ POST /v1/databases/create
 **נעילה.** מפתחות `{cluster}/{db}` ו-`{cluster}/user/{user}` לכל יוזר. שמות ה-ACL וה-role נגזרים משם ה-DB, ולכן
 הנעילה של ה-DB מכסה אותם.
 
-**בדיקת שמות פנויים** (`NameAvailability`), כ-`before_start`: אחרי הנעילה ולפני הצעד הראשון. היא בודקת את ה-DB, ולכל
+**בדיקת שמות פנויים** (`NameAvailability`), כ-`check_before_start`: אחרי הנעילה ולפני הצעד הראשון. היא בודקת את ה-DB, ולכל
 יוזר את השם שלו ואת שמות ה-ACL וה-role. ל-REST API אין חיפוש לפי שם, ולכן היא שולפת פעם אחת כל סוג משאב (`bdbs`,
 `users`, `redis_acls`, `roles`) ומסננת בקוד. היא רצה תחת הנעילה, כי הקלאסטר לא אוכף שם DB ייחודי, ושתי בקשות שבודקות
 לפני הנעילה היו עוברות יחד. ההיקף (`ChosenClusterScope`: רק הקלאסטר שנבחר) הוא ממשק נפרד, כך שאפשר להרחיב אותו
@@ -116,16 +116,16 @@ POST /v1/databases/create
 
 | מה קרה | הפעולה |
 |---|---|
-| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`creation_result.py`): ה-uids מהתוצאות של הצעדים |
+| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`): ה-uids מהתוצאות של הצעדים |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס) | `rejected` עם הקוד שלה |
 | שגיאה לא צפויה | אין saga record ⇐ `rejected` עם `internal_error`. יש record ⇐ כמו בסוף רגיל, מתוך ה-record. record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error` |
 
-- **`not_rolled_back`** (`CreationOutcome`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
+- **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
-  `error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
+  `last_error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
-  `internal_error` ו-WARNING. `cluster` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
+  `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
 - **סדר השמירה:** המנוע משחרר את הנעילה, ורק אחר כך הפעולה נשמרת.
 
 ---
