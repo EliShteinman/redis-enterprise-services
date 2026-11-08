@@ -39,7 +39,7 @@ class EdgeResponseReader:
         return ClusterResponse(
             status_code=response.status_code,
             headers=dict(response.headers),
-            body=self._body(response=response),
+            body=self._decoded_body(response=response),
             cluster_state_id=optional_int_header(
                 headers=response.headers, name=self._settings.headers.cluster_state_id
             ),
@@ -63,7 +63,7 @@ class EdgeResponseReader:
         return error_type_by_code.get(code, EdgeOutcomeUnknownError)(message=message)
 
     @staticmethod
-    def _body(*, response: requests.Response) -> JsonValue | None:
+    def _decoded_body(*, response: requests.Response) -> JsonValue | None:
         if not response.content:
             return None
         try:

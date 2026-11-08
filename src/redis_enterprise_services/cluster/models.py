@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from redis_enterprise_services.cluster_access.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 
 
 class ClusterAddress(BaseModel):

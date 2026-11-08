@@ -8,7 +8,7 @@ from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
 
-from redis_enterprise_services.cluster_access.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.client import EdgeClient
@@ -61,7 +61,7 @@ def send_through_relay_answering(
     return EdgeClient(
         settings=settings,
         header_builder=EdgeHeaderBuilder(settings=settings),
-        reader=EdgeResponseReader(settings=settings),
+        response_reader=EdgeResponseReader(settings=settings),
     ).send(network=NETWORK, request=REQUEST)
 
 

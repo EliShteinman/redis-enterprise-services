@@ -6,7 +6,7 @@ from pydantic import JsonValue, SecretStr
 from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
-from redis_enterprise_services.cluster_access.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
@@ -36,7 +36,7 @@ def api_answering(*, action: JsonValue) -> MagicMock:
 def waiter(*, api: MagicMock) -> PollingActionWaiter:
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
-    return PollingActionWaiter(api=api, settings=action_settings, cluster=settings.cluster_api)
+    return PollingActionWaiter(api=api, settings=action_settings, cluster_api=settings.cluster_api)
 
 
 def waiter_answering(*, action: JsonValue) -> PollingActionWaiter:

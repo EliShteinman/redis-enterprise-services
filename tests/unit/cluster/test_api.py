@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster_access.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError

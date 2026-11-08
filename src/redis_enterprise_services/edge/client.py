@@ -16,19 +16,23 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class EdgeClient:
     def __init__(
-        self, *, settings: EdgeSettings, header_builder: EdgeHeaderBuilder, reader: EdgeResponseReader
+        self,
+        *,
+        settings: EdgeSettings,
+        header_builder: EdgeHeaderBuilder,
+        response_reader: EdgeResponseReader,
     ) -> None:
         self._settings: EdgeSettings = settings
         self._header_builder: EdgeHeaderBuilder = header_builder
-        self._reader: EdgeResponseReader = reader
+        self._response_reader: EdgeResponseReader = response_reader
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
-        relay: EdgeNetworkSettings = self._relay_for(name=network)
+        relay_settings: EdgeNetworkSettings = self._relay_settings_for(network=network)
         logger.debug(msg=f"{request.method} {request.url} through {network}")
         try:
             response: requests.Response = requests.post(
-                url=relay.url,
-                headers=self._header_builder.build(request=request, relay=relay),
+                url=relay_settings.url,
+                headers=self._header_builder.build(request=request, relay_settings=relay_settings),
                 data=self._encoded_body(request=request),
                 timeout=self._settings.request_timeout_seconds,
                 allow_redirects=False,
@@ -37,13 +41,13 @@ class EdgeClient:
         except requests.RequestException as error:
             logger.warning(msg=f"{request.method} {request.url} through {network} failed: {error!r}")
             raise edge_error_for_transport_failure(network=network, error=error) from error
-        return self._reader.read(response=response)
+        return self._response_reader.read(response=response)
 
-    def _relay_for(self, *, name: str) -> EdgeNetworkSettings:
-        relay: EdgeNetworkSettings | None = self._settings.networks.get(name)
-        if relay is None:
-            raise ConfigurationError(message=f"no relay is configured for network {name}")
-        return relay
+    def _relay_settings_for(self, *, network: str) -> EdgeNetworkSettings:
+        relay_settings: EdgeNetworkSettings | None = self._settings.networks.get(network)
+        if relay_settings is None:
+            raise ConfigurationError(message=f"no relay is configured for network {network}")
+        return relay_settings
 
     @staticmethod
     def _encoded_body(*, request: ClusterRequest) -> bytes | None:

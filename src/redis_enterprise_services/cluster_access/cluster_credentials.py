@@ -1,8 +1,6 @@
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, SecretStr
-
-type HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
 class ClusterCredentials(BaseModel):

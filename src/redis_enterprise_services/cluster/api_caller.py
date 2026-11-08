@@ -3,7 +3,7 @@ from typing import Protocol
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
-from redis_enterprise_services.cluster_access.models import HttpMethod
+from redis_enterprise_services.cluster_access.http_method import HttpMethod
 
 
 class ClusterApiCaller(Protocol):
