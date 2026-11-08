@@ -15,7 +15,13 @@ def logging_config(*, settings: LoggingSettings) -> dict[str, JsonValue]:
     return {
         "version": 1,
         "disable_existing_loggers": False,
-        "formatters": {"line": {"format": settings.line_pattern, "datefmt": settings.date_format}},
+        "formatters": {
+            "line": {
+                "format": settings.line_pattern,
+                "datefmt": settings.date_format,
+                "defaults": dict(settings.field_defaults),
+            }
+        },
         "handlers": {"console": {"class": STREAM_HANDLER, "formatter": "line", "stream": settings.stream}},
         "root": {"level": settings.level, "handlers": ["console"]},
         "loggers": {

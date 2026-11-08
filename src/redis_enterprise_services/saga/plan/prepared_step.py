@@ -63,6 +63,11 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         if self._result is not None:
             self._step.compensate(step_input=self._input, result=self._result)
 
+    def forget_result(self) -> None:
+        self._result = None
+        self._obtained_by = None
+        self._context.forget(key=self._key)
+
     def _keep(self, *, result: TResult, obtained_by: ObtainedBy, on_kept: OnKept) -> None:
         if self._result is not None:
             return

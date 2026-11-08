@@ -42,15 +42,16 @@ class StepRunner:
         logger.info(msg=f"step {step.key} started")
         try:
             prepared: PreparedStep = step.prepare(context=context)
-        except (RedisEnterpriseServicesError, ValidationError) as error:
-            logger.error(msg=f"cannot build the input of step {step.key}: {error}")
-            recorder.failed_attempt(
+        except RedisEnterpriseServicesError as error:
+            return input_failed(step=step, recorder=recorder, error=StepError.of(error=error))
+        except ValidationError as error:
+            return input_failed(
+                step=step,
+                recorder=recorder,
                 error=StepError(
                     code=RedisEnterpriseServicesError.code, message=f"cannot build the input: {error}"
-                )
+                ),
             )
-            recorder.failed()
-            return None
         recorder.started(step_input=prepared.step_input)
         return prepared
 
@@ -71,6 +72,7 @@ class StepRunner:
         attempts: int = self._settings.step_retry.attempts
         after_unknown: bool = False
         for attempt in range(1, attempts + 1):
+            forget_unfound_result(step=step, recorder=recorder)
             failure: Failure | None = self._attempt(step=step, recorder=recorder)
             if failure is None:
                 return StepOutcome.DONE
@@ -114,16 +116,30 @@ class StepRunner:
         try:
             return Check.FOUND if step.resolve(on_kept=recorder.kept) else Check.NOT_FOUND
         except RedisEnterpriseServicesError as error:
-            logger.error(msg=f"checking step {step.key} failed: {error.describe()}")
-            recorder.failed_attempt(error=StepError.of(error=error))
+            logger.error(msg=f"checking step {step.key} failed, its own error stays: {error.describe()}")
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL
 
 
+def input_failed(*, step: RunnableStep, recorder: StepRecorder, error: StepError) -> None:
+    logger.error(msg=f"cannot build the input of step {step.key}: {error.message}")
+    recorder.failed_attempt(error=error)
+    recorder.failed()
+
+
+def forget_unfound_result(*, step: PreparedStep, recorder: StepRecorder) -> None:
+    if step.has_result:
+        logger.warning(msg=f"step {step.key} kept a result that was not found, it runs again without it")
+        step.forget_result()
+        recorder.result_forgotten()
+
+
 def not_found_outcome(*, step: PreparedStep, failure: Failure) -> StepOutcome | None:
-    if not step.has_result or failure is Failure.TRANSIENT:
+    if not step.has_result:
         return None
+    if failure is Failure.TRANSIENT:
+        return None if step.kind is StepKind.COMPENSATABLE else StepOutcome.MANUAL
     if failure is Failure.UNKNOWN:
         logger.error(msg=f"step {step.key} kept a result, and its unknown outcome was not found")
         return StepOutcome.MANUAL

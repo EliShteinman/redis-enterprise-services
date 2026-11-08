@@ -115,7 +115,7 @@ PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
 
 | קטגוריה | שגיאות | המנוע |
 |---|---|---|
-| **זמנית** | שגיאת קלאסטר עם `error_code` מ-`cluster.transient_error_codes` (`busy`, `db_busy`, `wrong_cluster_state_id`) | ניסיון חוזר. אם יש תוצאה שמורה, קודם `find_outcome`: נמצא ⇐ `done` |
+| **זמנית** | שגיאת קלאסטר עם `error_code` מ-`cluster.transient_error_codes` (`busy`, `db_busy`, `wrong_cluster_state_id`) | ניסיון חוזר. אם יש תוצאה שמורה, קודם `find_outcome`: נמצא ⇐ `done`. לא נמצא ⇐ צעד הפיך רץ שוב בלי התוצאה (בניסיון האחרון התוצאה נשארת ומבוטלת), וצעד שאינו הפיך ⇐ התערבות ידנית |
 | **נכשלה** | כל שגיאת קלאסטר אחרת; `invalid_request` של שירות הקצה; DB ב-`creation-failed`; action שהסתיים ב-`failed`; כל שגיאה אחרת של הפרויקט | הצעד `failed` ⇐ ביטול. אם הצעד כבר שמר תוצאה: `find_outcome` קודם. נמצא ⇐ `done`. לא נמצא ⇐ `failed` |
 | **לא ידועה** | כל שגיאה אחרת של שירות הקצה או של התקשורת אליו; timeout של המתנה; תשובה שלא נקראת | `find_outcome` פעם אחת. נמצא ⇐ `done`. לא נמצא, אין תוצאה שמורה ונשארו ניסיונות ⇐ ניסיון חוזר אחד, וכל כישלון אחריו ⇐ התערבות ידנית. לא נמצא ויש תוצאה שמורה, או שזה היה הניסיון האחרון ⇐ התערבות ידנית |
 | **ידנית** | `AmbiguousResourceError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
@@ -249,8 +249,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | מה נמצא | מה מסומן |
 |---|---|
 | אין saga record (ה-Saga לא התחיל) | הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת מ-`operations:open`. הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו. כך pod שנפל בין הנעילה לשמירת ה-record לא משאיר שמות נעולים |
-| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת** |
-| ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | הפעולה `requires_manual_intervention`. ה-record לא משתנה |
+| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת**, חוץ מ-Saga שכבר הסתיימה ושמירת ה-record האחרונה שלה לא נכתבה (ראו מקרים ידועים) |
+| ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | `rolled_back` ⇐ הפעולה `rolled_back` עם `internal_error`, כי ה-record מראה שהכול בוטל. `succeeded` ⇐ הפעולה `requires_manual_intervention`, כי את עץ ה-DB אי אפשר לבנות כאן. `requires_manual_intervention` ⇐ אותו סטטוס. ה-record לא משתנה |
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
@@ -260,8 +260,9 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
   - נעצר אחרי שה-Saga התחיל: הוא ממשיך, והתוצאה הסופית דורסת את הסימון.
   עצירה של יותר מ-60 שניות גבוהה בכמה סדרי גודל מעצירה רגילה, ולכן אין לזה מנגנון נוסף.
-- **Saga שהצליח, והשמירה האחרונה שלו נכשלה:** הנעילה שוחררה, וה-record נשאר `running`. הסריקה תסמן אותו. מי שבודק ימצא
-  שכל הצעדים `done`.
+- **Saga שהסתיים (`succeeded` או `rolled_back`), וה-record הסופי שלו לא נכתב:** המנוע משחרר את הנעילה לפני השמירה
+  האחרונה. אם השמירה נכשלה, או שה-pod נפל בין השתיים, הנעילה כבר שוחררה וה-record נשאר `running`. הסריקה תסמן
+  אותו `requires_manual_intervention` בלי נעילה. מי שבודק ימצא שכל הצעדים `done`, או שכולם בוטלו.
 
 ---
 
