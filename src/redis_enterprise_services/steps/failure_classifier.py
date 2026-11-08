@@ -1,3 +1,4 @@
+from redis_enterprise_services.cluster.rejection_kind import has_transient_error_code
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
@@ -13,13 +14,23 @@ from redis_enterprise_services.exceptions.cluster import (
 from redis_enterprise_services.exceptions.edge import EdgeError, EdgeRejectedRequestError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
-FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
-    EdgeRejectedRequestError,
+REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    DuplicateResourceNameError,
+    UpdateOutcomeUnclearError,
+)
+
+CLUSTER_REPORTED_FAILURE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionFailedError,
     DatabaseCreationFailedError,
 )
 
+FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    EdgeRejectedRequestError,
+    *CLUSTER_REPORTED_FAILURE_ERRORS,
+)
+
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    EdgeError,
     ClusterActionTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseDeletionTimeoutError,
@@ -32,23 +43,24 @@ class ClusterFailureClassifier(FailureClassifier):
         self._transient_error_codes: frozenset[str] = transient_error_codes
 
     def classify_step_error(self, *, error: RedisEnterpriseServicesError) -> FailureCategory:
-        if isinstance(error, DuplicateResourceNameError | UpdateOutcomeUnclearError):
+        if isinstance(error, REQUIRES_MANUAL_INTERVENTION_ERRORS):
             return FailureCategory.REQUIRES_MANUAL_INTERVENTION
         if isinstance(error, ClusterRejectedRequestError):
-            return (
-                FailureCategory.TRANSIENT
-                if error.cluster_error_code in self._transient_error_codes
-                else FailureCategory.FAILED
-            )
+            return self._classify_rejection(error=error)
         if isinstance(error, FAILED_ERRORS):
             return FailureCategory.FAILED
-        if isinstance(error, (EdgeError, *OUTCOME_UNKNOWN_ERRORS)):
+        if isinstance(error, OUTCOME_UNKNOWN_ERRORS):
             return FailureCategory.OUTCOME_UNKNOWN
         return FailureCategory.FAILED
 
     def classify_find_outcome_error(self, *, error: RedisEnterpriseServicesError) -> FailureCategory:
-        if isinstance(error, DuplicateResourceNameError | UpdateOutcomeUnclearError):
+        if isinstance(error, REQUIRES_MANUAL_INTERVENTION_ERRORS):
             return FailureCategory.REQUIRES_MANUAL_INTERVENTION
-        if isinstance(error, ClusterActionFailedError | DatabaseCreationFailedError):
+        if isinstance(error, CLUSTER_REPORTED_FAILURE_ERRORS):
             return FailureCategory.FAILED
         return FailureCategory.OUTCOME_UNKNOWN
+
+    def _classify_rejection(self, *, error: ClusterRejectedRequestError) -> FailureCategory:
+        if has_transient_error_code(error=error, transient_error_codes=self._transient_error_codes):
+            return FailureCategory.TRANSIENT
+        return FailureCategory.FAILED

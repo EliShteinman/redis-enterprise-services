@@ -27,7 +27,11 @@ class IdleStep[TInput: BaseModel, TResult: BaseModel]:
         pass
 
     def find_outcome(
-        self, *, step_input: TInput, kept_result: TResult | None, keep_found_result: KeepResult[TResult]
+        self,
+        *,
+        step_input: TInput,
+        kept_result: TResult | None,
+        keep_result_if_none_kept: KeepResult[TResult],
     ) -> TResult | None:
         return kept_result
 

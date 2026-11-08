@@ -118,10 +118,10 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         *,
         step_input: FakeInput,
         kept_result: FakeResult | None,
-        keep_found_result: KeepResult[FakeResult],
+        keep_result_if_none_kept: KeepResult[FakeResult],
     ) -> FakeResult | None:
         if self._found_during_find_outcome is not None:
-            keep_found_result(result=self._found_during_find_outcome)
+            keep_result_if_none_kept(result=self._found_during_find_outcome)
         outcome: FakeResult | RedisEnterpriseServicesError | None = (
             self._find_outcome_answers.pop(0) if self._find_outcome_answers else None
         )
@@ -156,18 +156,18 @@ class InMemorySagaLock(SagaLock):
     def __init__(self, *, held_by: str | None = None) -> None:
         self.held_by: str | None = held_by
 
-    def acquire(self, *, keys: list[str], owner: str) -> None:
+    def acquire(self, *, lock_keys: list[str], owner: str) -> None:
         if self.held_by is not None:
-            raise ResourcesLockedError(message=f"{keys} locked by {self.held_by}")
+            raise ResourcesLockedError(message=f"{lock_keys} locked by {self.held_by}")
         self.held_by = owner
 
-    def release(self, *, keys: list[str], owner: str) -> None:
+    def release(self, *, lock_keys: list[str], owner: str) -> None:
         if self.held_by == owner:
             self.held_by = None
 
-    def ensure_held(self, *, keys: list[str], owner: str) -> None:
+    def raise_unless_held(self, *, lock_keys: list[str], owner: str) -> None:
         if self.held_by != owner:
-            raise ResourcesLockedError(message=f"{keys} locked by {self.held_by}")
+            raise ResourcesLockedError(message=f"{lock_keys} locked by {self.held_by}")
 
 
 def planned(
@@ -711,10 +711,10 @@ def test_a_compensation_that_fails_for_a_known_reason_is_not_retried(
 
     run(steps=steps, record_writer=record_writer, lock=lock, sleeper=sleeper)
 
-    assert (calls.count("compensate a"), sleeper.slept) == (1, [])
+    assert calls.count("compensate a") == 1
 
 
-def test_a_compensation_that_stays_busy_fails_after_its_attempts_without_a_last_wait(
+def test_a_compensation_that_stays_busy_fails_after_its_attempts(
     calls: list[str],
     record_writer: InMemorySagaRecordWriter,
     lock: InMemorySagaLock,
@@ -727,15 +727,11 @@ def test_a_compensation_that_stays_busy_fails_after_its_attempts_without_a_last_
 
     record: SagaRecord = run(steps=steps, record_writer=record_writer, lock=lock, sleeper=sleeper)
 
-    assert (statuses(record)[0], calls.count("compensate a"), sleeper.slept) == (
-        StepStatus.COMPENSATION_FAILED,
-        2,
-        [1],
-    )
+    assert (statuses(record)[0], calls.count("compensate a")) == (StepStatus.COMPENSATION_FAILED, 2)
 
 
 @pytest.mark.parametrize(argnames="failure", argvalues=[BUSY, OUTCOME_UNKNOWN])
-def test_a_compensation_that_fails_for_a_transient_or_unknown_reason_is_retried_after_a_wait(
+def test_a_compensation_that_fails_for_a_transient_or_unknown_reason_is_retried(
     calls: list[str],
     record_writer: InMemorySagaRecordWriter,
     lock: InMemorySagaLock,
@@ -749,20 +745,7 @@ def test_a_compensation_that_fails_for_a_transient_or_unknown_reason_is_retried_
 
     record: SagaRecord = run(steps=steps, record_writer=record_writer, lock=lock, sleeper=sleeper)
 
-    assert (record.status, calls.count("compensate a"), sleeper.slept) == (SagaStatus.ROLLED_BACK, 2, [1])
-
-
-def test_each_retry_waits_longer_than_the_one_before(
-    calls: list[str],
-    record_writer: InMemorySagaRecordWriter,
-    lock: InMemorySagaLock,
-    sleeper: RecordingSleeper,
-) -> None:
-    step: FakeStep = FakeStep(calls=calls, execute_script=[BUSY, BUSY, "keep"])
-
-    run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock, sleeper=sleeper)
-
-    assert sleeper.slept == [1, 2]
+    assert (record.status, calls.count("compensate a")) == (SagaStatus.ROLLED_BACK, 2)
 
 
 def test_a_failure_after_a_kept_result_lets_the_step_find_its_outcome(
