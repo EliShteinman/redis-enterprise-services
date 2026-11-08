@@ -88,10 +88,10 @@ class RedisAbandonedStore(AbandonedStore):
         except json.JSONDecodeError:
             logger.error(msg=f"operation {trace_id} cannot be read, it is skipped")
             return False
-        return (
-            isinstance(parsed, dict)
-            and cast(dict[str, object], parsed).get(STATUS_FIELD) == OperationStatus.RUNNING.value
-        )
+        if not isinstance(parsed, dict):
+            logger.error(msg=f"operation {trace_id} is not a JSON object, it is skipped")
+            return False
+        return cast(dict[str, object], parsed).get(STATUS_FIELD) == OperationStatus.RUNNING.value
 
     def mark_abandoned(
         self, *, operation: Operation, read_saga: StoredSaga | None, stopped_saga: SagaRecord | None
