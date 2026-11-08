@@ -10,9 +10,9 @@ class LockSettings(ConfigModel):
 
 
 class StateSettings(ConfigModel):
-    host: str
+    host: str = Field(min_length=1)
     port: Port
-    username: str
+    username: str = Field(min_length=1)
     password: SecretStr = Field(min_length=1)
     prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
