@@ -169,7 +169,7 @@
     "db_id": 7,
     "clusters": [
       {
-        "url": "https://cluster-a.net-a:9443",
+        "cluster_url": "https://cluster-a.net-a:9443",
         "network": "net-a", "site": "dc1", "environment": "PROD",
         "db_uid": 7,
         "users": [ {"name": "app", "user_uid": 12, "role_uid": 4, "acl_uid": 9} ]
@@ -183,7 +183,7 @@
 |---|---|
 | `database.db_id` | ה-uid של ה-DB בקלאסטר |
 | `database.clusters[]` | קלאסטר אחד |
-| `database.clusters[].url` | כתובת ה-API של הקלאסטר |
+| `database.clusters[].cluster_url` | כתובת ה-API של הקלאסטר |
 | `database.clusters[].users[]` | היוזרים, עם ה-uids של היוזר, ה-role וה-ACL |
 
 ### כישלון
@@ -196,7 +196,7 @@
   "error": {
     "code": "cluster_request_failed",
     "message": "…",
-    "cluster": "https://cluster-a.net-a:9443",
+    "cluster_url": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
   },
   "not_rolled_back": []
@@ -211,7 +211,7 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
-**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
+**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster_url` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
@@ -223,11 +223,11 @@
 
 | שדה | הערה |
 |---|---|
-| `cluster` | כתובת הקלאסטר |
-| `type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `cluster_url` | כתובת ה-API של הקלאסטר |
+| `resource_type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
-| `error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
+| `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
 ---
 

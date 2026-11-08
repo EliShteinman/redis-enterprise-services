@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.liveness.live_operations import LiveOperations
-from redis_enterprise_services.operations.admission import Admission
+from redis_enterprise_services.operations.acceptance import Acceptance
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -19,43 +19,46 @@ class OperationAcceptance:
         *,
         store: OperationStore,
         runner: BackgroundTaskRunner,
-        live: LiveOperations,
-        errors: PublicErrors,
+        live_operations: LiveOperations,
+        public_errors: PublicErrors,
     ) -> None:
         self._store: OperationStore = store
         self._runner: BackgroundTaskRunner = runner
-        self._live: LiveOperations = live
-        self._errors: PublicErrors = errors
+        self._live_operations: LiveOperations = live_operations
+        self._public_errors: PublicErrors = public_errors
 
-    def admit(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> Admission:
+    def accept(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> Acceptance:
         existing: Operation | None = self._store.find(trace_id=trace_id)
         if existing is not None:
-            return repeat(operation=existing)
-        return self._start(trace_id=trace_id, run=prepare())
+            return accepted_before(operation=existing)
+        return self._store_and_submit(trace_id=trace_id, run=prepare())
 
-    def _start(self, *, trace_id: str, run: PreparedRun) -> Admission:
-        accepted: Operation = Operation(trace_id=trace_id)
-        existing: Operation | None = self._store.start(operation=accepted)
+    def _store_and_submit(self, *, trace_id: str, run: PreparedRun) -> Acceptance:
+        running: Operation = Operation(trace_id=trace_id)
+        existing: Operation | None = self._store.save_if_absent(operation=running)
         if existing is not None:
-            return repeat(operation=existing)
-        self._live.track(trace_id=trace_id)
+            return accepted_before(operation=existing)
+        self._live_operations.track(trace_id=trace_id)
         try:
             self._runner.submit(
-                name=run.name, task=self._live.untracking_when_done(trace_id=trace_id, task=run.task)
+                name=run.description,
+                task=self._live_operations.untracking_when_done(trace_id=trace_id, task=run.task),
             )
         except Exception:
-            logger.critical(msg=f"{run.name} cannot run in the background", exc_info=True)
-            self._live.untrack_and_delete_heartbeat(trace_id=trace_id)
+            logger.critical(msg=f"{run.description} cannot run in the background", exc_info=True)
+            self._live_operations.untrack_and_delete_heartbeat(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
-                    trace_id=trace_id, status=OperationStatus.REJECTED, error=self._errors.internal()
+                    trace_id=trace_id,
+                    status=OperationStatus.REJECTED,
+                    error=self._public_errors.internal_error(),
                 )
             )
             raise
-        logger.info(msg=f"{run.name} is accepted as {trace_id}")
-        return Admission(operation=accepted, repeated=False)
+        logger.info(msg=f"{run.description} is accepted as {trace_id}")
+        return Acceptance(operation=running, already_accepted=False)
 
 
-def repeat(*, operation: Operation) -> Admission:
+def accepted_before(*, operation: Operation) -> Acceptance:
     logger.info(msg=f"operation {operation.trace_id} was already accepted, it is {operation.status.value}")
-    return Admission(operation=operation, repeated=True)
+    return Acceptance(operation=operation, already_accepted=True)

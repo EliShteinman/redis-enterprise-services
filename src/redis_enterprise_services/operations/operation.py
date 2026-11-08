@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.error_info import ErrorInfo
-from redis_enterprise_services.operations.not_rolled_back import NotRolledBack
 from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
 
 class Operation(BaseModel):
@@ -27,7 +27,7 @@ class Operation(BaseModel):
         exclude_if=lambda error: error is None,
         description="Why the operation failed. Only when it failed.",
     )
-    not_rolled_back: list[NotRolledBack] | None = Field(
+    not_rolled_back: list[RemainingResource] | None = Field(
         default=None,
         exclude_if=lambda not_rolled_back: not_rolled_back is None,
         description="What stayed on the clusters after a failure. Empty when everything was undone.",

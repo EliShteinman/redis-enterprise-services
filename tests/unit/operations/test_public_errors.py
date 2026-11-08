@@ -3,7 +3,7 @@ import pytest
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.operations.public_errors import PublicErrors
 
-ERRORS: PublicErrors = PublicErrors(
+PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(
         public_code_by_error_code={
             "cluster_rejected_request": "cluster_request_failed",
@@ -19,13 +19,15 @@ ERRORS: PublicErrors = PublicErrors(
     argnames=("code", "published"),
     argvalues=[("cluster_rejected_request", "cluster_request_failed"), ("invalid_plan", "internal_error")],
 )
-def test_an_error_is_published_with_its_contract_code(code: str, published: str) -> None:
-    assert ERRORS.info(code=code, message="m").code == published
+def test_an_error_is_published_with_its_public_code(code: str, published: str) -> None:
+    assert PUBLIC_ERRORS.from_code(code=code, message="m").code == published
 
 
 def test_only_an_error_from_a_cluster_names_the_cluster() -> None:
     published: list[str | None] = [
-        ERRORS.info(code=code, message="m", cluster="https://c1:9443", cluster_error_code="x").cluster
+        PUBLIC_ERRORS.from_code(
+            code=code, message="m", cluster_url="https://c1:9443", cluster_error_code="x"
+        ).cluster_url
         for code in ("cluster_rejected_request", "name_taken")
     ]
 

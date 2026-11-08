@@ -21,7 +21,7 @@ class ErrorInfo(BaseModel):
         description="What went wrong, for people; not for parsing.",
         examples=["cluster answered 406: Cannot allocate nodes for shards"],
     )
-    cluster: str | None = Field(
+    cluster_url: str | None = Field(
         default=None,
         exclude_if=lambda cluster: cluster is None,
         description="The cluster the error came from. Only for errors from a cluster.",
