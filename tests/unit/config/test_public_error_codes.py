@@ -5,6 +5,8 @@ import redis_enterprise_services.exceptions as exceptions_package
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
+CODES_WITHOUT_PUBLIC_MAPPING: set[str] = {"internal_error", "not_found"}
+
 
 def every_subclass(parent: type[RedisEnterpriseServicesError]) -> list[type[RedisEnterpriseServicesError]]:
     children: list[type[RedisEnterpriseServicesError]] = parent.__subclasses__()
@@ -19,3 +21,8 @@ def exception_codes() -> set[str]:
 
 def test_every_public_error_code_key_is_the_code_of_an_exception() -> None:
     assert set(load_settings().operation.public_error_codes) <= exception_codes()
+
+
+def test_every_exception_code_has_a_public_error_code() -> None:
+    mapped: set[str] = set(load_settings().operation.public_error_codes)
+    assert exception_codes() - CODES_WITHOUT_PUBLIC_MAPPING <= mapped
