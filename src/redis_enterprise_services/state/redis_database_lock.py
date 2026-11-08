@@ -5,8 +5,8 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.config.state_settings import LockSettings
-from redis_enterprise_services.exceptions.saga import DatabaseLockedError
-from redis_enterprise_services.saga.contract.lock import DatabaseLock
+from redis_enterprise_services.exceptions.saga import ResourcesLockedError
+from redis_enterprise_services.saga.contract.saga_lock import SagaLock
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.timing.clock import Clock
 from redis_enterprise_services.timing.sleeper import Sleeper
@@ -39,7 +39,7 @@ return released
 """
 
 
-class RedisDatabaseLock(DatabaseLock):
+class RedisDatabaseLock(SagaLock):
     def __init__(
         self, *, client: Redis, keys: RedisKeys, settings: LockSettings, sleeper: Sleeper, clock: Clock
     ) -> None:
@@ -52,25 +52,25 @@ class RedisDatabaseLock(DatabaseLock):
         self._release_owned: Script = client.register_script(script=RELEASE_OWNED)
 
     def acquire(self, *, keys: list[str], owner: str) -> None:
-        deadline: float = self._clock.now() + self._settings.wait_timeout_seconds
+        deadline: float = self._clock.monotonic_seconds() + self._settings.wait_timeout_seconds
         holder: str | None = self._acquire_all(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
         if holder is not None:
             logger.warning(msg=f"{keys} locked by {holder}, waiting")
         while holder is not None:
-            if self._clock.now() >= deadline:
+            if self._clock.monotonic_seconds() >= deadline:
                 logger.error(msg=f"{keys} still locked by {holder}")
-                raise DatabaseLockedError(message=f"{keys} locked by {holder}")
-            self._sleeper.sleep(seconds=self._settings.poll_seconds)
+                raise ResourcesLockedError(message=f"{keys} locked by {holder}")
+            self._sleeper.sleep(seconds=self._settings.poll_interval_seconds)
             holder = self._acquire_all(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
         logger.info(msg=f"{keys} locked by {owner}")
 
-    def confirm(self, *, keys: list[str], owner: str) -> None:
+    def ensure_held(self, *, keys: list[str], owner: str) -> None:
         holders: list[str | None] = cast(
             list[str | None], self._client.mget(keys=[self._keys.lock(key=key) for key in keys])
         )
         if any(holder != owner for holder in holders):
             logger.error(msg=f"{keys} are no longer held by {owner}: {holders}")
-            raise DatabaseLockedError(message=f"{keys} are no longer held by {owner}")
+            raise ResourcesLockedError(message=f"{keys} are no longer held by {owner}")
 
     def release(self, *, keys: list[str], owner: str) -> None:
         released: int = self._release_owned(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])

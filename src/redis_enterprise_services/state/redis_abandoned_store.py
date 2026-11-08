@@ -6,11 +6,11 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import EXPIRING, OperationStatus
+from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
-from redis_enterprise_services.recovery.mark_result import MarkResult
+from redis_enterprise_services.recovery.mark_abandoned_result import MarkAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
-from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -18,7 +18,11 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 KEEP_OPEN: int = 0
 STATUS_FIELD: str = "status"
 NO_SAGA: str = ""
-RESULTS: dict[int, MarkResult] = {0: MarkResult.SKIPPED, 1: MarkResult.MARKED, 2: MarkResult.SAGA_CHANGED}
+RESULTS: dict[int, MarkAbandonedResult] = {
+    0: MarkAbandonedResult.NOT_ABANDONED,
+    1: MarkAbandonedResult.MARKED,
+    2: MarkAbandonedResult.SAGA_CHANGED,
+}
 
 MARK_ABANDONED: str = """
 if redis.call('EXISTS', KEYS[3]) == 1 then
@@ -58,13 +62,13 @@ return 1
 
 
 class RedisAbandonedStore(AbandonedStore):
-    def __init__(self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int) -> None:
+    def __init__(self, *, client: Redis, keys: RedisKeys, finished_operation_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._finished_ttl_seconds: int = finished_operation_ttl_seconds
         self._mark_abandoned: Script = client.register_script(script=MARK_ABANDONED)
 
-    def without_heartbeat(self) -> list[str]:
+    def open_trace_ids_without_heartbeat(self) -> list[str]:
         open_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_operations()))
         return sorted(
             trace_id
@@ -73,11 +77,11 @@ class RedisAbandonedStore(AbandonedStore):
             and self._running(trace_id=trace_id)
         )
 
-    def saga_of(self, *, trace_id: str) -> StoredSaga | None:
+    def find_saga(self, *, trace_id: str) -> StoredSaga | None:
         raw: str | None = cast(str | None, self._client.get(name=self._keys.saga(saga_id=trace_id)))
         if raw is None:
             return None
-        return StoredSaga(raw=raw, record=SagaRecord.model_validate_json(json_data=raw))
+        return StoredSaga(raw_json=raw, record=SagaRecord.model_validate_json(json_data=raw))
 
     def _running(self, *, trace_id: str) -> bool:
         stored: str | None = cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
@@ -94,8 +98,8 @@ class RedisAbandonedStore(AbandonedStore):
         return cast(dict[str, object], parsed).get(STATUS_FIELD) == OperationStatus.RUNNING.value
 
     def mark_abandoned(
-        self, *, operation: Operation, read_saga: StoredSaga | None, stopped_saga: SagaRecord | None
-    ) -> MarkResult:
+        self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
+    ) -> MarkAbandonedResult:
         trace_id: str = operation.trace_id
         held_locks: str = self._keys.held_locks(owner=trace_id)
         marked: int = self._mark_abandoned(
@@ -110,12 +114,12 @@ class RedisAbandonedStore(AbandonedStore):
             args=[
                 operation.model_dump_json(),
                 trace_id,
-                self._finished_ttl_seconds if operation.status in EXPIRING else KEEP_OPEN,
-                NO_SAGA if stopped_saga is None else stopped_saga.model_dump_json(),
+                self._finished_ttl_seconds if operation.status in EXPIRING_STATUSES else KEEP_OPEN,
+                NO_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
-                NO_SAGA if read_saga is None else read_saga.raw,
+                NO_SAGA if expected_saga is None else expected_saga.raw_json,
             ],
         )
-        result: MarkResult = RESULTS[marked]
+        result: MarkAbandonedResult = RESULTS[marked]
         logger.debug(msg=f"operation {trace_id}: {result.value}")
         return result

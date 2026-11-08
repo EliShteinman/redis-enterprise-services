@@ -4,20 +4,20 @@ import pytest
 from redis import Redis
 
 from redis_enterprise_services.config.state_settings import LockSettings
-from redis_enterprise_services.exceptions.saga import DatabaseLockedError
+from redis_enterprise_services.exceptions.saga import ResourcesLockedError
 from redis_enterprise_services.state.redis_database_lock import RedisDatabaseLock
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.timing.clock import Clock
 from redis_enterprise_services.timing.sleeper import Sleeper
 
-SETTINGS: LockSettings = LockSettings(wait_timeout_seconds=10, poll_seconds=2)
+SETTINGS: LockSettings = LockSettings(wait_timeout_seconds=10, poll_interval_seconds=2)
 
 
 class StepClock(Clock):
     def __init__(self) -> None:
         self.time: float = 0
 
-    def now(self) -> float:
+    def monotonic_seconds(self) -> float:
         return self.time
 
 
@@ -51,7 +51,7 @@ def test_a_lock_released_while_waiting_is_taken() -> None:
 
 
 def test_a_lock_still_held_after_the_wait_timeout_is_refused() -> None:
-    with pytest.raises(expected_exception=DatabaseLockedError):
+    with pytest.raises(expected_exception=ResourcesLockedError):
         lock_with(acquire_all=MagicMock(side_effect=["other-saga"] * 10)).acquire(
             keys=["cluster1/db1"], owner="trace-1"
         )

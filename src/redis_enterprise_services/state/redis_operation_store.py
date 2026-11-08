@@ -4,7 +4,7 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import EXPIRING
+from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
@@ -36,17 +36,22 @@ return true
 
 class RedisOperationStore(OperationStore):
     def __init__(
-        self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int, heartbeat_ttl_seconds: int
+        self,
+        *,
+        client: Redis,
+        keys: RedisKeys,
+        finished_operation_ttl_seconds: int,
+        heartbeat_ttl_seconds: int,
     ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._finished_ttl_seconds: int = finished_operation_ttl_seconds
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
         self._save_open: Script = client.register_script(script=SAVE_OPEN)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
         self._start_open: Script = client.register_script(script=START_OPEN)
 
-    def start(self, *, operation: Operation) -> Operation | None:
+    def save_if_absent(self, *, operation: Operation) -> Operation | None:
         existing: str | None = self._start_open(
             keys=[
                 *self._record_keys(trace_id=operation.trace_id),
@@ -62,7 +67,7 @@ class RedisOperationStore(OperationStore):
 
     def save(self, *, operation: Operation) -> None:
         keys: list[str] = self._record_keys(trace_id=operation.trace_id)
-        if operation.status in EXPIRING:
+        if operation.status in EXPIRING_STATUSES:
             self._save_finished(
                 keys=keys, args=[operation.model_dump_json(), operation.trace_id, self._finished_ttl_seconds]
             )

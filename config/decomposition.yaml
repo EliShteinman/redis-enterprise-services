@@ -1,4 +1,0 @@
-decomposition:
-  acl_name: "{database}-{user}-acl"
-  role_name: "{database}-{user}-role"
-  role_management: db_viewer

@@ -23,12 +23,12 @@ class RedisHeartbeatStore(HeartbeatStore):
         self._ttl_seconds: int = ttl_seconds
         self._beat_all: Script = client.register_script(script=BEAT_ALL)
 
-    def beat(self, *, trace_ids: list[str]) -> None:
+    def refresh(self, *, trace_ids: list[str]) -> None:
         self._beat_all(
             keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids], args=[self._ttl_seconds]
         )
         logger.debug(msg=f"heartbeat of {len(trace_ids)} operations")
 
-    def stop(self, *, trace_id: str) -> None:
+    def delete(self, *, trace_id: str) -> None:
         self._client.delete(self._keys.heartbeat(trace_id=trace_id))
         logger.debug(msg=f"heartbeat of {trace_id} stopped")

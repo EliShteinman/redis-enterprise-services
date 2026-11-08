@@ -8,7 +8,7 @@ missing: `docs/overview.md`.
 
 - Python 3.14 and [uv](https://docs.astral.sh/uv/).
 - A Redis for the saga state, reachable at `state.host:state.port` (`config/state.yaml`), with a user that has
-  `+@all -@dangerous +info ~res:*`.
+  `+@all -@dangerous +info ~res:*` (`res:` is `state.key_prefix`).
 - cluster-relay running for each network in `config/edge.yaml` (locally: `http://127.0.0.1:8000/`).
 - Redis Enterprise clusters listed in `config/clusters.yaml`.
 
@@ -60,7 +60,7 @@ Secrets are passed only through environment variables. Required:
 
 - `RES_STATE__PASSWORD`: the password of the Redis that keeps the saga state.
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
-- `RES_CLUSTER_ACCESS__USERNAME`, `RES_CLUSTER_ACCESS__PASSWORD`: the admin user of the clusters.
+- `RES_CLUSTER_CREDENTIALS__USERNAME`, `RES_CLUSTER_CREDENTIALS__PASSWORD`: the admin user of the clusters.
 - `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
 
 Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
@@ -69,7 +69,7 @@ holds only `RES_` variables, and an environment variable with the same name wins
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
-## Tests and lint
+## Tests, lint and type check
 
 ```bash
 uv run pytest
@@ -93,12 +93,12 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 docker compose -f docker/compose.yaml up -d
 ```
 
-To use another subnet, change `CLUSTER_SUBNET`, `CLUSTER_DYNAMIC_IP_RANGE` and the three `*_IP` values together in
+To use another subnet, change `NETWORK_SUBNET`, `NETWORK_DYNAMIC_IP_RANGE` and the three `*_IP` values together in
 `docker/.env`.
 
 The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
 12000-12010):
 
 - a database listening on port `12005` (`state.port`);
-- an ACL `+@all -@dangerous +info ~res:*`, a role with that ACL on the database, and a user `saga-service`
-  (`state.username`) with that role and the password in `RES_STATE__PASSWORD`.
+- an ACL `+@all -@dangerous +info ~res:*` (`res:` is `state.key_prefix`), a role with that ACL on the database, and a
+  user `saga-service` (`state.username`) with that role and the password in `RES_STATE__PASSWORD`.

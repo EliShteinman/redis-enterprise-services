@@ -1,16 +1,19 @@
 import logging
 from http import HTTPStatus
 
-from redis_enterprise_services.cluster.credentials import ClusterCredentialsProvider
+from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.exceptions.cluster import AmbiguousResourceError, ClusterRequestError
-from redis_enterprise_services.resources.completion import CompletionWaiter
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterRejectedRequestError,
+    DuplicateResourceNameError,
+)
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
+from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.repository import ResourceRepository
-from redis_enterprise_services.resources.spec import NamedSpec
-from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.result import KeepResult
+from redis_enterprise_services.resources.resource_completion_waiter import ResourceCompletionWaiter
+from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
+from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -20,12 +23,12 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         self,
         *,
         repository: ResourceRepository[TSpec],
-        waiter: CompletionWaiter,
-        credentials: ClusterCredentialsProvider,
+        waiter: ResourceCompletionWaiter,
+        credentials: ClusterTargetResolver,
     ) -> None:
         self._repository: ResourceRepository[TSpec] = repository
-        self._waiter: CompletionWaiter = waiter
-        self._credentials: ClusterCredentialsProvider = credentials
+        self._waiter: ResourceCompletionWaiter = waiter
+        self._credentials: ClusterTargetResolver = credentials
 
     @property
     def kind(self) -> StepKind:
@@ -37,22 +40,24 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
         created: CreatedResource = self._repository.create(target=target, spec=step_input.spec)
         keep_result(result=created)
-        self._waiter.wait_created(target=target, resource=created)
+        self._waiter.wait_until_created(target=target, resource=created)
 
     def find_outcome(
         self,
         *,
         step_input: CreateResourceInput[TSpec],
-        kept: CreatedResource | None,
-        keep_found: KeepResult[CreatedResource],
+        kept_result: CreatedResource | None,
+        keep_found_result: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
         outcome: CreatedResource | None = (
-            kept if kept is not None else self._find_by_name(target=target, step_input=step_input)
+            kept_result
+            if kept_result is not None
+            else self._find_by_name(target=target, step_input=step_input)
         )
         if outcome is not None:
-            keep_found(result=outcome)
-            self._waiter.wait_created(target=target, resource=outcome)
+            keep_found_result(result=outcome)
+            self._waiter.wait_until_created(target=target, resource=outcome)
         return outcome
 
     def _find_by_name(
@@ -63,7 +68,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
             return None
         if len(found) > 1:
             uids: list[int] = [resource.uid for resource in found]
-            raise AmbiguousResourceError(
+            raise DuplicateResourceNameError(
                 message=f"{len(found)} resources named {step_input.spec.name}: {uids}"
             )
         return CreatedResource(uid=found[0].uid, name=found[0].name, action_uid=None)
@@ -73,9 +78,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         target: ClusterTarget = self._credentials.target_for(address=step_input.cluster)
         try:
             action_uid: str | None = self._repository.delete(target=target, uid=result.uid)
-        except ClusterRequestError as error:
+        except ClusterRejectedRequestError as error:
             if error.cluster_status_code != HTTPStatus.NOT_FOUND:
                 raise
             logger.info(msg=f"{result.name} is already gone")
             return
-        self._waiter.wait_deleted(target=target, uid=result.uid, action_uid=action_uid)
+        self._waiter.wait_until_deleted(target=target, uid=result.uid, action_uid=action_uid)

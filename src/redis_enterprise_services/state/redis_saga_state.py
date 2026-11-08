@@ -3,8 +3,8 @@ import logging
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.saga.contract.models import SETTLED, SagaRecord
-from redis_enterprise_services.saga.contract.state import SagaRecordReader, SagaStateRepository
+from redis_enterprise_services.saga.contract.saga_record import SETTLED_STATUSES, SagaRecord
+from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader, SagaRecordWriter
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -22,11 +22,11 @@ return true
 """
 
 
-class RedisSagaState(SagaStateRepository, SagaRecordReader):
-    def __init__(self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int) -> None:
+class RedisSagaState(SagaRecordWriter, SagaRecordReader):
+    def __init__(self, *, client: Redis, keys: RedisKeys, finished_operation_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._finished_ttl_seconds: int = finished_operation_ttl_seconds
         self._save_unfinished: Script = client.register_script(script=SAVE_UNFINISHED)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
 
@@ -36,8 +36,8 @@ class RedisSagaState(SagaStateRepository, SagaRecordReader):
         )
         logger.debug(msg=f"saga {record.saga_id} saved")
 
-    def finish(self, *, record: SagaRecord) -> None:
-        if record.status not in SETTLED:
+    def save_final(self, *, record: SagaRecord) -> None:
+        if record.status not in SETTLED_STATUSES:
             self.save(record=record)
             logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")
             return
