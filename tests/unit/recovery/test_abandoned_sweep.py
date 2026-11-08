@@ -8,7 +8,11 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
-from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep, operation_after_crash
+from redis_enterprise_services.recovery.abandoned_sweep import (
+    AbandonedSweep,
+    interrupted_running_saga,
+    operation_after_crash,
+)
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
@@ -57,6 +61,19 @@ def test_an_operation_whose_saga_rolled_back_lists_nothing_left_behind() -> None
     )
 
     assert operation.not_rolled_back == []
+
+
+@pytest.mark.parametrize(
+    argnames=("saga_status", "interrupted"),
+    argvalues=[
+        (SagaStatus.RUNNING, True),
+        (SagaStatus.SUCCEEDED, False),
+        (SagaStatus.ROLLED_BACK, False),
+        (SagaStatus.REQUIRES_MANUAL_INTERVENTION, False),
+    ],
+)
+def test_only_a_running_saga_is_interrupted(saga_status: SagaStatus, interrupted: bool) -> None:
+    assert (interrupted_running_saga(saga=stored_saga(status=saga_status)) is not None) is interrupted
 
 
 def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:

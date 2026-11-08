@@ -51,12 +51,14 @@ class OperationStarter:
                     trace_id=trace_id, task=prepared_run.task
                 ),
             )
-        except Exception:
-            self._reject_unsubmitted(trace_id=trace_id, task_name=prepared_run.task_name)
+        except Exception as submit_error:
+            self._reject_unsubmitted(
+                trace_id=trace_id, task_name=prepared_run.task_name, submit_error=submit_error
+            )
             raise
 
-    def _reject_unsubmitted(self, *, trace_id: str, task_name: str) -> None:
-        logger.critical(msg=f"{task_name} cannot run in the background", exc_info=True)
+    def _reject_unsubmitted(self, *, trace_id: str, task_name: str, submit_error: Exception) -> None:
+        logger.critical(msg=f"{task_name} cannot run in the background", exc_info=submit_error)
         self._operation_heartbeats.stop_heartbeat(trace_id=trace_id)
         self._store.save(
             operation=Operation(
