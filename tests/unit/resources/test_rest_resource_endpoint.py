@@ -49,21 +49,21 @@ def test_find_by_name_returns_nothing_without_an_exact_match(
     assert endpoint.find_by_name(target=TARGET, name=name) == []
 
 
-def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
+def test_start_creation_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
     endpoint: RestResourceEndpoint = endpoint_answering(
         answer={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
     )
 
-    created: CreatedResource = endpoint.start_creation(target=TARGET, body={"name": "app-user"})
+    created: CreatedResource = endpoint.start_creation(target=TARGET, creation_body={"name": "app-user"})
 
     assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
 
 
-def test_create_raises_unreadable_response_for_an_answer_without_a_uid() -> None:
+def test_start_creation_raises_unreadable_response_for_an_answer_without_a_uid() -> None:
     endpoint: RestResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
-        endpoint.start_creation(target=TARGET, body={"name": "app-user"})
+        endpoint.start_creation(target=TARGET, creation_body={"name": "app-user"})
 
 
 def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
@@ -72,7 +72,7 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
     )
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError) as unreadable:
-        endpoint.start_creation(target=TARGET, body={"name": "db1"})
+        endpoint.start_creation(target=TARGET, creation_body={"name": "db1"})
 
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
 

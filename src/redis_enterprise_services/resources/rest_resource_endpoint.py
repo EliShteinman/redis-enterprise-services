@@ -32,20 +32,22 @@ class RestResourceEndpoint(ResourceEndpoint):
         self._settings: ResourceSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def start_creation(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource:
-        logger.info(msg=f"creating {self._settings.collection_path} {body.get('name')}")
+    def start_creation(
+        self, *, target: ClusterTarget, creation_body: dict[str, JsonValue]
+    ) -> CreatedResource:
+        logger.info(msg=f"creating {self._settings.collection_path} {creation_body.get('name')}")
         response_body: JsonValue = self._cluster_api_caller.send(
-            target=target, method="POST", path=self._settings.collection_path, body=body
+            target=target, method="POST", path=self._settings.collection_path, body=creation_body
         ).body
         try:
             resource: NamedResource = NamedResource.model_validate(obj=response_body)
         except ValidationError as error:
             raise UnreadableClusterResponseError(
-                message=f"created {body.get('name')}, "
+                message=f"created {creation_body.get('name')}, "
                 f"unreadable response fields {invalid_field_paths(error=error)}"
             ) from error
         return CreatedResource(
-            uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=response_body)
+            uid=resource.uid, name=resource.name, action_uid=self._action_uid(response_body=response_body)
         )
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
@@ -53,7 +55,7 @@ class RestResourceEndpoint(ResourceEndpoint):
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target, method="DELETE", path=self._settings.item_path.format(uid=uid)
         ).body
-        return self._action_uid(body=response_body)
+        return self._action_uid(response_body=response_body)
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
         return [resource for resource in self.list_uids_and_names(target=target) if resource.name == name]
@@ -80,5 +82,5 @@ class RestResourceEndpoint(ResourceEndpoint):
             settings=self._cluster_api_settings.fields_query, field_names=self._settings.list_fields
         )
 
-    def _action_uid(self, *, body: JsonValue) -> str | None:
-        return string_field(body=body, name=self._cluster_api_settings.fields.action_uid)
+    def _action_uid(self, *, response_body: JsonValue) -> str | None:
+        return string_field(body=response_body, name=self._cluster_api_settings.fields.action_uid)

@@ -68,12 +68,12 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         except ClusterRejectedRequestError as error:
             if error.cluster_status_code == HTTPStatus.NOT_FOUND:
                 return True
-            return self._read_again_or_raise(uid=uid, error=error)
+            return self._poll_again_or_raise(uid=uid, error=error)
         except RedisEnterpriseServicesError as error:
-            return self._read_again_or_raise(uid=uid, error=error)
+            return self._poll_again_or_raise(uid=uid, error=error)
         return False
 
-    def _read_again_or_raise(self, *, uid: int, error: RedisEnterpriseServicesError) -> bool:
+    def _poll_again_or_raise(self, *, uid: int, error: RedisEnterpriseServicesError) -> bool:
         if not is_safe_to_read_again(
             error=error, transient_error_codes=self._cluster_api_settings.transient_error_codes
         ):
@@ -88,7 +88,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
                 target=target, uid=uid, field_names=[status_field]
             ).values
         except RedisEnterpriseServicesError as error:
-            return self._read_again_or_raise(uid=uid, error=error)
+            return self._poll_again_or_raise(uid=uid, error=error)
         status: JsonValue = values.get(status_field)
         if status is None:
             raise UnreadableClusterResponseError(message=f"database {uid} answered without {status_field}")

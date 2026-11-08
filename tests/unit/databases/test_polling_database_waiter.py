@@ -33,9 +33,9 @@ def fields_reader() -> MagicMock:
 def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
     settings: Settings = load_settings()
     short_wait: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.05)
-    database: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
+    database_settings: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
     return PollingDatabaseWaiter(
-        fields_reader=fields_reader, settings=database, cluster_api_settings=settings.cluster_api
+        fields_reader=fields_reader, settings=database_settings, cluster_api_settings=settings.cluster_api
     )
 
 
@@ -51,7 +51,7 @@ def test_a_deleted_database_is_gone_once_it_answers_404(
     fields_reader.read_fields.assert_called_once()
 
 
-def test_a_non_transient_rejection_while_waiting_for_a_delete_is_raised(
+def test_a_rejection_not_safe_to_read_again_while_waiting_for_a_delete_is_raised(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
     fields_reader.read_fields.side_effect = ClusterRejectedRequestError(

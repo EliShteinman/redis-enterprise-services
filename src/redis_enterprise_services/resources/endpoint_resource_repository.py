@@ -13,7 +13,7 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
         self._endpoint: ResourceEndpoint = endpoint
 
     def start_creation(self, *, target: ClusterTarget, spec: TSpec) -> CreatedResource:
-        return self._endpoint.start_creation(target=target, body=self.creation_body(spec=spec))
+        return self._endpoint.start_creation(target=target, creation_body=self.creation_body(spec=spec))
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
         return self._endpoint.start_deletion(target=target, uid=uid)

@@ -7,7 +7,9 @@ from redis_enterprise_services.resources.models import CreatedResource, NamedRes
 
 
 class ResourceEndpoint(Protocol):
-    def start_creation(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource: ...
+    def start_creation(
+        self, *, target: ClusterTarget, creation_body: dict[str, JsonValue]
+    ) -> CreatedResource: ...
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None: ...
 
