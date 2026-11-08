@@ -30,3 +30,15 @@ def test_a_cluster_error_answer_keeps_the_cluster_status_and_error_code() -> Non
         )
 
     assert (rejection.value.cluster_status_code, rejection.value.error_code) == (409, "name_already_exists")
+
+
+def test_a_redirect_answer_is_a_cluster_error() -> None:
+    transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
+    transport.send.return_value = ClusterResponse(
+        status_code=302, headers={}, body=None, cluster_state_id=None
+    )
+
+    with pytest.raises(expected_exception=ClusterRequestError):
+        ClusterApi(transport=transport, settings=load_settings().cluster).send(
+            target=TARGET, method="POST", path="/v1/users"
+        )
