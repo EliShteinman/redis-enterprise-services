@@ -1,6 +1,7 @@
 import pytest
 from pydantic import BaseModel, JsonValue, ValidationError
 
+from redis_enterprise_services.config.cluster_settings import ClusterFieldSettings
 from redis_enterprise_services.config.clusters_settings import ClusterEntry
 from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -36,6 +37,12 @@ DECOMPOSITION: DecompositionSettings = DecompositionSettings(
 )
 PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
     settings=DECOMPOSITION,
+    fields=ClusterFieldSettings(
+        status="status",
+        error_code="error_code",
+        action_uid="action_uid",
+        roles_permissions="roles_permissions",
+    ),
     names=ResourceNames(settings=DECOMPOSITION),
     create_database=IdleStep(),
     create_acl=IdleStep(),
