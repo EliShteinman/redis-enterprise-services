@@ -12,7 +12,7 @@ from redis_enterprise_services.edge.models import ClusterRequest, ClusterRespons
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 
 
-class ClusterApi(ClusterApiCaller):
+class EdgeClusterApiCaller(ClusterApiCaller):
     def __init__(self, *, transport: EdgeTransport, settings: ClusterApiSettings) -> None:
         self._transport: EdgeTransport = transport
         self._settings: ClusterApiSettings = settings
@@ -23,14 +23,14 @@ class ClusterApi(ClusterApiCaller):
         target: ClusterTarget,
         method: HttpMethod,
         path: str,
-        query: str | None = None,
+        query_string: str | None = None,
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
     ) -> SuccessfulClusterResponse:
         url: str = target.api_url + path
         request: ClusterRequest = ClusterRequest(
             method=method,
-            url=f"{url}?{query}" if query else url,
+            url=f"{url}?{query_string}" if query_string else url,
             credentials=target.credentials,
             body=body,
             cluster_state_id=cluster_state_id,

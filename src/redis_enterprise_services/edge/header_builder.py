@@ -19,11 +19,11 @@ class EdgeHeaderBuilder:
         self._settings: EdgeSettings = settings
         self._header_names: EdgeHeaderSettings = settings.headers
 
-    def build(self, *, request: ClusterRequest, relay_settings: EdgeNetworkSettings) -> dict[str, str]:
+    def build(self, *, request: ClusterRequest, network_settings: EdgeNetworkSettings) -> dict[str, str]:
         return (
             self._required_headers(request=request)
             | self._optional_headers(request=request)
-            | self._firewall_headers(relay_settings=relay_settings)
+            | self._firewall_headers(network_settings=network_settings)
         )
 
     def _required_headers(self, *, request: ClusterRequest) -> dict[str, str]:
@@ -46,12 +46,12 @@ class EdgeHeaderBuilder:
         return {name: str(value) for name, value in optional.items() if value is not None}
 
     @staticmethod
-    def _firewall_headers(*, relay_settings: EdgeNetworkSettings) -> dict[str, str]:
-        if relay_settings.firewall is None:
+    def _firewall_headers(*, network_settings: EdgeNetworkSettings) -> dict[str, str]:
+        if network_settings.firewall is None:
             return {}
         return {
-            relay_settings.firewall.authorization_header: basic_authorization(
-                username=relay_settings.firewall.username,
-                password=relay_settings.firewall.password.get_secret_value(),
+            network_settings.firewall.authorization_header: basic_authorization(
+                username=network_settings.firewall.username,
+                password=network_settings.firewall.password.get_secret_value(),
             )
         }

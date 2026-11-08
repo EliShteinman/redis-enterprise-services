@@ -8,7 +8,7 @@ from redis_enterprise_services.exceptions.edge import (
 )
 
 
-def never_reached_relay(*, error: requests.RequestException) -> bool:
+def failed_to_connect_to_relay(*, error: requests.RequestException) -> bool:
     return any(
         isinstance(argument, MaxRetryError)
         and isinstance(argument.reason, (ConnectTimeoutError, NewConnectionError))
@@ -17,6 +17,6 @@ def never_reached_relay(*, error: requests.RequestException) -> bool:
 
 
 def edge_error_for_transport_failure(*, network: str, error: requests.RequestException) -> EdgeError:
-    if never_reached_relay(error=error):
+    if failed_to_connect_to_relay(error=error):
         return EdgeConnectionFailedError(message=f"the relay of {network} is unreachable: {error}")
     return EdgeOutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")

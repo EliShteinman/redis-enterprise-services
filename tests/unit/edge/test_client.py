@@ -112,7 +112,7 @@ def test_a_cluster_state_id_that_is_not_a_number_is_ignored(
     )
 
 
-def test_an_invalid_cluster_response_keeps_the_cluster_status(
+def test_a_relay_rejected_response_keeps_the_cluster_status(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
 ) -> None:
     headers: dict[str, str] = {
@@ -120,12 +120,12 @@ def test_an_invalid_cluster_response_keeps_the_cluster_status(
         settings.headers.cluster_status_code: "201",
     }
 
-    with pytest.raises(expected_exception=EdgeRejectedResponseError) as invalid_response:
+    with pytest.raises(expected_exception=EdgeRejectedResponseError) as rejected_response:
         send_through_relay_answering(
             settings=settings, answer=relay_answer(status_code=502, headers=headers), monkeypatch=monkeypatch
         )
 
-    assert invalid_response.value.cluster_status_code == 201
+    assert rejected_response.value.cluster_status_code == 201
 
 
 @pytest.mark.parametrize(
@@ -153,7 +153,7 @@ def test_an_invalid_cluster_response_keeps_the_cluster_status(
         (requests.ReadTimeout("read timed out"), EdgeOutcomeUnknownError),
     ],
 )
-def test_a_transport_failure_maps_to_not_sent_or_outcome_unknown(
+def test_a_transport_failure_maps_to_connection_failed_or_outcome_unknown(
     monkeypatch: pytest.MonkeyPatch,
     settings: EdgeSettings,
     error: requests.RequestException,
