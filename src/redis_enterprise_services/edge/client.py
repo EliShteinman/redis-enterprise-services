@@ -32,6 +32,7 @@ class EdgeClient:
                 verify=False,  # noqa: S501
             )
         except requests.RequestException as error:
+            logger.warning(msg=f"{request.method} {request.url} through {network} failed: {error!r}")
             raise transport_error(network=network, error=error) from error
         return self._reader.read(response=response)
 
