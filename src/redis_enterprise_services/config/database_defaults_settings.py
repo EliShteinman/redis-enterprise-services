@@ -4,11 +4,10 @@ from pydantic import Field, JsonValue, model_validator
 
 from redis_enterprise_services.config.clusters_settings import ClusterType, Environment
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.network_name import NetworkName
 
 
 class DefaultsMatch(ConfigModel):
-    network: NetworkName | None = None
+    network: str | None = None
     environment: Environment | None = None
     site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None

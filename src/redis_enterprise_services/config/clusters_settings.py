@@ -3,7 +3,6 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, Field
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.network_name import NetworkName
 
 type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
@@ -11,7 +10,7 @@ type ClusterType = Literal["generic", "dedicated"]
 
 class ClusterEntry(ConfigModel):
     name: str = Field(min_length=1)
-    network: NetworkName
+    network: str
     environment: Environment
     site: str = Field(min_length=1)
     type: ClusterType
