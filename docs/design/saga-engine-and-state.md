@@ -215,7 +215,7 @@ PlannedStep(
 | `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
 | `succeeded`, `rolled_back`, `requires_manual_intervention` | הסטטוס של ה-Saga |
 
-**`OperationAcceptance.accept`**, משותף לכל פקודה:
+**`OperationStarter.find_or_start`**, משותף לכל פקודה:
 1. חיפוש לפי trace. קיימת ⇐ מוחזרת כמו שהיא (`200`).
 2. ההכנה של הפקודה, בלי שינוי בקלאסטר. נכשלה ⇐ תשובה מיידית, ושום דבר לא נשמר.
 3. התחלה אטומית (Lua). רשומה שנוצרה בינתיים ⇐ מוחזרת, ושום דבר לא נשלח לרקע.
@@ -293,7 +293,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `FailureCategory`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
 | `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `StepResults` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
-| `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
+| `operations/` | `Operation`, `OperationStore`, `OperationStarter`, `PublicErrors` | |
 | `liveness/` | `InProcessOperationHeartbeats`, `HeartbeatStore` | |
 | `recovery/` | `AbandonedSweep`, `AbandonedStore` | |
 | `state/` | המימושים ב-Redis של כל הממשקים | |

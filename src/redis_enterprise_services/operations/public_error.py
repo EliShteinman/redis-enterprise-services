@@ -29,7 +29,7 @@ class PublicError(BaseModel):
     )
     cluster_error_code: str | None = Field(
         default=None,
-        exclude_if=lambda code: code is None,
+        exclude_if=lambda cluster_error_code: cluster_error_code is None,
         description="The cluster's own error code. Only for errors from a cluster.",
         examples=["insufficient_resources"],
     )

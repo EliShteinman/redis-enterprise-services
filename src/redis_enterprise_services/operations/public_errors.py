@@ -19,7 +19,7 @@ class PublicErrors:
         self, *, error: RedisEnterpriseServicesError, cluster_url: str | None = None
     ) -> PublicError:
         return self.from_code(
-            error_code=error.code,
+            internal_code=error.code,
             message=error.message,
             cluster_url=cluster_url,
             cluster_error_code=error.cluster_error_code,
@@ -28,27 +28,27 @@ class PublicErrors:
     def from_code(
         self,
         *,
-        error_code: str,
+        internal_code: str,
         message: str,
         cluster_url: str | None = None,
         cluster_error_code: str | None = None,
     ) -> PublicError:
-        public_code: str = self.public_code(error_code=error_code)
+        public_code: str = self.public_code(internal_code=internal_code)
         if public_code not in self._settings.public_codes_with_cluster_details:
             return PublicError(code=public_code, message=message)
         return PublicError(
             code=public_code, message=message, cluster_url=cluster_url, cluster_error_code=cluster_error_code
         )
 
-    def public_code(self, *, error_code: str) -> str:
-        internal_code: str = RedisEnterpriseServicesError.code
-        mapped_public_code: str | None = self._settings.public_code_by_internal_code.get(error_code)
+    def public_code(self, *, internal_code: str) -> str:
+        fallback_public_code: str = RedisEnterpriseServicesError.code
+        mapped_public_code: str | None = self._settings.public_code_by_internal_code.get(internal_code)
         if mapped_public_code is None:
-            if error_code != internal_code:
+            if internal_code != fallback_public_code:
                 logger.warning(
-                    msg=f"error {error_code} has no public code and is published as {internal_code}"
+                    msg=f"error {internal_code} has no public code and is published as {fallback_public_code}"
                 )
-            return internal_code
-        if mapped_public_code != error_code:
-            logger.debug(msg=f"error {error_code} is published as {mapped_public_code}")
+            return fallback_public_code
+        if mapped_public_code != internal_code:
+            logger.debug(msg=f"error {internal_code} is published as {mapped_public_code}")
         return mapped_public_code

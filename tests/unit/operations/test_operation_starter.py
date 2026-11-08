@@ -6,9 +6,9 @@ from redis_enterprise_services.background.background_task_runner import Backgrou
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
-from redis_enterprise_services.operations.acceptance_result import AcceptanceResult
+from redis_enterprise_services.operations.find_or_start_result import FindOrStartResult
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
+from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.prepared_run import PreparedRun
@@ -17,21 +17,21 @@ from redis_enterprise_services.operations.public_errors import PublicErrors
 RUNNING_OPERATION: Operation = Operation(trace_id="trace-1")
 
 
-class AcceptanceHarness:
+class OperationStarterHarness:
     def __init__(self) -> None:
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
         self.store.find.return_value = None
-        self.store.save_if_absent.return_value = None
-        self.runner: MagicMock = create_autospec(spec=BackgroundTaskRunner, instance=True)
+        self.store.start_if_absent.return_value = None
+        self.task_runner: MagicMock = create_autospec(spec=BackgroundTaskRunner, instance=True)
         self.operation_heartbeats: MagicMock = create_autospec(
             spec=InProcessOperationHeartbeats, instance=True
         )
-        self.prepare: MagicMock = MagicMock(
+        self.prepare_run: MagicMock = MagicMock(
             return_value=PreparedRun(task_name="creating orders", task=lambda: None)
         )
-        self.operation_acceptance: OperationAcceptance = OperationAcceptance(
+        self.operation_starter: OperationStarter = OperationStarter(
             store=self.store,
-            runner=self.runner,
+            task_runner=self.task_runner,
             operation_heartbeats=self.operation_heartbeats,
             public_errors=PublicErrors(
                 settings=OperationSettings(
@@ -41,64 +41,64 @@ class AcceptanceHarness:
             ),
         )
 
-    def accept(self) -> AcceptanceResult:
-        return self.operation_acceptance.accept(trace_id="trace-1", prepare=self.prepare)
+    def find_or_start(self) -> FindOrStartResult:
+        return self.operation_starter.find_or_start(trace_id="trace-1", prepare_run=self.prepare_run)
 
 
-def test_a_new_operation_is_stored_as_running_before_it_runs() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
+def test_a_new_operation_is_started_before_it_is_submitted() -> None:
+    harness: OperationStarterHarness = OperationStarterHarness()
     calls: MagicMock = MagicMock()
-    calls.attach_mock(mock=harness.store.save_if_absent, attribute="save_if_absent")
-    calls.attach_mock(mock=harness.runner.submit, attribute="submit")
+    calls.attach_mock(mock=harness.store.start_if_absent, attribute="start_if_absent")
+    calls.attach_mock(mock=harness.task_runner.submit, attribute="submit")
 
-    harness.accept()
+    harness.find_or_start()
 
     assert [(name, kwargs.get("operation")) for name, _, kwargs in calls.mock_calls] == [
-        ("save_if_absent", RUNNING_OPERATION),
+        ("start_if_absent", RUNNING_OPERATION),
         ("submit", None),
     ]
 
 
 def test_a_known_trace_returns_its_operation_without_preparing() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
+    harness: OperationStarterHarness = OperationStarterHarness()
     harness.store.find.return_value = RUNNING_OPERATION
 
-    acceptance: AcceptanceResult = harness.accept()
+    result: FindOrStartResult = harness.find_or_start()
 
-    assert (acceptance, harness.prepare.called) == (
-        AcceptanceResult(operation=RUNNING_OPERATION, already_accepted=True),
+    assert (result, harness.prepare_run.called) == (
+        FindOrStartResult(operation=RUNNING_OPERATION, already_existed=True),
         False,
     )
 
 
 def test_a_trace_started_meanwhile_does_not_run_again() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
-    harness.store.save_if_absent.return_value = RUNNING_OPERATION
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.store.start_if_absent.return_value = RUNNING_OPERATION
 
-    acceptance: AcceptanceResult = harness.accept()
+    result: FindOrStartResult = harness.find_or_start()
 
-    assert (acceptance, harness.runner.submit.called) == (
-        AcceptanceResult(operation=RUNNING_OPERATION, already_accepted=True),
+    assert (result, harness.task_runner.submit.called) == (
+        FindOrStartResult(operation=RUNNING_OPERATION, already_existed=True),
         False,
     )
 
 
 def test_a_request_that_fails_its_preparation_starts_nothing() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
-    harness.prepare.side_effect = InvalidNameError(message="bad name")
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.prepare_run.side_effect = InvalidNameError(message="bad name")
 
     with pytest.raises(expected_exception=InvalidNameError):
-        harness.accept()
+        harness.find_or_start()
 
-    assert not harness.store.save_if_absent.called
+    assert not harness.store.start_if_absent.called
 
 
-def test_an_operation_that_cannot_run_is_stored_as_rejected() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
-    harness.runner.submit.side_effect = RuntimeError("cannot schedule new futures after shutdown")
+def test_a_failed_submit_stores_the_operation_as_rejected() -> None:
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.task_runner.submit.side_effect = RuntimeError("cannot schedule new futures after shutdown")
 
     with pytest.raises(expected_exception=RuntimeError):
-        harness.accept()
+        harness.find_or_start()
 
     saved_operation: Operation = harness.store.save.call_args.kwargs["operation"]
     assert (saved_operation.status, saved_operation.error and saved_operation.error.code) == (
@@ -108,27 +108,27 @@ def test_an_operation_that_cannot_run_is_stored_as_rejected() -> None:
 
 
 def test_a_started_operation_is_tracked_while_it_runs() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
+    harness: OperationStarterHarness = OperationStarterHarness()
 
-    harness.accept()
+    harness.find_or_start()
 
     harness.operation_heartbeats.track.assert_called_once_with(trace_id="trace-1")
 
 
-def test_an_operation_accepted_before_is_not_tracked_again() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
-    harness.store.save_if_absent.return_value = RUNNING_OPERATION
+def test_an_operation_started_meanwhile_is_not_tracked() -> None:
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.store.start_if_absent.return_value = RUNNING_OPERATION
 
-    harness.accept()
+    harness.find_or_start()
 
     assert not harness.operation_heartbeats.track.called
 
 
-def test_an_operation_that_cannot_run_is_untracked() -> None:
-    harness: AcceptanceHarness = AcceptanceHarness()
-    harness.runner.submit.side_effect = RuntimeError("cannot schedule new futures after shutdown")
+def test_a_failed_submit_untracks_and_deletes_the_heartbeat() -> None:
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.task_runner.submit.side_effect = RuntimeError("cannot schedule new futures after shutdown")
 
     with pytest.raises(expected_exception=RuntimeError):
-        harness.accept()
+        harness.find_or_start()
 
     harness.operation_heartbeats.untrack_and_delete_heartbeat.assert_called_once_with(trace_id="trace-1")
