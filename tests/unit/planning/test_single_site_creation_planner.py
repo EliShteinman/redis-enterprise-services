@@ -41,8 +41,8 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_management="db_viewer",
 )
 PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
-    settings=USER_RESOURCES,
-    fields=ClusterFieldSettings(
+    user_resources=USER_RESOURCES,
+    cluster_fields=ClusterFieldSettings(
         status="status",
         error_code="error_code",
         action_uid="action_uid",

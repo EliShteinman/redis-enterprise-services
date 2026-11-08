@@ -33,8 +33,8 @@ class SingleSiteCreationPlanner:
     def __init__(
         self,
         *,
-        settings: UserResourcesSettings,
-        fields: ClusterFieldSettings,
+        user_resources: UserResourcesSettings,
+        cluster_fields: ClusterFieldSettings,
         resource_names: UserResourceNames,
         create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource],
         create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
@@ -42,8 +42,8 @@ class SingleSiteCreationPlanner:
         create_user: SagaStep[CreateResourceInput[NewUser], CreatedResource],
         update_database: SagaStep[UpdateDatabaseInput, DatabaseFields],
     ) -> None:
-        self._settings: UserResourcesSettings = settings
-        self._fields: ClusterFieldSettings = fields
+        self._user_resources: UserResourcesSettings = user_resources
+        self._cluster_fields: ClusterFieldSettings = cluster_fields
         self._resource_names: UserResourceNames = resource_names
         self._create_database: SagaStep[CreateResourceInput[NewDatabase], CreatedResource] = create_database
         self._create_acl: SagaStep[CreateResourceInput[NewAcl], CreatedResource] = create_acl
@@ -88,7 +88,7 @@ class SingleSiteCreationPlanner:
     def _acl_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> PreparableStep:
-        acl_name: str = self._resource_names.acl(database=database.name, user=user.name)
+        acl_name: str = self._resource_names.acl_name(database=database.name, user=user.name)
         acl: NewAcl = NewAcl(name=acl_name, acl=user.acl)
         return PlannedStep(
             key=acl_step_key(user=user),
@@ -99,8 +99,8 @@ class SingleSiteCreationPlanner:
     def _role_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> PreparableStep:
-        role_name: str = self._resource_names.role(database=database.name, user=user.name)
-        management: RoleManagement = self._settings.role_management
+        role_name: str = self._resource_names.role_name(database=database.name, user=user.name)
+        management: RoleManagement = self._user_resources.role_management
         return PlannedStep(
             key=role_step_key(user=user),
             step=self._create_role,
@@ -138,7 +138,7 @@ class SingleSiteCreationPlanner:
                 cluster=address,
                 uid=created_uid(context=context, step_key=DATABASE_STEP_KEY),
                 values={
-                    self._fields.roles_permissions: [
+                    self._cluster_fields.roles_permissions: [
                         RolePermission(
                             role_uid=created_uid(context=context, step_key=role_step_key(user=user)),
                             redis_acl_uid=created_uid(context=context, step_key=acl_step_key(user=user)),

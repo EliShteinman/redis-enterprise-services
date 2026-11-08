@@ -29,14 +29,14 @@ def cluster(
     )
 
 
-def target(*, cluster_type: ClusterType = "generic", name: str | None = None) -> SitePlacement:
+def placement(*, cluster_type: ClusterType = "generic", name: str | None = None) -> SitePlacement:
     return SitePlacement(
         network="net-a", site="dc1", environment="PROD", cluster=ClusterChoice(type=cluster_type, name=name)
     )
 
 
 class LastCandidateChooser(ClusterChooser):
-    def choose(self, *, target: SitePlacement, candidates: list[ClusterEntry]) -> ClusterEntry:
+    def choose(self, *, placement: SitePlacement, candidates: list[ClusterEntry]) -> ClusterEntry:
         return candidates[-1]
 
 
@@ -56,7 +56,7 @@ def test_a_dedicated_cluster_is_found_by_all_four_parts() -> None:
     ]
 
     assert (
-        resolver(clusters=clusters).resolve(site_target=target(cluster_type="dedicated", name="orders"))
+        resolver(clusters=clusters).resolve(placement=placement(cluster_type="dedicated", name="orders"))
         == wanted
     )
 
@@ -65,7 +65,7 @@ def test_a_generic_target_takes_the_only_generic_cluster_at_the_site() -> None:
     generic: ClusterEntry = cluster(name="c1")
     clusters: list[ClusterEntry] = [cluster(name="orders", cluster_type="dedicated"), generic]
 
-    assert resolver(clusters=clusters).resolve(site_target=target()) == generic
+    assert resolver(clusters=clusters).resolve(placement=placement()) == generic
 
 
 def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser() -> None:
@@ -73,7 +73,7 @@ def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser(
     directory: ClusterDirectory = ClusterDirectory(clusters=[cluster(name="c1"), last])
 
     chosen: ClusterEntry = SiteClusterResolver(directory=directory, chooser=LastCandidateChooser()).resolve(
-        site_target=target()
+        placement=placement()
     )
 
     assert chosen == last
@@ -82,18 +82,18 @@ def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser(
 @pytest.mark.parametrize(
     argnames="wanted",
     argvalues=[
-        pytest.param(target(), id="generic"),
-        pytest.param(target(cluster_type="dedicated", name="orders"), id="dedicated"),
+        pytest.param(placement(), id="generic"),
+        pytest.param(placement(cluster_type="dedicated", name="orders"), id="dedicated"),
     ],
 )
 def test_a_target_without_a_configured_cluster_is_unknown(wanted: SitePlacement) -> None:
     with pytest.raises(expected_exception=UnknownClusterError):
-        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(site_target=wanted)
+        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(placement=wanted)
 
 
 def test_several_generic_clusters_at_a_site_cannot_be_chosen_yet() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
-        resolver(clusters=[cluster(name="c1"), cluster(name="c2")]).resolve(site_target=target())
+        resolver(clusters=[cluster(name="c1"), cluster(name="c2")]).resolve(placement=placement())
 
 
 @pytest.mark.parametrize(

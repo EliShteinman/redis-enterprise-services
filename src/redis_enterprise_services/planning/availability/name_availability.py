@@ -33,13 +33,15 @@ class NameAvailability:
         target: ClusterTarget = self._target_resolver.target_for(address=address_of(cluster=cluster))
         return [
             TakenName(kind=kind, name=name, cluster_name=cluster.name)
-            for kind, requested in by_kind.items()
-            for name in sorted(self._lookups.for_kind(kind=kind).existing(target=target, names=requested))
+            for kind, requested_names in by_kind.items()
+            for name in sorted(
+                self._lookups.for_kind(kind=kind).existing(target=target, names=requested_names)
+            )
         ]
 
 
 def names_by_kind(*, names: list[RequestedName]) -> dict[NameKind, set[str]]:
     by_kind: dict[NameKind, set[str]] = {}
-    for requested in names:
-        by_kind.setdefault(requested.kind, set()).add(requested.name)
+    for requested_names in names:
+        by_kind.setdefault(requested_names.kind, set()).add(requested_names.name)
     return by_kind

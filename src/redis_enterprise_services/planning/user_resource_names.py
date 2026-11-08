@@ -5,8 +5,8 @@ class UserResourceNames:
     def __init__(self, *, settings: UserResourcesSettings) -> None:
         self._settings: UserResourcesSettings = settings
 
-    def acl(self, *, database: str, user: str) -> str:
+    def acl_name(self, *, database: str, user: str) -> str:
         return self._settings.acl_name_template.format(database=database, user=user)
 
-    def role(self, *, database: str, user: str) -> str:
+    def role_name(self, *, database: str, user: str) -> str:
         return self._settings.role_name_template.format(database=database, user=user)

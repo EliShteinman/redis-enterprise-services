@@ -9,10 +9,12 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class SingleCandidateChooser(ClusterChooser):
-    def choose(self, *, target: SitePlacement, candidates: list[ClusterEntry]) -> ClusterEntry:
+    def choose(self, *, placement: SitePlacement, candidates: list[ClusterEntry]) -> ClusterEntry:
         if len(candidates) > 1:
             names: list[str] = [candidate.name for candidate in candidates]
-            message: str = f"{target.describe()} has several generic clusters {names}, and no way to choose"
+            message: str = (
+                f"{placement.describe()} has several generic clusters {names}, and no way to choose"
+            )
             logger.error(msg=message)
             raise ConfigurationError(message=message)
         return candidates[0]

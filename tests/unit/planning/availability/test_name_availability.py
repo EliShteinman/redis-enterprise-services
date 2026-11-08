@@ -14,15 +14,15 @@ from redis_enterprise_services.resources.models import NamedResource
 
 
 class CountingLister:
-    def __init__(self, *, names_by_url: set[tuple[str, str]]) -> None:
-        self._names_by_url: set[tuple[str, str]] = names_by_url
+    def __init__(self, *, url_name_pairs: set[tuple[str, str]]) -> None:
+        self._url_name_pairs: set[tuple[str, str]] = url_name_pairs
         self.calls: int = 0
 
     def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
         self.calls += 1
         return [
             NamedResource(uid=1, name=name)
-            for url, name in sorted(self._names_by_url)
+            for url, name in sorted(self._url_name_pairs)
             if url == target.api_url
         ]
 
@@ -46,13 +46,13 @@ def lookup(*, lister: CountingLister) -> ListedNameLookup:
 
 
 def availability(
-    *, database_names_by_url: set[tuple[str, str]], user_lister: CountingLister
+    *, database_url_name_pairs: set[tuple[str, str]], user_lister: CountingLister
 ) -> NameAvailability:
     return NameAvailability(
         lookups=NameLookupsByKind(
-            database=lookup(lister=CountingLister(names_by_url=database_names_by_url)),
-            acl=lookup(lister=CountingLister(names_by_url=set())),
-            role=lookup(lister=CountingLister(names_by_url=set())),
+            database=lookup(lister=CountingLister(url_name_pairs=database_url_name_pairs)),
+            acl=lookup(lister=CountingLister(url_name_pairs=set())),
+            role=lookup(lister=CountingLister(url_name_pairs=set())),
             user=lookup(lister=user_lister),
         ),
         target_resolver=SharedCredentialsTargetResolver(
@@ -63,17 +63,17 @@ def availability(
 
 def test_names_missing_from_every_cluster_are_free() -> None:
     assert (
-        availability(database_names_by_url=set(), user_lister=CountingLister(names_by_url=set())).taken_names(
-            clusters=[C1, C2], names=NAMES
-        )
+        availability(
+            database_url_name_pairs=set(), user_lister=CountingLister(url_name_pairs=set())
+        ).taken_names(clusters=[C1, C2], names=NAMES)
         == []
     )
 
 
 def test_each_taken_name_is_reported_with_its_cluster() -> None:
     checked: NameAvailability = availability(
-        database_names_by_url={("https://c2", "orders")},
-        user_lister=CountingLister(names_by_url={("https://c1", "app")}),
+        database_url_name_pairs={("https://c2", "orders")},
+        user_lister=CountingLister(url_name_pairs={("https://c1", "app")}),
     )
 
     assert [name.describe() for name in checked.taken_names(clusters=[C1, C2], names=NAMES)] == [
@@ -83,19 +83,19 @@ def test_each_taken_name_is_reported_with_its_cluster() -> None:
 
 
 def test_each_kind_is_listed_once_per_cluster() -> None:
-    users: CountingLister = CountingLister(names_by_url=set())
+    users: CountingLister = CountingLister(url_name_pairs=set())
     names: list[RequestedName] = [
         RequestedName(kind="user", name=name) for name in ("app", "report", "audit")
     ]
 
-    availability(database_names_by_url=set(), user_lister=users).taken_names(clusters=[C1, C2], names=names)
+    availability(database_url_name_pairs=set(), user_lister=users).taken_names(clusters=[C1, C2], names=names)
 
     assert users.calls == 2
 
 
 def test_a_name_is_looked_up_only_among_its_own_kind() -> None:
     checked: NameAvailability = availability(
-        database_names_by_url={("https://c1", "app")}, user_lister=CountingLister(names_by_url=set())
+        database_url_name_pairs={("https://c1", "app")}, user_lister=CountingLister(url_name_pairs=set())
     )
 
     assert checked.taken_names(clusters=[C1], names=NAMES) == []
@@ -104,5 +104,6 @@ def test_a_name_is_looked_up_only_among_its_own_kind() -> None:
 def test_a_taken_name_refuses_the_request() -> None:
     with pytest.raises(expected_exception=NameTakenError):
         availability(
-            database_names_by_url={("https://c1", "orders")}, user_lister=CountingLister(names_by_url=set())
+            database_url_name_pairs={("https://c1", "orders")},
+            user_lister=CountingLister(url_name_pairs=set()),
         ).ensure_free(clusters=[C1], names=NAMES)

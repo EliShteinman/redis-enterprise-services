@@ -13,8 +13,12 @@ class CreationNames:
             requested
             for user in request.users
             for requested in (
-                RequestedName(kind="acl", name=self._resource_names.acl(database=database, user=user.name)),
-                RequestedName(kind="role", name=self._resource_names.role(database=database, user=user.name)),
+                RequestedName(
+                    kind="acl", name=self._resource_names.acl_name(database=database, user=user.name)
+                ),
+                RequestedName(
+                    kind="role", name=self._resource_names.role_name(database=database, user=user.name)
+                ),
                 RequestedName(kind="user", name=user.name),
             )
         ]

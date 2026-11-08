@@ -14,24 +14,24 @@ class SiteClusterResolver:
         self._directory: ClusterDirectory = directory
         self._chooser: ClusterChooser = chooser
 
-    def resolve(self, *, site_target: SitePlacement) -> ClusterEntry:
-        candidates: list[ClusterEntry] = self._candidates(site_target=site_target)
+    def resolve(self, *, placement: SitePlacement) -> ClusterEntry:
+        candidates: list[ClusterEntry] = self._candidates(placement=placement)
         if not candidates:
-            message: str = f"no cluster is configured for {site_target.describe()}"
+            message: str = f"no cluster is configured for {placement.describe()}"
             logger.warning(msg=message)
             raise UnknownClusterError(message=message)
         chosen: ClusterEntry = (
-            self._chooser.choose(target=site_target, candidates=candidates)
-            if site_target.cluster.type == "generic"
+            self._chooser.choose(placement=placement, candidates=candidates)
+            if placement.cluster.type == "generic"
             else candidates[0]
         )
-        logger.info(msg=f"{site_target.describe()} resolves to cluster {chosen.name}")
+        logger.info(msg=f"{placement.describe()} resolves to cluster {chosen.name}")
         return chosen
 
-    def _candidates(self, *, site_target: SitePlacement) -> list[ClusterEntry]:
+    def _candidates(self, *, placement: SitePlacement) -> list[ClusterEntry]:
         at_site: list[ClusterEntry] = self._directory.of_type_at_site(
-            site_target=site_target, cluster_type=site_target.cluster.type
+            placement=placement, cluster_type=placement.cluster.type
         )
-        if site_target.cluster.type == "generic":
+        if placement.cluster.type == "generic":
             return at_site
-        return [cluster for cluster in at_site if cluster.name == site_target.cluster.name]
+        return [cluster for cluster in at_site if cluster.name == placement.cluster.name]
