@@ -9,7 +9,7 @@
 
 ## 1. המסלול
 
-![קבלה](../diagrams/12-flow-admission.drawio.svg)
+![קבלה](../diagrams/12-flow-find-or-start.drawio.svg)
 
 ```
 POST /v1/databases/create
