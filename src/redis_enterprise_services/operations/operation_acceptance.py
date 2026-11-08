@@ -38,7 +38,7 @@ class OperationAcceptance:
             self._runner.submit(
                 name=run.name, task=self._live.released_after(trace_id=trace_id, task=run.task)
             )
-        except BaseException:
+        except Exception:
             logger.critical(msg=f"{run.name} cannot run in the background", exc_info=True)
             self._live.release(trace_id=trace_id)
             self._store.save(
