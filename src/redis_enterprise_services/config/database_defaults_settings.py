@@ -10,9 +10,9 @@ from redis_enterprise_services.config.network_name import NetworkName
 class DefaultsMatch(ConfigModel):
     network: NetworkName | None = None
     environment: Environment | None = None
-    site: str | None = None
+    site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None
-    cluster: str | None = None
+    cluster: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def matches_on_something(self) -> Self:

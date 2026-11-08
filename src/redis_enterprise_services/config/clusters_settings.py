@@ -10,10 +10,10 @@ type ClusterType = Literal["generic", "dedicated"]
 
 
 class ClusterEntry(ConfigModel):
-    name: str
+    name: str = Field(min_length=1)
     network: NetworkName
     environment: Environment
-    site: str
+    site: str = Field(min_length=1)
     type: ClusterType
     api_url: str = Field(pattern=r"^https?://.*[^/]$")
 
