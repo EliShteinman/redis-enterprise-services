@@ -128,7 +128,7 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "above the cluster API, only the composition imports edge directly"
+name = "the listed packages do not import edge directly; of the layers above the cluster API, only app and the composition may"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.resources",
@@ -148,7 +148,7 @@ forbidden_modules = ["redis_enterprise_services.edge"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
-name = "only the composition imports the concrete edge client, cluster REST/polling classes, DatabaseRepository and Redis stores; the listed packages import their interfaces"
+name = "the listed packages import interfaces only: not the concrete edge client, cluster REST/polling classes, DatabaseRepository, or the Redis client, lock and stores"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.steps",

@@ -14,13 +14,13 @@ from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 VALIDATION_ERROR_CODE: str = "validation_error"
-FIELD_PATH_SEPARATOR: str = "."
+LOCATION_SEPARATOR: str = "."
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 def dotted_location(*, location: tuple[int | str, ...]) -> str:
-    return FIELD_PATH_SEPARATOR.join(str(part) for part in location)
+    return LOCATION_SEPARATOR.join(str(part) for part in location)
 
 
 async def service_error_handler(request: Request, error: RedisEnterpriseServicesError) -> Response:

@@ -1,6 +1,6 @@
 from fastapi.openapi.models import Example
 
-CREATION_EXAMPLES: dict[str, Example] = {
+CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
     "full": {
         "summary": "Every field: a sharded database with two users, on a named cluster",
         "description": "Every field the request accepts. Only target, spec.database.name and "

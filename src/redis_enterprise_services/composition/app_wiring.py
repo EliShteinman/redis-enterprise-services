@@ -64,7 +64,7 @@ class AppWiring:
             )
         )
         self.operation_heartbeat_thread: PeriodicThread = PeriodicThread(
-            name="heartbeat",
+            name="operation heartbeat",
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
             task=operation_heartbeats.mark_tracked_alive,
         )

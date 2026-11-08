@@ -19,9 +19,9 @@ router: APIRouter = APIRouter(
 @router.get(path="/v1/operations/{trace_id}", response_model=Operation)
 def get_operation(
     trace_id: Annotated[str, Depends(dependency=checked_trace_id)],
-    store: Annotated[OperationStore, Depends(dependency=operation_store_from_app_state)],
+    operation_store: Annotated[OperationStore, Depends(dependency=operation_store_from_app_state)],
 ) -> JSONResponse:
-    operation: Operation | None = store.find(trace_id=trace_id)
+    operation: Operation | None = operation_store.find(trace_id=trace_id)
     if operation is None:
         raise OperationNotFoundError(message=f"operation {trace_id} is not known")
     return JSONResponse(content=operation.model_dump(mode="json"))
