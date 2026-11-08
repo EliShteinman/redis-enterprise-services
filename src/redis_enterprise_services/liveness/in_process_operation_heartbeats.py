@@ -17,21 +17,21 @@ class InProcessOperationHeartbeats:
         with self._lock:
             self._tracked_trace_ids.add(trace_id)
 
-    def untrack_and_delete_heartbeat(self, *, trace_id: str) -> None:
+    def stop_heartbeat(self, *, trace_id: str) -> None:
         with self._lock:
             self._tracked_trace_ids.discard(trace_id)
             self._heartbeat_store.delete(trace_id=trace_id)
 
-    def untracking_and_deleting_heartbeat_when_done(
+    def stopping_heartbeat_when_done(
         self, *, trace_id: str, task: Callable[[], object]
     ) -> Callable[[], object]:
-        def run_then_untrack_and_delete_heartbeat() -> object:
+        def run_then_stop_heartbeat() -> object:
             try:
                 return task()
             finally:
-                self.untrack_and_delete_heartbeat(trace_id=trace_id)
+                self.stop_heartbeat(trace_id=trace_id)
 
-        return run_then_untrack_and_delete_heartbeat
+        return run_then_stop_heartbeat
 
     def mark_tracked_alive(self) -> None:
         with self._lock:
