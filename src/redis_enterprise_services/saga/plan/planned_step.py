@@ -2,11 +2,11 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
+from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.context import SagaContext
-from redis_enterprise_services.saga.plan.prepared_step import PreparedPlannedStep
-from redis_enterprise_services.saga.plan.runnable import PreparedStep, RunnableStep
+from redis_enterprise_services.saga.plan.prepared_saga_step import PreparedSagaStep
+from redis_enterprise_services.saga.plan.step_protocols import PreparedStep, RunnableStep
 
 
 class BuildInput[TInput](Protocol):
@@ -28,6 +28,6 @@ class PlannedStep[TInput: BaseModel, TResult: BaseModel](RunnableStep):
         return self._step.kind
 
     def prepare(self, *, context: SagaContext) -> PreparedStep:
-        return PreparedPlannedStep(
+        return PreparedSagaStep(
             key=self._key, step=self._step, step_input=self._build_input(context=context), context=context
         )

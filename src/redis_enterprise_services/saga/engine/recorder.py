@@ -1,18 +1,18 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.saga.contract.models import (
+from redis_enterprise_services.saga.contract.saga_record import (
     ObtainedBy,
     SagaRecord,
     StepError,
     StepRecord,
     StepStatus,
 )
-from redis_enterprise_services.saga.contract.state import SagaStateRepository
+from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordWriter
 
 
 class StepRecorder:
-    def __init__(self, *, state: SagaStateRepository, record: SagaRecord, step: StepRecord) -> None:
-        self._state: SagaStateRepository = state
+    def __init__(self, *, records: SagaRecordWriter, record: SagaRecord, step: StepRecord) -> None:
+        self._records: SagaRecordWriter = records
         self._record: SagaRecord = record
         self._step: StepRecord = step
 
@@ -20,19 +20,19 @@ class StepRecorder:
         self._step.step_input = step_input
         self._mark(status=StepStatus.RUNNING)
 
-    def kept(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
+    def result_kept(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
         self._step.result = result
         self._step.obtained_by = obtained_by
-        self._state.save(record=self._record)
+        self._records.save(record=self._record)
 
     def result_forgotten(self) -> None:
         self._step.result = None
         self._step.obtained_by = None
-        self._state.save(record=self._record)
+        self._records.save(record=self._record)
 
-    def failed_attempt(self, *, error: StepError) -> None:
+    def attempt_failed(self, *, error: StepError) -> None:
         self._step.error = error
-        self._state.save(record=self._record)
+        self._records.save(record=self._record)
 
     def done(self) -> None:
         self._step.error = None
@@ -56,4 +56,4 @@ class StepRecorder:
 
     def _mark(self, *, status: StepStatus) -> None:
         self._step.status = status
-        self._state.save(record=self._record)
+        self._records.save(record=self._record)

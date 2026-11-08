@@ -86,13 +86,13 @@ PlannedStep(
 
 ## 4. המנוע
 
-`SagaExecutor.run(saga_id, plan, before_start)`:
+`SagaExecutor.run(saga_id, plan, check_before_start)`:
 
 1. **נועל** את כל מפתחות הנעילה של התוכנית (סעיף 6). תפוס ⇐ מחכה עד `state.lock.wait_timeout_seconds` (30), ואז
    `ResourcesLockedError`.
-2. **`before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
+2. **`check_before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
-3. **מוודא שהנעילה עדיין שלו** (`DatabaseLock.confirm`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
+3. **מוודא שהנעילה עדיין שלו** (`SagaLock.confirm`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
    הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `ResourcesLockedError`.
 4. **לכל צעד:** בונה קלט, שומר `running`, מריץ `execute`. הצליח ⇐ `done`. נכשל ⇐ לפי המיון (סעיף 5).
 5. **צעד נכשל:** מבטל בסדר הפוך כל צעד `COMPENSATABLE` שיש לו תוצאה.
@@ -124,7 +124,7 @@ PlannedStep(
 | **לא ידועה** | כל שגיאה אחרת של שירות הקצה או של התקשורת אליו; timeout של המתנה; תשובה שלא נקראת | `find_outcome` פעם אחת. נמצא ⇐ `done`. לא נמצא, אין תוצאה שמורה ונשארו ניסיונות ⇐ ניסיון חוזר אחד, וכל כישלון אחריו ⇐ התערבות ידנית. לא נמצא ויש תוצאה שמורה, או שזה היה הניסיון האחרון ⇐ התערבות ידנית |
 | **ידנית** | `DuplicateResourceNameError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
 
-- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_lookup`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`DuplicateResourceNameError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
+- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_find_outcome_error`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`DuplicateResourceNameError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
 - **אחרי תוצאה לא ידועה, כל מה שאינו הצלחה ⇐ התערבות ידנית.** הבקשה הראשונה אולי עוד תגיע לקלאסטר.
 - **"לא נשלח" לא אמין:** חיבור מוצפן שנשבר אחרי השליחה נראה כמו כישלון התחברות. לכן גם שירות קצה שלא זמין הוא
   תוצאה לא ידועה, וה-Saga עובר להתערבות ידנית עם הנעילה, ולא מבטל לבד.
@@ -290,7 +290,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
-| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `Failure`, `FailureClassifier`, `DatabaseLock`, `SagaStateRepository`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
+| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `Failure`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
 | `saga/plan/` | `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |

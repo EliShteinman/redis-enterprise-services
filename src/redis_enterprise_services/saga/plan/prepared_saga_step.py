@@ -1,13 +1,13 @@
 from pydantic import BaseModel, JsonValue
 
-from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.models import ObtainedBy
+from redis_enterprise_services.saga.contract.saga_record import ObtainedBy
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
+from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.context import SagaContext
-from redis_enterprise_services.saga.plan.runnable import OnKept, PreparedStep
+from redis_enterprise_services.saga.plan.step_protocols import OnResultKept, PreparedStep
 
 
-class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
+class PreparedSagaStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
     def __init__(
         self, *, key: str, step: SagaStep[TInput, TResult], step_input: TInput, context: SagaContext
     ) -> None:
@@ -38,7 +38,7 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
     def obtained_by(self) -> ObtainedBy | None:
         return self._obtained_by
 
-    def execute(self, *, on_kept: OnKept) -> None:
+    def execute(self, *, on_kept: OnResultKept) -> None:
         self._step.execute(
             step_input=self._input,
             keep_result=lambda result: self._keep(
@@ -46,7 +46,7 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
             ),
         )
 
-    def resolve(self, *, on_kept: OnKept) -> bool:
+    def find_outcome(self, *, on_kept: OnResultKept) -> bool:
         found: TResult | None = self._step.find_outcome(
             step_input=self._input,
             kept=self._result,
@@ -68,7 +68,7 @@ class PreparedPlannedStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         self._obtained_by = None
         self._context.forget(key=self._key)
 
-    def _keep(self, *, result: TResult, obtained_by: ObtainedBy, on_kept: OnKept) -> None:
+    def _keep(self, *, result: TResult, obtained_by: ObtainedBy, on_kept: OnResultKept) -> None:
         if self._result is not None:
             return
         self._result = result
