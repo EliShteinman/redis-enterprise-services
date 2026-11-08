@@ -25,6 +25,11 @@ class StepRecorder:
         self._step.obtained_by = obtained_by
         self._state.save(record=self._record)
 
+    def result_forgotten(self) -> None:
+        self._step.result = None
+        self._step.obtained_by = None
+        self._state.save(record=self._record)
+
     def failed_attempt(self, *, error: StepError) -> None:
         self._step.error = error
         self._state.save(record=self._record)

@@ -414,6 +414,28 @@ def test_a_transient_error_after_a_kept_result_that_is_not_found_is_retried(
     assert (record.status, step.executed) == (SagaStatus.SUCCEEDED, 2)
 
 
+def test_a_step_run_again_after_its_kept_result_was_not_found_keeps_the_new_result(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(journal=journal, executions=["keep then busy", "keep"], outcomes=[None])
+
+    record: SagaRecord = run(steps=[planned(step=step, name="a")], state=state, lock=lock)
+
+    assert record.steps[0].result == FakeResult(name="a", attempt=2).model_dump(mode="json")
+
+
+def test_a_pivot_whose_kept_result_is_not_found_after_a_busy_cluster_is_not_run_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, kind=StepKind.PIVOT, executions=["keep then busy", "keep"], outcomes=[None]
+    )
+
+    run(steps=[planned(step=step, name="p")], state=state, lock=lock)
+
+    assert step.executed == 1
+
+
 @pytest.mark.parametrize(argnames="failing", argvalues=["keep then rejected", "keep then unknown"])
 def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock, failing: str
@@ -478,6 +500,22 @@ def test_a_locked_database_runs_no_step(journal: list[str], state: MemoryState) 
         )
 
     assert journal == []
+
+
+def test_an_unexpected_error_while_building_an_input_names_that_step(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    def broken_input(context: SagaContext) -> FakeInput:
+        raise ValueError("bug")
+
+    with pytest.raises(expected_exception=ValueError):
+        run(
+            steps=[planned(step=FakeStep(journal=journal), name="a", build=broken_input)],
+            state=state,
+            lock=lock,
+        )
+
+    assert state.saved is not None and state.saved.stopped_at == "a"
 
 
 def test_an_unexpected_error_needs_manual_intervention_and_keeps_the_lock(
