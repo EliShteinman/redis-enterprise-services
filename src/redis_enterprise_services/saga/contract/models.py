@@ -65,3 +65,4 @@ class SagaRecord(BaseModel):
         for step in self.steps:
             if step.status is StepStatus.RUNNING:
                 step.status = StepStatus.UNRESOLVED
+                self.stopped_at = self.stopped_at or step.key
