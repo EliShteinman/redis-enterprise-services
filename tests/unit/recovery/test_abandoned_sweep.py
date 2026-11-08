@@ -69,6 +69,7 @@ def test_a_running_saga_is_stopped_for_manual_intervention() -> None:
     argvalues=[
         (SagaStatus.SUCCEEDED, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
         (SagaStatus.ROLLED_BACK, OperationStatus.ROLLED_BACK),
+        (SagaStatus.REQUIRES_MANUAL_INTERVENTION, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
 def test_an_ended_saga_is_left_as_it_is(saga_status: SagaStatus, operation_status: OperationStatus) -> None:
