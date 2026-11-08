@@ -4,7 +4,6 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
 from redis_enterprise_services.state.redis_keys import RedisKeys
@@ -62,7 +61,7 @@ class RedisOperationStore(OperationStore):
             member=operation.trace_id,
             record_json=operation.model_dump_json(),
             ttl_seconds=finished_ttl_or_keep_open(
-                has_ended=operation.status in EXPIRING_STATUSES,
+                has_ended_cleanly=operation.has_ended_cleanly(),
                 finished_ttl_seconds=self._finished_ttl_seconds,
             ),
         )

@@ -25,13 +25,14 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
         logger.debug(msg=f"saga {record.saga_id} saved")
 
     def save_final(self, *, record: SagaRecord) -> None:
+        ended_cleanly: bool = record.has_ended_cleanly()
         self._write(
             record=record,
             ttl_seconds=finished_ttl_or_keep_open(
-                has_ended=record.has_ended_cleanly(), finished_ttl_seconds=self._finished_ttl_seconds
+                has_ended_cleanly=ended_cleanly, finished_ttl_seconds=self._finished_ttl_seconds
             ),
         )
-        log_final_save(record=record)
+        log_final_save(record=record, ended_cleanly=ended_cleanly)
 
     def find(self, *, saga_id: str) -> SagaRecord | None:
         stored: str | bytes | None = self._client.get(name=self._keys.saga_record(saga_id=saga_id))
@@ -50,8 +51,8 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
         )
 
 
-def log_final_save(*, record: SagaRecord) -> None:
-    if record.has_ended_cleanly():
+def log_final_save(*, record: SagaRecord, ended_cleanly: bool) -> None:
+    if ended_cleanly:
         logger.info(msg=f"saga {record.saga_id} stored as {record.status.value}")
         return
     logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")

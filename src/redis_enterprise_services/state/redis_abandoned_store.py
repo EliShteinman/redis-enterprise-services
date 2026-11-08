@@ -6,7 +6,7 @@ from redis import Redis
 from redis.commands.core import Script
 
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
+from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
@@ -161,7 +161,7 @@ def finalize_script_args(
         operation.model_dump_json(),
         operation.trace_id,
         finished_ttl_or_keep_open(
-            has_ended=operation.status in EXPIRING_STATUSES, finished_ttl_seconds=finished_ttl_seconds
+            has_ended_cleanly=operation.has_ended_cleanly(), finished_ttl_seconds=finished_ttl_seconds
         ),
         NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
         OperationStatus.RUNNING.value,

@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Callable
 from typing import cast
 
 from redis import Redis
@@ -8,6 +7,7 @@ from redis.commands.core import Script
 from redis_enterprise_services.config.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError
 from redis_enterprise_services.saga.contract.saga_lock import SagaLock
+from redis_enterprise_services.state.lock_attempts import LockAttempts
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 
@@ -89,24 +89,6 @@ class RedisSagaLock(SagaLock):
 
     def _held_set_and_lock_keys(self, *, lock_keys: list[str], owner: str) -> list[str]:
         return [self._keys.held_locks(owner=owner), *(self._keys.lock(lock_key=key) for key in lock_keys)]
-
-
-class LockAttempts:
-    def __init__(self, *, lock_keys: list[str], try_acquire: Callable[[], str | None]) -> None:
-        self._lock_keys: list[str] = lock_keys
-        self._try_acquire: Callable[[], str | None] = try_acquire
-        self.last_holder: str | None = None
-
-    def acquired_now(self) -> bool:
-        holder: str | None = self._try_acquire()
-        if is_first_wait(holder=holder, last_holder=self.last_holder):
-            logger.warning(msg=f"{self._lock_keys} locked by {holder}, waiting")
-        self.last_holder = holder
-        return holder is None
-
-
-def is_first_wait(*, holder: str | None, last_holder: str | None) -> bool:
-    return holder is not None and last_holder is None
 
 
 def all_held_by(*, holders: list[str | None], owner: str) -> bool:
