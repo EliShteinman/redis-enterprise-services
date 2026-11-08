@@ -19,3 +19,9 @@ def test_a_list_whose_order_matters_is_not_the_same_in_another_order() -> None:
     stored: dict[str, JsonValue] = {"shard_key_regex": [{"regex": "b"}, {"regex": "a"}]}
 
     assert not same_values(stored=stored, wanted=wanted, unordered_fields=frozenset({"roles_permissions"}))
+
+
+def test_a_whole_number_sent_as_a_float_is_the_same_as_the_int_the_cluster_returns() -> None:
+    stored: dict[str, JsonValue] = {"memory_size": 100}
+
+    assert same_values(stored=stored, wanted={"memory_size": 100.0}, unordered_fields=frozenset())

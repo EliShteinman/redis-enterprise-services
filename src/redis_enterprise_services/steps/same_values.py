@@ -19,4 +19,14 @@ def same_field(*, stored: JsonValue, wanted: JsonValue, unordered: bool) -> bool
 
 
 def canonical(value: JsonValue) -> str:
-    return json.dumps(value, sort_keys=True)
+    return json.dumps(whole_numbers_as_int(value=value), sort_keys=True)
+
+
+def whole_numbers_as_int(*, value: JsonValue) -> JsonValue:
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [whole_numbers_as_int(value=item) for item in value]
+    if isinstance(value, dict):
+        return {key: whole_numbers_as_int(value=item) for key, item in value.items()}
+    return value
