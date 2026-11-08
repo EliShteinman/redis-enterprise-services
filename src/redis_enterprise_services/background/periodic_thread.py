@@ -5,11 +5,11 @@ from threading import Event, Thread
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class PeriodicTask:
-    def __init__(self, *, name: str, interval_seconds: float, action: Callable[[], None]) -> None:
+class PeriodicThread:
+    def __init__(self, *, name: str, interval_seconds: float, task: Callable[[], None]) -> None:
         self._name: str = name
         self._interval_seconds: float = interval_seconds
-        self._action: Callable[[], None] = action
+        self._task: Callable[[], None] = task
         self._stop_requested: Event = Event()
         self._thread: Thread = Thread(target=self._run, name=name, daemon=True)
 
@@ -25,7 +25,7 @@ class PeriodicTask:
     def _run(self) -> None:
         while not self._stop_requested.wait(timeout=self._interval_seconds):
             try:
-                self._action()
+                self._task()
             except Exception:
                 logger.exception(
                     msg=f"{self._name} failed, it runs again in {self._interval_seconds} seconds"

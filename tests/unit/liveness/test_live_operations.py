@@ -12,24 +12,26 @@ def failing_task() -> object:
 
 
 def test_an_untracked_operation_gets_no_more_heartbeats() -> None:
-    store: MagicMock = create_autospec(spec=HeartbeatStore, instance=True)
-    live: LiveOperations = LiveOperations(store=store)
-    live.track(trace_id="trace-1")
-    live.track(trace_id="trace-2")
-    live.untrack(trace_id="trace-1")
+    heartbeat_store: MagicMock = create_autospec(spec=HeartbeatStore, instance=True)
+    live_operations: LiveOperations = LiveOperations(heartbeat_store=heartbeat_store)
+    live_operations.track(trace_id="trace-1")
+    live_operations.track(trace_id="trace-2")
+    live_operations.untrack_and_delete_heartbeat(trace_id="trace-1")
 
-    live.beat_all()
+    live_operations.refresh_heartbeats()
 
-    store.refresh.assert_called_with(trace_ids=["trace-2"])
+    heartbeat_store.refresh.assert_called_with(trace_ids=["trace-2"])
 
 
 def test_an_operation_is_untracked_when_its_task_fails() -> None:
-    store: MagicMock = create_autospec(spec=HeartbeatStore, instance=True)
-    live: LiveOperations = LiveOperations(store=store)
-    live.track(trace_id="trace-1")
-    task: Callable[[], object] = live.untracked_when_done(trace_id="trace-1", task=failing_task)
+    heartbeat_store: MagicMock = create_autospec(spec=HeartbeatStore, instance=True)
+    live_operations: LiveOperations = LiveOperations(heartbeat_store=heartbeat_store)
+    live_operations.track(trace_id="trace-1")
+    untracking_task: Callable[[], object] = live_operations.untracking_when_done(
+        trace_id="trace-1", task=failing_task
+    )
 
     with pytest.raises(expected_exception=RuntimeError):
-        task()
+        untracking_task()
 
-    store.delete.assert_called_once_with(trace_id="trace-1")
+    heartbeat_store.delete.assert_called_once_with(trace_id="trace-1")

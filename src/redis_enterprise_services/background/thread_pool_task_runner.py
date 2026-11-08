@@ -16,7 +16,9 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
     def submit(self, *, name: str, task: Callable[[], object]) -> None:
         context: Context = copy_context()
         future: Future[object] = self._pool.submit(context.run, task)
-        future.add_done_callback(lambda future: context.run(log_unsuccessful_end, name=name, future=future))
+        future.add_done_callback(
+            lambda finished_future: context.run(log_unsuccessful_end, name=name, future=finished_future)
+        )
         logger.info(msg=f"{name} runs in the background")
 
     def shutdown(self) -> None:
