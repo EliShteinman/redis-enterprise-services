@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveFloat, PositiveInt, SecretStr
 
+from redis_enterprise_services.config.port import Port
+
 
 class LockSettings(BaseModel):
     wait_timeout_seconds: NonNegativeInt
@@ -8,7 +10,7 @@ class LockSettings(BaseModel):
 
 class StateSettings(BaseModel):
     host: str
-    port: PositiveInt
+    port: Port
     username: str
     password: SecretStr = Field(min_length=1)
     prefix: str = Field(min_length=1)
