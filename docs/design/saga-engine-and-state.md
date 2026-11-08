@@ -240,7 +240,7 @@ PlannedStep(
 ![זיהוי קריסה](../diagrams/17-flow-heartbeat-and-abandoned-sweep.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
-כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
+כשהיא מחכה בתור. `InProcessOperationHeartbeats` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
 לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
@@ -294,7 +294,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
-| `liveness/` | `LiveOperations`, `HeartbeatStore` | |
+| `liveness/` | `InProcessOperationHeartbeats`, `HeartbeatStore` | |
 | `recovery/` | `AbandonedSweep`, `AbandonedStore` | |
 | `state/` | המימושים ב-Redis של כל הממשקים | |
 

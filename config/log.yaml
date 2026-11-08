@@ -5,7 +5,7 @@ log:
     otelTraceID: "0"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
   stream: ext://sys.stdout
-  server_loggers:
+  root_propagating_loggers:
     - uvicorn
     - uvicorn.error
     - uvicorn.access
