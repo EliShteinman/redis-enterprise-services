@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import AfterValidator, BaseModel, Field
 
 from redis_enterprise_services.config.network_name import NetworkName
 
@@ -14,7 +14,7 @@ class ClusterEntry(BaseModel):
     environment: Environment
     site: str
     type: ClusterType
-    api_url: str
+    api_url: str = Field(pattern=r"^https?://.*[^/]$")
 
 
 def unique_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]:
