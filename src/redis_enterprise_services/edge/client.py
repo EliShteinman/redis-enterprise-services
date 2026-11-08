@@ -29,6 +29,7 @@ class EdgeClient:
                 headers=self._headers.build(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
+                allow_redirects=False,
                 verify=False,  # noqa: S501
             )
         except requests.RequestException as error:
