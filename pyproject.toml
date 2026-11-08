@@ -55,3 +55,110 @@ addopts = ["--import-mode=importlib"]
 include = ["src", "tests"]
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.importlinter]
+root_package = "redis_enterprise_services"
+
+[[tool.importlinter.contracts]]
+name = "every top-level package has a place in the layers (a new package fails until it is added); packages joined by | do not import each other"
+type = "layers"
+containers = ["redis_enterprise_services"]
+exhaustive = true
+layers = [
+    "app",
+    "composition",
+    "api",
+    "creation",
+    "planning",
+    "steps | state",
+    "users | roles | acls | databases",
+    "resources",
+    "cluster",
+    "edge",
+    "connection",
+    "recovery",
+    "saga | operations",
+    "logger | telemetry | timing | background | liveness",
+    "config | exceptions",
+]
+
+[[tool.importlinter.contracts]]
+name = "saga folders: engine over plan over contract"
+type = "layers"
+layers = [
+    "redis_enterprise_services.saga.engine",
+    "redis_enterprise_services.saga.plan",
+    "redis_enterprise_services.saga.contract",
+]
+
+[[tool.importlinter.contracts]]
+name = "repositories and transport do not know the saga"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.edge",
+    "redis_enterprise_services.cluster",
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+]
+forbidden_modules = ["redis_enterprise_services.saga"]
+
+[[tool.importlinter.contracts]]
+name = "steps use only the saga contract"
+type = "forbidden"
+source_modules = ["redis_enterprise_services.steps"]
+forbidden_modules = ["redis_enterprise_services.saga.engine", "redis_enterprise_services.saga.plan"]
+
+[[tool.importlinter.contracts]]
+name = "the state store uses only the saga contract, and nothing of the clusters"
+type = "forbidden"
+source_modules = ["redis_enterprise_services.state"]
+forbidden_modules = [
+    "redis_enterprise_services.saga.engine",
+    "redis_enterprise_services.saga.plan",
+    "redis_enterprise_services.edge",
+    "redis_enterprise_services.cluster",
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+]
+
+[[tool.importlinter.contracts]]
+name = "above the cluster API, nothing imports the transport directly"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.resources",
+    "redis_enterprise_services.databases",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+    "redis_enterprise_services.steps",
+    "redis_enterprise_services.api",
+]
+forbidden_modules = ["redis_enterprise_services.edge"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "layers use interfaces; only the app builds the concrete classes"
+type = "forbidden"
+source_modules = [
+    "redis_enterprise_services.steps",
+    "redis_enterprise_services.users",
+    "redis_enterprise_services.roles",
+    "redis_enterprise_services.acls",
+    "redis_enterprise_services.api",
+]
+forbidden_modules = [
+    "redis_enterprise_services.edge.client",
+    "redis_enterprise_services.cluster.api",
+    "redis_enterprise_services.cluster.actions",
+    "redis_enterprise_services.resources.endpoint",
+    "redis_enterprise_services.databases.repository",
+    "redis_enterprise_services.databases.active_waiter",
+    "redis_enterprise_services.databases.lifecycle",
+]
+allow_indirect_imports = true
