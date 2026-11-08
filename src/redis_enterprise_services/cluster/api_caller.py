@@ -2,11 +2,11 @@ from typing import Protocol
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
-from redis_enterprise_services.connection.models import HttpMethod
+from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster_access.models import HttpMethod
 
 
-class ClusterCaller(Protocol):
+class ClusterApiCaller(Protocol):
     def send(
         self,
         *,
@@ -16,4 +16,4 @@ class ClusterCaller(Protocol):
         query: str | None = None,
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
-    ) -> ClusterAnswer: ...
+    ) -> SuccessfulClusterResponse: ...

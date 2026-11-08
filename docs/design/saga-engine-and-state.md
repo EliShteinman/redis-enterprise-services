@@ -44,7 +44,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 - **`step_input` ו-`result` הם מודלי Pydantic,** ועותק שלהם נשמר ב-record. המנוע מחזיק את האובייקטים בזיכרון; ה-record
   לא נקרא בחזרה כדי להמשיך ריצה.
 - **`step_input` מחזיק רק כתובת קלאסטר** (רשת ו-URL), בלי פרטי גישה. הצעד מקבל אותם בזמן הריצה מ-
-  `ClusterCredentialsProvider`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsProvider` נותן את אותם פרטי admin
+  `ClusterTargetResolver`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin
   לכל קלאסטר.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה לסיום הפעולה בקלאסטר. צעד שיש לו תוצאה מבוטל גם אם לא הגיע
   ל-`done`. רק ה-`keep_result` הראשון של צעד נשמר, כך שניסיון חוזר לא מחליף snapshot.

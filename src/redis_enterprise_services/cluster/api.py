@@ -2,17 +2,17 @@ from http import HTTPStatus
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.caller import ClusterCaller
+from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.json_body import string_field
-from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
-from redis_enterprise_services.cluster.transport import EdgeTransport
+from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster_access.models import HttpMethod
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
-from redis_enterprise_services.connection.models import HttpMethod
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 
 
-class ClusterApi(ClusterCaller):
+class ClusterApi(ClusterApiCaller):
     def __init__(self, *, transport: EdgeTransport, settings: ClusterApiSettings) -> None:
         self._transport: EdgeTransport = transport
         self._settings: ClusterApiSettings = settings
@@ -26,7 +26,7 @@ class ClusterApi(ClusterCaller):
         query: str | None = None,
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
-    ) -> ClusterAnswer:
+    ) -> SuccessfulClusterResponse:
         url: str = target.api_url + path
         request: ClusterRequest = ClusterRequest(
             method=method,
@@ -37,10 +37,10 @@ class ClusterApi(ClusterCaller):
         )
         response: ClusterResponse = self._transport.send(network=target.network, request=request)
         if response.status_code >= HTTPStatus.MULTIPLE_CHOICES:
-            raise self._cluster_error(response=response)
-        return ClusterAnswer(body=response.body, cluster_state_id=response.cluster_state_id)
+            raise self._rejection_from(response=response)
+        return SuccessfulClusterResponse(body=response.body, cluster_state_id=response.cluster_state_id)
 
-    def _cluster_error(self, *, response: ClusterResponse) -> ClusterRejectedRequestError:
+    def _rejection_from(self, *, response: ClusterResponse) -> ClusterRejectedRequestError:
         return ClusterRejectedRequestError(
             message=f"cluster answered {response.status_code}: {response.body}",
             cluster_status_code=response.status_code,

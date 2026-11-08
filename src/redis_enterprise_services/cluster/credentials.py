@@ -1,14 +1,14 @@
 from typing import Protocol
 
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
-from redis_enterprise_services.connection.models import ClusterCredentials
+from redis_enterprise_services.cluster_access.models import ClusterCredentials
 
 
-class ClusterCredentialsProvider(Protocol):
+class ClusterTargetResolver(Protocol):
     def target_for(self, *, address: ClusterAddress) -> ClusterTarget: ...
 
 
-class SharedCredentialsProvider(ClusterCredentialsProvider):
+class SharedCredentialsTargetResolver(ClusterTargetResolver):
     def __init__(self, *, credentials: ClusterCredentials) -> None:
         self._credentials: ClusterCredentials = credentials
 

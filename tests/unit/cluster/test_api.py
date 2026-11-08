@@ -4,10 +4,10 @@ import pytest
 from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster.transport import EdgeTransport
+from redis_enterprise_services.cluster_access.models import ClusterCredentials
 from redis_enterprise_services.config.settings import load_settings
-from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 
@@ -18,7 +18,7 @@ TARGET: ClusterTarget = ClusterTarget(
 )
 
 
-def test_a_cluster_error_answer_keeps_the_cluster_status_and_error_code() -> None:
+def test_a_cluster_rejection_keeps_the_cluster_status_and_error_code() -> None:
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
     transport.send.return_value = ClusterResponse(
         status_code=409, headers={}, body={"error_code": "name_already_exists"}, cluster_state_id=None
@@ -35,7 +35,7 @@ def test_a_cluster_error_answer_keeps_the_cluster_status_and_error_code() -> Non
     )
 
 
-def test_a_redirect_answer_is_a_cluster_error() -> None:
+def test_a_redirect_answer_is_a_cluster_rejection() -> None:
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
     transport.send.return_value = ClusterResponse(
         status_code=302, headers={}, body=None, cluster_state_id=None

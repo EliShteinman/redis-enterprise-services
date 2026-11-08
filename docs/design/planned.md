@@ -149,8 +149,8 @@
 
 ## 8. פרטי גישה לכל קלאסטר
 
-היום `SharedCredentialsProvider` נותן את אותם פרטי admin לכל קלאסטר. ספק לכל קלאסטר יחליף אותו מאחורי
-`ClusterCredentialsProvider`, בלי שינוי בצעדים.
+היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin לכל קלאסטר. ספק לכל קלאסטר יחליף אותו מאחורי
+`ClusterTargetResolver`, בלי שינוי בצעדים.
 
 ---
 
