@@ -10,4 +10,4 @@ def poll_until(*, wait: WaitSettings, is_done: Callable[[], bool]) -> bool:
         if is_done():
             return True
         time.sleep(wait.interval_seconds)
-    return False
+    return is_done()
