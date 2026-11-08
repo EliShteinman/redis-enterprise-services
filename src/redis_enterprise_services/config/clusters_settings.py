@@ -1,14 +1,15 @@
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, Field
 
+from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.network_name import NetworkName
 
 type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
 
 
-class ClusterEntry(BaseModel):
+class ClusterEntry(ConfigModel):
     name: str
     network: NetworkName
     environment: Environment

@@ -1,9 +1,9 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class LoggingSettings(BaseModel):
+class LoggingSettings(ConfigModel):
     level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
     line_pattern: str
     date_format: str

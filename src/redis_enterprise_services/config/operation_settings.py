@@ -1,9 +1,11 @@
 from typing import Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import model_validator
+
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class OperationSettings(BaseModel):
+class OperationSettings(ConfigModel):
     public_error_codes: dict[str, str]
     cluster_error_codes: frozenset[str]
 
