@@ -1,7 +1,7 @@
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 
-MAX_LENGTH_RULE: str = "max_length"
+MAX_LENGTH_RULE_ID: str = "max_length"
 
 
 class MaxLengthRule:
@@ -12,5 +12,5 @@ class MaxLengthRule:
         if len(name) <= self._max_length:
             return None
         return NameViolation(
-            rule=MAX_LENGTH_RULE, message=f"{name} is longer than {self._max_length} characters"
+            rule_id=MAX_LENGTH_RULE_ID, message=f"{name} is longer than {self._max_length} characters"
         )

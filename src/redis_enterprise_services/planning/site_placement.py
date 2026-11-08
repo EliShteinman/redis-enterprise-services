@@ -21,7 +21,7 @@ class ClusterChoice(BaseModel):
     )
 
     @model_validator(mode="after")
-    def name_only_for_dedicated(self) -> Self:
+    def require_name_exactly_when_dedicated(self) -> Self:
         if (self.type == "dedicated") != (self.name is not None):
             raise ValueError("a dedicated cluster has a name, and a generic one does not")
         return self

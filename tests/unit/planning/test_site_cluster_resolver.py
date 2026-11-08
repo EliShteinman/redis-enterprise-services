@@ -46,7 +46,7 @@ def resolver(*, clusters: list[ConfiguredCluster]) -> SiteClusterResolver:
     )
 
 
-def test_a_dedicated_cluster_is_found_by_all_four_parts() -> None:
+def test_a_dedicated_cluster_must_match_name_type_environment_and_site() -> None:
     wanted: ConfiguredCluster = cluster(name="orders", cluster_type="dedicated")
     clusters: list[ConfiguredCluster] = [
         cluster(name="orders", cluster_type="dedicated", environment="DEV"),
@@ -61,14 +61,14 @@ def test_a_dedicated_cluster_is_found_by_all_four_parts() -> None:
     )
 
 
-def test_a_generic_target_takes_the_only_generic_cluster_at_the_site() -> None:
+def test_a_generic_placement_takes_the_only_generic_cluster_at_the_site() -> None:
     generic: ConfiguredCluster = cluster(name="c1")
     clusters: list[ConfiguredCluster] = [cluster(name="orders", cluster_type="dedicated"), generic]
 
     assert resolver(clusters=clusters).resolve(placement=placement()) == generic
 
 
-def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser() -> None:
+def test_a_generic_placement_leaves_the_choice_among_its_candidates_to_the_chooser() -> None:
     last: ConfiguredCluster = cluster(name="c2")
     directory: ClusterDirectory = ClusterDirectory(clusters=[cluster(name="c1"), last])
 
@@ -80,15 +80,15 @@ def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser(
 
 
 @pytest.mark.parametrize(
-    argnames="wanted",
+    argnames="requested_placement",
     argvalues=[
         pytest.param(placement(), id="generic"),
         pytest.param(placement(cluster_type="dedicated", name="orders"), id="dedicated"),
     ],
 )
-def test_a_target_without_a_configured_cluster_is_unknown(wanted: SitePlacement) -> None:
+def test_a_placement_without_a_configured_cluster_is_refused(requested_placement: SitePlacement) -> None:
     with pytest.raises(expected_exception=NoMatchingClusterError):
-        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(placement=wanted)
+        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(placement=requested_placement)
 
 
 def test_several_generic_clusters_at_a_site_cannot_be_chosen_yet() -> None:

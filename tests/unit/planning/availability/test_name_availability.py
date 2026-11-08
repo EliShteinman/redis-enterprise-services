@@ -65,18 +65,20 @@ def test_names_missing_from_every_cluster_are_free() -> None:
     assert (
         availability(
             database_url_name_pairs=set(), user_lister=CountingLister(url_name_pairs=set())
-        ).taken_names(clusters=[C1, C2], names=NAMES)
+        ).find_taken_names(clusters=[C1, C2], names=NAMES)
         == []
     )
 
 
 def test_each_taken_name_is_reported_with_its_cluster() -> None:
-    checked: NameAvailability = availability(
+    name_availability: NameAvailability = availability(
         database_url_name_pairs={("https://c2", "orders")},
         user_lister=CountingLister(url_name_pairs={("https://c1", "app")}),
     )
 
-    assert [name.describe() for name in checked.taken_names(clusters=[C1, C2], names=NAMES)] == [
+    assert [
+        name.describe() for name in name_availability.find_taken_names(clusters=[C1, C2], names=NAMES)
+    ] == [
         "user app exists on c1",
         "database orders exists on c2",
     ]
@@ -88,17 +90,19 @@ def test_each_kind_is_listed_once_per_cluster() -> None:
         RequestedName(kind="user", name=name) for name in ("app", "report", "audit")
     ]
 
-    availability(database_url_name_pairs=set(), user_lister=users).taken_names(clusters=[C1, C2], names=names)
+    availability(database_url_name_pairs=set(), user_lister=users).find_taken_names(
+        clusters=[C1, C2], names=names
+    )
 
     assert users.calls == 2
 
 
 def test_a_name_is_looked_up_only_among_its_own_kind() -> None:
-    checked: NameAvailability = availability(
+    name_availability: NameAvailability = availability(
         database_url_name_pairs={("https://c1", "app")}, user_lister=CountingLister(url_name_pairs=set())
     )
 
-    assert checked.taken_names(clusters=[C1], names=NAMES) == []
+    assert name_availability.find_taken_names(clusters=[C1], names=NAMES) == []
 
 
 def test_a_taken_name_refuses_the_request() -> None:
@@ -106,4 +110,4 @@ def test_a_taken_name_refuses_the_request() -> None:
         availability(
             database_url_name_pairs={("https://c1", "orders")},
             user_lister=CountingLister(url_name_pairs=set()),
-        ).ensure_free(clusters=[C1], names=NAMES)
+        ).find_taken_and_raise_if_any(clusters=[C1], names=NAMES)

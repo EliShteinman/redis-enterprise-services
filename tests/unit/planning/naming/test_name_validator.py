@@ -25,11 +25,13 @@ CONTEXT: NamingContext = NamingContext(
 class EndsWithSiteRule:
     def violation(self, *, name: str, context: NamingContext) -> NameViolation | None:
         site: str = context.sites[0].site
-        return None if name.endswith(site) else NameViolation(rule="site_suffix", message=f"ends with {site}")
+        return (
+            None if name.endswith(site) else NameViolation(rule_id="site_suffix", message=f"ends with {site}")
+        )
 
 
 @pytest.mark.parametrize(
-    argnames=("name", "rules"),
+    argnames=("name", "violated_rule_ids"),
     argvalues=[
         pytest.param("orders-1", [], id="valid"),
         pytest.param("orders-123", [], id="exactly the max length"),
@@ -38,16 +40,16 @@ class EndsWithSiteRule:
         pytest.param("orders_12345", ["pattern", "max_length"], id="every broken rule is reported"),
     ],
 )
-def test_the_configured_rules_report_each_violation(name: str, rules: list[str]) -> None:
+def test_the_configured_rules_report_each_violation(name: str, violated_rule_ids: list[str]) -> None:
     assert [
-        violation.rule for violation in NameValidator(rules=RULES).violations(name=name, context=CONTEXT)
-    ] == rules
+        violation.rule_id for violation in NameValidator(rules=RULES).violations(name=name, context=CONTEXT)
+    ] == violated_rule_ids
 
 
 def test_an_added_rule_judges_the_name_by_its_context() -> None:
     validator: NameValidator = NameValidator(rules=[*RULES, EndsWithSiteRule()])
 
-    assert [violation.rule for violation in validator.violations(name="orders-la", context=CONTEXT)] == [
+    assert [violation.rule_id for violation in validator.violations(name="orders-la", context=CONTEXT)] == [
         "site_suffix"
     ]
 

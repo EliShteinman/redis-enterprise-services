@@ -1,7 +1,7 @@
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 
 
-class UserResourceNames:
+class UserResourceNaming:
     def __init__(self, *, settings: UserResourcesSettings) -> None:
         self._settings: UserResourcesSettings = settings
 

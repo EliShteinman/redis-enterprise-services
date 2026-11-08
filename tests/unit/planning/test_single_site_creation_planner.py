@@ -5,12 +5,12 @@ from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSe
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.database_creation_request import (
-    DatabaseCreationRequest,
-    DatabaseUserRequest,
+from redis_enterprise_services.planning.database_spec import (
+    DatabaseSpec,
+    DatabaseUserSpec,
 )
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
-from redis_enterprise_services.planning.user_resource_names import UserResourceNames
+from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -48,7 +48,7 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
         action_uid="action_uid",
         roles_permissions="roles_permissions",
     ),
-    resource_names=UserResourceNames(settings=USER_RESOURCES),
+    resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     create_database=IdleStep(),
     create_acl=IdleStep(),
     create_role=IdleStep(),
@@ -59,20 +59,26 @@ CLUSTER: ConfiguredCluster = ConfiguredCluster(
     name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
 )
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
-USERS: list[DatabaseUserRequest] = [
-    DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*"),
-    DatabaseUserRequest(name="report", password="p2", acl_rule="+@read ~orders:*"),
+USERS: list[DatabaseUserSpec] = [
+    DatabaseUserSpec(name="app", password="p1", acl_rule="+@all ~orders:*"),
+    DatabaseUserSpec(name="report", password="p2", acl_rule="+@read ~orders:*"),
 ]
-UIDS: dict[str, int] = {"database": 7, "acl/app": 11, "role/app": 12, "acl/report": 21, "role/report": 22}
+CREATED_UIDS_BY_STEP_KEY: dict[str, int] = {
+    "database": 7,
+    "acl/app": 11,
+    "role/app": 12,
+    "acl/report": 21,
+    "role/report": 22,
+}
 
 
-def plan(*, users: list[DatabaseUserRequest]) -> SagaPlan:
+def plan(*, users: list[DatabaseUserSpec]) -> SagaPlan:
     return PLANNER.plan(cluster=CLUSTER, database=DATABASE, users=users)
 
 
-def inputs_after_earlier_steps() -> dict[str, JsonValue]:
+def step_inputs_by_key() -> dict[str, JsonValue]:
     step_results: StepResults = StepResults()
-    for key, uid in UIDS.items():
+    for key, uid in CREATED_UIDS_BY_STEP_KEY.items():
         step_results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None))
     return {step.key: step.prepare(step_results=step_results).step_input for step in plan(users=USERS).steps}
 
@@ -99,28 +105,28 @@ def test_the_plan_locks_the_database_and_user_names_on_its_cluster() -> None:
 
 
 def test_each_acl_is_named_from_the_config_and_carries_the_requested_rules() -> None:
-    assert inputs_after_earlier_steps()["acl/report"] == {
+    assert step_inputs_by_key()["acl/report"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
         "spec": {"name": "orders-report-acl", "acl": "+@read ~orders:*"},
     }
 
 
 def test_each_role_is_limited_to_the_new_database() -> None:
-    assert inputs_after_earlier_steps()["role/report"] == {
+    assert step_inputs_by_key()["role/report"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
         "spec": {"name": "orders-report-role", "management": "db_viewer", "database_uids": [7]},
     }
 
 
 def test_each_user_gets_its_own_role() -> None:
-    assert inputs_after_earlier_steps()["user/report"] == {
+    assert step_inputs_by_key()["user/report"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
         "spec": {"name": "report", "password": "p2", "role_uids": [22]},
     }
 
 
 def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
-    assert inputs_after_earlier_steps()["permissions"] == {
+    assert step_inputs_by_key()["permissions"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
         "uid": 7,
         "values": {
@@ -134,7 +140,7 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
 
 def test_a_user_requested_twice_is_refused() -> None:
     with pytest.raises(expected_exception=ValidationError):
-        DatabaseCreationRequest(database=DATABASE, users=[USERS[0], USERS[0]])
+        DatabaseSpec(database=DATABASE, users=[USERS[0], USERS[0]])
 
 
 @pytest.mark.parametrize(

@@ -6,5 +6,5 @@ class ListedNameLookup:
     def __init__(self, *, lister: ResourceNameLister) -> None:
         self._lister: ResourceNameLister = lister
 
-    def existing(self, *, target: ClusterTarget, names: set[str]) -> set[str]:
+    def find_existing(self, *, target: ClusterTarget, names: set[str]) -> set[str]:
         return names & {resource.name for resource in self._lister.list_uids_and_names(target=target)}
