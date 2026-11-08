@@ -1,8 +1,9 @@
 from string import Formatter
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import AfterValidator
 
+from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.role_management import RoleManagement
 
 NAME_PLACEHOLDERS: set[str] = {"database", "user"}
@@ -22,7 +23,7 @@ def names_each_database_user(template: str) -> str:
 type NameTemplate = Annotated[str, AfterValidator(names_each_database_user)]
 
 
-class DecompositionSettings(BaseModel):
+class DecompositionSettings(ConfigModel):
     acl_name: NameTemplate
     role_name: NameTemplate
     role_management: RoleManagement

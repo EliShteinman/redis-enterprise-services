@@ -49,8 +49,8 @@ uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0
 
 ## Configuration
 
-Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by an environment variable with the
-`RES_` prefix and `__` between levels, for example:
+Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by
+an environment variable with the `RES_` prefix and `__` between levels, for example:
 
 ```bash
 RES_LOG__LEVEL=DEBUG
@@ -64,8 +64,8 @@ Secrets are passed only through environment variables. Required:
 - `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
 
 Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
-the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed, holds only `RES_` variables, and an environment variable with the same name wins over
-it.
+the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed,
+holds only `RES_` variables, and an environment variable with the same name wins over it.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
@@ -81,7 +81,8 @@ uv run basedpyright
 uv run lint-imports
 ```
 
-`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. All of these run in pre-commit.
+`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. The lint commands
+run in pre-commit; the tests do not.
 
 ## Local clusters
 
@@ -91,6 +92,9 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 ```bash
 docker compose -f docker/compose.yaml up -d
 ```
+
+To use another subnet, change `CLUSTER_SUBNET`, `CLUSTER_DYNAMIC_IP_RANGE` and the three `*_IP` values together in
+`docker/.env`.
 
 The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
 12000-12010):

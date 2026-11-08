@@ -1,18 +1,17 @@
-from typing import ClassVar, Self
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from redis_enterprise_services.config.clusters_settings import ClusterType, Environment
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class DefaultsMatch(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
+class DefaultsMatch(ConfigModel):
     network: str | None = None
     environment: Environment | None = None
-    site: str | None = None
+    site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None
-    cluster: str | None = None
+    cluster: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def matches_on_something(self) -> Self:
@@ -21,11 +20,11 @@ class DefaultsMatch(BaseModel):
         return self
 
 
-class DefaultsOverride(BaseModel):
+class DefaultsOverride(ConfigModel):
     when: DefaultsMatch
     values: dict[str, JsonValue] = Field(min_length=1)
 
 
-class DatabaseDefaultsSettings(BaseModel):
+class DatabaseDefaultsSettings(ConfigModel):
     values: dict[str, JsonValue]
     overrides: list[DefaultsOverride]
