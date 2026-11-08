@@ -16,7 +16,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterRequestError,
     UnreadableAnswerError,
 )
-from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
+from redis_enterprise_services.exceptions.edge import OutcomeUnknownError, ResponseRejectedError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -63,16 +63,30 @@ def test_a_relay_error_while_reading_the_action_is_read_again() -> None:
     assert api.send.call_count == 2
 
 
-def test_a_busy_cluster_while_reading_the_action_is_read_again() -> None:
-    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
-    api.send.side_effect = [
+@pytest.mark.parametrize(
+    argnames="failure",
+    argvalues=[
         ClusterRequestError(message="busy", cluster_status_code=409, error_code="busy"),
-        ClusterAnswer(body={"status": "completed"}, cluster_state_id=None),
-    ]
+        ClusterRequestError(message="failing over", cluster_status_code=503, error_code=None),
+    ],
+)
+def test_a_cluster_failure_that_may_pass_while_reading_the_action_is_read_again(
+    failure: ClusterRequestError,
+) -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = [failure, ClusterAnswer(body={"status": "completed"}, cluster_state_id=None)]
 
     waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_count == 2
+
+
+def test_a_relay_rejection_of_the_action_answer_fails_at_once() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = ResponseRejectedError(message="schema", cluster_status_code=200)
+
+    with pytest.raises(expected_exception=ResponseRejectedError):
+        waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
 
 
 @pytest.mark.parametrize(
