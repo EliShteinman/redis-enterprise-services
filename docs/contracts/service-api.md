@@ -33,7 +33,8 @@
 1. **בדיקות מקומיות**, בלי פנייה לקלאסטר: מבנה הגוף, כללי שם ה-DB, ושהיעד מתאים לקלאסטר בקונפיג. כשל ⇐ תשובה
    מיידית עם קוד HTTP (סעיף 6).
 2. **קבלה:** `202` עם `{"trace_id", "status": "running"}`. הפעולה רצה ברקע.
-3. **תוצאה:** `GET /v1/operations/{trace_id}` עד ש-`status` שונה מ-`running`.
+3. **תוצאה:** `GET /v1/operations/{trace_id}` עד ש-`status` סופי: `succeeded`, `rejected`, `rolled_back` או
+   `requires_manual_intervention`. סטטוס שלא מוכר לקורא אינו סופי.
 
 **אותו trace id פעמיים** לא מתחיל פעולה חדשה, גם עם span id אחר. התשובה היא `200` עם המצב הנוכחי, כמו שאילתת
 הסטטוס. לכן כל פקודה צריכה trace משלה.
@@ -238,7 +239,7 @@
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
-- `rejected` עם `internal_error`, אם הריצה עוד לא עברה את בדיקת השמות;
+- `rejected` עם `internal_error`, אם הריצה עוד לא התחילה (לא נוצר כלום);
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
@@ -282,8 +283,10 @@
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
-| Active-Active | `active_active: true` עם כמה `sites`. `db_id` יהיה UUID, ו-`clusters[]` יכיל אתר לכל קלאסטר |
+| Active-Active | `active_active: true` עם כמה `sites`. `db_id` יהיה UUID, ו-`clusters[]` יכיל אתר לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
+| עריכה ומחיקה: היעד | `target: {active_active, db_id, clusters}`, מהתוצאה של היצירה, שונה מה-`target` של יצירה |
+| עריכה ומחיקה: קודים | `database_not_found`, `clusters_mismatch`, `sites_diverged` בסטטוס (`rejected`) |
 | עריכת DB | `POST /v1/databases/update` |
-| עריכת יוזרים | `POST /v1/databases/users`, עם רשימת היוזרים המלאה |
+| עריכת יוזרים | `POST /v1/databases/users`, עם רשימת היוזרים המלאה. סיסמה חסרה או מיותרת ⇐ `422 password_rules` |
 | מחיקה | `POST /v1/databases/delete` |
 | קריאה ישירה לקלאסטר | `POST /v1/cluster-requests`, בלי rollback |
