@@ -42,16 +42,16 @@ def repository() -> MagicMock:
 
 
 @pytest.fixture
-def waiter() -> MagicMock:
+def completion_waiter() -> MagicMock:
     return create_autospec(spec=ResourceCompletionWaiter, instance=True)
 
 
 @pytest.fixture
-def step(repository: MagicMock, waiter: MagicMock) -> CreateResourceStep[NewUser]:
+def step(repository: MagicMock, completion_waiter: MagicMock) -> CreateResourceStep[NewUser]:
     return CreateResourceStep(
         repository=repository,
-        waiter=waiter,
-        credentials=SharedCredentialsTargetResolver(credentials=CREDENTIALS),
+        completion_waiter=completion_waiter,
+        target_resolver=SharedCredentialsTargetResolver(credentials=CREDENTIALS),
     )
 
 
@@ -64,17 +64,19 @@ def test_execute_hands_the_created_resource_to_the_saga(step: CreateResourceStep
 
 
 def test_execute_waits_until_the_resource_is_created(
-    waiter: MagicMock, step: CreateResourceStep[NewUser]
+    completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     step.execute(step_input=STEP_INPUT, keep_result=lambda result: None)
 
-    waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)
+    completion_waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)
 
 
 def test_the_saga_has_the_resource_even_when_waiting_for_it_fails(
-    waiter: MagicMock, step: CreateResourceStep[NewUser]
+    completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    waiter.wait_until_created.side_effect = ClusterActionTimeoutError(message="action did not complete")
+    completion_waiter.wait_until_created.side_effect = ClusterActionTimeoutError(
+        message="action did not complete"
+    )
     kept: list[CreatedResource] = []
 
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
@@ -92,17 +94,17 @@ def test_compensate_deletes_the_given_resource(
 
 
 def test_compensate_waits_until_the_resource_is_deleted(
-    waiter: MagicMock, step: CreateResourceStep[NewUser]
+    completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     step.compensate(step_input=STEP_INPUT, result=CREATED)
 
-    waiter.wait_until_deleted.assert_called_once_with(
+    completion_waiter.wait_until_deleted.assert_called_once_with(
         target=TARGET, uid=CREATED.uid, action_uid=DELETE_ACTION_UID
     )
 
 
 def test_compensate_accepts_a_resource_that_is_already_gone(
-    repository: MagicMock, waiter: MagicMock, step: CreateResourceStep[NewUser]
+    repository: MagicMock, completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     repository.delete.side_effect = ClusterRejectedRequestError(
         message="cluster answered 404", cluster_status_code=404, cluster_error_code="user_not_exist"
@@ -110,7 +112,7 @@ def test_compensate_accepts_a_resource_that_is_already_gone(
 
     step.compensate(step_input=STEP_INPUT, result=CREATED)
 
-    waiter.wait_until_deleted.assert_not_called()
+    completion_waiter.wait_until_deleted.assert_not_called()
 
 
 def test_compensate_raises_any_other_cluster_error(
@@ -137,10 +139,10 @@ def test_find_outcome_finds_the_resource_by_the_spec_name(
 
 
 def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_failed(
-    repository: MagicMock, waiter: MagicMock, step: CreateResourceStep[NewUser]
+    repository: MagicMock, completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     repository.find_by_name.return_value = [NamedResource(uid=6, name="app-user")]
-    waiter.wait_until_created.side_effect = ClusterActionFailedError(message="creation failed")
+    completion_waiter.wait_until_created.side_effect = ClusterActionFailedError(message="creation failed")
     kept: list[CreatedResource] = []
 
     with pytest.raises(expected_exception=ClusterActionFailedError):
@@ -183,8 +185,8 @@ def test_find_outcome_trusts_what_was_kept_without_searching(
 
 
 def test_find_outcome_waits_until_the_found_resource_is_created(
-    waiter: MagicMock, step: CreateResourceStep[NewUser]
+    completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_found_result=ignore_found)
 
-    waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)
+    completion_waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)

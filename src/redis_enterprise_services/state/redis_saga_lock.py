@@ -39,7 +39,7 @@ return released
 """
 
 
-class RedisDatabaseLock(SagaLock):
+class RedisSagaLock(SagaLock):
     def __init__(
         self, *, client: Redis, keys: RedisKeys, settings: LockSettings, sleeper: Sleeper, clock: Clock
     ) -> None:
@@ -53,7 +53,7 @@ class RedisDatabaseLock(SagaLock):
 
     def acquire(self, *, keys: list[str], owner: str) -> None:
         deadline: float = self._clock.monotonic_seconds() + self._settings.wait_timeout_seconds
-        holder: str | None = self._acquire_all(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
+        holder: str | None = self._acquire_all(keys=self._script_keys(keys=keys, owner=owner), args=[owner])
         if holder is not None:
             logger.warning(msg=f"{keys} locked by {holder}, waiting")
         while holder is not None:
@@ -61,7 +61,7 @@ class RedisDatabaseLock(SagaLock):
                 logger.error(msg=f"{keys} still locked by {holder}")
                 raise ResourcesLockedError(message=f"{keys} locked by {holder}")
             self._sleeper.sleep(seconds=self._settings.poll_interval_seconds)
-            holder = self._acquire_all(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
+            holder = self._acquire_all(keys=self._script_keys(keys=keys, owner=owner), args=[owner])
         logger.info(msg=f"{keys} locked by {owner}")
 
     def ensure_held(self, *, keys: list[str], owner: str) -> None:
@@ -73,8 +73,8 @@ class RedisDatabaseLock(SagaLock):
             raise ResourcesLockedError(message=f"{keys} are no longer held by {owner}")
 
     def release(self, *, keys: list[str], owner: str) -> None:
-        released: int = self._release_owned(keys=self._lock_keys(keys=keys, owner=owner), args=[owner])
+        released: int = self._release_owned(keys=self._script_keys(keys=keys, owner=owner), args=[owner])
         logger.info(msg=f"{released} of {keys} released by {owner}")
 
-    def _lock_keys(self, *, keys: list[str], owner: str) -> list[str]:
+    def _script_keys(self, *, keys: list[str], owner: str) -> list[str]:
         return [self._keys.held_locks(owner=owner), *(self._keys.lock(key=key) for key in keys)]

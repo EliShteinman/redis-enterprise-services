@@ -5,15 +5,15 @@ from redis import Redis
 
 from redis_enterprise_services.config.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError
-from redis_enterprise_services.state.redis_database_lock import RedisDatabaseLock
 from redis_enterprise_services.state.redis_keys import RedisKeys
+from redis_enterprise_services.state.redis_saga_lock import RedisSagaLock
 from redis_enterprise_services.timing.clock import Clock
 from redis_enterprise_services.timing.sleeper import Sleeper
 
 SETTINGS: LockSettings = LockSettings(wait_timeout_seconds=10, poll_interval_seconds=2)
 
 
-class StepClock(Clock):
+class ManualClock(Clock):
     def __init__(self) -> None:
         self.time: float = 0
 
@@ -22,18 +22,18 @@ class StepClock(Clock):
 
 
 class AdvancingSleeper(Sleeper):
-    def __init__(self, *, clock: StepClock) -> None:
-        self._clock: StepClock = clock
+    def __init__(self, *, clock: ManualClock) -> None:
+        self._clock: ManualClock = clock
 
     def sleep(self, *, seconds: float) -> None:
         self._clock.time += seconds
 
 
-def lock_with(*, acquire_all: MagicMock) -> RedisDatabaseLock:
+def lock_with(*, acquire_all: MagicMock) -> RedisSagaLock:
     client: MagicMock = create_autospec(spec=Redis, instance=True)
     client.register_script.side_effect = [acquire_all, MagicMock()]
-    clock: StepClock = StepClock()
-    return RedisDatabaseLock(
+    clock: ManualClock = ManualClock()
+    return RedisSagaLock(
         client=client,
         keys=RedisKeys(prefix="res:", hash_tag="state"),
         settings=SETTINGS,

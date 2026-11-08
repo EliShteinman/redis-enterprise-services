@@ -15,10 +15,10 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-KEEP_OPEN: int = 0
+NO_EXPIRY: int = 0
 STATUS_FIELD: str = "status"
 NO_SAGA: str = ""
-RESULTS: dict[int, MarkAbandonedResult] = {
+MARK_ABANDONED_RESULT_BY_CODE: dict[int, MarkAbandonedResult] = {
     0: MarkAbandonedResult.NOT_ABANDONED,
     1: MarkAbandonedResult.MARKED,
     2: MarkAbandonedResult.SAGA_CHANGED,
@@ -65,7 +65,7 @@ class RedisAbandonedStore(AbandonedStore):
     def __init__(self, *, client: Redis, keys: RedisKeys, finished_operation_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_operation_ttl_seconds
+        self._finished_operation_ttl_seconds: int = finished_operation_ttl_seconds
         self._mark_abandoned: Script = client.register_script(script=MARK_ABANDONED)
 
     def open_trace_ids_without_heartbeat(self) -> list[str]:
@@ -74,7 +74,7 @@ class RedisAbandonedStore(AbandonedStore):
             trace_id
             for trace_id in open_ids
             if not self._client.exists(self._keys.heartbeat(trace_id=trace_id))
-            and self._running(trace_id=trace_id)
+            and self._running_or_not_recorded(trace_id=trace_id)
         )
 
     def find_saga(self, *, trace_id: str) -> StoredSaga | None:
@@ -83,7 +83,7 @@ class RedisAbandonedStore(AbandonedStore):
             return None
         return StoredSaga(raw_json=raw, record=SagaRecord.model_validate_json(json_data=raw))
 
-    def _running(self, *, trace_id: str) -> bool:
+    def _running_or_not_recorded(self, *, trace_id: str) -> bool:
         stored: str | None = cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
         if stored is None:
             return True
@@ -102,7 +102,7 @@ class RedisAbandonedStore(AbandonedStore):
     ) -> MarkAbandonedResult:
         trace_id: str = operation.trace_id
         held_locks: str = self._keys.held_locks(owner=trace_id)
-        marked: int = self._mark_abandoned(
+        result_code: int = self._mark_abandoned(
             keys=[
                 self._keys.operation(trace_id=trace_id),
                 self._keys.open_operations(),
@@ -114,12 +114,12 @@ class RedisAbandonedStore(AbandonedStore):
             args=[
                 operation.model_dump_json(),
                 trace_id,
-                self._finished_ttl_seconds if operation.status in EXPIRING_STATUSES else KEEP_OPEN,
+                self._finished_operation_ttl_seconds if operation.status in EXPIRING_STATUSES else NO_EXPIRY,
                 NO_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
                 NO_SAGA if expected_saga is None else expected_saga.raw_json,
             ],
         )
-        result: MarkAbandonedResult = RESULTS[marked]
+        result: MarkAbandonedResult = MARK_ABANDONED_RESULT_BY_CODE[result_code]
         logger.debug(msg=f"operation {trace_id}: {result.value}")
         return result

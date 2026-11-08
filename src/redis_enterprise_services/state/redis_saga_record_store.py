@@ -22,11 +22,11 @@ return true
 """
 
 
-class RedisSagaState(SagaRecordWriter, SagaRecordReader):
+class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
     def __init__(self, *, client: Redis, keys: RedisKeys, finished_operation_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_ttl_seconds: int = finished_operation_ttl_seconds
+        self._finished_operation_ttl_seconds: int = finished_operation_ttl_seconds
         self._save_unfinished: Script = client.register_script(script=SAVE_UNFINISHED)
         self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
 
@@ -43,7 +43,7 @@ class RedisSagaState(SagaRecordWriter, SagaRecordReader):
             return
         self._save_finished(
             keys=self._record_keys(record=record),
-            args=[record.model_dump_json(), record.saga_id, self._finished_ttl_seconds],
+            args=[record.model_dump_json(), record.saga_id, self._finished_operation_ttl_seconds],
         )
         logger.info(msg=f"saga {record.saga_id} stored as {record.status.value}")
 
@@ -55,4 +55,4 @@ class RedisSagaState(SagaRecordWriter, SagaRecordReader):
         return SagaRecord.model_validate_json(json_data=stored)
 
     def _record_keys(self, *, record: SagaRecord) -> list[str]:
-        return [self._keys.saga(saga_id=record.saga_id), self._keys.unfinished()]
+        return [self._keys.saga(saga_id=record.saga_id), self._keys.unfinished_sagas()]

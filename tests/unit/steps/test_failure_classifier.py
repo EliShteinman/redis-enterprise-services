@@ -51,7 +51,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         (UnreadableClusterResponseError(message="m"), FailureCategory.UNKNOWN),
     ],
 )
-def test_a_step_error_is_sorted_by_the_engine_table(
+def test_a_step_error_gets_its_failure_category(
     error: RedisEnterpriseServicesError, expected: FailureCategory
 ) -> None:
     assert CLASSIFIER.classify_step_error(error=error) is expected
@@ -67,7 +67,7 @@ def test_a_step_error_is_sorted_by_the_engine_table(
         (EdgeOutcomeUnknownError(message="m"), FailureCategory.UNKNOWN),
     ],
 )
-def test_a_lookup_error_is_sorted_by_the_engine_table(
+def test_a_find_outcome_error_gets_its_failure_category(
     error: RedisEnterpriseServicesError, expected: FailureCategory
 ) -> None:
     assert CLASSIFIER.classify_find_outcome_error(error=error) is expected
