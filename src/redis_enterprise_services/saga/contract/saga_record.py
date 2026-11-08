@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -42,6 +42,10 @@ class StepError(BaseModel):
     def from_exception(cls, *, error: RedisEnterpriseServicesError) -> Self:
         return cls(code=error.code, message=error.message, remote_code=error.cluster_error_code)
 
+    @classmethod
+    def from_input_validation_error(cls, *, error: ValidationError) -> Self:
+        return cls(code=RedisEnterpriseServicesError.code, message=f"cannot build the input: {error}")
+
 
 class StepRecord(BaseModel):
     key: str
@@ -60,11 +64,23 @@ class SagaRecord(BaseModel):
     steps: list[StepRecord]
     stopped_at: str | None = None
 
+    def has_ended_cleanly(self) -> bool:
+        return self.status in CLEANLY_ENDED_STATUSES
+
+    def interrupted_copy(self) -> Self:
+        interrupted: Self = self.model_copy(deep=True)
+        interrupted.mark_interrupted()
+        return interrupted
+
     def mark_interrupted(self) -> None:
+        self.stopped_at = self.stopped_at or interrupted_step_key(steps=self.steps)
         self.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
         for step in self.steps:
             if step.status is StepStatus.RUNNING:
                 step.status = StepStatus.UNRESOLVED
-                self.stopped_at = self.stopped_at or step.key
-        pending_keys: list[str] = [step.key for step in self.steps if step.status is StepStatus.PENDING]
-        self.stopped_at = self.stopped_at or next(iter(pending_keys), None)
+
+
+def interrupted_step_key(*, steps: list[StepRecord]) -> str | None:
+    running_keys: list[str] = [step.key for step in steps if step.status is StepStatus.RUNNING]
+    pending_keys: list[str] = [step.key for step in steps if step.status is StepStatus.PENDING]
+    return next(iter(running_keys + pending_keys), None)

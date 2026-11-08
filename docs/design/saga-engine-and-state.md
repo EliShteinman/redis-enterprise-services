@@ -34,7 +34,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
     def find_outcome(
-        self, *, step_input: TInput, kept_result: TResult | None, keep_found_result: KeepResult[TResult]
+        self, *, step_input: TInput, kept_result: TResult | None, keep_result_if_none_kept: KeepResult[TResult]
     ) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
@@ -51,7 +51,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 - **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. `None` = לא נמצא.
   הוא מקבל את מה שכבר נשמר (`kept_result`), כי snapshot של עדכון אי אפשר לבנות מחדש מהקלאסטר. הוא מחזיר תוצאה רק אחרי שהפעולה
   הסתיימה בקלאסטר, כדי שהביטול לא ירוץ במקביל לפעולה שעוד רצה.
-- **`keep_found_result`** נקרא כשנמצא משאב לפי שם, לפני ההמתנה. משאב שנמצא ונכשל בהמתנה (למשל DB ב-`creation-failed`)
+- **`keep_result_if_none_kept`** נקרא כשנמצא משאב לפי שם, לפני ההמתנה. משאב שנמצא ונכשל בהמתנה (למשל DB ב-`creation-failed`)
   נשאר תוצאה של הצעד ומבוטל.
 - **`compensate`** idempotent. אם אין מה לבטל, לא עושה כלום.
 
@@ -62,7 +62,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
 | `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `DuplicateResourceNameError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
-| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.unordered_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
+| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.order_insensitive_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
 
 ---
 
@@ -92,7 +92,7 @@ PlannedStep(
    `ResourcesLockedError`.
 2. **`check_before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
-3. **מוודא שהנעילה עדיין שלו** (`SagaLock.ensure_held`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
+3. **מוודא שהנעילה עדיין שלו** (`SagaLock.raise_unless_held`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
    הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `ResourcesLockedError`.
 4. **לכל צעד:** בונה קלט, שומר `running`, מריץ `execute`. הצליח ⇐ `done`. נכשל ⇐ לפי המיון (סעיף 5).
 5. **צעד נכשל:** מבטל בסדר הפוך כל צעד `COMPENSATABLE` שיש לו תוצאה.
@@ -215,7 +215,7 @@ PlannedStep(
 | `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
 | `succeeded`, `rolled_back`, `requires_manual_intervention` | הסטטוס של ה-Saga |
 
-**`OperationStarter.find_or_start`**, משותף לכל פקודה:
+**`OperationStarter.start_once`**, משותף לכל פקודה:
 1. חיפוש לפי trace. קיימת ⇐ מוחזרת כמו שהיא (`200`).
 2. ההכנה של הפקודה, בלי שינוי בקלאסטר. נכשלה ⇐ תשובה מיידית, ושום דבר לא נשמר.
 3. התחלה אטומית (Lua). רשומה שנוצרה בינתיים ⇐ מוחזרת, ושום דבר לא נשלח לרקע.
@@ -258,7 +258,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
-  - נעצר אחרי הנעילה ולפני `ensure_held`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `ensure_held` לשמירה הראשונה של
+  - נעצר אחרי הנעילה ולפני `raise_unless_held`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `raise_unless_held` לשמירה הראשונה של
     ה-record (שתי קריאות Redis רצופות): הוא מריץ את ה-Saga בלי נעילה.
   - נעצר לפני הנעילה: הפעולה כבר סומנה `rejected` ויצאה מ-`operations:open`, אבל הוא נועל ומריץ את ה-Saga, והתוצאה
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
