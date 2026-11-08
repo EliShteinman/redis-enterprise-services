@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from redis_enterprise_services.operations.error_info import ErrorInfo
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.telemetry.trace_id import current_trace_id
+from redis_enterprise_services.telemetry.trace_id import reply_trace_id
 
 
 class FieldError(BaseModel):
@@ -23,5 +23,5 @@ class ErrorDetail(ErrorInfo):
 
 
 def error_response(*, status_code: int, error: ErrorDetail) -> JSONResponse:
-    body: Operation = Operation(trace_id=current_trace_id(), status=OperationStatus.REJECTED, error=error)
+    body: Operation = Operation(trace_id=reply_trace_id(), status=OperationStatus.REJECTED, error=error)
     return JSONResponse(status_code=status_code, content=body.model_dump(mode="json", serialize_as_any=True))
