@@ -219,7 +219,7 @@ PlannedStep(
 1. חיפוש לפי trace. קיימת ⇐ מוחזרת כמו שהיא (`200`).
 2. ההכנה של הפקודה, בלי שינוי בקלאסטר. נכשלה ⇐ תשובה מיידית, ושום דבר לא נשמר.
 3. התחלה אטומית (Lua). רשומה שנוצרה בינתיים ⇐ מוחזרת, ושום דבר לא נשלח לרקע.
-4. העברה ל-`TaskRunner`. נכשלה ⇐ הפעולה נשמרת `rejected` עם `internal_error`.
+4. העברה ל-`BackgroundTaskRunner`. נכשלה ⇐ הפעולה נשמרת `rejected` עם `internal_error`.
 
 הפעולה נשמרת כ-`running` לפני ההעברה לרקע, כך ששאילתת הסטטוס מוצאת אותה מיד, וריצה מהירה לא נדרסת.
 
@@ -229,7 +229,7 @@ PlannedStep(
   `cluster_request_failed`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
 - record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error`.
 
-**הרצה ברקע:** `ThreadPoolRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
+**הרצה ברקע:** `ThreadPoolTaskRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
 לשירות הקצה), ורושם `CRITICAL` על כל שגיאה שיצאה ממשימה. בכיבוי מחכה לריצות שהתחילו ומבטל את אלה שבתור. הן נשארות
 `running`, וזיהוי הקריסה מסמן אותן.
 

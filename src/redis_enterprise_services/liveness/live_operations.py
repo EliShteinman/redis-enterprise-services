@@ -17,21 +17,21 @@ class LiveOperations:
         with self._lock:
             self._trace_ids.add(trace_id)
 
-    def release(self, *, trace_id: str) -> None:
+    def untrack(self, *, trace_id: str) -> None:
         with self._lock:
             self._trace_ids.discard(trace_id)
-            self._store.stop(trace_id=trace_id)
+            self._store.delete(trace_id=trace_id)
 
-    def released_after(self, *, trace_id: str, task: Callable[[], object]) -> Callable[[], object]:
-        def run_then_release() -> object:
+    def untracked_when_done(self, *, trace_id: str, task: Callable[[], object]) -> Callable[[], object]:
+        def run_then_untrack() -> object:
             try:
                 return task()
             finally:
-                self.release(trace_id=trace_id)
+                self.untrack(trace_id=trace_id)
 
-        return run_then_release
+        return run_then_untrack
 
     def beat_all(self) -> None:
         with self._lock:
             if self._trace_ids:
-                self._store.beat(trace_ids=sorted(self._trace_ids))
+                self._store.refresh(trace_ids=sorted(self._trace_ids))

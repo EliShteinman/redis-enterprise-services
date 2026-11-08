@@ -10,7 +10,7 @@ class PeriodicTask:
         self._name: str = name
         self._interval_seconds: float = interval_seconds
         self._action: Callable[[], None] = action
-        self._stopped: Event = Event()
+        self._stop_requested: Event = Event()
         self._thread: Thread = Thread(target=self._run, name=name, daemon=True)
 
     def start(self) -> None:
@@ -18,12 +18,12 @@ class PeriodicTask:
         logger.info(msg=f"{self._name} runs every {self._interval_seconds} seconds")
 
     def stop(self) -> None:
-        self._stopped.set()
+        self._stop_requested.set()
         self._thread.join()
         logger.info(msg=f"{self._name} stopped")
 
     def _run(self) -> None:
-        while not self._stopped.wait(timeout=self._interval_seconds):
+        while not self._stop_requested.wait(timeout=self._interval_seconds):
             try:
                 self._action()
             except Exception:

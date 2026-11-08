@@ -18,7 +18,7 @@ POST /v1/databases/create
  │   ├─ יש פעולה לאותו trace?                           ⇐ 200 עם המצב שלה
  │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
  │   ├─ התחלה אטומית: running + heartbeat
- │   └─ העברה ל-ThreadPoolRunner                          ⇐ 202
+ │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
  └─ ברקע: CreationExecution
      ├─ SingleSiteCreationPlanner: תוכנית צעדים
      ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים ⇐ צעדים
