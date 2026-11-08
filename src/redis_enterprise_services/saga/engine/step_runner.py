@@ -42,15 +42,16 @@ class StepRunner:
         logger.info(msg=f"step {step.key} started")
         try:
             prepared: PreparedStep = step.prepare(context=context)
-        except (RedisEnterpriseServicesError, ValidationError) as error:
-            logger.error(msg=f"cannot build the input of step {step.key}: {error}")
-            recorder.failed_attempt(
+        except RedisEnterpriseServicesError as error:
+            return input_failed(step=step, recorder=recorder, error=StepError.of(error=error))
+        except ValidationError as error:
+            return input_failed(
+                step=step,
+                recorder=recorder,
                 error=StepError(
                     code=RedisEnterpriseServicesError.code, message=f"cannot build the input: {error}"
-                )
+                ),
             )
-            recorder.failed()
-            return None
         recorder.started(step_input=prepared.step_input)
         return prepared
 
@@ -120,6 +121,12 @@ class StepRunner:
             if self._classifier.classify_lookup(error=error) is Failure.FAILED:
                 return Check.FAILED
             return Check.MANUAL
+
+
+def input_failed(*, step: RunnableStep, recorder: StepRecorder, error: StepError) -> None:
+    logger.error(msg=f"cannot build the input of step {step.key}: {error.message}")
+    recorder.failed_attempt(error=error)
+    recorder.failed()
 
 
 def forget_unfound_result(*, step: PreparedStep, recorder: StepRecorder) -> None:
