@@ -241,10 +241,10 @@
 - `rejected` עם `internal_error`, אם הריצה עוד לא עברה את בדיקת השמות;
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
-**נעילה אחרי `requires_manual_intervention`:** כשה-Saga עצמה הסתיימה ב-`requires_manual_intervention`, או שעוד רצה
-כשה-pod נפל, הנעילה על ה-DB ועל היוזרים נשארת. עד שמטפלים בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר
-מסתיימת ב-`database_locked`. כשה-Saga כבר הסתיימה ורק שמירת הפעולה אבדה, הנעילה כבר שוחררה, והפעולה מסומנת
-`requires_manual_intervention` בלי לחסום פקודות חדשות.
+**נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
+בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`database_locked`. יוצא מן הכלל: pod שנפל מיד אחרי
+שה-Saga הסתיימה (`succeeded` או `rolled_back`) כבר שחרר את הנעילה. הפעולה מסומנת `requires_manual_intervention`,
+אבל פקודות חדשות על אותם שמות לא נחסמות.
 
 ---
 

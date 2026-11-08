@@ -249,7 +249,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | מה נמצא | מה מסומן |
 |---|---|
 | אין saga record (ה-Saga לא התחיל) | הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת מ-`operations:open`. הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו. כך pod שנפל בין הנעילה לשמירת ה-record לא משאיר שמות נעולים |
-| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת** |
+| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת**, חוץ מ-Saga שכבר הסתיימה ושמירת ה-record האחרונה שלה לא נכתבה (ראו מקרים ידועים) |
 | ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | הפעולה `requires_manual_intervention`. ה-record לא משתנה |
 
 **מקרים ידועים:**
@@ -260,8 +260,9 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
   - נעצר אחרי שה-Saga התחיל: הוא ממשיך, והתוצאה הסופית דורסת את הסימון.
   עצירה של יותר מ-60 שניות גבוהה בכמה סדרי גודל מעצירה רגילה, ולכן אין לזה מנגנון נוסף.
-- **Saga שהצליח, והשמירה האחרונה שלו נכשלה:** הנעילה שוחררה, וה-record נשאר `running`. הסריקה תסמן אותו. מי שבודק ימצא
-  שכל הצעדים `done`.
+- **Saga שהסתיים (`succeeded` או `rolled_back`), וה-record הסופי שלו לא נכתב:** המנוע משחרר את הנעילה לפני השמירה
+  האחרונה. אם השמירה נכשלה, או שה-pod נפל בין השתיים, הנעילה כבר שוחררה וה-record נשאר `running`. הסריקה תסמן
+  אותו `requires_manual_intervention` בלי נעילה. מי שבודק ימצא שכל הצעדים `done`, או שכולם בוטלו.
 
 ---
 
