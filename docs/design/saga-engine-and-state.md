@@ -92,7 +92,7 @@ PlannedStep(
    `ResourcesLockedError`.
 2. **`check_before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
-3. **מוודא שהנעילה עדיין שלו** (`SagaLock.confirm`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
+3. **מוודא שהנעילה עדיין שלו** (`SagaLock.ensure_held`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
    הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `ResourcesLockedError`.
 4. **לכל צעד:** בונה קלט, שומר `running`, מריץ `execute`. הצליח ⇐ `done`. נכשל ⇐ לפי המיון (סעיף 5).
 5. **צעד נכשל:** מבטל בסדר הפוך כל צעד `COMPENSATABLE` שיש לו תוצאה.
@@ -258,7 +258,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
-  - נעצר אחרי הנעילה ולפני `confirm`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `confirm` לשמירה הראשונה של
+  - נעצר אחרי הנעילה ולפני `ensure_held`: הנעילות שלו שוחררו, והוא לא מתחיל. נעצר בין `ensure_held` לשמירה הראשונה של
     ה-record (שתי קריאות Redis רצופות): הוא מריץ את ה-Saga בלי נעילה.
   - נעצר לפני הנעילה: הפעולה כבר סומנה `rejected` ויצאה מ-`operations:open`, אבל הוא נועל ומריץ את ה-Saga, והתוצאה
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
@@ -290,8 +290,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
-| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `Failure`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
-| `saga/plan/` | `SagaPlan`, `PlannedStep`, `RunnableStep`/`PreparedStep`, `SagaContext` | `contract` |
+| `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `FailureCategory`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
+| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `SagaContext` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
 | `liveness/` | `LiveOperations`, `HeartbeatStore` | |

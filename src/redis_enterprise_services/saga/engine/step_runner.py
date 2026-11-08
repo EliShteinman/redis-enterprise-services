@@ -9,9 +9,9 @@ from redis_enterprise_services.saga.contract.failure import FailureCategory, Fai
 from redis_enterprise_services.saga.contract.saga_record import StepError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.backoff import wait_before_retry
-from redis_enterprise_services.saga.engine.recorder import StepRecorder
-from redis_enterprise_services.saga.plan.context import SagaContext
-from redis_enterprise_services.saga.plan.step_protocols import PreparedStep, RunnableStep
+from redis_enterprise_services.saga.engine.step_recorder import StepRecorder
+from redis_enterprise_services.saga.plan.saga_context import SagaContext
+from redis_enterprise_services.saga.plan.step_protocols import PreparableStep, PreparedStep
 from redis_enterprise_services.timing.sleeper import Sleeper
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -26,7 +26,7 @@ class StepOutcome(StrEnum):
 class FindOutcomeResult(StrEnum):
     FOUND = "found"
     NOT_FOUND = "not_found"
-    FAILED = "failed"
+    REJECTED = "rejected"
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
@@ -37,7 +37,7 @@ class StepRunner:
         self._sleeper: Sleeper = sleeper
 
     def prepare(
-        self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder
+        self, *, step: PreparableStep, context: SagaContext, recorder: StepRecorder
     ) -> PreparedStep | None:
         logger.info(msg=f"step {step.key} started")
         try:
@@ -85,7 +85,9 @@ class StepRunner:
                 return outcome
             had_unknown_outcome = had_unknown_outcome or failure is FailureCategory.UNKNOWN
             if attempt < attempts:
-                wait_before_retry(retry=self._settings.step_retry, attempt=attempt, sleeper=self._sleeper)
+                wait_before_retry(
+                    retry_settings=self._settings.step_retry, attempt=attempt, sleeper=self._sleeper
+                )
         return StepOutcome.REQUIRES_MANUAL_INTERVENTION if had_unknown_outcome else StepOutcome.FAILED
 
     def _decide_after_failure(
@@ -103,7 +105,7 @@ class StepRunner:
         match self._find_outcome(step=step, recorder=recorder):
             case FindOutcomeResult.FOUND:
                 return StepOutcome.DONE
-            case FindOutcomeResult.FAILED:
+            case FindOutcomeResult.REJECTED:
                 return StepOutcome.FAILED
             case FindOutcomeResult.REQUIRES_MANUAL_INTERVENTION:
                 return StepOutcome.REQUIRES_MANUAL_INTERVENTION
@@ -112,7 +114,7 @@ class StepRunner:
 
     def _try_once(self, *, step: PreparedStep, recorder: StepRecorder) -> FailureCategory | None:
         try:
-            step.execute(on_kept=recorder.result_kept)
+            step.execute(on_result_kept=recorder.result_kept)
         except RedisEnterpriseServicesError as error:
             logger.warning(msg=f"step {step.key} failed: {error.coded_message()}")
             recorder.attempt_failed(error=StepError.from_exception(error=error))
@@ -123,17 +125,17 @@ class StepRunner:
         try:
             return (
                 FindOutcomeResult.FOUND
-                if step.find_outcome(on_kept=recorder.result_kept)
+                if step.find_outcome(on_result_kept=recorder.result_kept)
                 else FindOutcomeResult.NOT_FOUND
             )
         except RedisEnterpriseServicesError as error:
             logger.error(msg=f"checking step {step.key} failed, its own error stays: {error.coded_message()}")
             if self._classifier.classify_find_outcome_error(error=error) is FailureCategory.REJECTED:
-                return FindOutcomeResult.FAILED
+                return FindOutcomeResult.REJECTED
             return FindOutcomeResult.REQUIRES_MANUAL_INTERVENTION
 
 
-def record_input_failure(*, step: RunnableStep, recorder: StepRecorder, error: StepError) -> None:
+def record_input_failure(*, step: PreparableStep, recorder: StepRecorder, error: StepError) -> None:
     logger.error(msg=f"cannot build the input of step {step.key}: {error.message}")
     recorder.attempt_failed(error=error)
     recorder.failed()

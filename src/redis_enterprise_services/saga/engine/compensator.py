@@ -6,7 +6,7 @@ from redis_enterprise_services.saga.contract.failure import FailureCategory, Fai
 from redis_enterprise_services.saga.contract.saga_record import ObtainedBy, StepError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.backoff import wait_before_retry
-from redis_enterprise_services.saga.engine.recorder import StepRecorder
+from redis_enterprise_services.saga.engine.step_recorder import StepRecorder
 from redis_enterprise_services.saga.plan.step_protocols import PreparedStep
 from redis_enterprise_services.timing.sleeper import Sleeper
 
@@ -58,7 +58,9 @@ class Compensator:
                     return last_error
                 if attempt < attempts:
                     wait_before_retry(
-                        retry=self._settings.compensation_retry, attempt=attempt, sleeper=self._sleeper
+                        retry_settings=self._settings.compensation_retry,
+                        attempt=attempt,
+                        sleeper=self._sleeper,
                     )
                 continue
             return None

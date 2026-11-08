@@ -11,11 +11,11 @@ from redis_enterprise_services.saga.contract.saga_record import (
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordWriter
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.compensator import Compensator
-from redis_enterprise_services.saga.engine.recorder import StepRecorder
+from redis_enterprise_services.saga.engine.step_recorder import StepRecorder
 from redis_enterprise_services.saga.engine.step_runner import StepOutcome, StepRunner
-from redis_enterprise_services.saga.plan.context import SagaContext
+from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
-from redis_enterprise_services.saga.plan.step_protocols import PreparedStep, RunnableStep
+from redis_enterprise_services.saga.plan.step_protocols import PreparableStep, PreparedStep
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -24,12 +24,12 @@ class SagaExecutor:
     def __init__(
         self,
         *,
-        records: SagaRecordWriter,
+        record_writer: SagaRecordWriter,
         lock: SagaLock,
         runner: StepRunner,
         compensator: Compensator,
     ) -> None:
-        self._records: SagaRecordWriter = records
+        self._record_writer: SagaRecordWriter = record_writer
         self._lock: SagaLock = lock
         self._runner: StepRunner = runner
         self._compensator: Compensator = compensator
@@ -44,7 +44,7 @@ class SagaExecutor:
             record: SagaRecord = SagaRecord(
                 saga_id=saga_id, steps=[StepRecord(key=step.key, kind=step.kind) for step in plan.steps]
             )
-            self._records.save(record=record)
+            self._record_writer.save(record=record)
         except BaseException:
             logger.info(msg=f"saga {saga_id} did not start, {plan.lock_keys} released")
             self._lock.release(keys=plan.lock_keys, owner=saga_id)
@@ -63,7 +63,9 @@ class SagaExecutor:
         prepared_steps: list[tuple[PreparedStep, StepRecorder]] = []
         passed_point_of_no_return: bool = False
         for step, step_record in zip(plan.steps, record.steps, strict=True):
-            recorder: StepRecorder = StepRecorder(records=self._records, record=record, step=step_record)
+            recorder: StepRecorder = StepRecorder(
+                record_writer=self._record_writer, record=record, step_record=step_record
+            )
             outcome, prepared = self._run_step(step=step, context=context, recorder=recorder)
             if prepared is not None:
                 prepared_steps.append((prepared, recorder))
@@ -81,7 +83,7 @@ class SagaExecutor:
         return SagaStatus.SUCCEEDED
 
     def _run_step(
-        self, *, step: RunnableStep, context: SagaContext, recorder: StepRecorder
+        self, *, step: PreparableStep, context: SagaContext, recorder: StepRecorder
     ) -> tuple[StepOutcome, PreparedStep | None]:
         prepared: PreparedStep | None = self._runner.prepare(step=step, context=context, recorder=recorder)
         if prepared is None:
@@ -109,4 +111,4 @@ class SagaExecutor:
             logger.critical(
                 msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept"
             )
-        self._records.save_final(record=record)
+        self._record_writer.save_final(record=record)

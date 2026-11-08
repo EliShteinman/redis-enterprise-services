@@ -11,31 +11,33 @@ from redis_enterprise_services.saga.contract.saga_record_store import SagaRecord
 
 
 class StepRecorder:
-    def __init__(self, *, records: SagaRecordWriter, record: SagaRecord, step: StepRecord) -> None:
-        self._records: SagaRecordWriter = records
+    def __init__(
+        self, *, record_writer: SagaRecordWriter, record: SagaRecord, step_record: StepRecord
+    ) -> None:
+        self._record_writer: SagaRecordWriter = record_writer
         self._record: SagaRecord = record
-        self._step: StepRecord = step
+        self._step_record: StepRecord = step_record
 
     def started(self, *, step_input: JsonValue) -> None:
-        self._step.step_input = step_input
+        self._step_record.step_input = step_input
         self._mark(status=StepStatus.RUNNING)
 
     def result_kept(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
-        self._step.result = result
-        self._step.obtained_by = obtained_by
-        self._records.save(record=self._record)
+        self._step_record.result = result
+        self._step_record.obtained_by = obtained_by
+        self._record_writer.save(record=self._record)
 
     def result_forgotten(self) -> None:
-        self._step.result = None
-        self._step.obtained_by = None
-        self._records.save(record=self._record)
+        self._step_record.result = None
+        self._step_record.obtained_by = None
+        self._record_writer.save(record=self._record)
 
     def attempt_failed(self, *, error: StepError) -> None:
-        self._step.error = error
-        self._records.save(record=self._record)
+        self._step_record.error = error
+        self._record_writer.save(record=self._record)
 
     def done(self) -> None:
-        self._step.error = None
+        self._step_record.error = None
         self._mark(status=StepStatus.DONE)
 
     def failed(self) -> None:
@@ -51,9 +53,9 @@ class StepRecorder:
         self._mark(status=StepStatus.COMPENSATED)
 
     def compensation_failed(self, *, error: StepError) -> None:
-        self._step.compensation_error = error
+        self._step_record.compensation_error = error
         self._mark(status=StepStatus.COMPENSATION_FAILED)
 
     def _mark(self, *, status: StepStatus) -> None:
-        self._step.status = status
-        self._records.save(record=self._record)
+        self._step_record.status = status
+        self._record_writer.save(record=self._record)
