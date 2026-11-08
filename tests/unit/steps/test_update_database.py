@@ -21,7 +21,7 @@ TARGET: ClusterTarget = ClusterTarget(
 NEW_VALUES: dict[str, JsonValue] = {"memory_size": 200, "eviction_policy": "noeviction"}
 OLD_VALUES: dict[str, JsonValue] = {"memory_size": 100, "eviction_policy": "volatile-lru"}
 SNAPSHOT: DatabaseFields = DatabaseFields(values=OLD_VALUES, cluster_state_id=7)
-CURRENT: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
+UPDATED: DatabaseFields = DatabaseFields(values=NEW_VALUES, cluster_state_id=9)
 STEP_INPUT: UpdateDatabaseInput = UpdateDatabaseInput(cluster=ADDRESS, uid=UID, values=NEW_VALUES)
 
 
@@ -32,7 +32,7 @@ def ignore_found(*, result: DatabaseFields) -> None:
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=DatabaseFieldsRepository, instance=True)
-    repository.get_fields.side_effect = [SNAPSHOT, CURRENT]
+    repository.get_fields.side_effect = [SNAPSHOT, UPDATED]
     return repository
 
 
@@ -110,19 +110,19 @@ def test_execute_refuses_a_field_missing_from_the_snapshot(
 def test_compensate_puts_the_snapshot_back_with_the_current_state_id(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.get_fields.side_effect = [CURRENT]
+    repository.get_fields.side_effect = [UPDATED]
 
     step.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
 
     repository.update_fields.assert_called_once_with(
-        target=TARGET, uid=UID, values=OLD_VALUES, cluster_state_id=CURRENT.cluster_state_id
+        target=TARGET, uid=UID, values=OLD_VALUES, cluster_state_id=UPDATED.cluster_state_id
     )
 
 
-def test_find_outcome_keeps_the_snapshot_when_the_new_values_are_in_place(
+def test_find_outcome_returns_the_snapshot_when_the_new_values_are_in_place(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.get_fields.side_effect = [CURRENT]
+    repository.get_fields.side_effect = [UPDATED]
 
     assert (
         step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found)
@@ -162,7 +162,7 @@ def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
 def test_find_outcome_waits_for_active_before_reporting_the_update_done(
     repository: MagicMock, activation_waiter: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.get_fields.side_effect = [CURRENT]
+    repository.get_fields.side_effect = [UPDATED]
 
     step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found)
 

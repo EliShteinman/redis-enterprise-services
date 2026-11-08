@@ -17,15 +17,16 @@ return true
 
 
 class RedisHeartbeatStore(HeartbeatStore):
-    def __init__(self, *, client: Redis, keys: RedisKeys, ttl_seconds: int) -> None:
+    def __init__(self, *, client: Redis, keys: RedisKeys, heartbeat_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._ttl_seconds: int = ttl_seconds
+        self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
         self._refresh_all: Script = client.register_script(script=REFRESH_ALL)
 
     def refresh(self, *, trace_ids: list[str]) -> None:
         self._refresh_all(
-            keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids], args=[self._ttl_seconds]
+            keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids],
+            args=[self._heartbeat_ttl_seconds],
         )
         logger.debug(msg=f"heartbeat of {len(trace_ids)} operations")
 

@@ -32,7 +32,8 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
 
     def save(self, *, record: SagaRecord) -> None:
         self._save_unfinished(
-            keys=self._record_keys(record=record), args=[record.model_dump_json(), record.saga_id]
+            keys=self._record_and_unfinished_set_keys(record=record),
+            args=[record.model_dump_json(), record.saga_id],
         )
         logger.debug(msg=f"saga {record.saga_id} saved")
 
@@ -42,7 +43,7 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
             logger.warning(msg=f"saga {record.saga_id} stored as {record.status.value}, kept without expiry")
             return
         self._save_finished(
-            keys=self._record_keys(record=record),
+            keys=self._record_and_unfinished_set_keys(record=record),
             args=[record.model_dump_json(), record.saga_id, self._finished_operation_ttl_seconds],
         )
         logger.info(msg=f"saga {record.saga_id} stored as {record.status.value}")
@@ -54,5 +55,5 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
             return None
         return SagaRecord.model_validate_json(json_data=stored)
 
-    def _record_keys(self, *, record: SagaRecord) -> list[str]:
+    def _record_and_unfinished_set_keys(self, *, record: SagaRecord) -> list[str]:
         return [self._keys.saga(saga_id=record.saga_id), self._keys.unfinished_sagas()]
