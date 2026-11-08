@@ -34,6 +34,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=
         (ClusterActionFailedError(message="m"), Failure.FAILED),
         (DatabaseCreationFailedError(message="m"), Failure.FAILED),
         (AmbiguousResourceError(message="m"), Failure.MANUAL),
+        (UpdateOutcomeUnclearError(message="m"), Failure.MANUAL),
         (UnrestorableFieldsError(message="m"), Failure.FAILED),
         (RequestNotSentError(message="m"), Failure.UNKNOWN),
         (OutcomeUnknownError(message="m"), Failure.UNKNOWN),

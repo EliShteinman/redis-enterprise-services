@@ -32,7 +32,7 @@ class ClusterFailureClassifier(FailureClassifier):
         self._transient_codes: frozenset[str] = transient_codes
 
     def classify(self, *, error: RedisEnterpriseServicesError) -> Failure:
-        if isinstance(error, AmbiguousResourceError):
+        if isinstance(error, AmbiguousResourceError | UpdateOutcomeUnclearError):
             return Failure.MANUAL
         if isinstance(error, ClusterRequestError):
             return Failure.TRANSIENT if error.error_code in self._transient_codes else Failure.FAILED
