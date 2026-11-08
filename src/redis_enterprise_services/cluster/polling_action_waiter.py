@@ -1,5 +1,4 @@
 import logging
-from http import HTTPStatus
 
 from pydantic import JsonValue
 
@@ -7,16 +6,15 @@ from redis_enterprise_services.cluster.cluster_action_waiter import ClusterActio
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster.polling import poll_until_done_or_timeout
+from redis_enterprise_services.cluster.read_again import tolerate_read_again_errors
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
-    ClusterRejectedRequestError,
     UnreadableClusterResponseError,
 )
-from redis_enterprise_services.exceptions.edge import EdgeConnectionFailedError, EdgeOutcomeUnknownError
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -26,21 +24,28 @@ class PollingActionWaiter(ClusterActionWaiter):
         self,
         *,
         cluster_api_caller: ClusterApiCaller,
+        deadline_polling: DeadlinePolling,
         settings: ActionSettings,
         cluster_api_settings: ClusterApiSettings,
     ) -> None:
         self._cluster_api_caller: ClusterApiCaller = cluster_api_caller
+        self._deadline_polling: DeadlinePolling = deadline_polling
         self._settings: ActionSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
     def wait_until_completed(self, *, target: ClusterTarget, action_uid: str | None) -> None:
         if action_uid is None:
             return
-        if poll_until_done_or_timeout(
-            wait_settings=self._settings.wait,
-            is_done=lambda: self._read_whether_completed_or_raise_if_failed(
-                target=target, action_uid=action_uid
+        if self._deadline_polling.poll_until(
+            is_done=tolerate_read_again_errors(
+                is_done=lambda: self._read_whether_completed_or_raise_if_failed(
+                    target=target, action_uid=action_uid
+                ),
+                transient_error_codes=self._cluster_api_settings.transient_error_codes,
+                subject=f"action {action_uid}",
             ),
+            timeout_seconds=self._settings.wait.timeout_seconds,
+            poll_interval_seconds=self._settings.wait.poll_interval_seconds,
         ):
             return
         raise ClusterActionTimeoutError(
@@ -48,36 +53,33 @@ class PollingActionWaiter(ClusterActionWaiter):
         )
 
     def _read_whether_completed_or_raise_if_failed(self, *, target: ClusterTarget, action_uid: str) -> bool:
-        try:
-            action_body: JsonValue = self._cluster_api_caller.send(
-                target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
-            ).body
-        except (EdgeConnectionFailedError, EdgeOutcomeUnknownError) as error:
-            logger.warning(
-                msg=f"reading action {action_uid} failed, it is read again: {error.coded_message()}"
-            )
-            return False
-        except ClusterRejectedRequestError as error:
-            if not is_transient_rejection(
-                error=error, transient_error_codes=self._cluster_api_settings.transient_error_codes
-            ):
-                raise
-            logger.warning(
-                msg=f"cluster rejected reading action {action_uid} as transient, it is read again: "
-                f"{error.coded_message()}"
-            )
-            return False
-        status: str | None = string_field(body=action_body, name=self._cluster_api_settings.fields.status)
-        if status is None:
-            raise UnreadableClusterResponseError(message=f"action {action_uid} answered without a status")
-        if status in self._settings.failed_statuses:
-            raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action_body}")
+        action_body: JsonValue = self._read_action_body(target=target, action_uid=action_uid)
+        status: str = required_action_status(
+            action_uid=action_uid,
+            action_body=action_body,
+            status_field=self._cluster_api_settings.fields.status,
+        )
         logger.debug(msg=f"action {action_uid} is {status}")
-        return status == self._settings.completed_status
+        return is_completed_or_raise_if_failed(
+            action_uid=action_uid, status=status, action_body=action_body, settings=self._settings
+        )
+
+    def _read_action_body(self, *, target: ClusterTarget, action_uid: str) -> JsonValue:
+        return self._cluster_api_caller.send(
+            target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
+        ).body
 
 
-def is_transient_rejection(
-    *, error: ClusterRejectedRequestError, transient_error_codes: frozenset[str]
+def required_action_status(*, action_uid: str, action_body: JsonValue, status_field: str) -> str:
+    status: str | None = string_field(body=action_body, name=status_field)
+    if status is None:
+        raise UnreadableClusterResponseError(message=f"action {action_uid} answered without a status")
+    return status
+
+
+def is_completed_or_raise_if_failed(
+    *, action_uid: str, status: str, action_body: JsonValue, settings: ActionSettings
 ) -> bool:
-    server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-    return server_failed or error.cluster_error_code in transient_error_codes
+    if status in settings.failed_statuses:
+        raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action_body}")
+    return status == settings.completed_status

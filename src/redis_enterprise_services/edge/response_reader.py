@@ -35,7 +35,11 @@ class EdgeResponseReader:
     def unwrap_cluster_response(self, *, relay_response: requests.Response) -> ClusterResponse:
         edge_error_code: str | None = relay_response.headers.get(self._settings.headers.edge_error_code)
         if edge_error_code is not None:
-            raise self._edge_error_for(edge_error_code=edge_error_code, relay_response=relay_response)
+            error: EdgeError = self._error_for_edge_error_code(
+                edge_error_code=edge_error_code, relay_response=relay_response
+            )
+            logger.warning(msg=error.message)
+            raise error
         return ClusterResponse(
             status_code=relay_response.status_code,
             headers=dict(relay_response.headers),
@@ -45,22 +49,21 @@ class EdgeResponseReader:
             ),
         )
 
-    def _edge_error_for(self, *, edge_error_code: str, relay_response: requests.Response) -> EdgeError:
-        codes: EdgeErrorCodeSettings = self._settings.error_codes
+    def _error_for_edge_error_code(
+        self, *, edge_error_code: str, relay_response: requests.Response
+    ) -> EdgeError:
         message: str = f"relay answered {relay_response.status_code} {edge_error_code}: {relay_response.text}"
-        logger.warning(msg=message)
-        if edge_error_code == codes.response_rejected:
+        error_type: type[EdgeError] = edge_error_type_for(
+            edge_error_code=edge_error_code, codes=self._settings.error_codes
+        )
+        if error_type is EdgeRejectedResponseError:
             return EdgeRejectedResponseError(
                 message=message,
                 cluster_status_code=optional_int_header(
                     headers=relay_response.headers, name=self._settings.headers.cluster_status_code
                 ),
             )
-        error_type_by_code: dict[str, type[EdgeError]] = {
-            codes.invalid_request: EdgeRejectedRequestError,
-            codes.connection_failed: EdgeConnectionFailedError,
-        }
-        return error_type_by_code.get(edge_error_code, EdgeOutcomeUnknownError)(message=message)
+        return error_type(message=message)
 
     @staticmethod
     def _decoded_body(*, relay_response: requests.Response) -> JsonValue | None:
@@ -70,3 +73,12 @@ class EdgeResponseReader:
             return relay_response.json()
         except requests.JSONDecodeError:
             return relay_response.text
+
+
+def edge_error_type_for(*, edge_error_code: str, codes: EdgeErrorCodeSettings) -> type[EdgeError]:
+    error_type_by_code: dict[str, type[EdgeError]] = {
+        codes.response_rejected: EdgeRejectedResponseError,
+        codes.invalid_request: EdgeRejectedRequestError,
+        codes.connection_failed: EdgeConnectionFailedError,
+    }
+    return error_type_by_code.get(edge_error_code, EdgeOutcomeUnknownError)

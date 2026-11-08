@@ -17,6 +17,9 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
 )
 from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRejectedResponseError
+from redis_enterprise_services.timing.clock import MonotonicClock
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
+from redis_enterprise_services.timing.sleeper import SystemSleeper
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -38,6 +41,7 @@ def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
     return PollingActionWaiter(
         cluster_api_caller=cluster_api_caller,
+        deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
         settings=action_settings,
         cluster_api_settings=settings.cluster_api,
     )
