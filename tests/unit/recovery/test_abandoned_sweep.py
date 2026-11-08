@@ -6,9 +6,9 @@ from redis_enterprise_services.config.operation_settings import OperationSetting
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.recovery.abandoned_mark_result import AbandonedMarkResult
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
+from redis_enterprise_services.recovery.mark_abandoned_result import MarkAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -21,7 +21,7 @@ class SweepHarness:
         self.store.find_saga.return_value = (
             None if saga is None else StoredSaga(raw_json=saga.model_dump_json(), record=saga)
         )
-        self.store.mark_abandoned.return_value = AbandonedMarkResult.MARKED
+        self.store.mark_abandoned.return_value = MarkAbandonedResult.MARKED
         AbandonedSweep(
             store=self.store,
             public_errors=PublicErrors(
@@ -74,7 +74,9 @@ def test_a_running_saga_is_stopped_for_manual_intervention() -> None:
         (SagaStatus.REQUIRES_MANUAL_INTERVENTION, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
-def test_an_ended_saga_is_left_as_it_is(saga_status: SagaStatus, operation_status: OperationStatus) -> None:
+def test_an_ended_saga_record_is_not_rewritten(
+    saga_status: SagaStatus, operation_status: OperationStatus
+) -> None:
     operation, interrupted_saga = SweepHarness(saga=saga_record(status=saga_status)).marked_arguments()
 
     assert (operation.status, interrupted_saga) == (operation_status, None)
@@ -96,7 +98,7 @@ def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
         return None
 
     store.find_saga.side_effect = find_saga
-    store.mark_abandoned.return_value = AbandonedMarkResult.MARKED
+    store.mark_abandoned.return_value = MarkAbandonedResult.MARKED
 
     AbandonedSweep(
         store=store,

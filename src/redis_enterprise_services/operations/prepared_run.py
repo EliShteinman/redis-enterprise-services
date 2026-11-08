@@ -4,5 +4,5 @@ from pydantic import BaseModel
 
 
 class PreparedRun(BaseModel):
-    description: str
+    task_name: str
     task: Callable[[], object]

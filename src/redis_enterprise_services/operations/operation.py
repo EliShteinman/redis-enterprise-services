@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
-from redis_enterprise_services.operations.error_info import ErrorInfo
 from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
 
@@ -22,7 +22,7 @@ class Operation(BaseModel):
     database: DatabaseResult | None = Field(
         default=None, description="The database as it is now, when the operation succeeded. Otherwise null."
     )
-    error: ErrorInfo | None = Field(
+    error: PublicError | None = Field(
         default=None,
         exclude_if=lambda error: error is None,
         description="Why the operation failed. Only when it failed.",

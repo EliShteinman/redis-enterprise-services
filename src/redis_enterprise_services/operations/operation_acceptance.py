@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.liveness.live_operations import LiveOperations
-from redis_enterprise_services.operations.acceptance import Acceptance
+from redis_enterprise_services.operations.acceptance_result import AcceptanceResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -27,25 +27,25 @@ class OperationAcceptance:
         self._live_operations: LiveOperations = live_operations
         self._public_errors: PublicErrors = public_errors
 
-    def accept(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> Acceptance:
+    def accept(self, *, trace_id: str, prepare: Callable[[], PreparedRun]) -> AcceptanceResult:
         existing: Operation | None = self._store.find(trace_id=trace_id)
         if existing is not None:
-            return accepted_before(operation=existing)
+            return acceptance_of_existing(operation=existing)
         return self._store_and_submit(trace_id=trace_id, run=prepare())
 
-    def _store_and_submit(self, *, trace_id: str, run: PreparedRun) -> Acceptance:
+    def _store_and_submit(self, *, trace_id: str, run: PreparedRun) -> AcceptanceResult:
         running: Operation = Operation(trace_id=trace_id)
         existing: Operation | None = self._store.save_if_absent(operation=running)
         if existing is not None:
-            return accepted_before(operation=existing)
+            return acceptance_of_existing(operation=existing)
         self._live_operations.track(trace_id=trace_id)
         try:
             self._runner.submit(
-                name=run.description,
+                name=run.task_name,
                 task=self._live_operations.untracking_when_done(trace_id=trace_id, task=run.task),
             )
         except Exception:
-            logger.critical(msg=f"{run.description} cannot run in the background", exc_info=True)
+            logger.critical(msg=f"{run.task_name} cannot run in the background", exc_info=True)
             self._live_operations.untrack_and_delete_heartbeat(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
@@ -55,10 +55,10 @@ class OperationAcceptance:
                 )
             )
             raise
-        logger.info(msg=f"{run.description} is accepted as {trace_id}")
-        return Acceptance(operation=running, already_accepted=False)
+        logger.info(msg=f"{run.task_name} is accepted as {trace_id}")
+        return AcceptanceResult(operation=running, already_accepted=False)
 
 
-def accepted_before(*, operation: Operation) -> Acceptance:
+def acceptance_of_existing(*, operation: Operation) -> AcceptanceResult:
     logger.info(msg=f"operation {operation.trace_id} was already accepted, it is {operation.status.value}")
-    return Acceptance(operation=operation, already_accepted=True)
+    return AcceptanceResult(operation=operation, already_accepted=True)

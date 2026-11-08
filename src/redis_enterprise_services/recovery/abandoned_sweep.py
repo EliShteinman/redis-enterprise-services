@@ -5,8 +5,8 @@ from pydantic import ValidationError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.recovery.abandoned_mark_result import AbandonedMarkResult
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
+from redis_enterprise_services.recovery.mark_abandoned_result import MarkAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 
@@ -36,14 +36,14 @@ class AbandonedSweep:
             error=self._public_errors.internal_error(),
             not_rolled_back=[] if status is OperationStatus.ROLLED_BACK else None,
         )
-        result: AbandonedMarkResult = self._store.mark_abandoned(
-            operation=operation, expected_saga=saga, interrupted_saga=interrupted_copy(saga=saga)
+        result: MarkAbandonedResult = self._store.mark_abandoned(
+            operation=operation, expected_saga=saga, interrupted_saga=interrupted_saga_record(saga=saga)
         )
-        if result is AbandonedMarkResult.MARKED:
+        if result is MarkAbandonedResult.MARKED:
             logger.critical(
                 msg=f"operation {trace_id} was left by a pod that stopped, marked {operation.status.value}"
             )
-        elif result is AbandonedMarkResult.SAGA_CHANGED:
+        elif result is MarkAbandonedResult.SAGA_CHANGED:
             logger.warning(msg=f"saga {trace_id} changed while it was checked, it is checked again next time")
 
 
@@ -55,7 +55,7 @@ def status_after_crash(*, saga: StoredSaga | None) -> OperationStatus:
     return OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
-def interrupted_copy(*, saga: StoredSaga | None) -> SagaRecord | None:
+def interrupted_saga_record(*, saga: StoredSaga | None) -> SagaRecord | None:
     if saga is None or saga.record.status is not SagaStatus.RUNNING:
         return None
     interrupted: SagaRecord = saga.record.model_copy(deep=True)

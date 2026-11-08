@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 
-class ErrorInfo(BaseModel):
+class PublicError(BaseModel):
     code: str = Field(
         description="What kind of failure. At once: validation_error (the request does not match), "
         "invalid_name (a name breaks the naming rules), "
@@ -23,7 +23,7 @@ class ErrorInfo(BaseModel):
     )
     cluster_url: str | None = Field(
         default=None,
-        exclude_if=lambda cluster: cluster is None,
+        exclude_if=lambda cluster_url: cluster_url is None,
         description="The cluster the error came from. Only for errors from a cluster.",
         examples=["https://cluster-a.net-a:9443"],
     )

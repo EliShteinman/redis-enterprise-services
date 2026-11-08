@@ -20,15 +20,15 @@ PUBLIC_ERRORS: PublicErrors = PublicErrors(
     argvalues=[("cluster_rejected_request", "cluster_request_failed"), ("invalid_plan", "internal_error")],
 )
 def test_an_error_is_published_with_its_public_code(code: str, published: str) -> None:
-    assert PUBLIC_ERRORS.from_code(code=code, message="m").code == published
+    assert PUBLIC_ERRORS.from_code(error_code=code, message="m").code == published
 
 
 def test_only_an_error_from_a_cluster_names_the_cluster() -> None:
-    published: list[str | None] = [
+    published_cluster_urls: list[str | None] = [
         PUBLIC_ERRORS.from_code(
-            code=code, message="m", cluster_url="https://c1:9443", cluster_error_code="x"
+            error_code=code, message="m", cluster_url="https://c1:9443", cluster_error_code="x"
         ).cluster_url
         for code in ("cluster_rejected_request", "name_taken")
     ]
 
-    assert published == ["https://c1:9443", None]
+    assert published_cluster_urls == ["https://c1:9443", None]
