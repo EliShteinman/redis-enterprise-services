@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.cluster_action_waiter import ClusterActio
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until_done_or_timeout
-from redis_enterprise_services.cluster.transient_read import worth_reading_again
+from redis_enterprise_services.cluster.transient_read_error import is_transient_read_error
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -46,7 +46,9 @@ class PollingActionWaiter(ClusterActionWaiter):
                 target=target, method="GET", path=self._settings.path.format(uid=action_uid)
             ).body
         except RedisEnterpriseServicesError as error:
-            if not worth_reading_again(error=error, transient_codes=self._cluster_api.transient_error_codes):
+            if not is_transient_read_error(
+                error=error, transient_error_codes=self._cluster_api.transient_error_codes
+            ):
                 raise
             logger.warning(
                 msg=f"reading action {action_uid} failed, it is read again: {error.coded_message()}"

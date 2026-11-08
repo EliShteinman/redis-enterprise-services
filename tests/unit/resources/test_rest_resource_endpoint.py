@@ -8,8 +8,8 @@ from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulCl
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
-from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
+from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -22,29 +22,31 @@ USERS: list[JsonValue] = [
 ]
 
 
-def endpoint_answering(*, answer: JsonValue) -> ResourceEndpoint:
+def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.return_value = SuccessfulClusterResponse(body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
-    return ResourceEndpoint(api=api, settings=settings.user, cluster_api=settings.cluster_api)
+    return RestResourceEndpoint(api=api, settings=settings.user, cluster_api=settings.cluster_api)
 
 
 @pytest.fixture
-def endpoint() -> ResourceEndpoint:
+def endpoint() -> RestResourceEndpoint:
     return endpoint_answering(answer=USERS)
 
 
-def test_find_by_name_returns_the_resource_with_that_name(endpoint: ResourceEndpoint) -> None:
+def test_find_by_name_returns_the_resource_with_that_name(endpoint: RestResourceEndpoint) -> None:
     assert endpoint.find_by_name(target=TARGET, name="app-user") == [NamedResource(uid=6, name="app-user")]
 
 
 @pytest.mark.parametrize(argnames="name", argvalues=["no-such-user", "APP-USER"])
-def test_find_by_name_returns_nothing_without_an_exact_match(endpoint: ResourceEndpoint, name: str) -> None:
+def test_find_by_name_returns_nothing_without_an_exact_match(
+    endpoint: RestResourceEndpoint, name: str
+) -> None:
     assert endpoint.find_by_name(target=TARGET, name=name) == []
 
 
 def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
-    endpoint: ResourceEndpoint = endpoint_answering(
+    endpoint: RestResourceEndpoint = endpoint_answering(
         answer={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
     )
 
@@ -53,15 +55,15 @@ def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
     assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
 
 
-def test_create_reports_an_unreadable_answer_as_its_own_error() -> None:
-    endpoint: ResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
+def test_create_raises_unreadable_response_for_an_answer_without_a_uid() -> None:
+    endpoint: RestResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
         endpoint.create(target=TARGET, body={"name": "app-user"})
 
 
 def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
-    endpoint: ResourceEndpoint = endpoint_answering(
+    endpoint: RestResourceEndpoint = endpoint_answering(
         answer={"name": "db1", "authentication_redis_pass": "s3cret"}
     )
 
@@ -72,7 +74,7 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
 
 
 def test_find_by_name_reports_an_unreadable_list_without_its_values() -> None:
-    endpoint: ResourceEndpoint = endpoint_answering(
+    endpoint: RestResourceEndpoint = endpoint_answering(
         answer=[{"name": "db1", "authentication_redis_pass": "s3cret"}]
     )
 
@@ -87,7 +89,7 @@ def test_the_database_list_asks_only_for_the_configured_fields() -> None:
     api.send.return_value = SuccessfulClusterResponse(body=[], cluster_state_id=None)
     settings: Settings = load_settings()
 
-    ResourceEndpoint(api=api, settings=settings.database, cluster_api=settings.cluster_api).find_by_name(
+    RestResourceEndpoint(api=api, settings=settings.database, cluster_api=settings.cluster_api).find_by_name(
         target=TARGET, name="orders"
     )
 

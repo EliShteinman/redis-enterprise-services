@@ -3,12 +3,12 @@ from pydantic import BaseModel
 from redis_enterprise_services.config.role_management import RoleManagement
 
 
-class RoleResource(BaseModel):
+class RoleResourceScope(BaseModel):
     type: str
     uids: list[str]
 
 
-class RoleBody(BaseModel):
+class RoleCreationBody(BaseModel):
     name: str
     management: RoleManagement
-    resources: list[RoleResource]
+    resources: list[RoleResourceScope]

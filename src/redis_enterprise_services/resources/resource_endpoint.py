@@ -6,7 +6,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 
 
-class ResourceCalls(Protocol):
+class ResourceEndpoint(Protocol):
     def create(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource: ...
 
     def delete(self, *, target: ClusterTarget, uid: int) -> str | None: ...

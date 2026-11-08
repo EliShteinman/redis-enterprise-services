@@ -10,7 +10,7 @@ class DatabaseFieldsReader(Protocol):
     def get_fields(self, *, target: ClusterTarget, uid: int, fields: list[str]) -> DatabaseFields: ...
 
 
-class DatabaseFieldsStore(DatabaseFieldsReader, Protocol):
-    def update(
+class DatabaseFieldsRepository(DatabaseFieldsReader, Protocol):
+    def update_fields(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None: ...

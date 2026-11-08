@@ -11,16 +11,16 @@ from redis_enterprise_services.config.cluster_api_settings import ClusterApiSett
 from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
-from redis_enterprise_services.resources.resource_calls import ResourceCalls
+from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 
-NAMED_RESOURCE_LIST: TypeAdapter[list[NamedResource]] = TypeAdapter(
+NAMED_RESOURCE_LIST_ADAPTER: TypeAdapter[list[NamedResource]] = TypeAdapter(
     type=list[NamedResource], config=ConfigDict(hide_input_in_errors=True)
 )
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class ResourceEndpoint(ResourceCalls):
+class RestResourceEndpoint(ResourceEndpoint):
     def __init__(
         self, *, api: ClusterApiCaller, settings: ResourceSettings, cluster_api: ClusterApiSettings
     ) -> None:
@@ -30,34 +30,36 @@ class ResourceEndpoint(ResourceCalls):
 
     def create(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource:
         logger.info(msg=f"creating {self._settings.collection_path} {body.get('name')}")
-        answer: JsonValue = self._api.send(
+        response_body: JsonValue = self._api.send(
             target=target, method="POST", path=self._settings.collection_path, body=body
         ).body
         try:
-            resource: NamedResource = NamedResource.model_validate(obj=answer)
+            resource: NamedResource = NamedResource.model_validate(obj=response_body)
         except ValidationError as error:
             raise UnreadableClusterResponseError(
                 message=f"created {body.get('name')}, "
-                f"unreadable answer fields {invalid_field_paths(error=error)}"
+                f"unreadable response_body fields {invalid_field_paths(error=error)}"
             ) from error
-        return CreatedResource(uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=answer))
+        return CreatedResource(
+            uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=response_body)
+        )
 
     def delete(self, *, target: ClusterTarget, uid: int) -> str | None:
         logger.info(msg=f"deleting {self._settings.path.format(uid=uid)}")
-        answer: JsonValue = self._api.send(
+        response_body: JsonValue = self._api.send(
             target=target, method="DELETE", path=self._settings.path.format(uid=uid)
         ).body
-        return self._action_uid(body=answer)
+        return self._action_uid(body=response_body)
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
         return [resource for resource in self.list_named(target=target) if resource.name == name]
 
     def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
-        answer: JsonValue = self._api.send(
+        response_body: JsonValue = self._api.send(
             target=target, method="GET", path=self._settings.collection_path, query=self._list_query()
         ).body
         try:
-            return NAMED_RESOURCE_LIST.validate_python(answer)
+            return NAMED_RESOURCE_LIST_ADAPTER.validate_python(response_body)
         except ValidationError as error:
             raise UnreadableClusterResponseError(
                 message=f"cannot read {self._settings.collection_path}, "

@@ -2,7 +2,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
-from redis_enterprise_services.resources.spec import NamedSpec
+from redis_enterprise_services.resources.named_spec import NamedSpec
 
 UNSET_MEANS_DEFAULT: str = (
     " When omitted or null, the service's configured default for the target applies,"
