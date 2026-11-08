@@ -1,5 +1,7 @@
 from pydantic import BaseModel, PositiveFloat, SecretStr
 
+from redis_enterprise_services.config.network_name import NetworkName
+
 
 class EdgeHeaderSettings(BaseModel):
     method: str
@@ -35,4 +37,4 @@ class EdgeSettings(BaseModel):
     headers: EdgeHeaderSettings
     content_type: str
     error_codes: EdgeErrorCodeSettings
-    networks: dict[str, NetworkSettings]
+    networks: dict[NetworkName, NetworkSettings]
