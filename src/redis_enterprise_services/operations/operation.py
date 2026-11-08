@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
-from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
@@ -32,3 +32,6 @@ class Operation(BaseModel):
         exclude_if=lambda not_rolled_back: not_rolled_back is None,
         description="What stayed on the clusters after a failure. Empty when everything was undone.",
     )
+
+    def has_ended_cleanly(self) -> bool:
+        return self.status in EXPIRING_STATUSES
