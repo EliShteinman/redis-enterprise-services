@@ -76,7 +76,7 @@ def test_a_running_saga_is_marked_interrupted() -> None:
         (SagaStatus.REQUIRES_MANUAL_INTERVENTION, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
     ],
 )
-def test_an_ended_saga_record_is_not_rewritten(
+def test_an_ended_saga_sets_its_operation_status_and_is_not_rewritten(
     saga_status: SagaStatus, operation_status: OperationStatus
 ) -> None:
     operation, interrupted_saga = SweepHarness(saga=saga_record(status=saga_status)).finalize_arguments()

@@ -20,12 +20,12 @@ class AbandonedSweep:
 
     def sweep(self) -> None:
         trace_ids: list[str] = self._store.running_trace_ids_without_heartbeat()
-        logger.debug(msg=f"checking {len(trace_ids)} open operations without a heartbeat")
+        logger.debug(msg=f"checking {len(trace_ids)} running operations without a heartbeat")
         for trace_id in trace_ids:
             try:
                 self._finalize_abandoned(trace_id=trace_id)
             except ValidationError:
-                logger.exception(msg=f"the records of operation {trace_id} cannot be read, it is skipped")
+                logger.exception(msg=f"the saga record of operation {trace_id} cannot be read, it is skipped")
 
     def _finalize_abandoned(self, *, trace_id: str) -> None:
         saga: StoredSaga | None = self._store.find_saga(trace_id=trace_id)
@@ -41,7 +41,8 @@ class AbandonedSweep:
         )
         if result is FinalizeAbandonedResult.FINALIZED:
             logger.critical(
-                msg=f"operation {trace_id} was left by a pod that stopped, marked {operation.status.value}"
+                msg=f"operation {trace_id} was left by a pod that stopped, "
+                f"finalized as {operation.status.value}"
             )
         elif result is FinalizeAbandonedResult.SAGA_CHANGED:
             logger.warning(msg=f"saga {trace_id} changed while it was checked, it is checked again next time")

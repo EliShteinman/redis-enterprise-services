@@ -71,7 +71,7 @@ def test_a_known_trace_returns_its_operation_without_preparing() -> None:
     )
 
 
-def test_a_trace_started_meanwhile_does_not_run_again() -> None:
+def test_an_operation_started_meanwhile_is_returned_and_not_submitted() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
     harness.store.start_if_absent.return_value = RUNNING_OPERATION
 
@@ -107,7 +107,7 @@ def test_a_failed_submit_stores_the_operation_as_rejected() -> None:
     )
 
 
-def test_a_started_operation_is_tracked_while_it_runs() -> None:
+def test_a_started_operation_is_tracked() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
 
     harness.find_or_start()
