@@ -13,7 +13,11 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
     def find_outcome(
-        self, *, step_input: TInput, kept_result: TResult | None, keep_found_result: KeepResult[TResult]
+        self,
+        *,
+        step_input: TInput,
+        kept_result: TResult | None,
+        keep_result_if_none_kept: KeepResult[TResult],
     ) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...

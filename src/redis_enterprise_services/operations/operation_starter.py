@@ -42,13 +42,13 @@ class OperationStarter:
         try:
             self._task_runner.submit(
                 task_name=prepared_run.task_name,
-                task=self._operation_heartbeats.untracking_and_deleting_heartbeat_when_done(
+                task=self._operation_heartbeats.stopping_heartbeat_when_done(
                     trace_id=trace_id, task=prepared_run.task
                 ),
             )
         except Exception:
             logger.critical(msg=f"{prepared_run.task_name} cannot run in the background", exc_info=True)
-            self._operation_heartbeats.untrack_and_delete_heartbeat(trace_id=trace_id)
+            self._operation_heartbeats.stop_heartbeat(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
                     trace_id=trace_id,

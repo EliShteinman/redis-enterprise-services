@@ -131,4 +131,4 @@ def test_a_failed_submit_untracks_and_deletes_the_heartbeat() -> None:
     with pytest.raises(expected_exception=RuntimeError):
         harness.find_or_start()
 
-    harness.operation_heartbeats.untrack_and_delete_heartbeat.assert_called_once_with(trace_id="trace-1")
+    harness.operation_heartbeats.stop_heartbeat.assert_called_once_with(trace_id="trace-1")

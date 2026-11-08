@@ -18,7 +18,7 @@ def test_an_untracked_operation_gets_no_more_heartbeats() -> None:
     )
     operation_heartbeats.track(trace_id="trace-1")
     operation_heartbeats.track(trace_id="trace-2")
-    operation_heartbeats.untrack_and_delete_heartbeat(trace_id="trace-1")
+    operation_heartbeats.stop_heartbeat(trace_id="trace-1")
 
     operation_heartbeats.mark_tracked_alive()
 
@@ -31,13 +31,11 @@ def test_the_heartbeat_is_deleted_when_the_task_fails() -> None:
         heartbeat_store=heartbeat_store
     )
     operation_heartbeats.track(trace_id="trace-1")
-    task_untracking_and_deleting_heartbeat: Callable[[], object] = (
-        operation_heartbeats.untracking_and_deleting_heartbeat_when_done(
-            trace_id="trace-1", task=failing_task
-        )
+    task_stopping_heartbeat: Callable[[], object] = operation_heartbeats.stopping_heartbeat_when_done(
+        trace_id="trace-1", task=failing_task
     )
 
     with pytest.raises(expected_exception=RuntimeError):
-        task_untracking_and_deleting_heartbeat()
+        task_stopping_heartbeat()
 
     heartbeat_store.delete.assert_called_once_with(trace_id="trace-1")
