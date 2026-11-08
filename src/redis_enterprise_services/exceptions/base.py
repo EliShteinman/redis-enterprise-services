@@ -11,5 +11,5 @@ class RedisEnterpriseServicesError(Exception):
         self.message: str = message
         self.cluster_error_code: str | None = None
 
-    def describe(self) -> str:
+    def coded_message(self) -> str:
         return f"{self.code}: {self.message}"

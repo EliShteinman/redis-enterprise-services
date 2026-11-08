@@ -4,8 +4,8 @@ from typing import ClassVar
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 
-class ClusterRequestError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "cluster_request_error"
+class ClusterRejectedRequestError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "cluster_rejected_request"
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
 
     def __init__(self, *, message: str, cluster_status_code: int, cluster_error_code: str | None) -> None:
@@ -43,10 +43,10 @@ class ClusterActionTimeoutError(RedisEnterpriseServicesError):
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
 
 
-class AmbiguousResourceError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "ambiguous_resource"
+class DuplicateResourceNameError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "duplicate_resource_name"
 
 
-class UnreadableClusterAnswerError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "unreadable_cluster_answer"
+class UnreadableClusterResponseError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "unreadable_cluster_response"
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY

@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.edge_settings import EdgeNetworkSettings
 
 

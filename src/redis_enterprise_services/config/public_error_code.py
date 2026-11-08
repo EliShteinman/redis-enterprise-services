@@ -6,7 +6,7 @@ type PublicErrorCode = Literal[
     "invalid_name",
     "unknown_cluster",
     "cluster_unavailable",
-    "cluster_operation_failed",
+    "cluster_request_failed",
     "cluster_timeout",
     "internal_error",
 ]

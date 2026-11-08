@@ -11,9 +11,9 @@ from pydantic_settings import (
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.background_settings import BackgroundSettings
+from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_settings import ClusterSettings
-from redis_enterprise_services.config.clusters_settings import ClusterList
+from redis_enterprise_services.config.cluster_inventory import ClusterList
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_network_coverage import networks_missing_from_edge
@@ -37,7 +37,7 @@ YAML_FILES: tuple[str, ...] = (
     "config/edge.yaml",
     "config/action.yaml",
     "config/acl.yaml",
-    "config/cluster.yaml",
+    "config/cluster_api.yaml",
     "config/database.yaml",
     "config/saga.yaml",
     "config/state.yaml",
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     edge: EdgeSettings
     action: ActionSettings
     acl: ResourceSettings
-    cluster: ClusterSettings
+    cluster_api: ClusterApiSettings
     database: DatabaseSettings
     saga: SagaSettings
     state: StateSettings
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     cluster_credentials: ClusterCredentialsSettings
 
     @model_validator(mode="after")
-    def every_cluster_network_has_an_edge(self) -> Self:
+    def reject_cluster_networks_without_edge(self) -> Self:
         missing: list[str] = networks_missing_from_edge(clusters=self.clusters, networks=self.edge.networks)
         if missing:
             raise ValueError(f"networks in clusters with no entry in edge.networks: {missing}")

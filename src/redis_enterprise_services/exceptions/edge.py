@@ -14,15 +14,15 @@ class InvalidEdgeRequestError(EdgeError):
     status_code: ClassVar[int] = HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-class RequestNotSentError(EdgeError):
+class EdgeRequestNotSentError(EdgeError):
     pass
 
 
-class OutcomeUnknownError(EdgeError):
+class EdgeOutcomeUnknownError(EdgeError):
     pass
 
 
-class ClusterResponseRejectedError(EdgeError):
+class InvalidClusterResponseError(EdgeError):
     def __init__(self, *, message: str, cluster_status_code: int | None) -> None:
         super().__init__(message=message)
         self.cluster_status_code: int | None = cluster_status_code

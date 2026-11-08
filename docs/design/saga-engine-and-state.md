@@ -61,7 +61,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
-| `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `AmbiguousResourceError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
+| `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `DuplicateResourceNameError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
 | `DatabaseUpdate` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום |
 
 ---
@@ -122,9 +122,9 @@ PlannedStep(
 | **זמנית** | שגיאת קלאסטר עם `error_code` מ-`cluster.transient_error_codes` (`busy`, `db_busy`, `wrong_cluster_state_id`) | ניסיון חוזר. אם יש תוצאה שמורה, קודם `find_outcome`: נמצא ⇐ `done` |
 | **נכשלה** | כל שגיאת קלאסטר אחרת; `invalid_request` של שירות הקצה; DB ב-`creation-failed`; action שהסתיים ב-`failed`; כל שגיאה אחרת של הפרויקט | הצעד `failed` ⇐ ביטול. אם הצעד כבר שמר תוצאה: `find_outcome` קודם. נמצא ⇐ `done`. לא נמצא ⇐ `failed` |
 | **לא ידועה** | כל שגיאה אחרת של שירות הקצה או של התקשורת אליו; timeout של המתנה; תשובה שלא נקראת | `find_outcome` פעם אחת. נמצא ⇐ `done`. לא נמצא, אין תוצאה שמורה ונשארו ניסיונות ⇐ ניסיון חוזר אחד, וכל כישלון אחריו ⇐ התערבות ידנית. לא נמצא ויש תוצאה שמורה, או שזה היה הניסיון האחרון ⇐ התערבות ידנית |
-| **ידנית** | `AmbiguousResourceError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
+| **ידנית** | `DuplicateResourceNameError`: כמה משאבים באותו שם | התערבות ידנית מיד, בלי ביטול |
 
-- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_lookup`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`AmbiguousResourceError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
+- **שגיאה מתוך `find_outcome`** ממוינת אחרת (`classify_lookup`): רק action שנכשל או DB ב-`creation-failed` הם "נכשלה", ו-`DuplicateResourceNameError` ידנית. כל השאר, כולל שגיאת קלאסטר רגילה, `busy` ו-`invalid_request`, ⇐ התערבות ידנית, כי ייתכן שהפעולה בוצעה.
 - **אחרי תוצאה לא ידועה, כל מה שאינו הצלחה ⇐ התערבות ידנית.** הבקשה הראשונה אולי עוד תגיע לקלאסטר.
 - **"לא נשלח" לא אמין:** חיבור מוצפן שנשבר אחרי השליחה נראה כמו כישלון התחברות. לכן גם שירות קצה שלא זמין הוא
   תוצאה לא ידועה, וה-Saga עובר להתערבות ידנית עם הנעילה, ולא מבטל לבד.
@@ -226,7 +226,7 @@ PlannedStep(
 **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** והפרטים בלוג:
 - לפני שה-Saga התחיל (אין record) ⇐ `rejected` עם `internal_error`.
 - אחרי שהתחיל ⇐ הפעולה נבנית מה-saga record שנשמר, כמו בסוף רגיל: הסטטוס שלו, ה-`error` של הצעד שעצר (למשל
-  `cluster_operation_failed`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
+  `cluster_request_failed`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
 - record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error`.
 
 **הרצה ברקע:** `ThreadPoolRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות

@@ -11,7 +11,7 @@ NAME_SEPARATOR: str = "-"
 JOINED_PLACEHOLDERS: str = f"{{database}}{NAME_SEPARATOR}{{user}}"
 
 
-def require_database_user_placeholders(template: str) -> str:
+def reject_template_without_database_user_placeholders(template: str) -> str:
     placeholders: set[str] = {field for _, field, _, _ in Formatter().parse(template) if field is not None}
     if placeholders != NAME_PLACEHOLDERS:
         raise ValueError(f"{template} must use exactly the placeholders {sorted(NAME_PLACEHOLDERS)}")
@@ -20,7 +20,7 @@ def require_database_user_placeholders(template: str) -> str:
     return template
 
 
-type NameTemplate = Annotated[str, AfterValidator(require_database_user_placeholders)]
+type NameTemplate = Annotated[str, AfterValidator(reject_template_without_database_user_placeholders)]
 
 
 class UserResourcesSettings(ConfigModel):

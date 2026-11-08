@@ -4,5 +4,5 @@ from redis_enterprise_services.config.config_model import ConfigModel
 
 
 class WaitSettings(ConfigModel):
-    interval_seconds: PositiveFloat
+    poll_interval_seconds: PositiveFloat
     timeout_seconds: PositiveFloat

@@ -11,7 +11,7 @@ class OperationSettings(ConfigModel):
     cluster_caused_public_codes: frozenset[PublicErrorCode]
 
     @model_validator(mode="after")
-    def cluster_caused_codes_are_public_codes(self) -> Self:
+    def reject_unmapped_cluster_caused_codes(self) -> Self:
         public: set[str] = set(self.public_code_by_error_code.values())
         unknown: frozenset[str] = self.cluster_caused_public_codes - public
         if unknown:

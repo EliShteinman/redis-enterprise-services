@@ -119,7 +119,7 @@
 | `proxy_policy` | `all-master-shards` |
 
 השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
-`rolled_back` עם `cluster_operation_failed`.
+`rolled_back` עם `cluster_request_failed`.
 
 ### `body.users[]`
 
@@ -194,7 +194,7 @@
   "status": "rolled_back",
   "database": null,
   "error": {
-    "code": "cluster_operation_failed",
+    "code": "cluster_request_failed",
     "message": "…",
     "cluster": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
@@ -211,7 +211,7 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
-**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`cluster_operation_failed`,
+**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
@@ -267,7 +267,7 @@
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה (`message` קבוע: `internal error`), או שגיאה פנימית בלי קוד ציבורי משלה (התיאור שלה ב-`message`). הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_operation_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
+| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 
