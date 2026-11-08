@@ -16,7 +16,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     UnreadableClusterResponseError,
 )
-from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, InvalidClusterResponseError
+from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRejectedResponseError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -86,9 +86,9 @@ def test_a_cluster_failure_that_may_pass_while_reading_the_action_is_read_again(
 
 def test_an_invalid_cluster_response_for_the_action_fails_at_once() -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
-    api.send.side_effect = InvalidClusterResponseError(message="schema", cluster_status_code=200)
+    api.send.side_effect = EdgeRejectedResponseError(message="schema", cluster_status_code=200)
 
-    with pytest.raises(expected_exception=InvalidClusterResponseError):
+    with pytest.raises(expected_exception=EdgeRejectedResponseError):
         waiter(api=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
 

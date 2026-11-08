@@ -16,11 +16,11 @@ from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.edge.response_reader import EdgeResponseReader
 from redis_enterprise_services.exceptions.edge import (
+    EdgeConnectionFailedError,
     EdgeError,
     EdgeOutcomeUnknownError,
-    EdgeRequestNotSentError,
-    InvalidClusterResponseError,
-    InvalidEdgeRequestError,
+    EdgeRejectedRequestError,
+    EdgeRejectedResponseError,
 )
 
 NETWORK: str = "local"
@@ -80,10 +80,10 @@ def test_an_answer_without_edge_error_is_the_cluster_answer(
 @pytest.mark.parametrize(
     argnames=("code", "expected"),
     argvalues=[
-        ("invalid_request", InvalidEdgeRequestError),
-        ("connection_failed", EdgeRequestNotSentError),
+        ("invalid_request", EdgeRejectedRequestError),
+        ("connection_failed", EdgeConnectionFailedError),
         ("timeout", EdgeOutcomeUnknownError),
-        ("response_rejected", InvalidClusterResponseError),
+        ("response_rejected", EdgeRejectedResponseError),
         ("something_new", EdgeOutcomeUnknownError),
     ],
 )
@@ -120,7 +120,7 @@ def test_an_invalid_cluster_response_keeps_the_cluster_status(
         settings.headers.cluster_status_code: "201",
     }
 
-    with pytest.raises(expected_exception=InvalidClusterResponseError) as invalid_response:
+    with pytest.raises(expected_exception=EdgeRejectedResponseError) as invalid_response:
         send_through_relay_answering(
             settings=settings, answer=relay_answer(status_code=502, headers=headers), monkeypatch=monkeypatch
         )
@@ -135,13 +135,13 @@ def test_an_invalid_cluster_response_keeps_the_cluster_status(
             requests.ConnectionError(
                 MaxRetryError(pool=POOL, url="/", reason=NewConnectionError(CONNECTION, "refused"))
             ),
-            EdgeRequestNotSentError,
+            EdgeConnectionFailedError,
         ),
         (
             requests.ConnectTimeout(
                 MaxRetryError(pool=POOL, url="/", reason=ConnectTimeoutError("timed out"))
             ),
-            EdgeRequestNotSentError,
+            EdgeConnectionFailedError,
         ),
         (
             requests.exceptions.SSLError(

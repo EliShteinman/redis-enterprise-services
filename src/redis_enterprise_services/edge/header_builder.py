@@ -40,8 +40,8 @@ class EdgeHeaderBuilder:
     def _optional_headers(self, *, request: ClusterRequest) -> dict[str, str]:
         optional: dict[str, int | str | None] = {
             self._header_names.cluster_state_id: request.cluster_state_id,
-            self._header_names.task_id: request.crdb_task_id,
-            self._header_names.result_ttl: request.result_ttl_seconds,
+            self._header_names.crdb_task_id: request.crdb_task_id,
+            self._header_names.result_ttl_seconds: request.result_ttl_seconds,
         }
         return {name: str(value) for name, value in optional.items() if value is not None}
 

@@ -7,11 +7,11 @@ from requests.structures import CaseInsensitiveDict
 from redis_enterprise_services.config.edge_settings import EdgeErrorCodeSettings, EdgeSettings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.edge import (
+    EdgeConnectionFailedError,
     EdgeError,
     EdgeOutcomeUnknownError,
-    EdgeRequestNotSentError,
-    InvalidClusterResponseError,
-    InvalidEdgeRequestError,
+    EdgeRejectedRequestError,
+    EdgeRejectedResponseError,
 )
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -50,15 +50,15 @@ class EdgeResponseReader:
         message: str = f"relay answered {response.status_code} {code}: {response.text}"
         logger.warning(msg=message)
         if code == codes.response_rejected:
-            return InvalidClusterResponseError(
+            return EdgeRejectedResponseError(
                 message=message,
                 cluster_status_code=optional_int_header(
                     headers=response.headers, name=self._settings.headers.cluster_status_code
                 ),
             )
         error_type_by_code: dict[str, type[EdgeError]] = {
-            codes.invalid_request: InvalidEdgeRequestError,
-            codes.connection_failed: EdgeRequestNotSentError,
+            codes.invalid_request: EdgeRejectedRequestError,
+            codes.connection_failed: EdgeConnectionFailedError,
         }
         return error_type_by_code.get(code, EdgeOutcomeUnknownError)(message=message)
 

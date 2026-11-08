@@ -16,7 +16,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     UnreadableClusterResponseError,
 )
-from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRequestNotSentError
+from redis_enterprise_services.exceptions.edge import EdgeConnectionFailedError, EdgeOutcomeUnknownError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -44,15 +44,17 @@ class PollingActionWaiter(ClusterActionWaiter):
     def _is_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
         try:
             action_body: JsonValue = self._api.send(
-                target=target, method="GET", path=self._settings.path.format(uid=action_uid)
+                target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
             ).body
-        except (EdgeRequestNotSentError, EdgeOutcomeUnknownError) as error:
+        except (EdgeConnectionFailedError, EdgeOutcomeUnknownError) as error:
             logger.warning(
                 msg=f"reading action {action_uid} failed, it is read again: {error.coded_message()}"
             )
             return False
         except ClusterRejectedRequestError as error:
-            if not read_again_after(error=error, transient_codes=self._cluster_api.transient_error_codes):
+            if not read_again_after(
+                error=error, transient_error_codes=self._cluster_api.transient_error_codes
+            ):
                 raise
             logger.warning(msg=f"cluster failed reading action {action_uid}: {error.coded_message()}")
             return False
@@ -65,6 +67,6 @@ class PollingActionWaiter(ClusterActionWaiter):
         return status == self._settings.completed_status
 
 
-def read_again_after(*, error: ClusterRejectedRequestError, transient_codes: frozenset[str]) -> bool:
+def read_again_after(*, error: ClusterRejectedRequestError, transient_error_codes: frozenset[str]) -> bool:
     server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-    return server_failed or error.cluster_error_code in transient_codes
+    return server_failed or error.cluster_error_code in transient_error_codes
