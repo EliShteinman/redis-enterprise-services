@@ -77,6 +77,12 @@ def test_an_ended_saga_is_left_as_it_is(saga_status: SagaStatus, operation_statu
     assert (operation.status, saga) == (operation_status, None)
 
 
+def test_an_operation_whose_saga_rolled_back_lists_nothing_left_behind() -> None:
+    operation, _ = Sweep(saga=saga_record(status=SagaStatus.ROLLED_BACK)).marked()
+
+    assert operation.not_rolled_back == []
+
+
 def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
     store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
     store.without_heartbeat.return_value = ["trace-bad", "trace-good"]

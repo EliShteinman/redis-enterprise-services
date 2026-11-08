@@ -29,10 +29,12 @@ class AbandonedSweep:
 
     def _check(self, *, trace_id: str) -> None:
         saga: StoredSaga | None = self._store.saga_of(trace_id=trace_id)
+        status: OperationStatus = status_after_crash(saga=saga)
         operation: Operation = Operation(
             trace_id=trace_id,
-            status=status_after_crash(saga=saga),
+            status=status,
             error=self._errors.internal(),
+            not_rolled_back=[] if status is OperationStatus.ROLLED_BACK else None,
         )
         result: MarkResult = self._store.mark_abandoned(
             operation=operation, read_saga=saga, stopped_saga=stopped(saga=saga)
