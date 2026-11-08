@@ -424,6 +424,18 @@ def test_a_step_run_again_after_its_kept_result_was_not_found_keeps_the_new_resu
     assert record.steps[0].result == FakeResult(name="a", attempt=2).model_dump(mode="json")
 
 
+def test_a_pivot_whose_kept_result_is_not_found_after_a_busy_cluster_is_not_run_again(
+    journal: list[str], state: MemoryState, lock: MemoryLock
+) -> None:
+    step: FakeStep = FakeStep(
+        journal=journal, kind=StepKind.PIVOT, executions=["keep then busy", "keep"], outcomes=[None]
+    )
+
+    run(steps=[planned(step=step, name="p")], state=state, lock=lock)
+
+    assert step.executed == 1
+
+
 @pytest.mark.parametrize(argnames="failing", argvalues=["keep then rejected", "keep then unknown"])
 def test_a_non_transient_failure_after_a_kept_result_that_is_not_found_is_not_run_again(
     journal: list[str], state: MemoryState, lock: MemoryLock, failing: str

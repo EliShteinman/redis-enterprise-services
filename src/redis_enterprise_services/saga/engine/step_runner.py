@@ -137,8 +137,10 @@ def forget_unfound_result(*, step: PreparedStep, recorder: StepRecorder) -> None
 
 
 def not_found_outcome(*, step: PreparedStep, failure: Failure) -> StepOutcome | None:
-    if not step.has_result or failure is Failure.TRANSIENT:
+    if not step.has_result:
         return None
+    if failure is Failure.TRANSIENT:
+        return None if step.kind is StepKind.COMPENSATABLE else StepOutcome.MANUAL
     if failure is Failure.UNKNOWN:
         logger.error(msg=f"step {step.key} kept a result, and its unknown outcome was not found")
         return StepOutcome.MANUAL
