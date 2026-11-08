@@ -62,6 +62,10 @@ class SagaExecutor:
     def _run_to_end(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         try:
             record.status = self._run_steps(plan=plan, record=record)
+        except BaseException:
+            logger.error(msg=f"saga {record.saga_id} stopped on an unexpected error", exc_info=True)
+            record.mark_interrupted()
+            raise
         finally:
             self._end(record=record, plan=plan)
 
@@ -109,7 +113,6 @@ class SagaExecutor:
         return SagaStatus.REQUIRES_MANUAL_INTERVENTION
 
     def _end(self, *, record: SagaRecord, plan: SagaPlan) -> None:
-        mark_interrupted_if_still_running(record=record)
         logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
         self._release_lock_if_cleanly_ended(record=record, plan=plan)
         self._record_writer.save_final(record=record)
@@ -119,9 +122,3 @@ class SagaExecutor:
             self._lock.release(lock_keys=plan.lock_keys, owner=record.saga_id)
             return
         logger.critical(msg=f"saga {record.saga_id} needs manual intervention, lock {plan.lock_keys} kept")
-
-
-def mark_interrupted_if_still_running(*, record: SagaRecord) -> None:
-    if record.status is SagaStatus.RUNNING:
-        logger.error(msg=f"saga {record.saga_id} stopped on an unexpected error", exc_info=True)
-        record.mark_interrupted()

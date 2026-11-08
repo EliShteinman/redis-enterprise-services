@@ -25,18 +25,18 @@ class Compensator:
         self._sleeper: Sleeper = sleeper
 
     def compensate_in_reverse(self, *, prepared_steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
-        return all(
-            [
-                self._compensate_step(step=step, recorder=recorder)
-                for step, recorder in steps_to_compensate(prepared_steps=prepared_steps)
-            ]
-        )
+        compensated_each: list[bool] = [
+            self._compensate_step(step=step, recorder=recorder)
+            for step, recorder in steps_to_compensate(prepared_steps=prepared_steps)
+        ]
+        return all(compensated_each)
 
     def _compensate_step(self, *, step: PreparedStep, recorder: StepRecorder) -> bool:
         warn_if_found_not_kept(step=step)
         recorder.mark_compensating()
         last_error: StepError | None = self._compensate_with_retries(step=step)
-        return mark_compensation_end(step=step, recorder=recorder, last_error=last_error)
+        mark_compensation_end(step=step, recorder=recorder, last_error=last_error)
+        return last_error is None
 
     def _compensate_with_retries(self, *, step: PreparedStep) -> StepError | None:
         last_error: RedisEnterpriseServicesError | None = None
@@ -82,11 +82,10 @@ def warn_if_found_not_kept(*, step: PreparedStep) -> None:
 
 def mark_compensation_end(
     *, step: PreparedStep, recorder: StepRecorder, last_error: StepError | None
-) -> bool:
+) -> None:
     if last_error is None:
         logger.info(msg=f"step {step.key} compensated")
         recorder.mark_compensated()
-        return True
+        return
     logger.error(msg=f"compensation of {step.key} gave up: {last_error.code}: {last_error.message}")
     recorder.mark_compensation_failed(error=last_error)
-    return False

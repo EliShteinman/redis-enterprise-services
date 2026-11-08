@@ -114,13 +114,12 @@ class StepRunner:
         self, *, step: PreparedStep, recorder: StepRecorder, failure: FailureCategory
     ) -> StepOutcome | None:
         verdict: FindOutcomeVerdict = self._find_outcome(step=step, recorder=recorder)
-        if verdict is FindOutcomeVerdict.NOT_FOUND:
-            logger.warning(
-                msg=f"the outcome of step {step.key} was not found after a {failure.value} failure"
-            )
-        return outcome_from_verdict(
+        outcome: StepOutcome | None = outcome_from_verdict(
             verdict=verdict, failure=failure, has_result=step.has_result, kind=step.kind
         )
+        if verdict is FindOutcomeVerdict.NOT_FOUND and outcome is StepOutcome.REQUIRES_MANUAL_INTERVENTION:
+            logger.error(msg=f"step {step.key} kept a result, and its {failure.value} outcome was not found")
+        return outcome
 
     def _execute_once(self, *, step: PreparedStep, recorder: StepRecorder) -> FailureCategory | None:
         try:
