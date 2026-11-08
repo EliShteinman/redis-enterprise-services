@@ -25,7 +25,7 @@ class SagaStatus(StrEnum):
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
-SETTLED_STATUSES: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
+CLEANLY_ENDED_STATUSES: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
 
 
 class ObtainedBy(StrEnum):
@@ -66,5 +66,5 @@ class SagaRecord(BaseModel):
             if step.status is StepStatus.RUNNING:
                 step.status = StepStatus.UNRESOLVED
                 self.stopped_at = self.stopped_at or step.key
-        pending: list[str] = [step.key for step in self.steps if step.status is StepStatus.PENDING]
-        self.stopped_at = self.stopped_at or next(iter(pending), None)
+        pending_keys: list[str] = [step.key for step in self.steps if step.status is StepStatus.PENDING]
+        self.stopped_at = self.stopped_at or next(iter(pending_keys), None)

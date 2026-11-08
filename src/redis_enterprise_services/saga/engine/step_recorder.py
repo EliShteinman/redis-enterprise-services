@@ -18,44 +18,44 @@ class StepRecorder:
         self._record: SagaRecord = record
         self._step_record: StepRecord = step_record
 
-    def started(self, *, step_input: JsonValue) -> None:
+    def mark_running(self, *, step_input: JsonValue) -> None:
         self._step_record.step_input = step_input
-        self._mark(status=StepStatus.RUNNING)
+        self._save_status(status=StepStatus.RUNNING)
 
-    def result_kept(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
+    def save_result(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None:
         self._step_record.result = result
         self._step_record.obtained_by = obtained_by
         self._record_writer.save(record=self._record)
 
-    def result_forgotten(self) -> None:
+    def forget_result(self) -> None:
         self._step_record.result = None
         self._step_record.obtained_by = None
         self._record_writer.save(record=self._record)
 
-    def attempt_failed(self, *, error: StepError) -> None:
+    def save_error(self, *, error: StepError) -> None:
         self._step_record.error = error
         self._record_writer.save(record=self._record)
 
-    def done(self) -> None:
+    def mark_done(self) -> None:
         self._step_record.error = None
-        self._mark(status=StepStatus.DONE)
+        self._save_status(status=StepStatus.DONE)
 
-    def failed(self) -> None:
-        self._mark(status=StepStatus.FAILED)
+    def mark_failed(self) -> None:
+        self._save_status(status=StepStatus.FAILED)
 
-    def unresolved(self) -> None:
-        self._mark(status=StepStatus.UNRESOLVED)
+    def mark_unresolved(self) -> None:
+        self._save_status(status=StepStatus.UNRESOLVED)
 
-    def compensating(self) -> None:
-        self._mark(status=StepStatus.COMPENSATING)
+    def mark_compensating(self) -> None:
+        self._save_status(status=StepStatus.COMPENSATING)
 
-    def compensated(self) -> None:
-        self._mark(status=StepStatus.COMPENSATED)
+    def mark_compensated(self) -> None:
+        self._save_status(status=StepStatus.COMPENSATED)
 
-    def compensation_failed(self, *, error: StepError) -> None:
+    def mark_compensation_failed(self, *, error: StepError) -> None:
         self._step_record.compensation_error = error
-        self._mark(status=StepStatus.COMPENSATION_FAILED)
+        self._save_status(status=StepStatus.COMPENSATION_FAILED)
 
-    def _mark(self, *, status: StepStatus) -> None:
+    def _save_status(self, *, status: StepStatus) -> None:
         self._step_record.status = status
         self._record_writer.save(record=self._record)

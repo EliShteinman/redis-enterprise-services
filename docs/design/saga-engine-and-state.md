@@ -76,7 +76,7 @@ PlannedStep(
 )
 ```
 
-- **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`SagaContext`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
+- **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`StepResults`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
   כך ה-role מקבל את ה-uid של ה-DB, והיוזר את ה-uid של ה-role. הצעד עצמו לא קורא מה-context.
 - **אי אפשר לבנות את הקלט** (למשל תוצאה חסרה) ⇐ הצעד `failed`, ומה שלפניו מבוטל.
 - **`SagaPlan` נבדק כשהוא נבנה:** לפחות צעד אחד, מפתחות ייחודיים, כלל הסדר, לכל היותר pivot אחד, ולפחות מפתח נעילה
@@ -291,7 +291,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
 | `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `FailureCategory`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
-| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `SagaContext` | `contract` |
+| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `StepResults` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
 | `liveness/` | `InProcessOperationHeartbeats`, `HeartbeatStore` | |

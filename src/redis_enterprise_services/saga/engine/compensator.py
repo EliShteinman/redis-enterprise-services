@@ -14,7 +14,7 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 RETRIED_COMPENSATION_FAILURES: frozenset[FailureCategory] = frozenset(
-    {FailureCategory.TRANSIENT, FailureCategory.UNKNOWN}
+    {FailureCategory.TRANSIENT, FailureCategory.OUTCOME_UNKNOWN}
 )
 
 
@@ -24,9 +24,9 @@ class Compensator:
         self._classifier: FailureClassifier = classifier
         self._sleeper: Sleeper = sleeper
 
-    def compensate_all(self, *, steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
+    def compensate_in_reverse(self, *, prepared_steps: list[tuple[PreparedStep, StepRecorder]]) -> bool:
         all_compensated: bool = True
-        for step, recorder in reversed(steps):
+        for step, recorder in reversed(prepared_steps):
             if step.kind is not StepKind.COMPENSATABLE or not step.has_result:
                 continue
             all_compensated = self._compensate_step(step=step, recorder=recorder) and all_compensated
@@ -35,14 +35,14 @@ class Compensator:
     def _compensate_step(self, *, step: PreparedStep, recorder: StepRecorder) -> bool:
         if step.obtained_by is ObtainedBy.FOUND:
             logger.warning(msg=f"compensating {step.key}, which was found by name and may not be ours")
-        recorder.compensating()
+        recorder.mark_compensating()
         last_error: StepError | None = self._compensate_with_retries(step=step)
         if last_error is None:
             logger.info(msg=f"step {step.key} compensated")
-            recorder.compensated()
+            recorder.mark_compensated()
             return True
         logger.error(msg=f"compensation of {step.key} gave up: {last_error.code}: {last_error.message}")
-        recorder.compensation_failed(error=last_error)
+        recorder.mark_compensation_failed(error=last_error)
         return False
 
     def _compensate_with_retries(self, *, step: PreparedStep) -> StepError | None:
