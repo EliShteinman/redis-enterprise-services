@@ -244,9 +244,9 @@
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
-בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`database_locked`. יוצא מן הכלל: pod שנפל מיד אחרי
-שה-Saga הסתיימה (`succeeded` או `rolled_back`) כבר שחרר את הנעילה. הפעולה מסומנת `requires_manual_intervention`,
-אבל פקודות חדשות על אותם שמות לא נחסמות.
+בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`database_locked`. יוצא מן הכלל: Saga שהסתיימה
+(`succeeded` או `rolled_back`) בלי שה-record הסופי שלה נכתב כבר שחררה את הנעילה. הפעולה מסומנת
+`requires_manual_intervention`, אבל פקודות חדשות על אותם שמות לא נחסמות.
 
 ---
 
