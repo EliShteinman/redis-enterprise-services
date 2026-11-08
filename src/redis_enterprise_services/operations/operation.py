@@ -15,7 +15,8 @@ class Operation(BaseModel):
         default=OperationStatus.RUNNING,
         description="running: still running. succeeded: done. rejected: refused before anything changed. "
         "rolled_back: failed, and everything was undone. requires_manual_intervention: failed, "
-        "and not everything was undone (see not_rolled_back).",
+        "and not everything was undone (see not_rolled_back, which is missing after a crash; then the "
+        "saga record is the source).",
         examples=["succeeded"],
     )
     database: DatabaseResult | None = Field(

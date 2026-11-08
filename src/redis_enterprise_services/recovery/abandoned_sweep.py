@@ -29,10 +29,12 @@ class AbandonedSweep:
 
     def _check(self, *, trace_id: str) -> None:
         saga: StoredSaga | None = self._store.saga_of(trace_id=trace_id)
+        status: OperationStatus = status_after_crash(saga=saga)
         operation: Operation = Operation(
             trace_id=trace_id,
-            status=OperationStatus.REJECTED if saga is None else OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+            status=status,
             error=self._errors.internal(),
+            not_rolled_back=[] if status is OperationStatus.ROLLED_BACK else None,
         )
         result: MarkResult = self._store.mark_abandoned(
             operation=operation, read_saga=saga, stopped_saga=stopped(saga=saga)
@@ -43,6 +45,14 @@ class AbandonedSweep:
             )
         elif result is MarkResult.SAGA_CHANGED:
             logger.warning(msg=f"saga {trace_id} changed while it was checked, it is checked again next time")
+
+
+def status_after_crash(*, saga: StoredSaga | None) -> OperationStatus:
+    if saga is None:
+        return OperationStatus.REJECTED
+    if saga.record.status is SagaStatus.ROLLED_BACK:
+        return OperationStatus.ROLLED_BACK
+    return OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
 def stopped(*, saga: StoredSaga | None) -> SagaRecord | None:

@@ -1,9 +1,11 @@
 from typing import Self
 
-from pydantic import BaseModel, PositiveFloat, PositiveInt, model_validator
+from pydantic import PositiveFloat, PositiveInt, model_validator
+
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class LivenessSettings(BaseModel):
+class LivenessSettings(ConfigModel):
     heartbeat_interval_seconds: PositiveFloat
     heartbeat_ttl_seconds: PositiveInt
     min_beats_per_ttl: PositiveInt

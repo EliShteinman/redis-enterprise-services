@@ -13,8 +13,10 @@ from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
+    ClusterRequestError,
     UnreadableAnswerError,
 )
+from redis_enterprise_services.exceptions.edge import OutcomeUnknownError, ResponseRejectedError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -25,16 +27,66 @@ ACTION_UID: str = "c7d4bccf-9462-4924-8c8f-345bd94fe89c"
 SHORT_WAIT: WaitSettings = WaitSettings(interval_seconds=0.001, timeout_seconds=0.01)
 
 
-def waiter_answering(*, action: JsonValue) -> ActionWaiter:
+def api_answering(*, action: JsonValue) -> MagicMock:
     api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
     api.send.return_value = ClusterAnswer(body=action, cluster_state_id=None)
+    return api
+
+
+def waiter(*, api: MagicMock) -> ActionWaiter:
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
     return ActionWaiter(api=api, settings=action_settings, cluster=settings.cluster)
 
 
-def test_a_completed_action_ends_the_wait() -> None:
-    waiter_answering(action={"status": "completed"}).wait(target=TARGET, action_uid=ACTION_UID)
+def waiter_answering(*, action: JsonValue) -> ActionWaiter:
+    return waiter(api=api_answering(action=action))
+
+
+def test_a_completed_action_ends_the_wait_after_asking_for_that_action() -> None:
+    api: MagicMock = api_answering(action={"status": "completed"})
+
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
+
+    assert api.send.call_args.kwargs["path"].endswith(ACTION_UID)
+
+
+def test_a_relay_error_while_reading_the_action_is_read_again() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = [
+        OutcomeUnknownError(message="relay timed out"),
+        ClusterAnswer(body={"status": "completed"}, cluster_state_id=None),
+    ]
+
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
+
+    assert api.send.call_count == 2
+
+
+@pytest.mark.parametrize(
+    argnames="failure",
+    argvalues=[
+        ClusterRequestError(message="busy", cluster_status_code=409, error_code="busy"),
+        ClusterRequestError(message="failing over", cluster_status_code=503, error_code=None),
+    ],
+)
+def test_a_cluster_failure_that_may_pass_while_reading_the_action_is_read_again(
+    failure: ClusterRequestError,
+) -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = [failure, ClusterAnswer(body={"status": "completed"}, cluster_state_id=None)]
+
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
+
+    assert api.send.call_count == 2
+
+
+def test_a_relay_rejection_of_the_action_answer_fails_at_once() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = ResponseRejectedError(message="schema", cluster_status_code=200)
+
+    with pytest.raises(expected_exception=ResponseRejectedError):
+        waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
 
 
 @pytest.mark.parametrize(

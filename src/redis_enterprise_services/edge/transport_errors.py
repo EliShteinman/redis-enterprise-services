@@ -1,12 +1,13 @@
 import requests
-from urllib3.exceptions import ConnectTimeoutError, MaxRetryError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError
 
 from redis_enterprise_services.exceptions.edge import EdgeError, OutcomeUnknownError, RequestNotSentError
 
 
 def was_not_sent(*, error: requests.RequestException) -> bool:
     return any(
-        isinstance(argument, MaxRetryError) and isinstance(argument.reason, ConnectTimeoutError)
+        isinstance(argument, MaxRetryError)
+        and isinstance(argument.reason, (ConnectTimeoutError, NewConnectionError))
         for argument in error.args
     )
 

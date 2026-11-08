@@ -8,10 +8,11 @@ from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarg
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsStore
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.readiness import DatabaseReadiness
-from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
+from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError, UpdateOutcomeUnclearError
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
+from redis_enterprise_services.steps.same_values import same_values
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -31,8 +32,10 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         repository: DatabaseFieldsStore,
         readiness: DatabaseReadiness,
         credentials: ClusterCredentialsProvider,
+        unordered_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsStore = repository
+        self._unordered_fields: frozenset[str] = unordered_fields
         self._readiness: DatabaseReadiness = readiness
         self._credentials: ClusterCredentialsProvider = credentials
 
@@ -58,18 +61,35 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         if kept is None:
             return None
         current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
-        if current.values != step_input.values:
-            return None
+        if not self._same(stored=current.values, wanted=step_input.values):
+            return self._not_applied(step_input=step_input, current=current, kept=kept)
         self._readiness.wait(target=self._target(step_input=step_input), uid=step_input.uid)
         return kept
 
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
         current: DatabaseFields = self._read(step_input=step_input, fields=list(result.values))
-        if current.values == result.values:
+        if self._same(stored=current.values, wanted=result.values):
             logger.info(msg=f"database {step_input.uid} already has its old values")
             return
+        if not self._same(stored=current.values, wanted=step_input.values):
+            raise UpdateOutcomeUnclearError(
+                message=f"database {step_input.uid} changed after the update, not restored over that change"
+            )
         self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)
+
+    def _not_applied(
+        self, *, step_input: DatabaseUpdateInput, current: DatabaseFields, kept: DatabaseFields
+    ) -> None:
+        if self._same(stored=current.values, wanted=kept.values):
+            return
+        fields: list[str] = sorted(step_input.values)
+        raise UpdateOutcomeUnclearError(
+            message=f"database {step_input.uid} holds neither the old nor the new values of {fields}"
+        )
+
+    def _same(self, *, stored: dict[str, JsonValue], wanted: dict[str, JsonValue]) -> bool:
+        return same_values(stored=stored, wanted=wanted, unordered_fields=self._unordered_fields)
 
     def _read(self, *, step_input: DatabaseUpdateInput, fields: list[str]) -> DatabaseFields:
         return self._repository.get_fields(

@@ -13,7 +13,7 @@
 
 | # | דרישה |
 |---|---|
-| C0a | לכל רשת יש כתובת משלה לשירות הקצה: `edge.networks.<רשת>.url`. רשת בלי `url` נדחית בעליית השירות. רשת שחסרה לגמרי ב-`edge.networks` מתגלה רק בריצה ברקע, בקריאה הראשונה (בדיקת השמות), והפעולה `rejected` עם `internal_error` |
+| C0a | לכל רשת יש כתובת משלה לשירות הקצה: `edge.networks.<רשת>.url`. רשת בלי `url`, ורשת של קלאסטר מ-`config/clusters.yaml` שחסרה ב-`edge.networks`, נדחות בעליית השירות |
 | C0b | אם חומת האש של הרשת דורשת אימות, כל בקשה נושאת שם משתמש וסיסמה (`Basic`) של אותה רשת, ב-header מהקונפיג (`edge.networks.<רשת>.firewall`). הסיסמה מגיעה ממשתנה סביבה. `firewall: null` ⇐ לא נשלח header |
 | C0c | אימות חומת האש נפרד מ-`x-cluster-authorization` ולא מתנגש בו |
 | C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
@@ -100,7 +100,7 @@ cluster-state-id: 155          (אופציונלי)
 | `/v1/bdbs`, `/v1/bdbs/{uid}` | GET (גם עם `fields`), POST, PUT, DELETE | bdb או רשימה |
 | `/v1/redis_acls[/{uid}]` | GET, POST, DELETE | ACL או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/roles[/{uid}]` | GET, POST, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
-| `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה |
+| `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/actions/{uid}` | GET | action |
 | כל endpoint | כל שיטה | גוף שגיאה של הקלאסטר: `{error_code, description}` |
 

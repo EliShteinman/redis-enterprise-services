@@ -11,6 +11,7 @@ from redis_enterprise_services.exceptions.cluster import (
     DatabaseStillExistsError,
     UnreadableAnswerError,
     UnrestorableFieldsError,
+    UpdateOutcomeUnclearError,
 )
 from redis_enterprise_services.exceptions.edge import (
     InvalidEdgeRequestError,
@@ -33,6 +34,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_codes=
         (ClusterActionFailedError(message="m"), Failure.FAILED),
         (DatabaseCreationFailedError(message="m"), Failure.FAILED),
         (AmbiguousResourceError(message="m"), Failure.MANUAL),
+        (UpdateOutcomeUnclearError(message="m"), Failure.MANUAL),
         (UnrestorableFieldsError(message="m"), Failure.FAILED),
         (RequestNotSentError(message="m"), Failure.UNKNOWN),
         (OutcomeUnknownError(message="m"), Failure.UNKNOWN),
@@ -53,6 +55,7 @@ def test_a_step_error_is_sorted_by_the_engine_table(
     argnames=("error", "expected"),
     argvalues=[
         (AmbiguousResourceError(message="m"), Failure.MANUAL),
+        (UpdateOutcomeUnclearError(message="m"), Failure.MANUAL),
         (ClusterActionFailedError(message="m"), Failure.FAILED),
         (DatabaseCreationFailedError(message="m"), Failure.FAILED),
         (OutcomeUnknownError(message="m"), Failure.UNKNOWN),
