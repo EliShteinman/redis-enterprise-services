@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
@@ -27,26 +27,30 @@ ACTION_UID: str = "c7d4bccf-9462-4924-8c8f-345bd94fe89c"
 SHORT_WAIT: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.01)
 
 
-def api_answering(*, action_body: JsonValue) -> MagicMock:
+def cluster_api_caller_answering(*, action_body: JsonValue) -> MagicMock:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.return_value = SuccessfulClusterResponse(body=action_body, cluster_state_id=None)
     return api
 
 
-def waiter(*, api: MagicMock) -> PollingActionWaiter:
+def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
-    return PollingActionWaiter(api=api, settings=action_settings, cluster_api_settings=settings.cluster_api)
+    return PollingActionWaiter(
+        cluster_api_caller=cluster_api_caller,
+        settings=action_settings,
+        cluster_api_settings=settings.cluster_api,
+    )
 
 
 def waiter_answering(*, action_body: JsonValue) -> PollingActionWaiter:
-    return waiter(api=api_answering(action_body=action_body))
+    return waiter(cluster_api_caller=cluster_api_caller_answering(action_body=action_body))
 
 
 def test_a_completed_action_ends_the_wait_after_asking_for_that_action() -> None:
-    api: MagicMock = api_answering(action_body={"status": "completed"})
+    api: MagicMock = cluster_api_caller_answering(action_body={"status": "completed"})
 
-    waiter(api=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_args.kwargs["path"].endswith(ACTION_UID)
 
@@ -58,28 +62,28 @@ def test_an_unknown_relay_outcome_while_reading_the_action_is_read_again() -> No
         SuccessfulClusterResponse(body={"status": "completed"}, cluster_state_id=None),
     ]
 
-    waiter(api=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_count == 2
 
 
 @pytest.mark.parametrize(
-    argnames="failure",
+    argnames="transient_rejection",
     argvalues=[
         ClusterRejectedRequestError(message="busy", cluster_status_code=409, cluster_error_code="busy"),
         ClusterRejectedRequestError(message="failing over", cluster_status_code=503, cluster_error_code=None),
     ],
 )
 def test_a_transient_cluster_rejection_while_reading_the_action_is_read_again(
-    failure: ClusterRejectedRequestError,
+    transient_rejection: ClusterRejectedRequestError,
 ) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = [
-        failure,
+        transient_rejection,
         SuccessfulClusterResponse(body={"status": "completed"}, cluster_state_id=None),
     ]
 
-    waiter(api=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_count == 2
 
@@ -89,7 +93,7 @@ def test_a_relay_rejected_action_response_fails_at_once() -> None:
     api.send.side_effect = EdgeRejectedResponseError(message="schema", cluster_status_code=200)
 
     with pytest.raises(expected_exception=EdgeRejectedResponseError):
-        waiter(api=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
 
 @pytest.mark.parametrize(

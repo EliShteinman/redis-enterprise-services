@@ -25,7 +25,7 @@ def test_a_cluster_rejection_keeps_the_cluster_status_and_error_code() -> None:
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError) as rejection:
-        EdgeClusterApiCaller(transport=transport, settings=load_settings().cluster_api).send(
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )
 
@@ -42,6 +42,6 @@ def test_a_redirect_answer_is_a_cluster_rejection() -> None:
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError):
-        EdgeClusterApiCaller(transport=transport, settings=load_settings().cluster_api).send(
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )

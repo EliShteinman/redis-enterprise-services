@@ -3,8 +3,8 @@ from http import HTTPStatus
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_action_waiter import ClusterActionWaiter
+from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until_done_or_timeout
@@ -23,9 +23,13 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class PollingActionWaiter(ClusterActionWaiter):
     def __init__(
-        self, *, api: ClusterApiCaller, settings: ActionSettings, cluster_api_settings: ClusterApiSettings
+        self,
+        *,
+        cluster_api_caller: ClusterApiCaller,
+        settings: ActionSettings,
+        cluster_api_settings: ClusterApiSettings,
     ) -> None:
-        self._api: ClusterApiCaller = api
+        self._cluster_api_caller: ClusterApiCaller = cluster_api_caller
         self._settings: ActionSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
@@ -43,7 +47,7 @@ class PollingActionWaiter(ClusterActionWaiter):
 
     def _read_whether_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
         try:
-            action_body: JsonValue = self._api.send(
+            action_body: JsonValue = self._cluster_api_caller.send(
                 target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
             ).body
         except (EdgeConnectionFailedError, EdgeOutcomeUnknownError) as error:
@@ -56,7 +60,10 @@ class PollingActionWaiter(ClusterActionWaiter):
                 error=error, transient_error_codes=self._cluster_api_settings.transient_error_codes
             ):
                 raise
-            logger.warning(msg=f"cluster failed reading action {action_uid}: {error.coded_message()}")
+            logger.warning(
+                msg=f"cluster rejected reading action {action_uid} as transient, it is read again: "
+                f"{error.coded_message()}"
+            )
             return False
         status: str | None = string_field(body=action_body, name=self._cluster_api_settings.fields.status)
         if status is None:

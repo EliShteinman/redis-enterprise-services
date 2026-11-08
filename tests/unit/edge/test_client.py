@@ -38,7 +38,7 @@ def settings() -> EdgeSettings:
     return load_settings().edge
 
 
-def relay_answer(*, status_code: int, headers: dict[str, str], body: bytes = b"{}") -> requests.Response:
+def relay_response(*, status_code: int, headers: dict[str, str], body: bytes = b"{}") -> requests.Response:
     response: requests.Response = requests.Response()
     response.status_code = status_code
     response.headers.update(headers)
@@ -49,13 +49,13 @@ def relay_answer(*, status_code: int, headers: dict[str, str], body: bytes = b"{
 def send_through_relay_answering(
     *,
     settings: EdgeSettings,
-    answer: requests.Response | requests.RequestException,
+    relay_outcome: requests.Response | requests.RequestException,
     monkeypatch: pytest.MonkeyPatch,
 ) -> ClusterResponse:
     def fake_post(**kwargs: object) -> requests.Response:
-        if isinstance(answer, requests.RequestException):
-            raise answer
-        return answer
+        if isinstance(relay_outcome, requests.RequestException):
+            raise relay_outcome
+        return relay_outcome
 
     monkeypatch.setattr(target=requests, name="post", value=fake_post)
     return EdgeClient(
@@ -66,13 +66,15 @@ def send_through_relay_answering(
 
 
 @pytest.mark.parametrize(argnames="status_code", argvalues=[200, 404])
-def test_an_answer_without_edge_error_is_the_cluster_answer(
+def test_a_relay_response_without_edge_error_unwraps_to_the_cluster_response(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings, status_code: int
 ) -> None:
-    answer: requests.Response = relay_answer(status_code=status_code, headers={})
+    relay_response_value: requests.Response = relay_response(status_code=status_code, headers={})
 
     assert (
-        send_through_relay_answering(settings=settings, answer=answer, monkeypatch=monkeypatch).status_code
+        send_through_relay_answering(
+            settings=settings, relay_outcome=relay_response_value, monkeypatch=monkeypatch
+        ).status_code
         == status_code
     )
 
@@ -90,23 +92,25 @@ def test_an_answer_without_edge_error_is_the_cluster_answer(
 def test_an_edge_error_code_maps_to_its_edge_error(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings, code: str, expected: type[EdgeError]
 ) -> None:
-    answer: requests.Response = relay_answer(
+    relay_response_value: requests.Response = relay_response(
         status_code=502, headers={settings.headers.edge_error_code: code}
     )
 
     with pytest.raises(expected_exception=expected):
-        send_through_relay_answering(settings=settings, answer=answer, monkeypatch=monkeypatch)
+        send_through_relay_answering(
+            settings=settings, relay_outcome=relay_response_value, monkeypatch=monkeypatch
+        )
 
 
 def test_a_cluster_state_id_that_is_not_a_number_is_ignored(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
 ) -> None:
     headers: dict[str, str] = {settings.headers.cluster_state_id: "abc"}
-    answer: requests.Response = relay_answer(status_code=200, headers=headers)
+    relay_response_value: requests.Response = relay_response(status_code=200, headers=headers)
 
     assert (
         send_through_relay_answering(
-            settings=settings, answer=answer, monkeypatch=monkeypatch
+            settings=settings, relay_outcome=relay_response_value, monkeypatch=monkeypatch
         ).cluster_state_id
         is None
     )
@@ -122,7 +126,9 @@ def test_a_relay_rejected_response_keeps_the_cluster_status(
 
     with pytest.raises(expected_exception=EdgeRejectedResponseError) as rejected_response:
         send_through_relay_answering(
-            settings=settings, answer=relay_answer(status_code=502, headers=headers), monkeypatch=monkeypatch
+            settings=settings,
+            relay_outcome=relay_response(status_code=502, headers=headers),
+            monkeypatch=monkeypatch,
         )
 
     assert rejected_response.value.cluster_status_code == 201
@@ -160,4 +166,4 @@ def test_a_transport_failure_maps_to_connection_failed_or_outcome_unknown(
     expected: type[EdgeError],
 ) -> None:
     with pytest.raises(expected_exception=expected):
-        send_through_relay_answering(settings=settings, answer=error, monkeypatch=monkeypatch)
+        send_through_relay_answering(settings=settings, relay_outcome=error, monkeypatch=monkeypatch)
