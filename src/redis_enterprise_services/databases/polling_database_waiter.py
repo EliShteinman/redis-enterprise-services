@@ -30,15 +30,16 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         *,
         fields_reader: DatabaseFieldsReader,
         settings: DatabaseSettings,
-        cluster_api: ClusterApiSettings,
+        cluster_api_settings: ClusterApiSettings,
     ) -> None:
         self._fields_reader: DatabaseFieldsReader = fields_reader
         self._settings: DatabaseSettings = settings
-        self._cluster_api: ClusterApiSettings = cluster_api
+        self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
     def wait_until_active(self, *, target: ClusterTarget, uid: int) -> None:
         if poll_until_done_or_timeout(
-            wait_settings=self._settings.wait, is_done=lambda: self._is_active(target=target, uid=uid)
+            wait_settings=self._settings.wait,
+            is_done=lambda: self._read_whether_active(target=target, uid=uid),
         ):
             return
         raise DatabaseActivationTimeoutError(
@@ -51,17 +52,18 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
 
     def wait_until_deleted(self, *, target: ClusterTarget, uid: int, action_uid: str | None) -> None:
         if poll_until_done_or_timeout(
-            wait_settings=self._settings.wait, is_done=lambda: self._is_deleted(target=target, uid=uid)
+            wait_settings=self._settings.wait,
+            is_done=lambda: self._read_whether_deleted(target=target, uid=uid),
         ):
             return
         raise DatabaseDeletionTimeoutError(
             message=f"database {uid} still exists after {self._settings.wait.timeout_seconds} seconds"
         )
 
-    def _is_deleted(self, *, target: ClusterTarget, uid: int) -> bool:
+    def _read_whether_deleted(self, *, target: ClusterTarget, uid: int) -> bool:
         try:
             self._fields_reader.get_fields(
-                target=target, uid=uid, field_names=[self._cluster_api.fields.status]
+                target=target, uid=uid, field_names=[self._cluster_api_settings.fields.status]
             )
         except ClusterRejectedRequestError as error:
             if error.cluster_status_code == HTTPStatus.NOT_FOUND:
@@ -73,14 +75,14 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
 
     def _raise_unless_transient(self, *, uid: int, error: RedisEnterpriseServicesError) -> bool:
         if not is_transient_read_error(
-            error=error, transient_error_codes=self._cluster_api.transient_error_codes
+            error=error, transient_error_codes=self._cluster_api_settings.transient_error_codes
         ):
             raise error
         logger.warning(msg=f"reading database {uid} failed, it is read again: {error.coded_message()}")
         return False
 
-    def _is_active(self, *, target: ClusterTarget, uid: int) -> bool:
-        status_field: str = self._cluster_api.fields.status
+    def _read_whether_active(self, *, target: ClusterTarget, uid: int) -> bool:
+        status_field: str = self._cluster_api_settings.fields.status
         try:
             values: dict[str, JsonValue] = self._fields_reader.get_fields(
                 target=target, uid=uid, field_names=[status_field]

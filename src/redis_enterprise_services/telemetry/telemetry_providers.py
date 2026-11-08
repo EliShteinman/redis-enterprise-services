@@ -45,7 +45,7 @@ class TelemetryProviders:
         )
         return MeterProvider(resource=resource, metric_readers=[reader])
 
-    def install(self) -> None:
+    def install_and_instrument(self) -> None:
         trace.set_tracer_provider(tracer_provider=self._tracer_provider)
         metrics.set_meter_provider(meter_provider=self._meter_provider)
         LoggingInstrumentor().instrument(

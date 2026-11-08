@@ -2,4 +2,4 @@ liveness:
   heartbeat_interval_seconds: 10
   heartbeat_ttl_seconds: 60
   min_heartbeats_per_ttl: 3
-  sweep_interval_seconds: 60
+  abandoned_sweep_interval_seconds: 60

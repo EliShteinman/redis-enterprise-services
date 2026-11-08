@@ -35,7 +35,7 @@ def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
     short_wait: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.05)
     database: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
     return PollingDatabaseWaiter(
-        fields_reader=fields_reader, settings=database, cluster_api=settings.cluster_api
+        fields_reader=fields_reader, settings=database, cluster_api_settings=settings.cluster_api
     )
 
 

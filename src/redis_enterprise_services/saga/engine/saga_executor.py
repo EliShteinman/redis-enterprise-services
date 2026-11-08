@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from redis_enterprise_services.saga.contract.saga_lock import SagaLock
 from redis_enterprise_services.saga.contract.saga_record import (
-    SETTLED_STATUSES,
+    CLEANLY_ENDED_STATUSES,
     SagaRecord,
     SagaStatus,
     StepRecord,
@@ -13,9 +13,9 @@ from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.step_recorder import StepRecorder
 from redis_enterprise_services.saga.engine.step_runner import StepOutcome, StepRunner
-from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep, PreparedStep
+from redis_enterprise_services.saga.plan.step_results import StepResults
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -55,18 +55,18 @@ class SagaExecutor:
             if record.status is SagaStatus.RUNNING:
                 logger.error(msg=f"saga {saga_id} stopped on an unexpected error", exc_info=True)
                 record.mark_interrupted()
-            self._finish(record=record, plan=plan)
+            self._release_lock_if_cleanly_ended_and_save_final(record=record, plan=plan)
         return record
 
     def _run_steps(self, *, plan: SagaPlan, record: SagaRecord) -> SagaStatus:
-        context: SagaContext = SagaContext()
+        step_results: StepResults = StepResults()
         prepared_steps: list[tuple[PreparedStep, StepRecorder]] = []
         passed_point_of_no_return: bool = False
         for step, step_record in zip(plan.steps, record.steps, strict=True):
             recorder: StepRecorder = StepRecorder(
                 record_writer=self._record_writer, record=record, step_record=step_record
             )
-            outcome, prepared = self._run_step(step=step, context=context, recorder=recorder)
+            outcome, prepared = self._run_step(step=step, step_results=step_results, recorder=recorder)
             if prepared is not None:
                 prepared_steps.append((prepared, recorder))
             if outcome is StepOutcome.DONE:
@@ -75,7 +75,7 @@ class SagaExecutor:
                 )
                 continue
             record.stopped_at = step.key
-            return self._status_after_stop(
+            return self._compensate_if_allowed(
                 outcome=outcome,
                 passed_point_of_no_return=passed_point_of_no_return,
                 prepared_steps=prepared_steps,
@@ -83,14 +83,16 @@ class SagaExecutor:
         return SagaStatus.SUCCEEDED
 
     def _run_step(
-        self, *, step: PreparableStep, context: SagaContext, recorder: StepRecorder
+        self, *, step: PreparableStep, step_results: StepResults, recorder: StepRecorder
     ) -> tuple[StepOutcome, PreparedStep | None]:
-        prepared: PreparedStep | None = self._runner.prepare(step=step, context=context, recorder=recorder)
+        prepared: PreparedStep | None = self._runner.prepare_and_mark_running(
+            step=step, step_results=step_results, recorder=recorder
+        )
         if prepared is None:
             return StepOutcome.FAILED, None
-        return self._runner.run(step=prepared, recorder=recorder), prepared
+        return self._runner.run_and_mark_outcome(step=prepared, recorder=recorder), prepared
 
-    def _status_after_stop(
+    def _compensate_if_allowed(
         self,
         *,
         outcome: StepOutcome,
@@ -99,13 +101,13 @@ class SagaExecutor:
     ) -> SagaStatus:
         if outcome is StepOutcome.REQUIRES_MANUAL_INTERVENTION or passed_point_of_no_return:
             return SagaStatus.REQUIRES_MANUAL_INTERVENTION
-        if self._compensator.compensate_all(steps=prepared_steps):
+        if self._compensator.compensate_in_reverse(prepared_steps=prepared_steps):
             return SagaStatus.ROLLED_BACK
         return SagaStatus.REQUIRES_MANUAL_INTERVENTION
 
-    def _finish(self, *, record: SagaRecord, plan: SagaPlan) -> None:
+    def _release_lock_if_cleanly_ended_and_save_final(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
-        if record.status in SETTLED_STATUSES:
+        if record.status in CLEANLY_ENDED_STATUSES:
             self._lock.release(keys=plan.lock_keys, owner=record.saga_id)
         else:
             logger.critical(
