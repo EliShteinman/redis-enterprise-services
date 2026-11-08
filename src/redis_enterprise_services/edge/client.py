@@ -29,9 +29,11 @@ class EdgeClient:
                 headers=self._headers.build(request=request, endpoint=endpoint),
                 data=self._content(request=request),
                 timeout=self._settings.timeout_seconds,
+                allow_redirects=False,
                 verify=False,  # noqa: S501
             )
         except requests.RequestException as error:
+            logger.warning(msg=f"{request.method} {request.url} through {network} failed: {error!r}")
             raise transport_error(network=network, error=error) from error
         return self._reader.read(response=response)
 

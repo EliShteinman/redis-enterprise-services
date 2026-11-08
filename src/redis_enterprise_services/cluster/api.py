@@ -36,7 +36,7 @@ class ClusterApi(ClusterCaller):
             cluster_state_id=cluster_state_id,
         )
         response: ClusterResponse = self._transport.send(network=target.network, request=request)
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
+        if response.status_code >= HTTPStatus.MULTIPLE_CHOICES:
             raise self._cluster_error(response=response)
         return ClusterAnswer(body=response.body, cluster_state_id=response.cluster_state_id)
 

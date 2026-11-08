@@ -93,6 +93,15 @@ def test_an_edge_error_code_is_sorted(
         send(settings=settings, answer=answer, monkeypatch=monkeypatch)
 
 
+def test_a_cluster_state_id_that_is_not_a_number_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
+) -> None:
+    headers: dict[str, str] = {settings.headers.cluster_state_id: "abc"}
+    answer: requests.Response = relay_answer(status_code=200, headers=headers)
+
+    assert send(settings=settings, answer=answer, monkeypatch=monkeypatch).cluster_state_id is None
+
+
 def test_a_rejection_keeps_the_cluster_status(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
 ) -> None:

@@ -1,12 +1,14 @@
 import re
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class NameRulesSettings(BaseModel):
+class NameRulesSettings(ConfigModel):
     pattern: re.Pattern[str]
     max_length: int = Field(gt=0)
 
 
-class NamingSettings(BaseModel):
+class NamingSettings(ConfigModel):
     database: NameRulesSettings

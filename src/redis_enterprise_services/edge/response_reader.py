@@ -19,7 +19,13 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 def optional_int_header(*, headers: CaseInsensitiveDict[str], name: str) -> int | None:
     value: str | None = headers.get(name)
-    return int(value) if value else None
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        logger.warning(msg=f"header {name} is not a number, it is ignored: {value!r}")
+        return None
 
 
 class EdgeResponseReader:

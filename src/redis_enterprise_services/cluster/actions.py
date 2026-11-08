@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 from pydantic import JsonValue
 
@@ -12,8 +13,10 @@ from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
+    ClusterRequestError,
     UnreadableAnswerError,
 )
+from redis_enterprise_services.exceptions.edge import OutcomeUnknownError, RequestNotSentError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -36,9 +39,18 @@ class ActionWaiter(ActionTracker):
         )
 
     def _is_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
-        action: JsonValue = self._api.send(
-            target=target, method="GET", path=self._settings.path.format(uid=action_uid)
-        ).body
+        try:
+            action: JsonValue = self._api.send(
+                target=target, method="GET", path=self._settings.path.format(uid=action_uid)
+            ).body
+        except (RequestNotSentError, OutcomeUnknownError) as error:
+            logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
+            return False
+        except ClusterRequestError as error:
+            if not read_again_after(error=error, transient_codes=self._cluster.transient_error_codes):
+                raise
+            logger.warning(msg=f"cluster failed reading action {action_uid}: {error.describe()}")
+            return False
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
         if status is None:
             raise UnreadableAnswerError(message=f"action {action_uid} answered without a status")
@@ -46,3 +58,8 @@ class ActionWaiter(ActionTracker):
             raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action}")
         logger.debug(msg=f"action {action_uid} is {status}")
         return status == self._settings.completed_status
+
+
+def read_again_after(*, error: ClusterRequestError, transient_codes: frozenset[str]) -> bool:
+    server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+    return server_failed or error.error_code in transient_codes
