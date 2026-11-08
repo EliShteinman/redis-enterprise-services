@@ -4,7 +4,9 @@ import pytest
 from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsReader
@@ -30,7 +32,9 @@ def fields() -> MagicMock:
 @pytest.fixture
 def waiter(fields: MagicMock) -> DatabaseActiveWaiter:
     settings: Settings = load_settings()
-    return DatabaseActiveWaiter(fields=fields, settings=settings.database, cluster=settings.cluster)
+    short_wait: WaitSettings = WaitSettings(interval_seconds=0.001, timeout_seconds=0.05)
+    database: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
+    return DatabaseActiveWaiter(fields=fields, settings=database, cluster=settings.cluster)
 
 
 def test_a_deleted_database_is_gone_once_it_answers_404(
