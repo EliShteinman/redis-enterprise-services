@@ -14,6 +14,7 @@ from redis_enterprise_services.exceptions.cluster import (
     DatabaseCreationFailedError,
     DatabaseNotActiveError,
     DatabaseStillExistsError,
+    UnreadableAnswerError,
 )
 from redis_enterprise_services.resources.completion import CompletionWaiter
 from redis_enterprise_services.resources.models import CreatedResource
@@ -61,7 +62,9 @@ class DatabaseActiveWaiter(DatabaseReadiness, CompletionWaiter):
         values: dict[str, JsonValue] = self._fields.get_fields(
             target=target, uid=uid, fields=[status_field]
         ).values
-        status: JsonValue = values[status_field]
+        status: JsonValue = values.get(status_field)
+        if status is None:
+            raise UnreadableAnswerError(message=f"database {uid} answered without {status_field}")
         logger.debug(msg=f"database {uid} is {status}")
         if status == self._settings.creation_failed_status:
             raise DatabaseCreationFailedError(message=f"database {uid} is {status}")
