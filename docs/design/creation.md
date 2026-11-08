@@ -14,7 +14,7 @@
 ```
 POST /v1/databases/create
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
- ├─ OperationStarter.find_or_start
+ ├─ OperationStarter.start_once
  │   ├─ יש פעולה לאותו trace?                           ⇐ 200 עם המצב שלה
  │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
  │   ├─ התחלה אטומית: running + heartbeat
@@ -27,7 +27,7 @@ POST /v1/databases/create
 
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
-| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.find_or_start` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
+| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.start_once` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
 | `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |

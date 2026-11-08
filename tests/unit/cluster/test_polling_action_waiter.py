@@ -17,6 +17,9 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
 )
 from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRejectedResponseError
+from redis_enterprise_services.timing.clock import MonotonicClock
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
+from redis_enterprise_services.timing.sleeper import SystemSleeper
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -38,6 +41,7 @@ def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
     return PollingActionWaiter(
         cluster_api_caller=cluster_api_caller,
+        deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
         settings=action_settings,
         cluster_api_settings=settings.cluster_api,
     )
@@ -86,6 +90,16 @@ def test_a_transient_cluster_rejection_while_reading_the_action_is_read_again(
     waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_count == 2
+
+
+def test_a_permanent_cluster_rejection_while_reading_the_action_fails_at_once() -> None:
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.side_effect = ClusterRejectedRequestError(
+        message="not found", cluster_status_code=404, cluster_error_code=None
+    )
+
+    with pytest.raises(expected_exception=ClusterRejectedRequestError):
+        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
 
 
 def test_a_relay_rejected_action_response_fails_at_once() -> None:

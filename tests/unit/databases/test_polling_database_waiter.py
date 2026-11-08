@@ -16,6 +16,9 @@ from redis_enterprise_services.exceptions.cluster import (
     DatabaseCreationFailedError,
     UnreadableClusterResponseError,
 )
+from redis_enterprise_services.timing.clock import MonotonicClock
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
+from redis_enterprise_services.timing.sleeper import SystemSleeper
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -35,7 +38,10 @@ def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
     short_wait: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.05)
     database_settings: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
     return PollingDatabaseWaiter(
-        fields_reader=fields_reader, settings=database_settings, cluster_api_settings=settings.cluster_api
+        fields_reader=fields_reader,
+        deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
+        settings=database_settings,
+        cluster_api_settings=settings.cluster_api,
     )
 
 
