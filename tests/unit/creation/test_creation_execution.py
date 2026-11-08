@@ -126,6 +126,14 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
     )
 
 
+def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() -> None:
+    creation: Creation = Creation()
+    creation.executor.run.side_effect = NameTakenError(message="raised after the first step")
+    creation.records.find.return_value = saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION)
+
+    assert creation.run().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
+
+
 @pytest.mark.parametrize(
     argnames="outcome",
     argvalues=[saga_record(status=SagaStatus.SUCCEEDED), DatabaseLockedError(message="orders is locked")],

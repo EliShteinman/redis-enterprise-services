@@ -59,9 +59,7 @@ class CreationExecution:
                 before_start=partial(self._ensure_names_free, creation=creation),
             )
         except RedisEnterpriseServicesError as error:
-            return rejected(
-                trace_id=trace_id, error=self._errors.of(error=error, cluster=creation.cluster.api_url)
-            )
+            return self._refused(trace_id=trace_id, creation=creation, error=error)
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
             return self._stopped_saga(trace_id=trace_id, creation=creation)
@@ -73,6 +71,15 @@ class CreationExecution:
                 exc_info=True,
             )
             return self._needs_manual_intervention(trace_id=trace_id)
+
+    def _refused(
+        self, *, trace_id: str, creation: PreparedCreation, error: RedisEnterpriseServicesError
+    ) -> Operation:
+        if self._records.find(saga_id=trace_id) is not None:
+            logger.critical(msg=f"saga {trace_id} raised {error.describe()} after it started", exc_info=error)
+            return self._stopped_saga(trace_id=trace_id, creation=creation)
+        public: ErrorInfo = self._errors.of(error=error, cluster=creation.cluster.api_url)
+        return rejected(trace_id=trace_id, error=public)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
         self._availability.ensure_free(
@@ -91,7 +98,10 @@ class CreationExecution:
         try:
             return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
         except Exception:
-            logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
+            logger.critical(
+                msg=f"saga {trace_id} ended {stored.status.value}, but its result cannot be read",
+                exc_info=True,
+            )
             return self._needs_manual_intervention(trace_id=trace_id)
 
     def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
