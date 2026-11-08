@@ -17,5 +17,5 @@ class StateSettings(ConfigModel):
     key_prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
     socket_timeout_seconds: PositiveFloat
-    finished_operation_ttl_seconds: PositiveInt
+    finished_ttl_seconds: PositiveInt
     lock: LockSettings

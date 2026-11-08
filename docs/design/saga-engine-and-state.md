@@ -244,7 +244,7 @@ PlannedStep(
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
 לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
-**הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
+**הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `abandoned_sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
 מרווח אחד, לא בעלייה. היא לוקחת מ-`operations:open` פעולות ב-`running` בלי heartbeat, קוראת את ה-saga record של כל
 אחת, ומסמנת אותה בסקריפט אחד. הסקריפט כותב רק אם ה-heartbeat עדיין חסר, הפעולה עדיין `running`, וה-record עדיין
 אותה מחרוזת בדיוק שנקראה. השוואה למחרוזת הגולמית, ולא ל-record שנבנה ממנה, כדי ש-record מגרסה קודמת לא ייתקע.

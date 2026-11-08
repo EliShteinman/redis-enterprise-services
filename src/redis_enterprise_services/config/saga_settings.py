@@ -5,7 +5,7 @@ from redis_enterprise_services.config.config_model import ConfigModel
 
 class RetrySettings(ConfigModel):
     attempts: PositiveInt
-    backoff_seconds: NonNegativeFloat
+    backoff_step_seconds: NonNegativeFloat
 
 
 class SagaSettings(ConfigModel):
