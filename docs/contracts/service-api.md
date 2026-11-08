@@ -80,7 +80,7 @@
 
 **איך נמצא הקלאסטר:** לפי `config/clusters.yaml`, קלאסטר עם אותם `network`, `environment`, `site` ו-`type`, וב-`dedicated`
 גם אותו `name`.
-- אין קלאסטר מתאים ⇐ `422 unknown_cluster`.
+- אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
@@ -235,7 +235,7 @@
 
 `200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
-**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_operation_ttl_seconds`),
+**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
@@ -253,14 +253,14 @@
 ## 6. שגיאות
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
-ב-`validation_error` יש גם `error.details`: רשימה של `{field, message}` לכל שדה שלא עומד בחוזה, למשל
+ב-`validation_error` יש גם `error.details`: רשימה של `{location, message}` לכל שדה שלא עומד בחוזה, למשל
 `body.spec.database.memory_size` או `header.traceparent`.
 
 | `code` | איפה | מתי |
 |---|---|---|
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
-| `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
+| `no_matching_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
 | `not_found` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |

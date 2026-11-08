@@ -62,7 +62,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
 | `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `DuplicateResourceNameError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
-| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.unordered_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
+| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.order_insensitive_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
 
 ---
 
@@ -76,7 +76,7 @@ PlannedStep(
 )
 ```
 
-- **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`SagaContext`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
+- **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`StepResults`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
   כך ה-role מקבל את ה-uid של ה-DB, והיוזר את ה-uid של ה-role. הצעד עצמו לא קורא מה-context.
 - **אי אפשר לבנות את הקלט** (למשל תוצאה חסרה) ⇐ הצעד `failed`, ומה שלפניו מבוטל.
 - **`SagaPlan` נבדק כשהוא נבנה:** לפחות צעד אחד, מפתחות ייחודיים, כלל הסדר, לכל היותר pivot אחד, ולפחות מפתח נעילה
@@ -215,7 +215,7 @@ PlannedStep(
 | `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
 | `succeeded`, `rolled_back`, `requires_manual_intervention` | הסטטוס של ה-Saga |
 
-**`OperationAcceptance.accept`**, משותף לכל פקודה:
+**`OperationStarter.find_or_start`**, משותף לכל פקודה:
 1. חיפוש לפי trace. קיימת ⇐ מוחזרת כמו שהיא (`200`).
 2. ההכנה של הפקודה, בלי שינוי בקלאסטר. נכשלה ⇐ תשובה מיידית, ושום דבר לא נשמר.
 3. התחלה אטומית (Lua). רשומה שנוצרה בינתיים ⇐ מוחזרת, ושום דבר לא נשלח לרקע.
@@ -240,11 +240,11 @@ PlannedStep(
 ![זיהוי קריסה](../diagrams/17-flow-heartbeat-and-abandoned-sweep.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
-כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
+כשהיא מחכה בתור. `InProcessOperationHeartbeats` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
 לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
-**הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
+**הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `abandoned_sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
 מרווח אחד, לא בעלייה. היא לוקחת מ-`operations:open` פעולות ב-`running` בלי heartbeat, קוראת את ה-saga record של כל
 אחת, ומסמנת אותה בסקריפט אחד. הסקריפט כותב רק אם ה-heartbeat עדיין חסר, הפעולה עדיין `running`, וה-record עדיין
 אותה מחרוזת בדיוק שנקראה. השוואה למחרוזת הגולמית, ולא ל-record שנבנה ממנה, כדי ש-record מגרסה קודמת לא ייתקע.
@@ -291,10 +291,10 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | תיקייה | מה יש בה | מייבאת |
 |---|---|---|
 | `saga/contract/` | `SagaStep`, `StepKind`, `KeepResult`, `FailureCategory`, `FailureClassifier`, `SagaLock`, `SagaRecordWriter`, `SagaRecordReader`, ה-record | כלום מתוך `plan` או `engine` |
-| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `SagaContext` | `contract` |
+| `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `StepResults` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
-| `operations/` | `Operation`, `OperationStore`, `OperationAcceptance`, `PublicErrors` | |
-| `liveness/` | `LiveOperations`, `HeartbeatStore` | |
+| `operations/` | `Operation`, `OperationStore`, `OperationStarter`, `PublicErrors` | |
+| `liveness/` | `InProcessOperationHeartbeats`, `HeartbeatStore` | |
 | `recovery/` | `AbandonedSweep`, `AbandonedStore` | |
 | `state/` | המימושים ב-Redis של כל הממשקים | |
 
