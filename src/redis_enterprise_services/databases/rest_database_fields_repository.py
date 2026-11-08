@@ -9,7 +9,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulCl
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsRepository
-from redis_enterprise_services.databases.models import DatabaseFields
+from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -27,7 +27,9 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
         self._settings: DatabaseSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def get_fields(self, *, target: ClusterTarget, uid: int, field_names: list[str]) -> DatabaseFields:
+    def read_fields(
+        self, *, target: ClusterTarget, uid: int, field_names: list[str]
+    ) -> DatabaseFieldsSnapshot:
         response: SuccessfulClusterResponse = self._cluster_api_caller.send(
             target=target,
             method="GET",
@@ -35,7 +37,7 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
             query_string=self._fields_query_string(field_names=field_names),
         )
         try:
-            return DatabaseFields.model_validate(
+            return DatabaseFieldsSnapshot.model_validate(
                 obj={"values": response.body, "cluster_state_id": response.cluster_state_id}
             )
         except ValidationError as error:
@@ -46,7 +48,7 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
     def _fields_query_string(self, *, field_names: list[str]) -> str:
         return fields_query_string(settings=self._cluster_api_settings.fields_query, field_names=field_names)
 
-    def update_fields(
+    def update_fields_if_state_unchanged(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
         logger.info(msg=f"updating {sorted(values)} of database {uid}")

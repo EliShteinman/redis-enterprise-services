@@ -9,7 +9,7 @@ from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsReader
-from redis_enterprise_services.databases.models import DatabaseFields
+from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.polling_database_waiter import PollingDatabaseWaiter
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
@@ -42,45 +42,45 @@ def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
 def test_a_deleted_database_is_gone_once_it_answers_404(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.get_fields.side_effect = ClusterRejectedRequestError(
+    fields_reader.read_fields.side_effect = ClusterRejectedRequestError(
         message="gone", cluster_status_code=404, cluster_error_code="db_not_exist"
     )
 
-    waiter.wait_until_deleted(target=TARGET, uid=11, action_uid=None)
+    waiter.wait_for_pending_deletion(target=TARGET, uid=11, action_uid=None)
 
-    fields_reader.get_fields.assert_called_once()
+    fields_reader.read_fields.assert_called_once()
 
 
 def test_a_non_transient_rejection_while_waiting_for_a_delete_is_raised(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.get_fields.side_effect = ClusterRejectedRequestError(
+    fields_reader.read_fields.side_effect = ClusterRejectedRequestError(
         message="no", cluster_status_code=403, cluster_error_code=None
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError):
-        waiter.wait_until_deleted(target=TARGET, uid=11, action_uid=None)
+        waiter.wait_for_pending_deletion(target=TARGET, uid=11, action_uid=None)
 
 
 def test_a_cluster_failure_while_waiting_for_a_delete_is_read_again(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.get_fields.side_effect = [
+    fields_reader.read_fields.side_effect = [
         ClusterRejectedRequestError(message="failing over", cluster_status_code=503, cluster_error_code=None),
         ClusterRejectedRequestError(
             message="gone", cluster_status_code=404, cluster_error_code="db_not_exist"
         ),
     ]
 
-    waiter.wait_until_deleted(target=TARGET, uid=11, action_uid=None)
+    waiter.wait_for_pending_deletion(target=TARGET, uid=11, action_uid=None)
 
-    assert fields_reader.get_fields.call_count == 2
+    assert fields_reader.read_fields.call_count == 2
 
 
 def test_a_database_whose_creation_failed_stops_the_wait(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.get_fields.return_value = DatabaseFields(
+    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(
         values={"status": "creation-failed"}, cluster_state_id=1
     )
 
@@ -91,7 +91,7 @@ def test_a_database_whose_creation_failed_stops_the_wait(
 def test_a_database_answer_without_a_status_is_unreadable(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.get_fields.return_value = DatabaseFields(values={}, cluster_state_id=1)
+    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(values={}, cluster_state_id=1)
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
         waiter.wait_until_active(target=TARGET, uid=11)

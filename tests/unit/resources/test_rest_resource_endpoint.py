@@ -23,11 +23,13 @@ USERS: list[JsonValue] = [
 
 
 def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
-    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
-    api.send.return_value = SuccessfulClusterResponse(body=answer, cluster_state_id=None)
+    cluster_api_caller: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    cluster_api_caller.send.return_value = SuccessfulClusterResponse(body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
     return RestResourceEndpoint(
-        cluster_api_caller=api, settings=settings.user, cluster_api_settings=settings.cluster_api
+        cluster_api_caller=cluster_api_caller,
+        settings=settings.user,
+        cluster_api_settings=settings.cluster_api,
     )
 
 
@@ -52,7 +54,7 @@ def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
         answer={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
     )
 
-    created: CreatedResource = endpoint.create(target=TARGET, body={"name": "app-user"})
+    created: CreatedResource = endpoint.start_creation(target=TARGET, body={"name": "app-user"})
 
     assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
 
@@ -61,7 +63,7 @@ def test_create_raises_unreadable_response_for_an_answer_without_a_uid() -> None
     endpoint: RestResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
-        endpoint.create(target=TARGET, body={"name": "app-user"})
+        endpoint.start_creation(target=TARGET, body={"name": "app-user"})
 
 
 def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
@@ -70,7 +72,7 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
     )
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError) as unreadable:
-        endpoint.create(target=TARGET, body={"name": "db1"})
+        endpoint.start_creation(target=TARGET, body={"name": "db1"})
 
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
 
@@ -87,12 +89,14 @@ def test_find_by_name_reports_an_unreadable_list_without_its_values() -> None:
 
 
 def test_the_database_list_asks_only_for_the_configured_fields() -> None:
-    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
-    api.send.return_value = SuccessfulClusterResponse(body=[], cluster_state_id=None)
+    cluster_api_caller: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    cluster_api_caller.send.return_value = SuccessfulClusterResponse(body=[], cluster_state_id=None)
     settings: Settings = load_settings()
 
     RestResourceEndpoint(
-        cluster_api_caller=api, settings=settings.database, cluster_api_settings=settings.cluster_api
+        cluster_api_caller=cluster_api_caller,
+        settings=settings.database,
+        cluster_api_settings=settings.cluster_api,
     ).find_by_name(target=TARGET, name="orders")
 
-    assert api.send.call_args.kwargs["query_string"] == "fields=uid,name"
+    assert cluster_api_caller.send.call_args.kwargs["query_string"] == "fields=uid,name"

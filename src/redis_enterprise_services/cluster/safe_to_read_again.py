@@ -5,7 +5,7 @@ from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestE
 from redis_enterprise_services.exceptions.edge import EdgeConnectionFailedError, EdgeOutcomeUnknownError
 
 
-def is_transient_read_error(
+def is_safe_to_read_again(
     *, error: RedisEnterpriseServicesError, transient_error_codes: frozenset[str]
 ) -> bool:
     if isinstance(error, (EdgeConnectionFailedError, EdgeOutcomeUnknownError)):

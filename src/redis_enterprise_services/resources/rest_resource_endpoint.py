@@ -32,7 +32,7 @@ class RestResourceEndpoint(ResourceEndpoint):
         self._settings: ResourceSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def create(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource:
+    def start_creation(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource:
         logger.info(msg=f"creating {self._settings.collection_path} {body.get('name')}")
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target, method="POST", path=self._settings.collection_path, body=body
@@ -48,7 +48,7 @@ class RestResourceEndpoint(ResourceEndpoint):
             uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=response_body)
         )
 
-    def delete(self, *, target: ClusterTarget, uid: int) -> str | None:
+    def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
         logger.info(msg=f"deleting {self._settings.item_path.format(uid=uid)}")
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target, method="DELETE", path=self._settings.item_path.format(uid=uid)
@@ -56,9 +56,9 @@ class RestResourceEndpoint(ResourceEndpoint):
         return self._action_uid(body=response_body)
 
     def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
-        return [resource for resource in self.list_named(target=target) if resource.name == name]
+        return [resource for resource in self.list_uids_and_names(target=target) if resource.name == name]
 
-    def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
+    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target,
             method="GET",

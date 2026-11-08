@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCalle
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until_done_or_timeout
-from redis_enterprise_services.cluster.transient_read_error import is_transient_read_error
+from redis_enterprise_services.cluster.safe_to_read_again import is_safe_to_read_again
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -37,20 +37,22 @@ class PollingActionWaiter(ClusterActionWaiter):
             return
         if poll_until_done_or_timeout(
             wait_settings=self._settings.wait,
-            is_done=lambda: self._read_whether_completed(target=target, action_uid=action_uid),
+            is_done=lambda: self._read_whether_completed_or_raise_if_failed(
+                target=target, action_uid=action_uid
+            ),
         ):
             return
         raise ClusterActionTimeoutError(
             message=f"action {action_uid} did not complete in {self._settings.wait.timeout_seconds} seconds"
         )
 
-    def _read_whether_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
+    def _read_whether_completed_or_raise_if_failed(self, *, target: ClusterTarget, action_uid: str) -> bool:
         try:
             action_body: JsonValue = self._cluster_api_caller.send(
                 target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
             ).body
         except RedisEnterpriseServicesError as error:
-            if not is_transient_read_error(
+            if not is_safe_to_read_again(
                 error=error, transient_error_codes=self._cluster_api_settings.transient_error_codes
             ):
                 raise
