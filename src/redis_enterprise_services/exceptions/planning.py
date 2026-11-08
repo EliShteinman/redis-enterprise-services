@@ -4,8 +4,8 @@ from typing import ClassVar
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 
-class UnknownClusterError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "unknown_cluster"
+class NoMatchingClusterError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "no_matching_cluster"
     status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_ENTITY
 
 

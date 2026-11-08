@@ -17,7 +17,7 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
         context: Context = copy_context()
         future: Future[object] = self._pool.submit(context.run, task)
         future.add_done_callback(
-            lambda finished_future: context.run(log_unsuccessful_end, name=name, future=finished_future)
+            lambda finished_future: context.run(log_if_cancelled_or_failed, name=name, future=finished_future)
         )
         logger.info(msg=f"{name} runs in the background")
 
@@ -26,7 +26,7 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
         self._pool.shutdown(wait=True, cancel_futures=True)
 
 
-def log_unsuccessful_end(*, name: str, future: Future[object]) -> None:
+def log_if_cancelled_or_failed(*, name: str, future: Future[object]) -> None:
     if future.cancelled():
         logger.warning(msg=f"{name} was cancelled before it started, it is left to the abandoned sweep")
         return

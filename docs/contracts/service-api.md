@@ -57,10 +57,10 @@
       {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
     ]
   },
-  "body": {
+  "spec": {
     "database": {"name": "orders", "memory_size": 1073741824},
     "users": [
-      {"name": "app", "password": "…", "acl": "+@all ~orders:*"}
+      {"name": "app", "password": "…", "acl_rule": "+@all ~orders:*"}
     ]
   }
 }
@@ -80,11 +80,11 @@
 
 **איך נמצא הקלאסטר:** לפי `config/clusters.yaml`, קלאסטר עם אותם `network`, `environment`, `site` ו-`type`, וב-`dedicated`
 גם אותו `name`.
-- אין קלאסטר מתאים ⇐ `422 unknown_cluster`.
+- אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
-### `body.database`
+### `spec.database`
 
 | שדה | סוג | חובה |
 |---|---|---|
@@ -121,19 +121,19 @@
 השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
 `rolled_back` עם `cluster_request_failed`.
 
-### `body.users[]`
+### `spec.users[]`
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
 | `users` | list | | ברירת מחדל `[]`. כל שם פעם אחת |
 | `users[].name` | str | ✅ | בלי `-` |
 | `users[].password` | str | ✅ | לא ריק |
-| `users[].acl` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
+| `users[].acl_rule` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
 
 ### מה נוצר בקלאסטר
 
 1. ה-DB, עם הסיסמה של `default_user` מהשירות.
-2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
+2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl_rule` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
 3. קישור כל role ל-ACL שלו על ה-DB.
 
 לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
@@ -235,7 +235,7 @@
 
 `200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
-**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_operation_ttl_seconds`),
+**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
@@ -253,13 +253,13 @@
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
 ב-`validation_error` יש גם `error.details`: רשימה של `{field, message}` לכל שדה שלא עומד בחוזה, למשל
-`body.body.database.memory_size` או `header.traceparent`.
+`body.spec.database.memory_size` או `header.traceparent`.
 
 | `code` | איפה | מתי |
 |---|---|---|
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
-| `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
+| `no_matching_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
 | `not_found` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |

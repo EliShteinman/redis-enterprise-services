@@ -24,8 +24,8 @@ from redis_enterprise_services.timing.sleeper import Sleeper
 SAGA_ID: str = "trace-1"
 LOCK_KEYS: list[str] = ["cluster1/db1"]
 SETTINGS: SagaSettings = SagaSettings(
-    step_retry=RetrySettings(attempts=3, backoff_seconds=1),
-    compensation_retry=RetrySettings(attempts=2, backoff_seconds=1),
+    step_retry=RetrySettings(attempts=3, backoff_step_seconds=1),
+    compensation_retry=RetrySettings(attempts=2, backoff_step_seconds=1),
 )
 
 
