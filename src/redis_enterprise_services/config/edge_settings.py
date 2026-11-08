@@ -12,7 +12,7 @@ class EdgeHeaderSettings(ConfigModel):
     cluster_status_code: str
     cluster_state_id: str
     crdb_task_id: str
-    result_ttl: str
+    result_ttl_seconds: str
 
 
 class EdgeErrorCodeSettings(ConfigModel):

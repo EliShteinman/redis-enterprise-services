@@ -9,7 +9,7 @@ edge:
     cluster_status_code: x-edge-cluster-status
     cluster_state_id: cluster-state-id
     crdb_task_id: x-task-id
-    result_ttl: x-result-ttl
+    result_ttl_seconds: x-result-ttl
   request_content_type: application/json
   error_codes:
     invalid_request: invalid_request
