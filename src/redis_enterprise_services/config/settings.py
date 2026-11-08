@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import ClassVar, Self
 
 from pydantic import model_validator
@@ -111,7 +110,4 @@ class Settings(BaseSettings):
 
 
 def load_settings() -> Settings:
-    missing: list[str] = [path for path in YAML_FILES if not Path(path).is_file()]
-    if missing:
-        raise FileNotFoundError(f"config files not found under {Path.cwd()}: {missing}")
     return Settings()  # pyright: ignore[reportCallIssue]
