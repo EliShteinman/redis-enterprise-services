@@ -50,7 +50,7 @@ class RedisSagaState(SagaStateRepository, SagaRecordReader):
     def find(self, *, saga_id: str) -> SagaRecord | None:
         stored: str | bytes | None = self._client.get(name=self._keys.saga(saga_id=saga_id))
         if stored is None:
-            logger.warning(msg=f"saga {saga_id} is not stored")
+            logger.debug(msg=f"saga {saga_id} is not stored")
             return None
         return SagaRecord.model_validate_json(json_data=stored)
 
