@@ -1,5 +1,4 @@
-from http import HTTPStatus
-
+from redis_enterprise_services.cluster.rejection_kind import has_transient_error_code, is_server_failure
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 from redis_enterprise_services.exceptions.edge import EdgeConnectionFailedError, EdgeOutcomeUnknownError
@@ -15,13 +14,3 @@ def is_safe_to_read_again(
             error=error, transient_error_codes=transient_error_codes
         )
     return False
-
-
-def has_transient_error_code(
-    *, error: ClusterRejectedRequestError, transient_error_codes: frozenset[str]
-) -> bool:
-    return error.cluster_error_code in transient_error_codes
-
-
-def is_server_failure(*, error: ClusterRejectedRequestError) -> bool:
-    return error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
