@@ -11,7 +11,7 @@ class PeriodicThread:
         self._interval_seconds: float = interval_seconds
         self._task: Callable[[], None] = task
         self._stop_requested: Event = Event()
-        self._thread: Thread = Thread(target=self._run, name=name, daemon=True)
+        self._thread: Thread = Thread(target=self._run_every_interval_until_stopped, name=name, daemon=True)
 
     def start(self) -> None:
         self._thread.start()
@@ -22,7 +22,7 @@ class PeriodicThread:
         self._thread.join()
         logger.info(msg=f"{self._name} stopped")
 
-    def _run(self) -> None:
+    def _run_every_interval_until_stopped(self) -> None:
         while not self._stop_requested.wait(timeout=self._interval_seconds):
             try:
                 self._task()

@@ -13,23 +13,27 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
     def __init__(self, *, settings: BackgroundSettings) -> None:
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=settings.max_workers)
 
-    def submit(self, *, name: str, task: Callable[[], object]) -> None:
-        context: Context = copy_context()
-        future: Future[object] = self._pool.submit(context.run, task)
+    def submit(self, *, task_name: str, task: Callable[[], object]) -> None:
+        submitter_context: Context = copy_context()
+        future: Future[object] = self._pool.submit(submitter_context.run, task)
         future.add_done_callback(
-            lambda finished_future: context.run(log_if_cancelled_or_failed, name=name, future=finished_future)
+            lambda finished_future: submitter_context.run(
+                log_if_cancelled_or_failed, task_name=task_name, future=finished_future
+            )
         )
-        logger.info(msg=f"{name} runs in the background")
+        logger.info(msg=f"{task_name} is queued to run in the background")
 
-    def shutdown(self) -> None:
-        logger.info(msg="cancelling the queued background tasks and waiting for the running ones to end")
+    def close_cancelling_queued_and_waiting_for_running(self) -> None:
+        logger.info(
+            msg="closing the background runner: cancelling the queued tasks, waiting for the running ones"
+        )
         self._pool.shutdown(wait=True, cancel_futures=True)
 
 
-def log_if_cancelled_or_failed(*, name: str, future: Future[object]) -> None:
+def log_if_cancelled_or_failed(*, task_name: str, future: Future[object]) -> None:
     if future.cancelled():
-        logger.warning(msg=f"{name} was cancelled before it started, it is left to the abandoned sweep")
+        logger.warning(msg=f"{task_name} was cancelled before it started, it is left to the abandoned sweep")
         return
     error: BaseException | None = future.exception()
     if error is not None:
-        logger.critical(msg=f"{name} failed in the background", exc_info=error)
+        logger.critical(msg=f"{task_name} failed in the background", exc_info=error)

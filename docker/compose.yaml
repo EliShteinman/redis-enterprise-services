@@ -13,8 +13,8 @@ x-cluster-bootstrap: &cluster-bootstrap
     - ./license:/license:ro
   restart: "no"
   environment: &bootstrap-environment
-    ADMIN_USERNAME: ${ADMIN_USERNAME}
-    ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    ADMIN_USERNAME: ${CLUSTER_ADMIN_USERNAME}
+    ADMIN_PASSWORD: ${CLUSTER_ADMIN_PASSWORD}
     API_PORT: ${CLUSTER_API_PORT}
     PERSISTENT_PATH: ${PERSISTENT_PATH}
     EPHEMERAL_PATH: ${EPHEMERAL_PATH}
@@ -42,7 +42,7 @@ services:
       - cluster1-node1
     environment:
       <<: *bootstrap-environment
-      CLUSTER_HOST: cluster1-node1
+      NODE_HOST: cluster1-node1
       CLUSTER_NAME: ${CLUSTER1_FQDN}
 
   cluster1-node2:
@@ -62,7 +62,7 @@ services:
     environment:
       <<: *bootstrap-environment
       NODE_HOST: cluster1-node2
-      CLUSTER_HOST: cluster1-node1
+      CLUSTER_NODE_HOST: cluster1-node1
 
   cluster2-node1:
     <<: *cluster-node
@@ -84,7 +84,7 @@ services:
       - cluster2-node1
     environment:
       <<: *bootstrap-environment
-      CLUSTER_HOST: cluster2-node1
+      NODE_HOST: cluster2-node1
       CLUSTER_NAME: ${CLUSTER2_FQDN}
 
 networks:
