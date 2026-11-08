@@ -115,7 +115,6 @@ class SingleSiteCreationPlanner:
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
     ) -> PreparableStep:
         role_name: str = self._resource_naming.role_name(database_name=database.name, user_name=user.name)
-        management: RoleManagement = self._role_management
         return PlannedStep(
             key=role_step_key(user=user),
             step=self._create_role_step,
@@ -123,7 +122,7 @@ class SingleSiteCreationPlanner:
                 cluster=address,
                 spec=NewRole(
                     name=role_name,
-                    management=management,
+                    management=self._role_management,
                     database_uids=[created_uid(step_results=step_results, step_key=DATABASE_STEP_KEY)],
                 ),
             ),
@@ -157,7 +156,7 @@ class SingleSiteCreationPlanner:
         ]
 
     def _permissions_input(
-        self, step_results: StepResults, *, address: ClusterAddress, users: list[DatabaseUserSpec]
+        self, *, step_results: StepResults, address: ClusterAddress, users: list[DatabaseUserSpec]
     ) -> UpdateDatabaseInput:
         return UpdateDatabaseInput(
             cluster=address,
