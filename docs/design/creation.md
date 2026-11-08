@@ -65,7 +65,7 @@ POST /v1/databases/create
 
    - הסדר: `values`, אחריהן כל דריסה שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף השדות שהבקשה
      שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
-   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster` (השם).
+   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות.
 
@@ -123,9 +123,9 @@ POST /v1/databases/create
 
 - **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
-  `error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
+  `last_error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
-  `internal_error` ו-WARNING. `cluster` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
+  `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
 - **סדר השמירה:** המנוע משחרר את הנעילה, ורק אחר כך הפעולה נשמרת.
 
 ---

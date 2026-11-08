@@ -62,7 +62,7 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 | צעד | `result` | `find_outcome` | `compensate` |
 |---|---|---|---|
 | `CreateResourceStep` (DB, ACL, role, user) | `CreatedResource`: `uid`, `name`, `action_uid` | יש תוצאה שמורה ⇐ היא, אחרי המתנה לסיום. אחרת חיפוש לפי שם; יותר ממשאב אחד ⇐ `DuplicateResourceNameError`. ACL, role או user שנמצאו לפי שם אין להם `action_uid`, ולכן לא ממתינים להם | `DELETE`, והמתנה ל-`action_uid` אם יש. ב-DB המתנה ל-404 |
-| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.unordered_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום |
+| `UpdateDatabaseStep` (היום: ההרשאות על ה-DB) | snapshot של השדות שמשתנים. שדה שלא מוגדר ב-DB ⇐ `UnrestorableFieldsError` לפני ה-`PUT`, כי אין מה להחזיר. ה-`PUT` נשלח עם `cluster-state-id`, ואחריו המתנה ל-`active` | הערכים בקלאסטר שווים לחדשים ⇐ ה-`kept_result`. שווים ל-snapshot ⇐ לא בוצע. אף אחד מהשניים ⇐ `UpdateOutcomeUnclearError` (התערבות ידנית), כדי שניסיון חוזר לא ידרוס את ה-snapshot. סדר ברשימה נבדק, חוץ משדות ב-`database.unordered_fields` | `PUT` של ה-snapshot. אם ה-DB כבר בערכים הישנים, לא עושה כלום. אם הוא לא בישנים ולא בחדשים ⇐ `UpdateOutcomeUnclearError`, והצעד `compensation_failed` (התערבות ידנית) |
 
 ---
 
