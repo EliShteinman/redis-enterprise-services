@@ -9,7 +9,7 @@ from redis_enterprise_services.cluster.transport import EdgeTransport
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.edge.models import ClusterResponse
-from redis_enterprise_services.exceptions.cluster import ClusterRequestError
+from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -24,12 +24,15 @@ def test_a_cluster_error_answer_keeps_the_cluster_status_and_error_code() -> Non
         status_code=409, headers={}, body={"error_code": "name_already_exists"}, cluster_state_id=None
     )
 
-    with pytest.raises(expected_exception=ClusterRequestError) as rejection:
-        ClusterApi(transport=transport, settings=load_settings().cluster).send(
+    with pytest.raises(expected_exception=ClusterRejectedRequestError) as rejection:
+        ClusterApi(transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )
 
-    assert (rejection.value.cluster_status_code, rejection.value.error_code) == (409, "name_already_exists")
+    assert (rejection.value.cluster_status_code, rejection.value.cluster_error_code) == (
+        409,
+        "name_already_exists",
+    )
 
 
 def test_a_redirect_answer_is_a_cluster_error() -> None:
@@ -38,7 +41,7 @@ def test_a_redirect_answer_is_a_cluster_error() -> None:
         status_code=302, headers={}, body=None, cluster_state_id=None
     )
 
-    with pytest.raises(expected_exception=ClusterRequestError):
-        ClusterApi(transport=transport, settings=load_settings().cluster).send(
+    with pytest.raises(expected_exception=ClusterRejectedRequestError):
+        ClusterApi(transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )

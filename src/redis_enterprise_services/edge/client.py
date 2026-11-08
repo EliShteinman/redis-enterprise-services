@@ -3,7 +3,7 @@ import logging
 
 import requests
 
-from redis_enterprise_services.config.edge_settings import EdgeSettings, NetworkSettings
+from redis_enterprise_services.config.edge_settings import EdgeNetworkSettings, EdgeSettings
 from redis_enterprise_services.edge.encoding import TEXT_ENCODING
 from redis_enterprise_services.edge.headers import EdgeHeaders
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
@@ -21,14 +21,14 @@ class EdgeClient:
         self._reader: EdgeResponseReader = reader
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
-        endpoint: NetworkSettings = self._network(name=network)
+        endpoint: EdgeNetworkSettings = self._network(name=network)
         logger.debug(msg=f"{request.method} {request.url} through {network}")
         try:
             response: requests.Response = requests.post(
                 url=endpoint.url,
                 headers=self._headers.build(request=request, endpoint=endpoint),
                 data=self._content(request=request),
-                timeout=self._settings.timeout_seconds,
+                timeout=self._settings.request_timeout_seconds,
                 allow_redirects=False,
                 verify=False,  # noqa: S501
             )
@@ -37,8 +37,8 @@ class EdgeClient:
             raise transport_error(network=network, error=error) from error
         return self._reader.read(response=response)
 
-    def _network(self, *, name: str) -> NetworkSettings:
-        endpoint: NetworkSettings | None = self._settings.networks.get(name)
+    def _network(self, *, name: str) -> EdgeNetworkSettings:
+        endpoint: EdgeNetworkSettings | None = self._settings.networks.get(name)
         if endpoint is None:
             raise ConfigurationError(message=f"no relay is configured for network {name}")
         return endpoint

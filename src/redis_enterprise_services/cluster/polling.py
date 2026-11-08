@@ -9,6 +9,6 @@ def poll_until(*, wait: WaitSettings, is_done: Callable[[], bool]) -> bool:
     while True:
         if is_done():
             return True
-        if time.monotonic() + wait.interval_seconds >= deadline:
+        if time.monotonic() + wait.poll_interval_seconds >= deadline:
             return False
-        time.sleep(wait.interval_seconds)
+        time.sleep(wait.poll_interval_seconds)

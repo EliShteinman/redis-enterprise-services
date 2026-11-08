@@ -1,6 +1,10 @@
 import base64
 
-from redis_enterprise_services.config.edge_settings import EdgeHeaderSettings, EdgeSettings, NetworkSettings
+from redis_enterprise_services.config.edge_settings import (
+    EdgeHeaderSettings,
+    EdgeNetworkSettings,
+    EdgeSettings,
+)
 from redis_enterprise_services.edge.encoding import TEXT_ENCODING
 from redis_enterprise_services.edge.models import ClusterRequest
 
@@ -15,7 +19,7 @@ class EdgeHeaders:
         self._settings: EdgeSettings = settings
         self._names: EdgeHeaderSettings = settings.headers
 
-    def build(self, *, request: ClusterRequest, endpoint: NetworkSettings) -> dict[str, str]:
+    def build(self, *, request: ClusterRequest, endpoint: EdgeNetworkSettings) -> dict[str, str]:
         return (
             self._required(request=request)
             | self._optional(request=request)
@@ -24,13 +28,13 @@ class EdgeHeaders:
 
     def _required(self, *, request: ClusterRequest) -> dict[str, str]:
         return {
-            self._names.method: request.method,
-            self._names.url: request.url,
-            self._names.authorization: basic_authorization(
+            self._names.cluster_method: request.method,
+            self._names.cluster_url: request.url,
+            self._names.cluster_authorization: basic_authorization(
                 username=request.credentials.username,
                 password=request.credentials.password.get_secret_value(),
             ),
-            self._names.content_type: self._settings.content_type,
+            self._names.content_type: self._settings.request_content_type,
         }
 
     def _optional(self, *, request: ClusterRequest) -> dict[str, str]:
@@ -42,11 +46,11 @@ class EdgeHeaders:
         return {name: str(value) for name, value in optional.items() if value is not None}
 
     @staticmethod
-    def _firewall(*, endpoint: NetworkSettings) -> dict[str, str]:
+    def _firewall(*, endpoint: EdgeNetworkSettings) -> dict[str, str]:
         if endpoint.firewall is None:
             return {}
         return {
-            endpoint.firewall.header: basic_authorization(
+            endpoint.firewall.authorization_header: basic_authorization(
                 username=endpoint.firewall.username, password=endpoint.firewall.password.get_secret_value()
             )
         }

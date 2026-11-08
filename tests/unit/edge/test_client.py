@@ -17,10 +17,10 @@ from redis_enterprise_services.edge.models import ClusterRequest, ClusterRespons
 from redis_enterprise_services.edge.response_reader import EdgeResponseReader
 from redis_enterprise_services.exceptions.edge import (
     EdgeError,
+    EdgeOutcomeUnknownError,
+    EdgeRequestNotSentError,
+    InvalidClusterResponseError,
     InvalidEdgeRequestError,
-    OutcomeUnknownError,
-    RequestNotSentError,
-    ResponseRejectedError,
 )
 
 NETWORK: str = "local"
@@ -78,16 +78,18 @@ def test_an_answer_without_edge_error_is_the_cluster_answer(
     argnames=("code", "expected"),
     argvalues=[
         ("invalid_request", InvalidEdgeRequestError),
-        ("connection_failed", RequestNotSentError),
-        ("timeout", OutcomeUnknownError),
-        ("response_rejected", ResponseRejectedError),
-        ("something_new", OutcomeUnknownError),
+        ("connection_failed", EdgeRequestNotSentError),
+        ("timeout", EdgeOutcomeUnknownError),
+        ("response_rejected", InvalidClusterResponseError),
+        ("something_new", EdgeOutcomeUnknownError),
     ],
 )
 def test_an_edge_error_code_is_sorted(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings, code: str, expected: type[EdgeError]
 ) -> None:
-    answer: requests.Response = relay_answer(status_code=502, headers={settings.headers.error: code})
+    answer: requests.Response = relay_answer(
+        status_code=502, headers={settings.headers.edge_error_code: code}
+    )
 
     with pytest.raises(expected_exception=expected):
         send(settings=settings, answer=answer, monkeypatch=monkeypatch)
@@ -106,11 +108,11 @@ def test_a_rejection_keeps_the_cluster_status(
     monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
 ) -> None:
     headers: dict[str, str] = {
-        settings.headers.error: settings.error_codes.response_rejected,
-        settings.headers.cluster_status: "201",
+        settings.headers.edge_error_code: settings.error_codes.response_rejected,
+        settings.headers.cluster_status_code: "201",
     }
 
-    with pytest.raises(expected_exception=ResponseRejectedError) as rejection:
+    with pytest.raises(expected_exception=InvalidClusterResponseError) as rejection:
         send(
             settings=settings, answer=relay_answer(status_code=502, headers=headers), monkeypatch=monkeypatch
         )
@@ -125,22 +127,22 @@ def test_a_rejection_keeps_the_cluster_status(
             requests.ConnectionError(
                 MaxRetryError(pool=POOL, url="/", reason=NewConnectionError(CONNECTION, "refused"))
             ),
-            RequestNotSentError,
+            EdgeRequestNotSentError,
         ),
         (
             requests.ConnectTimeout(
                 MaxRetryError(pool=POOL, url="/", reason=ConnectTimeoutError("timed out"))
             ),
-            RequestNotSentError,
+            EdgeRequestNotSentError,
         ),
         (
             requests.exceptions.SSLError(
                 MaxRetryError(pool=POOL, url="/", reason=SSLError("eof after sending"))
             ),
-            OutcomeUnknownError,
+            EdgeOutcomeUnknownError,
         ),
-        (requests.ConnectionError(ProtocolError("connection aborted")), OutcomeUnknownError),
-        (requests.ReadTimeout("read timed out"), OutcomeUnknownError),
+        (requests.ConnectionError(ProtocolError("connection aborted")), EdgeOutcomeUnknownError),
+        (requests.ReadTimeout("read timed out"), EdgeOutcomeUnknownError),
     ],
 )
 def test_a_transport_error_is_sorted(

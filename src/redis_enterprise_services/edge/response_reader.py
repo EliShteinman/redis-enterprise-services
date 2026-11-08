@@ -8,10 +8,10 @@ from redis_enterprise_services.config.edge_settings import EdgeErrorCodeSettings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.edge import (
     EdgeError,
+    EdgeOutcomeUnknownError,
+    EdgeRequestNotSentError,
+    InvalidClusterResponseError,
     InvalidEdgeRequestError,
-    OutcomeUnknownError,
-    RequestNotSentError,
-    ResponseRejectedError,
 )
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -33,7 +33,7 @@ class EdgeResponseReader:
         self._settings: EdgeSettings = settings
 
     def read(self, *, response: requests.Response) -> ClusterResponse:
-        edge_error: str | None = response.headers.get(self._settings.headers.error)
+        edge_error: str | None = response.headers.get(self._settings.headers.edge_error_code)
         if edge_error is not None:
             raise self._edge_error(code=edge_error, response=response)
         return ClusterResponse(
@@ -50,17 +50,17 @@ class EdgeResponseReader:
         message: str = f"relay answered {response.status_code} {code}: {response.text}"
         logger.warning(msg=message)
         if code == codes.response_rejected:
-            return ResponseRejectedError(
+            return InvalidClusterResponseError(
                 message=message,
                 cluster_status_code=optional_int_header(
-                    headers=response.headers, name=self._settings.headers.cluster_status
+                    headers=response.headers, name=self._settings.headers.cluster_status_code
                 ),
             )
         by_code: dict[str, type[EdgeError]] = {
             codes.invalid_request: InvalidEdgeRequestError,
-            codes.connection_failed: RequestNotSentError,
+            codes.connection_failed: EdgeRequestNotSentError,
         }
-        return by_code.get(code, OutcomeUnknownError)(message=message)
+        return by_code.get(code, EdgeOutcomeUnknownError)(message=message)
 
     @staticmethod
     def _body(*, response: requests.Response) -> JsonValue | None:
