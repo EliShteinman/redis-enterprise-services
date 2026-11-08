@@ -64,11 +64,24 @@ def test_a_running_saga_is_stopped_for_manual_intervention() -> None:
     )
 
 
-@pytest.mark.parametrize(argnames="status", argvalues=[SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK])
-def test_an_ended_saga_is_left_as_it_is(status: SagaStatus) -> None:
-    operation, saga = Sweep(saga=saga_record(status=status)).marked()
+@pytest.mark.parametrize(
+    argnames=("saga_status", "operation_status"),
+    argvalues=[
+        (SagaStatus.SUCCEEDED, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
+        (SagaStatus.ROLLED_BACK, OperationStatus.ROLLED_BACK),
+        (SagaStatus.REQUIRES_MANUAL_INTERVENTION, OperationStatus.REQUIRES_MANUAL_INTERVENTION),
+    ],
+)
+def test_an_ended_saga_is_left_as_it_is(saga_status: SagaStatus, operation_status: OperationStatus) -> None:
+    operation, saga = Sweep(saga=saga_record(status=saga_status)).marked()
 
-    assert (operation.status, saga) == (OperationStatus.REQUIRES_MANUAL_INTERVENTION, None)
+    assert (operation.status, saga) == (operation_status, None)
+
+
+def test_an_operation_whose_saga_rolled_back_lists_nothing_left_behind() -> None:
+    operation, _ = Sweep(saga=saga_record(status=SagaStatus.ROLLED_BACK)).marked()
+
+    assert operation.not_rolled_back == []
 
 
 def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:

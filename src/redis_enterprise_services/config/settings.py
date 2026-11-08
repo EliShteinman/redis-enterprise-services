@@ -1,5 +1,6 @@
-from typing import ClassVar
+from typing import ClassVar, Self
 
+from pydantic import model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,6 +21,7 @@ from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.liveness_settings import LivenessSettings
 from redis_enterprise_services.config.log_settings import LoggingSettings
 from redis_enterprise_services.config.naming_settings import NamingSettings
+from redis_enterprise_services.config.network_coverage import networks_without_relay
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
@@ -27,31 +29,33 @@ from redis_enterprise_services.config.server_settings import ServerSettings
 from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
+YAML_FILES: tuple[str, ...] = (
+    "config/log.yaml",
+    "config/api.yaml",
+    "config/telemetry.yaml",
+    "config/edge.yaml",
+    "config/action.yaml",
+    "config/acl.yaml",
+    "config/cluster.yaml",
+    "config/database.yaml",
+    "config/saga.yaml",
+    "config/state.yaml",
+    "config/role.yaml",
+    "config/user.yaml",
+    "config/server.yaml",
+    "config/clusters.yaml",
+    "config/database_defaults.yaml",
+    "config/decomposition.yaml",
+    "config/naming.yaml",
+    "config/operation.yaml",
+    "config/background.yaml",
+    "config/liveness.yaml",
+)
+
 
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        yaml_file=(
-            "config/log.yaml",
-            "config/api.yaml",
-            "config/telemetry.yaml",
-            "config/edge.yaml",
-            "config/action.yaml",
-            "config/acl.yaml",
-            "config/cluster.yaml",
-            "config/database.yaml",
-            "config/saga.yaml",
-            "config/state.yaml",
-            "config/role.yaml",
-            "config/user.yaml",
-            "config/server.yaml",
-            "config/clusters.yaml",
-            "config/database_defaults.yaml",
-            "config/decomposition.yaml",
-            "config/naming.yaml",
-            "config/operation.yaml",
-            "config/background.yaml",
-            "config/liveness.yaml",
-        ),
+        yaml_file=YAML_FILES,
         env_file=".env",
         env_file_encoding="utf-8",
         env_prefix="RES_",
@@ -80,6 +84,13 @@ class Settings(BaseSettings):
     background: BackgroundSettings
     liveness: LivenessSettings
     cluster_access: ClusterAccessSettings
+
+    @model_validator(mode="after")
+    def every_cluster_network_has_a_relay(self) -> Self:
+        missing: list[str] = networks_without_relay(clusters=self.clusters, networks=self.edge.networks)
+        if missing:
+            raise ValueError(f"networks in clusters with no entry in edge.networks: {missing}")
+        return self
 
     @classmethod
     def settings_customise_sources(

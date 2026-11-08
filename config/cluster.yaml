@@ -3,6 +3,7 @@ cluster:
     status: status
     error_code: error_code
     action_uid: action_uid
+    roles_permissions: roles_permissions
   fields_query:
     name: fields
     separator: ","

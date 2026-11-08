@@ -7,8 +7,10 @@ from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
+from redis_enterprise_services.cluster.transient_read import worth_reading_again
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
@@ -36,9 +38,15 @@ class ActionWaiter(ActionTracker):
         )
 
     def _is_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
-        action: JsonValue = self._api.send(
-            target=target, method="GET", path=self._settings.path.format(uid=action_uid)
-        ).body
+        try:
+            action: JsonValue = self._api.send(
+                target=target, method="GET", path=self._settings.path.format(uid=action_uid)
+            ).body
+        except RedisEnterpriseServicesError as error:
+            if not worth_reading_again(error=error, transient_codes=self._cluster.transient_error_codes):
+                raise
+            logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
+            return False
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
         if status is None:
             raise UnreadableAnswerError(message=f"action {action_uid} answered without a status")

@@ -10,6 +10,9 @@ class SagaContext:
     def keep(self, *, key: str, result: BaseModel) -> None:
         self._results[key] = result
 
+    def forget(self, *, key: str) -> None:
+        self._results.pop(key, None)
+
     def result_of[TResult: BaseModel](self, *, key: str, result_type: type[TResult]) -> TResult:
         result: BaseModel | None = self._results.get(key)
         if not isinstance(result, result_type):

@@ -9,7 +9,7 @@ class EdgeError(RedisEnterpriseServicesError):
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
 
 
-class InvalidEdgeRequestError(EdgeError):
+class InvalidEdgeRequestError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "internal_error"
     status_code: ClassVar[int] = HTTPStatus.INTERNAL_SERVER_ERROR
 

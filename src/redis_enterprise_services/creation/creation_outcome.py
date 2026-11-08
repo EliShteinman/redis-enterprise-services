@@ -34,16 +34,17 @@ class CreationOutcome:
         self._errors: PublicErrors = errors
 
     def of(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
-        status: OperationStatus = OperationStatus(record.status.value)
-        if record.status is SagaStatus.SUCCEEDED:
+        settled: SagaRecord = ended(record=record)
+        status: OperationStatus = OperationStatus(settled.status.value)
+        if settled.status is SagaStatus.SUCCEEDED:
             return Operation(
-                trace_id=trace_id, status=status, database=created_database(creation=creation, record=record)
+                trace_id=trace_id, status=status, database=created_database(creation=creation, record=settled)
             )
         return Operation(
             trace_id=trace_id,
             status=status,
-            error=self._error(creation=creation, record=record),
-            not_rolled_back=self._not_rolled_back(creation=creation, record=record),
+            error=self._error(creation=creation, record=settled),
+            not_rolled_back=self._not_rolled_back(creation=creation, record=settled),
         )
 
     def _error(self, *, creation: PreparedCreation, record: SagaRecord) -> ErrorInfo:
@@ -88,3 +89,12 @@ def resource_uid(*, record: SagaRecord, step: StepRecord) -> int | None:
         return CreatedResource.model_validate(obj=owner.result).uid
     except ValidationError:
         return None
+
+
+def ended(*, record: SagaRecord) -> SagaRecord:
+    if record.status is not SagaStatus.RUNNING:
+        return record
+    logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")
+    stopped: SagaRecord = record.model_copy(deep=True)
+    stopped.stop_running()
+    return stopped

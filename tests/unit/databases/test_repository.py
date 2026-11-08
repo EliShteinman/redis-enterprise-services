@@ -1,29 +1,29 @@
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import create_autospec
 
-import pytest
-from pydantic import SecretStr
+from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.caller import ClusterCaller
-from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
-from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.connection.models import ClusterCredentials
+from redis_enterprise_services.config.database_tag import DatabaseTag
+from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
-
-TARGET: ClusterTarget = ClusterTarget(
-    network="local",
-    api_url="https://cluster.local:9443",
-    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
-)
+from redis_enterprise_services.resources.resource_calls import ResourceCalls
 
 
-def test_an_answer_without_a_cluster_state_id_is_unreadable() -> None:
-    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
-    api.send.return_value = ClusterAnswer(body={"memory_size": 100}, cluster_state_id=None)
-    settings: Settings = load_settings()
+def test_the_creation_body_has_the_default_user_secret_the_default_tags_and_only_set_fields() -> None:
     repository: DatabaseRepository = DatabaseRepository(
-        api=api, settings=settings.database, cluster=settings.cluster
+        endpoint=create_autospec(spec=ResourceCalls, instance=True),
+        default_user_password=SecretStr("s3cret"),
+        default_tags=[DatabaseTag(key="team", value="core")],
     )
 
-    with pytest.raises(expected_exception=UnreadableAnswerError):
-        repository.get_fields(target=TARGET, uid=1, fields=["memory_size"])
+    body: dict[str, JsonValue] = repository.creation_body(
+        spec=NewDatabase(name="orders", memory_size=104857600, data_persistence="aof")
+    )
+
+    assert body == {
+        "name": "orders",
+        "memory_size": 104857600,
+        "data_persistence": "aof",
+        "default_user": True,
+        "tags": [{"key": "team", "value": "core"}],
+        "authentication_redis_pass": "s3cret",
+    }

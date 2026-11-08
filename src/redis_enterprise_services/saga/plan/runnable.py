@@ -33,6 +33,8 @@ class PreparedStep(Protocol):
 
     def compensate(self) -> None: ...
 
+    def forget_result(self) -> None: ...
+
 
 class RunnableStep(Protocol):
     @property

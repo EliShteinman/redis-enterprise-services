@@ -59,20 +59,12 @@ class CreationExecution:
                 before_start=partial(self._ensure_names_free, creation=creation),
             )
         except RedisEnterpriseServicesError as error:
-            return rejected(
-                trace_id=trace_id, error=self._errors.of(error=error, cluster=creation.cluster.api_url)
-            )
+            public: ErrorInfo = self._errors.of(error=error, cluster=creation.cluster.api_url)
+            return self._from_record(trace_id=trace_id, creation=creation, missing=public)
         except Exception:
-            logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
-            return self._stopped_saga(trace_id=trace_id, creation=creation)
-        try:
-            return self._outcome.of(trace_id=trace_id, creation=creation, record=record)
-        except Exception:
-            logger.critical(
-                msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
-                exc_info=True,
-            )
-            return self._needs_manual_intervention(trace_id=trace_id)
+            logger.critical(msg=f"creation {trace_id} failed on an unexpected error", exc_info=True)
+            return self._from_record(trace_id=trace_id, creation=creation, missing=self._errors.internal())
+        return self._translated(trace_id=trace_id, creation=creation, record=record)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
         self._availability.ensure_free(
@@ -80,18 +72,27 @@ class CreationExecution:
             names=self._names.of(request=creation.request),
         )
 
-    def _stopped_saga(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
+    def _from_record(self, *, trace_id: str, creation: PreparedCreation, missing: ErrorInfo) -> Operation:
         try:
             stored: SagaRecord | None = self._records.find(saga_id=trace_id)
         except Exception:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
             return self._needs_manual_intervention(trace_id=trace_id)
         if stored is None:
-            return rejected(trace_id=trace_id, error=self._errors.internal())
+            return rejected(trace_id=trace_id, error=missing)
+        logger.critical(
+            msg=f"saga {trace_id} stopped after it started, its outcome comes from its record", exc_info=True
+        )
+        return self._translated(trace_id=trace_id, creation=creation, record=stored)
+
+    def _translated(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
         try:
-            return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
+            return self._outcome.of(trace_id=trace_id, creation=creation, record=record)
         except Exception:
-            logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
+            logger.critical(
+                msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
+                exc_info=True,
+            )
             return self._needs_manual_intervention(trace_id=trace_id)
 
     def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
