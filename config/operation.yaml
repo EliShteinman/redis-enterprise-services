@@ -1,5 +1,5 @@
 operation:
-  public_error_codes:
+  public_code_by_error_code:
     name_taken: name_taken
     database_locked: database_locked
     invalid_name: invalid_name
@@ -17,7 +17,7 @@ operation:
     configuration_error: internal_error
     invalid_plan: internal_error
     missing_step_result: internal_error
-  cluster_error_codes:
+  cluster_caused_public_codes:
     - step_rejected
     - cluster_unavailable
     - cluster_timeout

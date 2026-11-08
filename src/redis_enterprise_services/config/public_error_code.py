@@ -1,6 +1,6 @@
 from typing import Literal
 
-type PublicCode = Literal[
+type PublicErrorCode = Literal[
     "name_taken",
     "database_locked",
     "invalid_name",

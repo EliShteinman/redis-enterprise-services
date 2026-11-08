@@ -242,7 +242,7 @@ PlannedStep(
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
 כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicTask`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
-לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_beats_per_ttl` (3) חידושים בתוך TTL אחד.
+לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
 **הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
 מרווח אחד, לא בעלייה. היא לוקחת מ-`operations:open` פעולות ב-`running` בלי heartbeat, קוראת את ה-saga record של כל

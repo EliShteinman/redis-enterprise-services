@@ -20,9 +20,9 @@ def exception_codes() -> set[str]:
 
 
 def test_every_public_error_code_key_is_the_code_of_an_exception() -> None:
-    assert set(load_settings().operation.public_error_codes) <= exception_codes()
+    assert set(load_settings().operation.public_code_by_error_code) <= exception_codes()
 
 
 def test_every_exception_code_has_a_public_error_code() -> None:
-    mapped: set[str] = set(load_settings().operation.public_error_codes)
+    mapped: set[str] = set(load_settings().operation.public_code_by_error_code)
     assert exception_codes() - CODES_WITHOUT_PUBLIC_MAPPING <= mapped

@@ -8,7 +8,7 @@ class EdgeHeaderSettings(ConfigModel):
     url: str
     authorization: str
     content_type: str
-    error: str
+    edge_error_code: str
     cluster_status: str
     cluster_state_id: str
     task_id: str
@@ -27,7 +27,7 @@ class FirewallSettings(ConfigModel):
     password: SecretStr = Field(min_length=1)
 
 
-class NetworkSettings(ConfigModel):
+class EdgeNetworkSettings(ConfigModel):
     url: str = Field(pattern=r"^https?://.+")
     firewall: FirewallSettings | None
 
@@ -35,6 +35,6 @@ class NetworkSettings(ConfigModel):
 class EdgeSettings(ConfigModel):
     timeout_seconds: PositiveFloat
     headers: EdgeHeaderSettings
-    content_type: str
+    request_content_type: str
     error_codes: EdgeErrorCodeSettings
-    networks: dict[str, NetworkSettings]
+    networks: dict[str, EdgeNetworkSettings]

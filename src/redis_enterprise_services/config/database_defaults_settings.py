@@ -14,7 +14,7 @@ class DefaultsMatch(ConfigModel):
     cluster: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
-    def matches_on_something(self) -> Self:
+    def requires_at_least_one_label(self) -> Self:
         if not self.model_dump(exclude_none=True):
             raise ValueError("an override matches on at least one label")
         return self

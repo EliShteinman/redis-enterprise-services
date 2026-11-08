@@ -3,7 +3,7 @@ from typing import Literal
 from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class LoggingSettings(ConfigModel):
+class LogSettings(ConfigModel):
     level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
     line_pattern: str
     date_format: str

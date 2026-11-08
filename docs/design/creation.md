@@ -89,7 +89,7 @@ POST /v1/databases/create
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
 - ה-role נוצר אחרי ה-DB כי `resources` חייב uid של DB קיים, והיוזר אחרי ה-role כי הוא חייב role.
 - ה-uids עוברים בין צעדים דרך ה-`SagaContext` (`saga-engine-and-state.md` סעיף 3).
-- שמות ה-ACL וה-role וה-`management` מ-`config/decomposition.yaml`.
+- שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
@@ -125,7 +125,7 @@ POST /v1/databases/create
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
   `error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
-  `internal_error` ו-WARNING. `cluster` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_error_codes`.
+  `internal_error` ו-WARNING. `cluster` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
 - **סדר השמירה:** המנוע משחרר את הנעילה, ורק אחר כך הפעולה נשמרת.
 
 ---
