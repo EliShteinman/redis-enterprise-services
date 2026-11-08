@@ -28,7 +28,7 @@ class FirewallSettings(ConfigModel):
 
 
 class NetworkSettings(ConfigModel):
-    url: str = Field(pattern=r"^https?://")
+    url: str = Field(pattern=r"^https?://.+")
     firewall: FirewallSettings | None
 
 
