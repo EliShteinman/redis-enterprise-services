@@ -15,28 +15,42 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class DatabaseDefaults:
     def __init__(self, *, settings: DatabaseDefaultsSettings) -> None:
-        reject_invalid_default_values(settings=settings)
         self._settings: DatabaseDefaultsSettings = settings
 
     def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
-        values: dict[str, JsonValue] = dict(self._settings.values)
-        for override in self._settings.overrides:
-            if selector_matches(selector=override.when, cluster=cluster):
-                logger.debug(msg=f"defaults for {override.when} apply to {requested.name}")
-                values.update(override.values)
+        values: dict[str, JsonValue] = merged_default_values(settings=self._settings, cluster=cluster)
         values.update(requested.model_dump(exclude_none=True))
         return NewDatabase.model_validate(obj=values)
 
 
+def database_defaults_from(*, settings: DatabaseDefaultsSettings) -> DatabaseDefaults:
+    reject_invalid_default_values(settings=settings)
+    return DatabaseDefaults(settings=settings)
+
+
+def merged_default_values(
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+) -> dict[str, JsonValue]:
+    values: dict[str, JsonValue] = dict(settings.values)
+    for override in settings.overrides:
+        if selector_matches(selector=override.when, cluster=cluster):
+            logger.debug(msg=f"defaults for {override.when} apply to cluster {cluster.name}")
+            values.update(override.values)
+    return values
+
+
 def selector_matches(*, selector: OverrideClusterSelector, cluster: ConfiguredCluster) -> bool:
-    labels: dict[str, str] = {
+    return selector.model_dump(exclude_none=True).items() <= cluster_labels(cluster=cluster).items()
+
+
+def cluster_labels(*, cluster: ConfiguredCluster) -> dict[str, str]:
+    return {
         "network": cluster.network,
         "environment": cluster.environment,
         "site": cluster.site,
         "type": cluster.type,
         "cluster_name": cluster.name,
     }
-    return selector.model_dump(exclude_none=True).items() <= labels.items()
 
 
 def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None:

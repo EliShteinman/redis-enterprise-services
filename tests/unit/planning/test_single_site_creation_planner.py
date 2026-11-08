@@ -45,7 +45,7 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_management="db_viewer",
 )
 PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
-    user_resources=USER_RESOURCES,
+    role_management=USER_RESOURCES.role_management,
     cluster_fields=ClusterFieldSettings(
         status="status",
         error_code="error_code",
@@ -53,11 +53,11 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
         roles_permissions="roles_permissions",
     ),
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-    create_database=IdleStep(),
-    create_acl=IdleStep(),
-    create_role=IdleStep(),
-    create_user=IdleStep(),
-    update_database=IdleStep(),
+    create_database_step=IdleStep(),
+    create_acl_step=IdleStep(),
+    create_role_step=IdleStep(),
+    create_user_step=IdleStep(),
+    update_database_step=IdleStep(),
 )
 CLUSTER: ConfiguredCluster = ConfiguredCluster(
     name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
