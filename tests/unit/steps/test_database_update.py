@@ -9,7 +9,7 @@ from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsStore
 from redis_enterprise_services.databases.models import DatabaseFields
 from redis_enterprise_services.databases.readiness import DatabaseReadiness
-from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
+from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError, UpdateOutcomeUnclearError
 from redis_enterprise_services.steps.database_update import DatabaseUpdate, DatabaseUpdateInput
 
 UID: int = 1
@@ -129,6 +129,17 @@ def test_find_outcome_returns_none_when_the_old_values_are_still_there(
     repository.get_fields.side_effect = [SNAPSHOT]
 
     assert update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT, keep_found=ignore_found) is None
+
+
+def test_find_outcome_stops_when_the_database_holds_neither_the_old_nor_the_new_values(
+    repository: MagicMock, update: DatabaseUpdate
+) -> None:
+    repository.get_fields.side_effect = [
+        DatabaseFields(values={"memory_size": 150, "eviction_policy": "noeviction"}, cluster_state_id=8)
+    ]
+
+    with pytest.raises(expected_exception=UpdateOutcomeUnclearError):
+        update.find_outcome(step_input=STEP_INPUT, kept=SNAPSHOT, keep_found=ignore_found)
 
 
 def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
