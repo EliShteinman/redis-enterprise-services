@@ -15,7 +15,7 @@ class StoreWithMockedScripts:
         client: MagicMock = create_autospec(spec=Redis, instance=True)
         client.register_script.side_effect = [self.unfinished, self.finished]
         self.state: RedisSagaRecordStore = RedisSagaRecordStore(
-            client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_operation_ttl_seconds=600
+            client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_ttl_seconds=600
         )
 
 

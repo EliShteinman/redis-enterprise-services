@@ -10,11 +10,11 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
     UpdateOutcomeUnclearError,
 )
-from redis_enterprise_services.exceptions.edge import EdgeError, InvalidEdgeRequestError
+from redis_enterprise_services.exceptions.edge import EdgeError, EdgeRejectedRequestError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
-REJECTED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
-    InvalidEdgeRequestError,
+FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    EdgeRejectedRequestError,
     ClusterActionFailedError,
     DatabaseCreationFailedError,
 )
@@ -38,17 +38,17 @@ class ClusterFailureClassifier(FailureClassifier):
             return (
                 FailureCategory.TRANSIENT
                 if error.cluster_error_code in self._transient_error_codes
-                else FailureCategory.REJECTED
+                else FailureCategory.FAILED
             )
-        if isinstance(error, REJECTED_ERRORS):
-            return FailureCategory.REJECTED
+        if isinstance(error, FAILED_ERRORS):
+            return FailureCategory.FAILED
         if isinstance(error, (EdgeError, *UNKNOWN_OUTCOME_ERRORS)):
-            return FailureCategory.UNKNOWN
-        return FailureCategory.REJECTED
+            return FailureCategory.OUTCOME_UNKNOWN
+        return FailureCategory.FAILED
 
     def classify_find_outcome_error(self, *, error: RedisEnterpriseServicesError) -> FailureCategory:
         if isinstance(error, DuplicateResourceNameError | UpdateOutcomeUnclearError):
             return FailureCategory.REQUIRES_MANUAL_INTERVENTION
         if isinstance(error, ClusterActionFailedError | DatabaseCreationFailedError):
-            return FailureCategory.REJECTED
-        return FailureCategory.UNKNOWN
+            return FailureCategory.FAILED
+        return FailureCategory.OUTCOME_UNKNOWN

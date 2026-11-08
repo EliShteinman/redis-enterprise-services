@@ -8,7 +8,7 @@ from redis.commands.core import Script
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
 from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
-from redis_enterprise_services.recovery.mark_abandoned_result import MarkAbandonedResult
+from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.state.redis_keys import RedisKeys
@@ -18,13 +18,13 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 NO_EXPIRY: int = 0
 STATUS_FIELD: str = "status"
 NO_SAGA: str = ""
-MARK_ABANDONED_RESULT_BY_CODE: dict[int, MarkAbandonedResult] = {
-    0: MarkAbandonedResult.NOT_ABANDONED,
-    1: MarkAbandonedResult.MARKED,
-    2: MarkAbandonedResult.SAGA_CHANGED,
+FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
+    0: FinalizeAbandonedResult.NOT_ABANDONED,
+    1: FinalizeAbandonedResult.FINALIZED,
+    2: FinalizeAbandonedResult.SAGA_CHANGED,
 }
 
-MARK_ABANDONED: str = """
+FINALIZE_IF_STILL_ABANDONED: str = """
 if redis.call('EXISTS', KEYS[3]) == 1 then
     return 0
 end
@@ -62,13 +62,15 @@ return 1
 
 
 class RedisAbandonedStore(AbandonedStore):
-    def __init__(self, *, client: Redis, keys: RedisKeys, finished_operation_ttl_seconds: int) -> None:
+    def __init__(self, *, client: Redis, keys: RedisKeys, finished_ttl_seconds: int) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
-        self._finished_operation_ttl_seconds: int = finished_operation_ttl_seconds
-        self._mark_abandoned: Script = client.register_script(script=MARK_ABANDONED)
+        self._finished_ttl_seconds: int = finished_ttl_seconds
+        self._finalize_if_still_abandoned_script: Script = client.register_script(
+            script=FINALIZE_IF_STILL_ABANDONED
+        )
 
-    def open_trace_ids_without_heartbeat(self) -> list[str]:
+    def running_trace_ids_without_heartbeat(self) -> list[str]:
         open_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_operations()))
         return sorted(
             trace_id
@@ -97,12 +99,12 @@ class RedisAbandonedStore(AbandonedStore):
             return False
         return cast(dict[str, object], parsed).get(STATUS_FIELD) == OperationStatus.RUNNING.value
 
-    def mark_abandoned(
+    def finalize_if_still_abandoned(
         self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
-    ) -> MarkAbandonedResult:
+    ) -> FinalizeAbandonedResult:
         trace_id: str = operation.trace_id
         held_locks: str = self._keys.held_locks(owner=trace_id)
-        result_code: int = self._mark_abandoned(
+        result_code: int = self._finalize_if_still_abandoned_script(
             keys=[
                 self._keys.operation(trace_id=trace_id),
                 self._keys.open_operations(),
@@ -114,12 +116,12 @@ class RedisAbandonedStore(AbandonedStore):
             args=[
                 operation.model_dump_json(),
                 trace_id,
-                self._finished_operation_ttl_seconds if operation.status in EXPIRING_STATUSES else NO_EXPIRY,
+                self._finished_ttl_seconds if operation.status in EXPIRING_STATUSES else NO_EXPIRY,
                 NO_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
                 NO_SAGA if expected_saga is None else expected_saga.raw_json,
             ],
         )
-        result: MarkAbandonedResult = MARK_ABANDONED_RESULT_BY_CODE[result_code]
+        result: FinalizeAbandonedResult = FINALIZE_ABANDONED_RESULT_BY_CODE[result_code]
         logger.debug(msg=f"operation {trace_id}: {result.value}")
         return result

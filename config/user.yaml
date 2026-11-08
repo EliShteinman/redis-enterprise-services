@@ -1,4 +1,4 @@
 user:
   collection_path: /v1/users
-  path: /v1/users/{uid}
+  item_path: /v1/users/{uid}
   list_fields: []

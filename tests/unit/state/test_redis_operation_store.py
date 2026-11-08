@@ -18,7 +18,7 @@ class StoreWithMockedScripts:
         self.store: RedisOperationStore = RedisOperationStore(
             client=client,
             keys=RedisKeys(prefix="res:", hash_tag="state"),
-            finished_operation_ttl_seconds=600,
+            finished_ttl_seconds=600,
             heartbeat_ttl_seconds=60,
         )
 

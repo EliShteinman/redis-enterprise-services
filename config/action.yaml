@@ -1,5 +1,5 @@
 action:
-  path: /v1/actions/{uid}
+  item_path: /v1/actions/{uid}
   completed_status: completed
   failed_statuses:
     - failed

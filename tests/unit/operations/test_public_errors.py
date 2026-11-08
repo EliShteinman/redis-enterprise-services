@@ -5,30 +5,30 @@ from redis_enterprise_services.operations.public_errors import PublicErrors
 
 PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(
-        public_code_by_error_code={
+        public_code_by_internal_code={
             "cluster_rejected_request": "cluster_request_failed",
             "name_taken": "name_taken",
         },
-        cluster_caused_public_codes=frozenset({"cluster_request_failed"}),
+        public_codes_with_cluster_details=frozenset({"cluster_request_failed"}),
     ),
     internal_error_message="internal error",
 )
 
 
 @pytest.mark.parametrize(
-    argnames=("code", "published"),
+    argnames=("internal_code", "public_code"),
     argvalues=[("cluster_rejected_request", "cluster_request_failed"), ("invalid_plan", "internal_error")],
 )
-def test_an_error_is_published_with_its_public_code(code: str, published: str) -> None:
-    assert PUBLIC_ERRORS.from_code(error_code=code, message="m").code == published
+def test_an_error_is_published_with_its_public_code(internal_code: str, public_code: str) -> None:
+    assert PUBLIC_ERRORS.from_code(internal_code=internal_code, message="m").code == public_code
 
 
-def test_only_an_error_from_a_cluster_names_the_cluster() -> None:
+def test_only_a_code_configured_with_cluster_details_names_the_cluster() -> None:
     published_cluster_urls: list[str | None] = [
         PUBLIC_ERRORS.from_code(
-            error_code=code, message="m", cluster_url="https://c1:9443", cluster_error_code="x"
+            internal_code=internal_code, message="m", cluster_url="https://c1:9443", cluster_error_code="x"
         ).cluster_url
-        for code in ("cluster_rejected_request", "name_taken")
+        for internal_code in ("cluster_rejected_request", "name_taken")
     ]
 
     assert published_cluster_urls == ["https://c1:9443", None]

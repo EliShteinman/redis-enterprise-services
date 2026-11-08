@@ -27,12 +27,12 @@ class EdgeClient:
         self._response_reader: EdgeResponseReader = response_reader
 
     def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
-        relay_settings: EdgeNetworkSettings = self._relay_settings_for(network=network)
+        network_settings: EdgeNetworkSettings = self._network_settings_for(network=network)
         logger.debug(msg=f"{request.method} {request.url} through {network}")
         try:
-            response: requests.Response = requests.post(
-                url=relay_settings.url,
-                headers=self._header_builder.build(request=request, relay_settings=relay_settings),
+            relay_response: requests.Response = requests.post(
+                url=network_settings.url,
+                headers=self._header_builder.build(request=request, network_settings=network_settings),
                 data=self._encoded_body(request=request),
                 timeout=self._settings.request_timeout_seconds,
                 allow_redirects=False,
@@ -41,13 +41,13 @@ class EdgeClient:
         except requests.RequestException as error:
             logger.warning(msg=f"{request.method} {request.url} through {network} failed: {error!r}")
             raise edge_error_for_transport_failure(network=network, error=error) from error
-        return self._response_reader.read(response=response)
+        return self._response_reader.unwrap_cluster_response(relay_response=relay_response)
 
-    def _relay_settings_for(self, *, network: str) -> EdgeNetworkSettings:
-        relay_settings: EdgeNetworkSettings | None = self._settings.networks.get(network)
-        if relay_settings is None:
+    def _network_settings_for(self, *, network: str) -> EdgeNetworkSettings:
+        network_settings: EdgeNetworkSettings | None = self._settings.networks.get(network)
+        if network_settings is None:
             raise ConfigurationError(message=f"no relay is configured for network {network}")
-        return relay_settings
+        return network_settings
 
     @staticmethod
     def _encoded_body(*, request: ClusterRequest) -> bytes | None:

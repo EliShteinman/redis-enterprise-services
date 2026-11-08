@@ -23,7 +23,7 @@ class RedisHeartbeatStore(HeartbeatStore):
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
         self._refresh_all: Script = client.register_script(script=REFRESH_ALL)
 
-    def refresh(self, *, trace_ids: list[str]) -> None:
+    def mark_alive(self, *, trace_ids: list[str]) -> None:
         self._refresh_all(
             keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids],
             args=[self._heartbeat_ttl_seconds],

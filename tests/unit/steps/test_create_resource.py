@@ -36,8 +36,8 @@ def ignore_found(*, result: CreatedResource) -> None:
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=ResourceRepository, instance=True)
-    repository.create.return_value = CREATED
-    repository.delete.return_value = DELETE_ACTION_UID
+    repository.start_creation.return_value = CREATED
+    repository.start_deletion.return_value = DELETE_ACTION_UID
     return repository
 
 
@@ -68,13 +68,13 @@ def test_execute_waits_until_the_resource_is_created(
 ) -> None:
     step.execute(step_input=STEP_INPUT, keep_result=lambda result: None)
 
-    completion_waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)
+    completion_waiter.wait_for_pending_creation.assert_called_once_with(target=TARGET, resource=CREATED)
 
 
 def test_the_saga_has_the_resource_even_when_waiting_for_it_fails(
     completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    completion_waiter.wait_until_created.side_effect = ClusterActionTimeoutError(
+    completion_waiter.wait_for_pending_creation.side_effect = ClusterActionTimeoutError(
         message="action did not complete"
     )
     kept: list[CreatedResource] = []
@@ -90,7 +90,7 @@ def test_compensate_deletes_the_given_resource(
 ) -> None:
     step.compensate(step_input=STEP_INPUT, result=CREATED)
 
-    repository.delete.assert_called_once_with(target=TARGET, uid=CREATED.uid)
+    repository.start_deletion.assert_called_once_with(target=TARGET, uid=CREATED.uid)
 
 
 def test_compensate_waits_until_the_resource_is_deleted(
@@ -98,7 +98,7 @@ def test_compensate_waits_until_the_resource_is_deleted(
 ) -> None:
     step.compensate(step_input=STEP_INPUT, result=CREATED)
 
-    completion_waiter.wait_until_deleted.assert_called_once_with(
+    completion_waiter.wait_for_pending_deletion.assert_called_once_with(
         target=TARGET, uid=CREATED.uid, action_uid=DELETE_ACTION_UID
     )
 
@@ -106,19 +106,19 @@ def test_compensate_waits_until_the_resource_is_deleted(
 def test_compensate_accepts_a_resource_that_is_already_gone(
     repository: MagicMock, completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    repository.delete.side_effect = ClusterRejectedRequestError(
+    repository.start_deletion.side_effect = ClusterRejectedRequestError(
         message="cluster answered 404", cluster_status_code=404, cluster_error_code="user_not_exist"
     )
 
     step.compensate(step_input=STEP_INPUT, result=CREATED)
 
-    completion_waiter.wait_until_deleted.assert_not_called()
+    completion_waiter.wait_for_pending_deletion.assert_not_called()
 
 
 def test_compensate_raises_any_other_cluster_error(
     repository: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    repository.delete.side_effect = ClusterRejectedRequestError(
+    repository.start_deletion.side_effect = ClusterRejectedRequestError(
         message="cluster answered 406", cluster_status_code=406, cluster_error_code="role_in_use"
     )
 
@@ -142,7 +142,9 @@ def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_fa
     repository: MagicMock, completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     repository.find_by_name.return_value = [NamedResource(uid=6, name="app-user")]
-    completion_waiter.wait_until_created.side_effect = ClusterActionFailedError(message="creation failed")
+    completion_waiter.wait_for_pending_creation.side_effect = ClusterActionFailedError(
+        message="creation failed"
+    )
     kept: list[CreatedResource] = []
 
     with pytest.raises(expected_exception=ClusterActionFailedError):
@@ -189,4 +191,4 @@ def test_find_outcome_waits_until_the_found_resource_is_created(
 ) -> None:
     step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_found_result=ignore_found)
 
-    completion_waiter.wait_until_created.assert_called_once_with(target=TARGET, resource=CREATED)
+    completion_waiter.wait_for_pending_creation.assert_called_once_with(target=TARGET, resource=CREATED)

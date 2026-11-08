@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from redis_enterprise_services.exceptions.saga import MissingStepResultError
 
 
-class SagaContext:
+class StepResults:
     def __init__(self) -> None:
         self._results: dict[str, BaseModel] = {}
 
