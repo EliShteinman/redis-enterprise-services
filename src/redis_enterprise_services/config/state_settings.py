@@ -6,7 +6,7 @@ from redis_enterprise_services.config.port import Port
 
 class LockSettings(ConfigModel):
     wait_timeout_seconds: NonNegativeFloat
-    poll_seconds: PositiveFloat
+    poll_interval_seconds: PositiveFloat
 
 
 class StateSettings(ConfigModel):
@@ -14,8 +14,8 @@ class StateSettings(ConfigModel):
     port: Port
     username: str = Field(min_length=1)
     password: SecretStr = Field(min_length=1)
-    prefix: str = Field(min_length=1)
+    key_prefix: str = Field(min_length=1)
     hash_tag: str = Field(min_length=1)
     socket_timeout_seconds: PositiveFloat
-    finished_ttl_seconds: PositiveInt
+    finished_operation_ttl_seconds: PositiveInt
     lock: LockSettings

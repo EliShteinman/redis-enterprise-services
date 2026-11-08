@@ -4,8 +4,8 @@ from typing import ClassVar
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 
-class DatabaseLockedError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "database_locked"
+class ResourcesLockedError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "resources_locked"
     status_code: ClassVar[int] = HTTPStatus.CONFLICT
 
 
@@ -13,5 +13,5 @@ class InvalidPlanError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "invalid_plan"
 
 
-class MissingResultError(RedisEnterpriseServicesError):
+class MissingStepResultError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_result"

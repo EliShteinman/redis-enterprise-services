@@ -6,5 +6,5 @@ action:
     - cancelled
     - aborted
   wait:
-    interval_seconds: 0.5
+    poll_interval_seconds: 0.5
     timeout_seconds: 60

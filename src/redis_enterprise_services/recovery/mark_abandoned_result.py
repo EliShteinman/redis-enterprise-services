@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class MarkResult(StrEnum):
+class MarkAbandonedResult(StrEnum):
     MARKED = "marked"
-    SKIPPED = "skipped"
+    NOT_ABANDONED = "not_abandoned"
     SAGA_CHANGED = "saga_changed"

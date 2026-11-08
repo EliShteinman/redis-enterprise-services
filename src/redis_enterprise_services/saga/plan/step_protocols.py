@@ -2,12 +2,12 @@ from typing import Protocol
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.models import ObtainedBy
-from redis_enterprise_services.saga.plan.context import SagaContext
+from redis_enterprise_services.saga.contract.saga_record import ObtainedBy
+from redis_enterprise_services.saga.contract.step_kind import StepKind
+from redis_enterprise_services.saga.plan.saga_context import SagaContext
 
 
-class OnKept(Protocol):
+class OnResultKept(Protocol):
     def __call__(self, *, result: JsonValue, obtained_by: ObtainedBy) -> None: ...
 
 
@@ -27,16 +27,16 @@ class PreparedStep(Protocol):
     @property
     def obtained_by(self) -> ObtainedBy | None: ...
 
-    def execute(self, *, on_kept: OnKept) -> None: ...
+    def execute(self, *, on_result_kept: OnResultKept) -> None: ...
 
-    def resolve(self, *, on_kept: OnKept) -> bool: ...
+    def find_outcome(self, *, on_result_kept: OnResultKept) -> bool: ...
 
     def compensate(self) -> None: ...
 
     def forget_result(self) -> None: ...
 
 
-class RunnableStep(Protocol):
+class PreparableStep(Protocol):
     @property
     def key(self) -> str: ...
 

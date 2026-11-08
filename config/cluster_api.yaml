@@ -1,4 +1,4 @@
-cluster:
+cluster_api:
   fields:
     status: status
     error_code: error_code
