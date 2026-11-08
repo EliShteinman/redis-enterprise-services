@@ -38,9 +38,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         self, *, step_input: CreateResourceInput[TSpec], keep_result: KeepResult[CreatedResource]
     ) -> None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
-        created: CreatedResource = self._repository.create(target=target, spec=step_input.spec)
+        created: CreatedResource = self._repository.start_creation(target=target, spec=step_input.spec)
         keep_result(result=created)
-        self._completion_waiter.wait_until_created(target=target, resource=created)
+        self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
 
     def find_outcome(
         self,
@@ -50,17 +50,17 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         keep_found_result: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
-        outcome: CreatedResource | None = (
+        created: CreatedResource | None = (
             kept_result
             if kept_result is not None
-            else self._find_by_name(target=target, step_input=step_input)
+            else self._find_only_one_by_name(target=target, step_input=step_input)
         )
-        if outcome is not None:
-            keep_found_result(result=outcome)
-            self._completion_waiter.wait_until_created(target=target, resource=outcome)
-        return outcome
+        if created is not None:
+            keep_found_result(result=created)
+            self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
+        return created
 
-    def _find_by_name(
+    def _find_only_one_by_name(
         self, *, target: ClusterTarget, step_input: CreateResourceInput[TSpec]
     ) -> CreatedResource | None:
         found: list[NamedResource] = self._repository.find_by_name(target=target, name=step_input.spec.name)
@@ -77,10 +77,12 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         logger.info(msg=f"removing created {result.name}")
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         try:
-            action_uid: str | None = self._repository.delete(target=target, uid=result.uid)
+            action_uid: str | None = self._repository.start_deletion(target=target, uid=result.uid)
         except ClusterRejectedRequestError as error:
             if error.cluster_status_code != HTTPStatus.NOT_FOUND:
                 raise
             logger.info(msg=f"{result.name} is already gone")
             return
-        self._completion_waiter.wait_until_deleted(target=target, uid=result.uid, action_uid=action_uid)
+        self._completion_waiter.wait_for_pending_deletion(
+            target=target, uid=result.uid, action_uid=action_uid
+        )

@@ -13,8 +13,8 @@ x-cluster-bootstrap: &cluster-bootstrap
     - ./license:/license:ro
   restart: "no"
   environment: &bootstrap-environment
-    ADMIN_USERNAME: ${ADMIN_USERNAME}
-    ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    ADMIN_USERNAME: ${CLUSTER_ADMIN_USERNAME}
+    ADMIN_PASSWORD: ${CLUSTER_ADMIN_PASSWORD}
     API_PORT: ${CLUSTER_API_PORT}
     PERSISTENT_PATH: ${PERSISTENT_PATH}
     EPHEMERAL_PATH: ${EPHEMERAL_PATH}
@@ -22,32 +22,32 @@ x-cluster-bootstrap: &cluster-bootstrap
     LICENSE_FILE: ${LICENSE_FILE}
 
 services:
-  cluster1:
+  cluster1-node1:
     <<: *cluster-node
-    hostname: ${CLUSTER1_NAME}
+    hostname: ${CLUSTER1_FQDN}
     ports:
-      - "${CLUSTER1_UI_PORT}:8443"
-      - "${CLUSTER1_API_PORT}:${CLUSTER_API_PORT}"
+      - "${CLUSTER1_UI_HOST_PORT}:8443"
+      - "${CLUSTER1_API_HOST_PORT}:${CLUSTER_API_PORT}"
       - "${CLUSTER1_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
         ipv4_address: ${CLUSTER1_NODE1_IP}
         aliases:
-          - ${CLUSTER1_NAME}
-          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER1_NAME}
+          - ${CLUSTER1_FQDN}
+          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER1_FQDN}
 
-  cluster1-bootstrap:
+  cluster1-create:
     <<: *cluster-bootstrap
     depends_on:
-      - cluster1
+      - cluster1-node1
     environment:
       <<: *bootstrap-environment
-      CLUSTER_HOST: cluster1
-      CLUSTER_NAME: ${CLUSTER1_NAME}
+      NODE_HOST: cluster1-node1
+      CLUSTER_NAME: ${CLUSTER1_FQDN}
 
   cluster1-node2:
     <<: *cluster-node
-    hostname: ${CLUSTER1_NODE2_NAME}
+    hostname: ${CLUSTER1_NODE2_HOSTNAME}
     profiles: [multinode]
     networks:
       default:
@@ -62,30 +62,30 @@ services:
     environment:
       <<: *bootstrap-environment
       NODE_HOST: cluster1-node2
-      CLUSTER_HOST: cluster1
+      CLUSTER_NODE_HOST: cluster1-node1
 
-  cluster2:
+  cluster2-node1:
     <<: *cluster-node
-    hostname: ${CLUSTER2_NAME}
+    hostname: ${CLUSTER2_FQDN}
     ports:
-      - "${CLUSTER2_UI_PORT}:8443"
-      - "${CLUSTER2_API_PORT}:${CLUSTER_API_PORT}"
+      - "${CLUSTER2_UI_HOST_PORT}:8443"
+      - "${CLUSTER2_API_HOST_PORT}:${CLUSTER_API_PORT}"
       - "${CLUSTER2_DB_HOST_PORTS}:${CLUSTER_DB_PORTS}"
     networks:
       default:
         ipv4_address: ${CLUSTER2_NODE1_IP}
         aliases:
-          - ${CLUSTER2_NAME}
-          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER2_NAME}
+          - ${CLUSTER2_FQDN}
+          - redis-${CLUSTER_AA_DB_PORT}.${CLUSTER2_FQDN}
 
-  cluster2-bootstrap:
+  cluster2-create:
     <<: *cluster-bootstrap
     depends_on:
-      - cluster2
+      - cluster2-node1
     environment:
       <<: *bootstrap-environment
-      CLUSTER_HOST: cluster2
-      CLUSTER_NAME: ${CLUSTER2_NAME}
+      NODE_HOST: cluster2-node1
+      CLUSTER_NAME: ${CLUSTER2_FQDN}
 
 networks:
   default:

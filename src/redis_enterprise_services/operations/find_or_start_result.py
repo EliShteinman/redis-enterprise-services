@@ -3,6 +3,6 @@ from pydantic import BaseModel
 from redis_enterprise_services.operations.operation import Operation
 
 
-class AcceptanceResult(BaseModel):
+class FindOrStartResult(BaseModel):
     operation: Operation
-    already_accepted: bool
+    already_existed: bool

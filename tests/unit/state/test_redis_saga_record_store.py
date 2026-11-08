@@ -10,29 +10,29 @@ from redis_enterprise_services.state.redis_saga_record_store import RedisSagaRec
 
 class StoreWithMockedScripts:
     def __init__(self) -> None:
-        self.unfinished: MagicMock = MagicMock()
-        self.finished: MagicMock = MagicMock()
+        self.save_without_expiry: MagicMock = MagicMock()
+        self.save_with_expiry: MagicMock = MagicMock()
         client: MagicMock = create_autospec(spec=Redis, instance=True)
-        client.register_script.side_effect = [self.unfinished, self.finished]
-        self.state: RedisSagaRecordStore = RedisSagaRecordStore(
-            client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_operation_ttl_seconds=600
+        client.register_script.side_effect = [self.save_without_expiry, self.save_with_expiry]
+        self.store: RedisSagaRecordStore = RedisSagaRecordStore(
+            client=client, keys=RedisKeys(key_prefix="res:", hash_tag="state"), finished_ttl_seconds=600
         )
 
 
 @pytest.mark.parametrize(
     argnames="status", argvalues=[SagaStatus.REQUIRES_MANUAL_INTERVENTION, SagaStatus.RUNNING]
 )
-def test_an_unsettled_saga_stays_unfinished_without_expiry(status: SagaStatus) -> None:
+def test_a_saga_not_cleanly_ended_is_stored_without_expiry(status: SagaStatus) -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
-    scripts.state.save_final(record=SagaRecord(saga_id="trace-1", status=status, steps=[]))
+    scripts.store.save_final(record=SagaRecord(saga_id="trace-1", status=status, steps=[]))
 
-    assert (scripts.unfinished.call_count, scripts.finished.call_count) == (1, 0)
+    assert (scripts.save_without_expiry.call_count, scripts.save_with_expiry.call_count) == (1, 0)
 
 
-def test_a_settled_saga_is_stored_with_the_expiry() -> None:
+def test_a_cleanly_ended_saga_is_stored_with_the_expiry() -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
-    scripts.state.save_final(record=SagaRecord(saga_id="trace-1", status=SagaStatus.SUCCEEDED, steps=[]))
+    scripts.store.save_final(record=SagaRecord(saga_id="trace-1", status=SagaStatus.SUCCEEDED, steps=[]))
 
-    assert scripts.finished.call_args.kwargs["args"][2] == 600
+    assert scripts.save_with_expiry.call_args.kwargs["args"][2] == 600

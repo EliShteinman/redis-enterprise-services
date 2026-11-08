@@ -93,7 +93,7 @@ Redis מאפשר הבדלים, אבל השירות לא ישתמש בזה.
 | משאב | שדה | מקור | הערה |
 |---|---|---|---|
 | ACL | `name` | נגזר: `{db}-{user}-acl` | |
-| ACL | `acl` | ה-UI, מחרוזת ACL גולמית (למשל `+@all ~*`), לא ריקה | |
+| ACL | `acl` | ה-UI (`users[].acl_rule`), מחרוזת ACL גולמית (למשל `+@all ~*`), לא ריקה | |
 | role | `name` | נגזר: `{db}-{user}-role` | |
 | role | `management` | קונפיג, ברירת מחדל `db_viewer` | |
 | role | `resources` | נגזר: `[{type: db, uids: [ה-DB]}]` | מגביל את ה-role ל-DB של היוזר בלבד |

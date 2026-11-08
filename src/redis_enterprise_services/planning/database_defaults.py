@@ -2,7 +2,7 @@ import logging
 
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     OverrideClusterSelector,
@@ -15,10 +15,10 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class DatabaseDefaults:
     def __init__(self, *, settings: DatabaseDefaultsSettings) -> None:
-        validate_default_values(settings=settings)
+        reject_invalid_default_values(settings=settings)
         self._settings: DatabaseDefaultsSettings = settings
 
-    def complete(self, *, cluster: ClusterEntry, requested: NewDatabase) -> NewDatabase:
+    def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
         values: dict[str, JsonValue] = dict(self._settings.values)
         for override in self._settings.overrides:
             if selector_matches(selector=override.when, cluster=cluster):
@@ -28,7 +28,7 @@ class DatabaseDefaults:
         return NewDatabase.model_validate(obj=values)
 
 
-def selector_matches(*, selector: OverrideClusterSelector, cluster: ClusterEntry) -> bool:
+def selector_matches(*, selector: OverrideClusterSelector, cluster: ConfiguredCluster) -> bool:
     labels: dict[str, str] = {
         "network": cluster.network,
         "environment": cluster.environment,
@@ -39,7 +39,7 @@ def selector_matches(*, selector: OverrideClusterSelector, cluster: ClusterEntry
     return selector.model_dump(exclude_none=True).items() <= labels.items()
 
 
-def validate_default_values(*, settings: DatabaseDefaultsSettings) -> None:
+def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None:
     for values in [settings.values, *(override.values for override in settings.overrides)]:
         try:
             DatabaseOptions.model_validate(obj=values)

@@ -20,5 +20,5 @@ class DatabaseSettings(ResourceSettings):
     default_tags: Annotated[list[DatabaseTag], AfterValidator(reject_repeated_tag_keys)]
     active_status: str
     creation_failed_status: str
-    unordered_fields: frozenset[str]
+    order_insensitive_fields: frozenset[str]
     wait: WaitSettings

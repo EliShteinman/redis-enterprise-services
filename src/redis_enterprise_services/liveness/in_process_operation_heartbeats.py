@@ -7,7 +7,7 @@ from redis_enterprise_services.liveness.heartbeat_store import HeartbeatStore
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class LiveOperations:
+class InProcessOperationHeartbeats:
     def __init__(self, *, heartbeat_store: HeartbeatStore) -> None:
         self._heartbeat_store: HeartbeatStore = heartbeat_store
         self._lock: Lock = Lock()
@@ -22,16 +22,18 @@ class LiveOperations:
             self._tracked_trace_ids.discard(trace_id)
             self._heartbeat_store.delete(trace_id=trace_id)
 
-    def untracking_when_done(self, *, trace_id: str, task: Callable[[], object]) -> Callable[[], object]:
-        def run_then_untrack() -> object:
+    def untracking_and_deleting_heartbeat_when_done(
+        self, *, trace_id: str, task: Callable[[], object]
+    ) -> Callable[[], object]:
+        def run_then_untrack_and_delete_heartbeat() -> object:
             try:
                 return task()
             finally:
                 self.untrack_and_delete_heartbeat(trace_id=trace_id)
 
-        return run_then_untrack
+        return run_then_untrack_and_delete_heartbeat
 
-    def refresh_heartbeats(self) -> None:
+    def mark_tracked_alive(self) -> None:
         with self._lock:
             if self._tracked_trace_ids:
-                self._heartbeat_store.refresh(trace_ids=sorted(self._tracked_trace_ids))
+                self._heartbeat_store.mark_alive(trace_ids=sorted(self._tracked_trace_ids))
