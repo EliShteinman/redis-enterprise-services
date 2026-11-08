@@ -60,8 +60,8 @@ CLUSTER: ClusterEntry = ClusterEntry(
 )
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 USERS: list[DatabaseUserRequest] = [
-    DatabaseUserRequest(name="app", password="p1", acl="+@all ~orders:*"),
-    DatabaseUserRequest(name="report", password="p2", acl="+@read ~orders:*"),
+    DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*"),
+    DatabaseUserRequest(name="report", password="p2", acl_rule="+@read ~orders:*"),
 ]
 UIDS: dict[str, int] = {"database": 7, "acl/app": 11, "role/app": 12, "acl/report": 21, "role/report": 22}
 

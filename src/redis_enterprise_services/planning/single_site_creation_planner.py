@@ -89,7 +89,7 @@ class SingleSiteCreationPlanner:
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserRequest
     ) -> PreparableStep:
         acl_name: str = self._resource_names.acl_name(database=database.name, user=user.name)
-        acl: NewAcl = NewAcl(name=acl_name, acl=user.acl)
+        acl: NewAcl = NewAcl(name=acl_name, acl=user.acl_rule)
         return PlannedStep(
             key=acl_step_key(user=user),
             step=self._create_acl,

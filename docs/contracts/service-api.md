@@ -60,7 +60,7 @@
   "body": {
     "database": {"name": "orders", "memory_size": 1073741824},
     "users": [
-      {"name": "app", "password": "…", "acl": "+@all ~orders:*"}
+      {"name": "app", "password": "…", "acl_rule": "+@all ~orders:*"}
     ]
   }
 }
@@ -128,12 +128,12 @@
 | `users` | list | | ברירת מחדל `[]`. כל שם פעם אחת |
 | `users[].name` | str | ✅ | בלי `-` |
 | `users[].password` | str | ✅ | לא ריק |
-| `users[].acl` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
+| `users[].acl_rule` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
 
 ### מה נוצר בקלאסטר
 
 1. ה-DB, עם הסיסמה של `default_user` מהשירות.
-2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
+2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl_rule` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
 3. קישור כל role ל-ACL שלו על ה-DB.
 
 לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
