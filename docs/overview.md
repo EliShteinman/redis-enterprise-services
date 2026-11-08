@@ -90,7 +90,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | תכנון | `planning` | בקשה ⇐ קלאסטר, ברירות מחדל, תוכנית צעדים, בדיקת שמות |
 | צעדים ומצב | `steps`, `state` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis |
 | משאבים | `databases`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
-| תעבורה | `cluster`, `edge`, `connection` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
+| תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
 | מנוע ופעולות | `recovery`, `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה, זיהוי קריסה |
 | תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |
 
@@ -124,7 +124,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | `02-context` | מי קורא למי, ומה מתוכנן |
 | `03`–`09` `layer-*` | כל שכבה מבפנים: מי משתמש בה, מה יש בה, ובמה היא משתמשת |
 | `10-seq-create-single-site`, `11-seq-rollback-single-site` | יצירה מוצלחת, וביטול אחרי כישלון |
-| `12-flow-admission` | קבלה, trace חוזר, נעילה ובדיקת שמות |
+| `12-flow-find-or-start` | קבלה, trace חוזר, נעילה ובדיקת שמות |
 | `13-flow-cluster-and-defaults` | מציאת הקלאסטר וברירות המחדל |
 | `14-flow-failure-classification` | מה המנוע עושה בכל סוג כישלון |
 | `15-state-step`, `16-state-operation` | הסטטוסים של צעד ושל פעולה |

@@ -1,9 +1,9 @@
 operation:
-  public_code_by_error_code:
+  public_code_by_internal_code:
     name_taken: name_taken
     resources_locked: resources_locked
     invalid_name: invalid_name
-    unknown_cluster: unknown_cluster
+    no_matching_cluster: no_matching_cluster
     cluster_unavailable: cluster_unavailable
     unreadable_cluster_response: cluster_unavailable
     cluster_rejected_request: cluster_request_failed
@@ -17,7 +17,7 @@ operation:
     configuration_error: internal_error
     invalid_plan: internal_error
     missing_step_result: internal_error
-  cluster_caused_public_codes:
+  public_codes_with_cluster_details:
     - cluster_request_failed
     - cluster_unavailable
     - cluster_timeout

@@ -4,7 +4,7 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.saga.contract.saga_record import ObtainedBy
 from redis_enterprise_services.saga.contract.step_kind import StepKind
-from redis_enterprise_services.saga.plan.saga_context import SagaContext
+from redis_enterprise_services.saga.plan.step_results import StepResults
 
 
 class OnResultKept(Protocol):
@@ -43,4 +43,4 @@ class PreparableStep(Protocol):
     @property
     def kind(self) -> StepKind: ...
 
-    def prepare(self, *, context: SagaContext) -> PreparedStep: ...
+    def prepare(self, *, step_results: StepResults) -> PreparedStep: ...

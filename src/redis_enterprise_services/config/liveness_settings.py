@@ -9,7 +9,7 @@ class LivenessSettings(ConfigModel):
     heartbeat_interval_seconds: PositiveFloat
     heartbeat_ttl_seconds: PositiveInt
     min_heartbeats_per_ttl: PositiveInt
-    sweep_interval_seconds: PositiveFloat
+    abandoned_sweep_interval_seconds: PositiveFloat
 
     @model_validator(mode="after")
     def reject_heartbeat_interval_too_long_for_ttl(self) -> Self:
