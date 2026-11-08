@@ -80,7 +80,9 @@ class CreationExecution:
             return self._needs_manual_intervention(trace_id=trace_id)
         if stored is None:
             return rejected(trace_id=trace_id, error=missing)
-        logger.critical(msg=f"saga {trace_id} stopped after it started, its outcome comes from its record")
+        logger.critical(
+            msg=f"saga {trace_id} stopped after it started, its outcome comes from its record", exc_info=True
+        )
         return self._translated(trace_id=trace_id, creation=creation, record=stored)
 
     def _translated(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
