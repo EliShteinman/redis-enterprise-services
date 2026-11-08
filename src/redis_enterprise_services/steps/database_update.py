@@ -12,6 +12,7 @@ from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
+from redis_enterprise_services.steps.same_values import same_values
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -58,7 +59,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         if kept is None:
             return None
         current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
-        if current.values != step_input.values:
+        if not same_values(stored=current.values, wanted=step_input.values):
             return None
         self._readiness.wait(target=self._target(step_input=step_input), uid=step_input.uid)
         return kept
@@ -66,7 +67,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
         current: DatabaseFields = self._read(step_input=step_input, fields=list(result.values))
-        if current.values == result.values:
+        if same_values(stored=current.values, wanted=result.values):
             logger.info(msg=f"database {step_input.uid} already has its old values")
             return
         self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)
