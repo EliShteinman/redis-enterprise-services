@@ -27,8 +27,9 @@ router: APIRouter = APIRouter(
     responses={
         HTTPStatus.OK: {
             "model": Operation,
-            "description": "The same traceparent was sent before: nothing new starts, "
-            "and the current state of that operation is returned, as in the status query.",
+            "description": "An operation with the same trace id already exists (the parent id is not "
+            "compared, nor the body): nothing new starts, and the current state of that operation is "
+            "returned, as in the status query. One trace id means one operation.",
         }
     },
 )

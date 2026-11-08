@@ -27,8 +27,8 @@ def rejected_responses(*, statuses: dict[HTTPStatus, str]) -> dict[int | str, di
 
 COMMAND_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
     statuses={
-        HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, a name breaks the naming "
-        "rules, or the target has no configured cluster.",
+        HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, the traceparent header "
+        "is missing or malformed, a name breaks the naming rules, or the target has no configured cluster.",
         HTTPStatus.INTERNAL_SERVER_ERROR: "configuration_error (the service configuration cannot serve the "
         "request) or internal_error (a bug). The details are in the service log, by trace_id.",
     }
