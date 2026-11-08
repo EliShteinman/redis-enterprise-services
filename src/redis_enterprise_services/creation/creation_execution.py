@@ -9,7 +9,7 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.planning.availability.creation_names import CreationNames
+from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
@@ -26,7 +26,7 @@ class CreationExecution:
         *,
         name_check_scope: NameCheckScope,
         name_availability: NameAvailability,
-        creation_names: CreationNames,
+        creation_naming: CreationNaming,
         planner: SingleSiteCreationPlanner,
         executor: SagaExecutor,
         outcome_translator: CreationOutcomeTranslator,
@@ -36,7 +36,7 @@ class CreationExecution:
     ) -> None:
         self._name_check_scope: NameCheckScope = name_check_scope
         self._name_availability: NameAvailability = name_availability
-        self._creation_names: CreationNames = creation_names
+        self._creation_naming: CreationNaming = creation_naming
         self._planner: SingleSiteCreationPlanner = planner
         self._executor: SagaExecutor = executor
         self._outcome_translator: CreationOutcomeTranslator = outcome_translator
@@ -75,9 +75,9 @@ class CreationExecution:
         return self._translated_operation(trace_id=trace_id, creation=creation, record=record)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
-        self._name_availability.ensure_free(
+        self._name_availability.find_taken_and_raise_if_any(
             clusters=self._name_check_scope.clusters_to_check(chosen=creation.cluster),
-            names=self._creation_names.requested_names(request=creation.spec),
+            requested_names=self._creation_naming.requested_names(spec=creation.spec),
         )
 
     def _operation_from_stored_record(

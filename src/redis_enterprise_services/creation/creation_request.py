@@ -2,7 +2,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.planning.database_creation_request import DatabaseCreationRequest
+from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.site_placement import SitePlacement
 
 
@@ -25,4 +25,4 @@ class CreationRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     target: CreationTarget = Field(description="Where to create the database.")
-    spec: DatabaseCreationRequest = Field(description="What to create: the database and its users.")
+    spec: DatabaseSpec = Field(description="What to create: the database and its users.")

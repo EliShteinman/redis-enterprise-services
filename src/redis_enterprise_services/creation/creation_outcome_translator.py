@@ -14,7 +14,7 @@ from redis_enterprise_services.planning.single_site_creation_planner import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
 )
-from redis_enterprise_services.planning.user_resource_names import UserResourceNames
+from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.saga_record import (
     SagaRecord,
@@ -32,8 +32,8 @@ NOT_ROLLED_BACK_STEP_STATUSES: frozenset[StepStatus] = frozenset(
 
 
 class CreationOutcomeTranslator:
-    def __init__(self, *, resource_names: UserResourceNames, public_errors: PublicErrors) -> None:
-        self._resource_names: UserResourceNames = resource_names
+    def __init__(self, *, resource_naming: UserResourceNaming, public_errors: PublicErrors) -> None:
+        self._resource_naming: UserResourceNaming = resource_naming
         self._public_errors: PublicErrors = public_errors
 
     def operation_for(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
@@ -60,7 +60,7 @@ class CreationOutcomeTranslator:
             logger.error(msg=f"saga {record.saga_id} ended {record.status.value} with no failed step")
             return self._public_errors.internal_error()
         return self._public_errors.from_code(
-            error_code=stopped_step.error.code,
+            internal_code=stopped_step.error.code,
             message=stopped_step.error.message,
             cluster_url=creation.cluster.api_url,
             cluster_error_code=stopped_step.error.remote_code,
@@ -70,7 +70,7 @@ class CreationOutcomeTranslator:
         self, *, creation: PreparedCreation, record: SagaRecord
     ) -> list[RemainingResource]:
         planned_by_step_key: dict[str, PlannedResource] = planned_resources_by_step_key(
-            spec=creation.spec, resource_names=self._resource_names
+            spec=creation.spec, resource_naming=self._resource_naming
         )
         return [
             RemainingResource(
@@ -88,7 +88,7 @@ class CreationOutcomeTranslator:
         return (
             None
             if error is None
-            else f"{self._public_errors.public_code(error_code=error.code)}: {error.message}"
+            else f"{self._public_errors.public_code(internal_code=error.code)}: {error.message}"
         )
 
 

@@ -1,6 +1,6 @@
 import logging
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.creation.creation_request import CreationRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -30,11 +30,11 @@ class CreationPreparation:
             name=requested_database.name,
             context=NamingContext(active_active=request.target.active_active, sites=request.target.sites),
         )
-        cluster: ClusterEntry = self._site_cluster_resolver.resolve(placement=request.target.sites[0])
-        completed_database: NewDatabase = self._database_defaults.complete(
+        cluster: ConfiguredCluster = self._site_cluster_resolver.resolve(placement=request.target.sites[0])
+        filled_database: NewDatabase = self._database_defaults.fill_in(
             cluster=cluster, requested=requested_database
         )
-        logger.info(msg=f"creating {completed_database.name} on {cluster.name} is prepared")
+        logger.info(msg=f"creating {filled_database.name} on {cluster.name} is prepared")
         return PreparedCreation(
-            cluster=cluster, spec=request.spec.model_copy(update={"database": completed_database})
+            cluster=cluster, spec=request.spec.model_copy(update={"database": filled_database})
         )

@@ -1,6 +1,6 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
@@ -10,11 +10,11 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.database_creation_request import (
-    DatabaseCreationRequest,
-    DatabaseUserRequest,
+from redis_enterprise_services.planning.database_spec import (
+    DatabaseSpec,
+    DatabaseUserSpec,
 )
-from redis_enterprise_services.planning.user_resource_names import UserResourceNames
+from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import (
     SagaRecord,
     SagaStatus,
@@ -30,25 +30,25 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_management="db_viewer",
 )
 TRANSLATOR: CreationOutcomeTranslator = CreationOutcomeTranslator(
-    resource_names=UserResourceNames(settings=USER_RESOURCES),
+    resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     public_errors=PublicErrors(
         settings=OperationSettings(
-            public_code_by_error_code={
+            public_code_by_internal_code={
                 "cluster_rejected_request": "cluster_request_failed",
                 "unreadable_cluster_response": "cluster_unavailable",
             },
-            cluster_caused_public_codes=frozenset({"cluster_request_failed", "cluster_unavailable"}),
+            public_codes_with_cluster_details=frozenset({"cluster_request_failed", "cluster_unavailable"}),
         ),
         internal_error_message="internal error",
     ),
 )
 CREATION: PreparedCreation = PreparedCreation(
-    cluster=ClusterEntry(
+    cluster=ConfiguredCluster(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
     ),
-    spec=DatabaseCreationRequest(
+    spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
-        users=[DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*")],
+        users=[DatabaseUserSpec(name="app", password="p1", acl_rule="+@all ~orders:*")],
     ),
 )
 REJECTED_BY_CLUSTER: StepError = StepError(
