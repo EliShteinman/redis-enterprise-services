@@ -21,7 +21,7 @@ class DatabaseUserRequest(BaseModel):
         description="The user's password. Never returned in any response.",
         examples=["S3cure-Passw0rd"],
     )
-    acl: str = Field(
+    acl_rule: str = Field(
         min_length=1,
         description="A Redis ACL rule for this user on this database: which commands and which keys.",
         examples=["+@all ~orders:*"],

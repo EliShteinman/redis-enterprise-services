@@ -20,7 +20,7 @@ def test_a_creation_checks_the_database_and_each_user_with_its_derived_names() -
     )
     request: DatabaseCreationRequest = DatabaseCreationRequest(
         database=NewDatabase(name="orders", memory_size=104857600),
-        users=[DatabaseUserRequest(name="app", password="p1", acl="+@all")],
+        users=[DatabaseUserRequest(name="app", password="p1", acl_rule="+@all")],
     )
 
     assert [(name.kind, name.name) for name in names.requested_names(request=request)] == [
