@@ -35,7 +35,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         order_insensitive_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsRepository = repository
-        self._unordered_fields: frozenset[str] = order_insensitive_fields
+        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
         self._activation_waiter: DatabaseActivationWaiter = activation_waiter
         self._target_resolver: ClusterTargetResolver = target_resolver
 
@@ -68,9 +68,10 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
             step_input=step_input, field_names=list(step_input.values)
         )
         if not self._same(current=current.values, expected=step_input.values):
-            return self._raise_unless_old_values_remain(
+            self._raise_unless_old_values_remain(
                 step_input=step_input, current=current, kept_result=kept_result
             )
+            return None
         self._activation_waiter.wait_until_active(
             target=self._target(step_input=step_input), uid=step_input.uid
         )
@@ -108,7 +109,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
 
     def _same(self, *, current: dict[str, JsonValue], expected: dict[str, JsonValue]) -> bool:
         return same_values(
-            current=current, expected=expected, order_insensitive_fields=self._unordered_fields
+            current=current, expected=expected, order_insensitive_fields=self._order_insensitive_fields
         )
 
     def _read_fields(

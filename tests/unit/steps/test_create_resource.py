@@ -186,7 +186,7 @@ def test_find_outcome_trusts_what_was_kept_without_searching(
     repository.find_by_name.assert_not_called()
 
 
-def test_find_outcome_waits_until_the_found_resource_is_created(
+def test_find_outcome_waits_until_the_kept_resource_is_created(
     completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_found_result=ignore_found)

@@ -28,8 +28,8 @@ class RedisHeartbeatStore(HeartbeatStore):
             keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids],
             args=[self._heartbeat_ttl_seconds],
         )
-        logger.debug(msg=f"heartbeat of {len(trace_ids)} operations")
+        logger.debug(msg=f"{len(trace_ids)} operations marked alive")
 
     def delete(self, *, trace_id: str) -> None:
         self._client.delete(self._keys.heartbeat(trace_id=trace_id))
-        logger.debug(msg=f"heartbeat of {trace_id} stopped")
+        logger.debug(msg=f"heartbeat of {trace_id} deleted")

@@ -11,10 +11,10 @@ from redis_enterprise_services.state.redis_operation_store import RedisOperation
 
 class StoreWithMockedScripts:
     def __init__(self) -> None:
-        self.open: MagicMock = MagicMock()
-        self.finished: MagicMock = MagicMock()
+        self.save_without_expiry: MagicMock = MagicMock()
+        self.save_with_expiry: MagicMock = MagicMock()
         client: MagicMock = create_autospec(spec=Redis, instance=True)
-        client.register_script.side_effect = [self.open, self.finished, MagicMock()]
+        client.register_script.side_effect = [self.save_without_expiry, self.save_with_expiry, MagicMock()]
         self.store: RedisOperationStore = RedisOperationStore(
             client=client,
             keys=RedisKeys(key_prefix="res:", hash_tag="state"),
@@ -27,20 +27,23 @@ class StoreWithMockedScripts:
     argnames="status",
     argvalues=[OperationStatus.SUCCEEDED, OperationStatus.REJECTED, OperationStatus.ROLLED_BACK],
 )
-def test_a_finished_operation_is_stored_with_the_expiry(status: OperationStatus) -> None:
+def test_an_operation_in_an_expiring_status_is_stored_with_the_expiry(status: OperationStatus) -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
     scripts.store.save(operation=Operation(trace_id="trace-1", status=status))
 
-    assert (scripts.open.call_count, scripts.finished.call_args.kwargs["args"][2]) == (0, 600)
+    assert (scripts.save_without_expiry.call_count, scripts.save_with_expiry.call_args.kwargs["args"][2]) == (
+        0,
+        600,
+    )
 
 
 @pytest.mark.parametrize(
     argnames="status", argvalues=[OperationStatus.RUNNING, OperationStatus.REQUIRES_MANUAL_INTERVENTION]
 )
-def test_an_open_operation_stays_open_without_expiry(status: OperationStatus) -> None:
+def test_an_operation_in_a_non_expiring_status_is_stored_without_expiry(status: OperationStatus) -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
     scripts.store.save(operation=Operation(trace_id="trace-1", status=status))
 
-    assert (scripts.open.call_count, scripts.finished.call_count) == (1, 0)
+    assert (scripts.save_without_expiry.call_count, scripts.save_with_expiry.call_count) == (1, 0)

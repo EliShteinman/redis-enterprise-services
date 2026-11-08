@@ -17,7 +17,8 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 KEEP_OPEN_WITHOUT_EXPIRY: int = 0
 STATUS_FIELD: str = "status"
-NO_SAGA: str = ""
+NO_INTERRUPTED_SAGA: str = ""
+NO_EXPECTED_SAGA: str = ""
 FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
     0: FinalizeAbandonedResult.NOT_ABANDONED,
     1: FinalizeAbandonedResult.FINALIZED,
@@ -71,10 +72,10 @@ class RedisAbandonedStore(AbandonedStore):
         )
 
     def running_trace_ids_without_heartbeat(self) -> list[str]:
-        open_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
+        open_trace_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
         return sorted(
             trace_id
-            for trace_id in open_ids
+            for trace_id in open_trace_ids
             if not self._client.exists(self._keys.heartbeat(trace_id=trace_id))
             and self._running_or_not_recorded(trace_id=trace_id)
         )
@@ -119,9 +120,9 @@ class RedisAbandonedStore(AbandonedStore):
                 self._finished_ttl_seconds
                 if operation.status in EXPIRING_STATUSES
                 else KEEP_OPEN_WITHOUT_EXPIRY,
-                NO_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
+                NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
-                NO_SAGA if expected_saga is None else expected_saga.raw_json,
+                NO_EXPECTED_SAGA if expected_saga is None else expected_saga.raw_json,
             ],
         )
         result: FinalizeAbandonedResult = FINALIZE_ABANDONED_RESULT_BY_CODE[result_code]
