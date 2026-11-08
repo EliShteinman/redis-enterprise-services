@@ -21,7 +21,7 @@ class ClusterChoice(BaseModel):
     )
 
     @model_validator(mode="after")
-    def name_only_for_dedicated(self) -> Self:
+    def require_name_exactly_when_dedicated(self) -> Self:
         if (self.type == "dedicated") != (self.name is not None):
             raise ValueError("a dedicated cluster has a name, and a generic one does not")
         return self
@@ -39,5 +39,5 @@ class SitePlacement(BaseModel):
     cluster: ClusterChoice = Field(description="Which cluster at the site.")
 
     def describe(self) -> str:
-        cluster: str = self.cluster.name if self.cluster.name is not None else self.cluster.type
-        return f"{self.network}/{self.environment}/{self.site}/{cluster}"
+        cluster_label: str = self.cluster.name if self.cluster.name is not None else self.cluster.type
+        return f"{self.network}/{self.environment}/{self.site}/{cluster_label}"

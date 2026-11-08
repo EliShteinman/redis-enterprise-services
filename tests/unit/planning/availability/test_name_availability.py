@@ -4,7 +4,7 @@ from pydantic import SecretStr
 from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
@@ -18,7 +18,7 @@ class CountingLister:
         self._url_name_pairs: set[tuple[str, str]] = url_name_pairs
         self.calls: int = 0
 
-    def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
+    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
         self.calls += 1
         return [
             NamedResource(uid=1, name=name)
@@ -27,14 +27,14 @@ class CountingLister:
         ]
 
 
-def cluster(*, name: str) -> ClusterEntry:
-    return ClusterEntry(
+def cluster(*, name: str) -> ConfiguredCluster:
+    return ConfiguredCluster(
         name=name, network="net-a", environment="PROD", site="dc1", type="generic", api_url=f"https://{name}"
     )
 
 
-C1: ClusterEntry = cluster(name="c1")
-C2: ClusterEntry = cluster(name="c2")
+C1: ConfiguredCluster = cluster(name="c1")
+C2: ConfiguredCluster = cluster(name="c2")
 NAMES: list[RequestedName] = [
     RequestedName(kind="database", name="orders"),
     RequestedName(kind="user", name="app"),
@@ -65,18 +65,21 @@ def test_names_missing_from_every_cluster_are_free() -> None:
     assert (
         availability(
             database_url_name_pairs=set(), user_lister=CountingLister(url_name_pairs=set())
-        ).taken_names(clusters=[C1, C2], names=NAMES)
+        ).find_taken_names(clusters=[C1, C2], requested_names=NAMES)
         == []
     )
 
 
 def test_each_taken_name_is_reported_with_its_cluster() -> None:
-    checked: NameAvailability = availability(
+    name_availability: NameAvailability = availability(
         database_url_name_pairs={("https://c2", "orders")},
         user_lister=CountingLister(url_name_pairs={("https://c1", "app")}),
     )
 
-    assert [name.describe() for name in checked.taken_names(clusters=[C1, C2], names=NAMES)] == [
+    assert [
+        taken_name.describe()
+        for taken_name in name_availability.find_taken_names(clusters=[C1, C2], requested_names=NAMES)
+    ] == [
         "user app exists on c1",
         "database orders exists on c2",
     ]
@@ -88,17 +91,19 @@ def test_each_kind_is_listed_once_per_cluster() -> None:
         RequestedName(kind="user", name=name) for name in ("app", "report", "audit")
     ]
 
-    availability(database_url_name_pairs=set(), user_lister=users).taken_names(clusters=[C1, C2], names=names)
+    availability(database_url_name_pairs=set(), user_lister=users).find_taken_names(
+        clusters=[C1, C2], requested_names=names
+    )
 
     assert users.calls == 2
 
 
 def test_a_name_is_looked_up_only_among_its_own_kind() -> None:
-    checked: NameAvailability = availability(
+    name_availability: NameAvailability = availability(
         database_url_name_pairs={("https://c1", "app")}, user_lister=CountingLister(url_name_pairs=set())
     )
 
-    assert checked.taken_names(clusters=[C1], names=NAMES) == []
+    assert name_availability.find_taken_names(clusters=[C1], requested_names=NAMES) == []
 
 
 def test_a_taken_name_refuses_the_request() -> None:
@@ -106,4 +111,4 @@ def test_a_taken_name_refuses_the_request() -> None:
         availability(
             database_url_name_pairs={("https://c1", "orders")},
             user_lister=CountingLister(url_name_pairs=set()),
-        ).ensure_free(clusters=[C1], names=NAMES)
+        ).find_taken_and_raise_if_any(clusters=[C1], requested_names=NAMES)

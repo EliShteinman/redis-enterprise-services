@@ -20,9 +20,9 @@ def import_all_exception_codes() -> set[str]:
 
 
 def test_every_mapped_exception_code_belongs_to_an_exception() -> None:
-    assert set(load_settings().operation.public_code_by_error_code) <= import_all_exception_codes()
+    assert set(load_settings().operation.public_code_by_internal_code) <= import_all_exception_codes()
 
 
 def test_every_exception_code_has_a_public_error_code() -> None:
-    mapped: set[str] = set(load_settings().operation.public_code_by_error_code)
+    mapped: set[str] = set(load_settings().operation.public_code_by_internal_code)
     assert import_all_exception_codes() - CODES_WITHOUT_PUBLIC_MAPPING <= mapped

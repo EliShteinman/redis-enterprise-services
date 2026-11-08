@@ -9,12 +9,12 @@ from redis_enterprise_services.creation.creation_outcome_translator import Creat
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
-from redis_enterprise_services.liveness.live_operations import LiveOperations
-from redis_enterprise_services.operations.operation_acceptance import OperationAcceptance
+from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
+from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
-from redis_enterprise_services.planning.availability.creation_names import CreationNames
+from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
@@ -25,7 +25,7 @@ from redis_enterprise_services.planning.naming.name_validator import NameValidat
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
-from redis_enterprise_services.planning.user_resource_names import UserResourceNames
+from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
@@ -46,15 +46,15 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         silence_insecure_request_warnings()
         redis_client: Redis = build_redis_client(settings=settings.state)
-        keys: RedisKeys = RedisKeys(prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag)
+        keys: RedisKeys = RedisKeys(key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag)
         self.operation_store: OperationStore = RedisOperationStore(
             client=redis_client,
             keys=keys,
-            finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
+            finished_ttl_seconds=settings.state.finished_ttl_seconds,
             heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
         )
         self.task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
-        live_operations: LiveOperations = LiveOperations(
+        operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
             heartbeat_store=RedisHeartbeatStore(
                 client=redis_client, keys=keys, heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds
             )
@@ -62,10 +62,10 @@ class AppWiring:
         self.heartbeat_thread: PeriodicThread = PeriodicThread(
             name="heartbeat",
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
-            task=live_operations.refresh_heartbeats,
+            task=operation_heartbeats.mark_tracked_alive,
         )
         cluster_wiring: ClusterWiring = ClusterWiring(settings=settings)
-        user_resource_names: UserResourceNames = UserResourceNames(settings=settings.user_resources)
+        user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
         public_errors: PublicErrors = PublicErrors(
             settings=settings.operation, internal_error_message=settings.api.internal_error_message
         )
@@ -79,16 +79,16 @@ class AppWiring:
         saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
             keys=keys,
-            finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
+            finished_ttl_seconds=settings.state.finished_ttl_seconds,
         )
         self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
             name="abandoned operations sweep",
-            interval_seconds=settings.liveness.sweep_interval_seconds,
+            interval_seconds=settings.liveness.abandoned_sweep_interval_seconds,
             task=AbandonedSweep(
                 store=RedisAbandonedStore(
                     client=redis_client,
                     keys=keys,
-                    finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
+                    finished_ttl_seconds=settings.state.finished_ttl_seconds,
                 ),
                 public_errors=public_errors,
             ).sweep,
@@ -112,31 +112,31 @@ class AppWiring:
                     ),
                     target_resolver=cluster_wiring.target_resolver,
                 ),
-                creation_names=CreationNames(resource_names=user_resource_names),
+                creation_naming=CreationNaming(resource_naming=user_resource_naming),
                 planner=SingleSiteCreationPlanner(
                     user_resources=settings.user_resources,
                     cluster_fields=settings.cluster_api.fields,
-                    resource_names=user_resource_names,
+                    resource_naming=user_resource_naming,
                     create_database=cluster_wiring.create_database,
                     create_acl=cluster_wiring.create_acl,
                     create_role=cluster_wiring.create_role,
                     create_user=cluster_wiring.create_user,
                     update_database=cluster_wiring.update_database,
                 ),
-                executor=build_saga_executor(
+                saga_executor=build_saga_executor(
                     settings=settings, saga_lock=saga_lock, saga_record_store=saga_record_store
                 ),
                 outcome_translator=CreationOutcomeTranslator(
-                    resource_names=user_resource_names, public_errors=public_errors
+                    resource_naming=user_resource_naming, public_errors=public_errors
                 ),
                 public_errors=public_errors,
-                record_reader=saga_record_store,
-                store=self.operation_store,
+                saga_record_reader=saga_record_store,
+                operation_store=self.operation_store,
             ),
-            acceptance=OperationAcceptance(
+            operation_starter=OperationStarter(
                 store=self.operation_store,
-                runner=self.task_runner,
-                live_operations=live_operations,
+                task_runner=self.task_runner,
+                operation_heartbeats=operation_heartbeats,
                 public_errors=public_errors,
             ),
         )

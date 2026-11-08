@@ -1,7 +1,7 @@
 import pytest
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry, Environment
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     DefaultsOverride,
@@ -22,8 +22,8 @@ DEFAULTS: DatabaseDefaults = DatabaseDefaults(
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 
 
-def cluster(*, environment: Environment) -> ClusterEntry:
-    return ClusterEntry(
+def cluster(*, environment: Environment) -> ConfiguredCluster:
+    return ConfiguredCluster(
         name="c1",
         network="net-a",
         environment=environment,
@@ -34,19 +34,19 @@ def cluster(*, environment: Environment) -> ClusterEntry:
 
 
 def test_the_general_defaults_fill_what_the_request_left_out() -> None:
-    database: NewDatabase = DEFAULTS.complete(cluster=cluster(environment="PROD"), requested=REQUESTED)
+    database: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=REQUESTED)
 
     assert (database.replication, database.data_persistence) == (True, "aof")
 
 
 def test_an_override_applies_where_its_labels_match() -> None:
-    assert DEFAULTS.complete(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is False
+    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is False
 
 
 def test_the_request_beats_every_default() -> None:
     requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=True)
 
-    assert DEFAULTS.complete(cluster=cluster(environment="DEV"), requested=requested).replication is True
+    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=requested).replication is True
 
 
 def test_a_later_override_beats_an_earlier_one() -> None:
@@ -65,8 +65,7 @@ def test_a_later_override_beats_an_earlier_one() -> None:
     )
 
     assert (
-        defaults.complete(cluster=cluster(environment="DEV"), requested=REQUESTED).shards_placement
-        == "sparse"
+        defaults.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).shards_placement == "sparse"
     )
 
 
@@ -82,13 +81,13 @@ def test_an_override_applies_only_when_all_its_labels_match() -> None:
         )
     )
 
-    assert defaults.complete(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is True
+    assert defaults.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is True
 
 
 def test_a_field_sent_as_null_keeps_the_default() -> None:
     requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=None)
 
-    assert DEFAULTS.complete(cluster=cluster(environment="DEV"), requested=requested).replication is False
+    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=requested).replication is False
 
 
 @pytest.mark.parametrize(
@@ -116,6 +115,6 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
         pytest.param({}, id="no label"),
     ],
 )
-def test_an_override_that_can_never_match_is_refused(when: dict[str, str]) -> None:
+def test_an_override_selector_with_no_valid_label_is_refused(when: dict[str, str]) -> None:
     with pytest.raises(expected_exception=ValidationError):
         OverrideClusterSelector.model_validate(obj=when)

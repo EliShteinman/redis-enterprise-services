@@ -6,8 +6,8 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 class FailureCategory(StrEnum):
     TRANSIENT = "transient"
-    REJECTED = "rejected"
-    UNKNOWN = "unknown"
+    FAILED = "failed"
+    OUTCOME_UNKNOWN = "outcome_unknown"
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 

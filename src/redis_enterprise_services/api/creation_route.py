@@ -9,9 +9,9 @@ from redis_enterprise_services.api.app_state_dependencies import database_creati
 from redis_enterprise_services.api.creation_examples import CREATION_EXAMPLES
 from redis_enterprise_services.api.rejected_operation import CREATION_ROUTE_REJECTIONS
 from redis_enterprise_services.api.traceparent_header import require_traceparent
-from redis_enterprise_services.creation.creation_request import CreationRequest
+from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
-from redis_enterprise_services.operations.acceptance_result import AcceptanceResult
+from redis_enterprise_services.operations.find_or_start_result import FindOrStartResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
@@ -34,12 +34,14 @@ router: APIRouter = APIRouter(
     },
 )
 def create_database(
-    creation_request: Annotated[CreationRequest, Body(openapi_examples=CREATION_EXAMPLES)],
+    creation_request: Annotated[CreateDatabaseRequest, Body(openapi_examples=CREATION_EXAMPLES)],
     database_creation: Annotated[DatabaseCreation, Depends(dependency=database_creation)],
 ) -> AcceptedOperation | JSONResponse:
-    acceptance: AcceptanceResult = database_creation.accept(
-        trace_id=current_trace_id(), request=creation_request
+    find_or_start_result: FindOrStartResult = database_creation.find_or_start(
+        trace_id=current_trace_id(), creation_request=creation_request
     )
-    if acceptance.already_accepted:
-        return JSONResponse(content=acceptance.operation.model_dump(mode="json"))
-    return AcceptedOperation(trace_id=acceptance.operation.trace_id, status=acceptance.operation.status)
+    if find_or_start_result.already_existed:
+        return JSONResponse(content=find_or_start_result.operation.model_dump(mode="json"))
+    return AcceptedOperation(
+        trace_id=find_or_start_result.operation.trace_id, status=find_or_start_result.operation.status
+    )

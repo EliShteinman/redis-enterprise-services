@@ -2,11 +2,11 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.acls.repository import AclRepository
-from redis_enterprise_services.cluster.api import ClusterApi
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
     SharedCredentialsTargetResolver,
 )
+from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings
@@ -29,44 +29,64 @@ from redis_enterprise_services.users.repository import UserRepository
 
 class ClusterWiring:
     def __init__(self, *, settings: Settings) -> None:
-        edge: EdgeClient = EdgeClient(
+        edge_transport: EdgeClient = EdgeClient(
             settings=settings.edge,
             header_builder=EdgeHeaderBuilder(settings=settings.edge),
             response_reader=EdgeResponseReader(settings=settings.edge),
         )
-        api: ClusterApi = ClusterApi(transport=edge, settings=settings.cluster_api)
+        cluster_api_caller: EdgeClusterApiCaller = EdgeClusterApiCaller(
+            edge_transport=edge_transport, settings=settings.cluster_api
+        )
         password: SecretStr = settings.cluster_credentials.password
         self.target_resolver: ClusterTargetResolver = SharedCredentialsTargetResolver(
             credentials=ClusterCredentials(username=settings.cluster_credentials.username, password=password)
         )
         self.database_repository: DatabaseRepository = DatabaseRepository(
             endpoint=RestResourceEndpoint(
-                api=api, settings=settings.database, cluster_api=settings.cluster_api
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.database,
+                cluster_api_settings=settings.cluster_api,
             ),
             default_user_password=settings.database.default_user_password,
             default_tags=settings.database.default_tags,
         )
         self.acl_repository: AclRepository = AclRepository(
-            endpoint=RestResourceEndpoint(api=api, settings=settings.acl, cluster_api=settings.cluster_api)
+            endpoint=RestResourceEndpoint(
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.acl,
+                cluster_api_settings=settings.cluster_api,
+            )
         )
         self.role_repository: RoleRepository = RoleRepository(
-            endpoint=RestResourceEndpoint(api=api, settings=settings.role, cluster_api=settings.cluster_api),
+            endpoint=RestResourceEndpoint(
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.role,
+                cluster_api_settings=settings.cluster_api,
+            ),
             settings=settings.role,
         )
         self.user_repository: UserRepository = UserRepository(
-            endpoint=RestResourceEndpoint(api=api, settings=settings.user, cluster_api=settings.cluster_api)
+            endpoint=RestResourceEndpoint(
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.user,
+                cluster_api_settings=settings.cluster_api,
+            )
         )
         database_fields_repository: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
-            api=api, settings=settings.database, cluster_api=settings.cluster_api
+            cluster_api_caller=cluster_api_caller,
+            settings=settings.database,
+            cluster_api_settings=settings.cluster_api,
         )
         database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
             fields_reader=database_fields_repository,
             settings=settings.database,
-            cluster_api=settings.cluster_api,
+            cluster_api_settings=settings.cluster_api,
         )
         action_completion_waiter: ActionCompletionWaiter = ActionCompletionWaiter(
             action_waiter=PollingActionWaiter(
-                api=api, settings=settings.action, cluster_api=settings.cluster_api
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.action,
+                cluster_api_settings=settings.cluster_api,
             )
         )
         self.create_database: CreateResourceStep[NewDatabase] = CreateResourceStep(
@@ -93,5 +113,5 @@ class ClusterWiring:
             repository=database_fields_repository,
             activation_waiter=database_waiter,
             target_resolver=self.target_resolver,
-            unordered_fields=settings.database.unordered_fields,
+            order_insensitive_fields=settings.database.order_insensitive_fields,
         )

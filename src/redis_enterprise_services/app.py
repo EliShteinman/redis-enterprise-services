@@ -61,13 +61,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings: Settings = app.state.settings
     wiring: AppWiring = app.state.wiring
     telemetry: TelemetryProviders = TelemetryProviders(settings=settings.telemetry)
-    telemetry.install()
+    telemetry.install_and_instrument()
     try:
         wiring.heartbeat_thread.start()
         wiring.abandoned_sweep_thread.start()
         yield
     finally:
         await asyncio.to_thread(wiring.abandoned_sweep_thread.stop)
-        await asyncio.to_thread(wiring.task_runner.shutdown)
+        await asyncio.to_thread(wiring.task_runner.close_cancelling_queued_and_waiting_for_running)
         await asyncio.to_thread(wiring.heartbeat_thread.stop)
         telemetry.shutdown()

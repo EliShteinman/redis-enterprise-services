@@ -7,7 +7,7 @@ from redis_enterprise_services.config.user_resources_settings import NAME_SEPARA
 from redis_enterprise_services.databases.new_database import NewDatabase
 
 
-class DatabaseUserRequest(BaseModel):
+class DatabaseUserSpec(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     name: str = Field(
@@ -28,7 +28,7 @@ class DatabaseUserRequest(BaseModel):
     )
 
 
-def reject_repeated_users(users: list[DatabaseUserRequest]) -> list[DatabaseUserRequest]:
+def reject_repeated_users(users: list[DatabaseUserSpec]) -> list[DatabaseUserSpec]:
     names: list[str] = [user.name for user in users]
     repeated: set[str] = {name for name in names if names.count(name) > 1}
     if repeated:
@@ -36,10 +36,10 @@ def reject_repeated_users(users: list[DatabaseUserRequest]) -> list[DatabaseUser
     return users
 
 
-type UniqueDatabaseUsers = Annotated[list[DatabaseUserRequest], AfterValidator(reject_repeated_users)]
+type UniqueDatabaseUsers = Annotated[list[DatabaseUserSpec], AfterValidator(reject_repeated_users)]
 
 
-class DatabaseCreationRequest(BaseModel):
+class DatabaseSpec(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     database: NewDatabase = Field(description="The database to create.")

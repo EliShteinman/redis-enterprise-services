@@ -19,11 +19,11 @@ class EdgeHeaderBuilder:
         self._settings: EdgeSettings = settings
         self._header_names: EdgeHeaderSettings = settings.headers
 
-    def build(self, *, request: ClusterRequest, relay_settings: EdgeNetworkSettings) -> dict[str, str]:
+    def build(self, *, request: ClusterRequest, network_settings: EdgeNetworkSettings) -> dict[str, str]:
         return (
             self._required_headers(request=request)
             | self._optional_headers(request=request)
-            | self._firewall_headers(relay_settings=relay_settings)
+            | self._firewall_headers(network_settings=network_settings)
         )
 
     def _required_headers(self, *, request: ClusterRequest) -> dict[str, str]:
@@ -40,18 +40,18 @@ class EdgeHeaderBuilder:
     def _optional_headers(self, *, request: ClusterRequest) -> dict[str, str]:
         optional: dict[str, int | str | None] = {
             self._header_names.cluster_state_id: request.cluster_state_id,
-            self._header_names.task_id: request.crdb_task_id,
-            self._header_names.result_ttl: request.result_ttl_seconds,
+            self._header_names.crdb_task_id: request.crdb_task_id,
+            self._header_names.result_ttl_seconds: request.result_ttl_seconds,
         }
         return {name: str(value) for name, value in optional.items() if value is not None}
 
     @staticmethod
-    def _firewall_headers(*, relay_settings: EdgeNetworkSettings) -> dict[str, str]:
-        if relay_settings.firewall is None:
+    def _firewall_headers(*, network_settings: EdgeNetworkSettings) -> dict[str, str]:
+        if network_settings.firewall is None:
             return {}
         return {
-            relay_settings.firewall.authorization_header: basic_authorization(
-                username=relay_settings.firewall.username,
-                password=relay_settings.firewall.password.get_secret_value(),
+            network_settings.firewall.authorization_header: basic_authorization(
+                username=network_settings.firewall.username,
+                password=network_settings.firewall.password.get_secret_value(),
             )
         }

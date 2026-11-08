@@ -5,7 +5,7 @@ class PublicError(BaseModel):
     code: str = Field(
         description="What kind of failure. At once: validation_error (the request does not match), "
         "invalid_name (a name breaks the naming rules), "
-        "unknown_cluster (no configured cluster for the target), "
+        "no_matching_cluster (no configured cluster for the target), "
         "not_found (unknown path), operation_not_found (unknown or expired trace id), "
         "method_not_allowed (the path does not take this method), "
         "configuration_error (the service configuration cannot serve the request), "
@@ -29,7 +29,7 @@ class PublicError(BaseModel):
     )
     cluster_error_code: str | None = Field(
         default=None,
-        exclude_if=lambda code: code is None,
+        exclude_if=lambda cluster_error_code: cluster_error_code is None,
         description="The cluster's own error code. Only for errors from a cluster.",
         examples=["insufficient_resources"],
     )

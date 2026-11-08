@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.api import ClusterApi
+from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
@@ -25,7 +25,7 @@ def test_a_cluster_rejection_keeps_the_cluster_status_and_error_code() -> None:
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError) as rejection:
-        ClusterApi(transport=transport, settings=load_settings().cluster_api).send(
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )
 
@@ -42,6 +42,6 @@ def test_a_redirect_answer_is_a_cluster_rejection() -> None:
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError):
-        ClusterApi(transport=transport, settings=load_settings().cluster_api).send(
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )

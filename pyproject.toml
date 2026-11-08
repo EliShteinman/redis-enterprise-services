@@ -164,7 +164,7 @@ source_modules = [
 ]
 forbidden_modules = [
     "redis_enterprise_services.edge.client",
-    "redis_enterprise_services.cluster.api",
+    "redis_enterprise_services.cluster.edge_cluster_api_caller",
     "redis_enterprise_services.cluster.polling_action_waiter",
     "redis_enterprise_services.resources.rest_resource_endpoint",
     "redis_enterprise_services.databases.repository",

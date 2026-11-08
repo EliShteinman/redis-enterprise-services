@@ -4,7 +4,7 @@ from redis_enterprise_services.operations.database_result import (
     DatabaseResult,
     DatabaseUserResult,
 )
-from redis_enterprise_services.planning.database_creation_request import DatabaseUserRequest
+from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.single_site_creation_planner import (
     DATABASE_STEP_KEY,
     acl_step_key,
@@ -15,22 +15,25 @@ from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
-def created_database_result(*, creation: PreparedCreation, record: SagaRecord) -> DatabaseResult:
+def created_database_result(*, prepared_creation: PreparedCreation, record: SagaRecord) -> DatabaseResult:
     db_uid: int = recorded_uid(record=record, step_key=DATABASE_STEP_KEY)
     cluster_result: DatabaseClusterResult = DatabaseClusterResult(
-        cluster_url=creation.cluster.api_url,
-        network=creation.cluster.network,
-        site=creation.cluster.site,
-        environment=creation.cluster.environment,
+        cluster_url=prepared_creation.cluster.api_url,
+        network=prepared_creation.cluster.network,
+        site=prepared_creation.cluster.site,
+        environment=prepared_creation.cluster.environment,
         db_uid=db_uid,
-        users=[created_user_result(record=record, user=user) for user in creation.spec.users],
+        users=[created_user_result(record=record, user=user) for user in prepared_creation.spec.users],
     )
     return DatabaseResult(
-        name=creation.spec.database.name, active_active=False, db_id=db_uid, clusters=[cluster_result]
+        name=prepared_creation.spec.database.name,
+        active_active=False,
+        db_id=db_uid,
+        clusters=[cluster_result],
     )
 
 
-def created_user_result(*, record: SagaRecord, user: DatabaseUserRequest) -> DatabaseUserResult:
+def created_user_result(*, record: SagaRecord, user: DatabaseUserSpec) -> DatabaseUserResult:
     return DatabaseUserResult(
         name=user.name,
         user_uid=recorded_uid(record=record, step_key=user_step_key(user=user)),
