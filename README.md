@@ -81,7 +81,8 @@ uv run basedpyright
 uv run lint-imports
 ```
 
-`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. All of these run in pre-commit.
+`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. The lint commands
+run in pre-commit; the tests do not.
 
 ## Local clusters
 
@@ -91,6 +92,10 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 ```bash
 docker compose -f docker/compose.yaml up -d
 ```
+
+Clusters brought up before the compose file set a fixed subnet keep their old network. Run
+`docker compose -f docker/compose.yaml down` once before the first `up`. The subnet can be changed with
+`CLUSTER_SUBNET`.
 
 The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
 12000-12010):
