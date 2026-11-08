@@ -111,6 +111,7 @@ class Services:
                 names=CreationNames(names=names),
                 planner=SingleSiteCreationPlanner(
                     settings=settings.decomposition,
+                    fields=settings.cluster.fields,
                     names=names,
                     create_database=cluster.create_database,
                     create_acl=cluster.create_acl,

@@ -11,7 +11,7 @@ from redis_enterprise_services.cluster.credentials import (
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.active_waiter import DatabaseActiveWaiter
-from redis_enterprise_services.databases.lifecycle import DatabaseLifecycle
+from redis_enterprise_services.databases.fields_repository import DatabaseFieldsRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.repository import DatabaseRepository
 from redis_enterprise_services.edge.client import EdgeClient
@@ -39,7 +39,7 @@ class ClusterWiring:
         self.credentials: ClusterCredentialsProvider = SharedCredentialsProvider(
             credentials=ClusterCredentials(username=settings.cluster_access.username, password=password)
         )
-        self.databases: DatabaseLifecycle = DatabaseLifecycle(
+        self.databases: DatabaseRepository = DatabaseRepository(
             endpoint=ResourceEndpoint(api=api, settings=settings.database, cluster=settings.cluster),
             default_user_password=settings.database.default_user_password,
             default_tags=settings.database.default_tags,
@@ -54,7 +54,7 @@ class ClusterWiring:
         self.users: UserRepository = UserRepository(
             endpoint=ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
         )
-        fields: DatabaseRepository = DatabaseRepository(
+        fields: DatabaseFieldsRepository = DatabaseFieldsRepository(
             api=api, settings=settings.database, cluster=settings.cluster
         )
         database_waiter: DatabaseActiveWaiter = DatabaseActiveWaiter(
@@ -76,5 +76,8 @@ class ClusterWiring:
             repository=self.users, waiter=action_waiter, credentials=self.credentials
         )
         self.update_database: DatabaseUpdate = DatabaseUpdate(
-            repository=fields, readiness=database_waiter, credentials=self.credentials
+            repository=fields,
+            readiness=database_waiter,
+            credentials=self.credentials,
+            unordered_fields=settings.database.unordered_fields,
         )
