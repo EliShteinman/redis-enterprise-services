@@ -81,14 +81,14 @@ class CreationOutcomeTranslator:
                 cluster_url=prepared_creation.cluster.api_url,
                 resource_type=planned_by_step_key[step.key].resource_type,
                 name=planned_by_step_key[step.key].name,
-                uid=recorded_uid_or_none(record=record, step=step),
-                last_error=self._last_error_text(error=step.compensation_error or step.error),
+                uid=remaining_resource_uid_or_none(record=record, step=step),
+                last_error=self._public_code_and_message(error=step.compensation_error or step.error),
             )
             for step in record.steps
             if step.status in NOT_ROLLED_BACK_STEP_STATUSES
         ]
 
-    def _last_error_text(self, *, error: StepError | None) -> str | None:
+    def _public_code_and_message(self, *, error: StepError | None) -> str | None:
         return (
             None
             if error is None
@@ -96,7 +96,7 @@ class CreationOutcomeTranslator:
         )
 
 
-def recorded_uid_or_none(*, record: SagaRecord, step: StepRecord) -> int | None:
+def remaining_resource_uid_or_none(*, record: SagaRecord, step: StepRecord) -> int | None:
     uid_step: StepRecord = (
         next(found for found in record.steps if found.key == DATABASE_STEP_KEY)
         if step.key == PERMISSIONS_STEP_KEY
