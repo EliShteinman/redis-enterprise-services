@@ -5,10 +5,12 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
+from redis_enterprise_services.cluster.transient_read import worth_reading_again
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.fields_store import DatabaseFieldsReader
 from redis_enterprise_services.databases.readiness import DatabaseReadiness
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRequestError,
     DatabaseCreationFailedError,
@@ -54,14 +56,25 @@ class DatabaseActiveWaiter(DatabaseReadiness, CompletionWaiter):
         except ClusterRequestError as error:
             if error.cluster_status_code == HTTPStatus.NOT_FOUND:
                 return True
-            raise
+            return self._read_again_or_raise(uid=uid, error=error)
+        except RedisEnterpriseServicesError as error:
+            return self._read_again_or_raise(uid=uid, error=error)
+        return False
+
+    def _read_again_or_raise(self, *, uid: int, error: RedisEnterpriseServicesError) -> bool:
+        if not worth_reading_again(error=error, transient_codes=self._cluster.transient_error_codes):
+            raise error
+        logger.warning(msg=f"reading database {uid} failed, it is read again: {error.describe()}")
         return False
 
     def _is_active(self, *, target: ClusterTarget, uid: int) -> bool:
         status_field: str = self._cluster.fields.status
-        values: dict[str, JsonValue] = self._fields.get_fields(
-            target=target, uid=uid, fields=[status_field]
-        ).values
+        try:
+            values: dict[str, JsonValue] = self._fields.get_fields(
+                target=target, uid=uid, fields=[status_field]
+            ).values
+        except RedisEnterpriseServicesError as error:
+            return self._read_again_or_raise(uid=uid, error=error)
         status: JsonValue = values.get(status_field)
         if status is None:
             raise UnreadableAnswerError(message=f"database {uid} answered without {status_field}")

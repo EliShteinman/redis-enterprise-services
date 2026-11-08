@@ -49,11 +49,24 @@ def test_another_error_while_waiting_for_a_delete_is_raised(
     fields: MagicMock, waiter: DatabaseActiveWaiter
 ) -> None:
     fields.get_fields.side_effect = ClusterRequestError(
-        message="no", cluster_status_code=500, error_code=None
+        message="no", cluster_status_code=403, error_code=None
     )
 
     with pytest.raises(expected_exception=ClusterRequestError):
         waiter.wait_deleted(target=TARGET, uid=11, action_uid=None)
+
+
+def test_a_cluster_failure_while_waiting_for_a_delete_is_read_again(
+    fields: MagicMock, waiter: DatabaseActiveWaiter
+) -> None:
+    fields.get_fields.side_effect = [
+        ClusterRequestError(message="failing over", cluster_status_code=503, error_code=None),
+        ClusterRequestError(message="gone", cluster_status_code=404, error_code="db_not_exist"),
+    ]
+
+    waiter.wait_deleted(target=TARGET, uid=11, action_uid=None)
+
+    assert fields.get_fields.call_count == 2
 
 
 def test_a_database_whose_creation_failed_stops_the_wait(
