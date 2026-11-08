@@ -15,30 +15,30 @@ from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
-def created_database(*, creation: PreparedCreation, record: SagaRecord) -> DatabaseResult:
-    db_uid: int = created_uid(record=record, key=DATABASE_STEP_KEY)
+def created_database_result(*, creation: PreparedCreation, record: SagaRecord) -> DatabaseResult:
+    db_uid: int = recorded_uid(record=record, step_key=DATABASE_STEP_KEY)
     cluster: DatabaseClusterResult = DatabaseClusterResult(
         cluster_url=creation.cluster.api_url,
         network=creation.cluster.network,
         site=creation.cluster.site,
         environment=creation.cluster.environment,
         db_uid=db_uid,
-        users=[created_user(record=record, user=user) for user in creation.request.users],
+        users=[created_user_result(record=record, user=user) for user in creation.spec.users],
     )
     return DatabaseResult(
-        name=creation.request.database.name, active_active=False, db_id=db_uid, clusters=[cluster]
+        name=creation.spec.database.name, active_active=False, db_id=db_uid, clusters=[cluster]
     )
 
 
-def created_user(*, record: SagaRecord, user: DatabaseUserRequest) -> DatabaseUserResult:
+def created_user_result(*, record: SagaRecord, user: DatabaseUserRequest) -> DatabaseUserResult:
     return DatabaseUserResult(
         name=user.name,
-        user_uid=created_uid(record=record, key=user_step_key(user=user)),
-        role_uid=created_uid(record=record, key=role_step_key(user=user)),
-        acl_uid=created_uid(record=record, key=acl_step_key(user=user)),
+        user_uid=recorded_uid(record=record, step_key=user_step_key(user=user)),
+        role_uid=recorded_uid(record=record, step_key=role_step_key(user=user)),
+        acl_uid=recorded_uid(record=record, step_key=acl_step_key(user=user)),
     )
 
 
-def created_uid(*, record: SagaRecord, key: str) -> int:
-    step_result: object = next(step.result for step in record.steps if step.key == key)
+def recorded_uid(*, record: SagaRecord, step_key: str) -> int:
+    step_result: object = next(step.result for step in record.steps if step.key == step_key)
     return CreatedResource.model_validate(obj=step_result).uid

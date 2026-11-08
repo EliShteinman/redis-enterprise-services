@@ -3,7 +3,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
-from redis_enterprise_services.creation.creation_outcome import CreationOutcome
+from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.operations.operation import Operation
@@ -29,8 +29,8 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_name_template="{database}-{user}-role",
     role_management="db_viewer",
 )
-OUTCOME: CreationOutcome = CreationOutcome(
-    names=UserResourceNames(settings=USER_RESOURCES),
+TRANSLATOR: CreationOutcomeTranslator = CreationOutcomeTranslator(
+    resource_names=UserResourceNames(settings=USER_RESOURCES),
     public_errors=PublicErrors(
         settings=OperationSettings(
             public_code_by_error_code={
@@ -46,7 +46,7 @@ CREATION: PreparedCreation = PreparedCreation(
     cluster=ClusterEntry(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
     ),
-    request=DatabaseCreationRequest(
+    spec=DatabaseCreationRequest(
         database=NewDatabase(name="orders", memory_size=104857600),
         users=[DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*")],
     ),
@@ -54,7 +54,7 @@ CREATION: PreparedCreation = PreparedCreation(
 REJECTED_BY_CLUSTER: StepError = StepError(
     code="cluster_rejected_request", message="user name is taken", remote_code="name_already_exists"
 )
-UNDO_FAILED: StepError = StepError(code="unreadable_cluster_response", message="relay is down")
+COMPENSATION_ERROR: StepError = StepError(code="unreadable_cluster_response", message="relay is down")
 
 
 def step(
@@ -76,8 +76,8 @@ def step(
     )
 
 
-def outcome(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
-    return OUTCOME.of(
+def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
+    return TRANSLATOR.operation_for(
         trace_id="trace-1",
         creation=CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),
@@ -85,7 +85,7 @@ def outcome(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> 
 
 
 def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopped_it() -> None:
-    operation: Operation = outcome(
+    operation: Operation = translated_operation(
         status=SagaStatus.ROLLED_BACK,
         steps=[
             step(key="database", status=StepStatus.COMPENSATED, uid=7, error=REJECTED_BY_CLUSTER),
@@ -106,7 +106,7 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
 
 
 def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> None:
-    operation: Operation = outcome(
+    operation: Operation = translated_operation(
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
             step(key="database", status=StepStatus.DONE, uid=7),
@@ -115,7 +115,7 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
                 status=StepStatus.COMPENSATION_FAILED,
                 uid=11,
                 error=REJECTED_BY_CLUSTER,
-                compensation_error=UNDO_FAILED,
+                compensation_error=COMPENSATION_ERROR,
             ),
             step(key="role/app", status=StepStatus.COMPENSATED, uid=12),
             step(key="user/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),

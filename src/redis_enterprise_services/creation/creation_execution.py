@@ -1,7 +1,7 @@
 import logging
 from functools import partial
 
-from redis_enterprise_services.creation.creation_outcome import CreationOutcome
+from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.operation import Operation
@@ -26,80 +26,88 @@ class CreationExecution:
         *,
         scope: NameCheckScope,
         availability: NameAvailability,
-        names: CreationNames,
+        creation_names: CreationNames,
         planner: SingleSiteCreationPlanner,
         executor: SagaExecutor,
-        outcome: CreationOutcome,
+        outcome: CreationOutcomeTranslator,
         public_errors: PublicErrors,
-        records: SagaRecordReader,
+        record_reader: SagaRecordReader,
         store: OperationStore,
     ) -> None:
         self._scope: NameCheckScope = scope
         self._availability: NameAvailability = availability
-        self._names: CreationNames = names
+        self._creation_names: CreationNames = creation_names
         self._planner: SingleSiteCreationPlanner = planner
         self._executor: SagaExecutor = executor
-        self._outcome: CreationOutcome = outcome
+        self._outcome: CreationOutcomeTranslator = outcome
         self._public_errors: PublicErrors = public_errors
-        self._record_writer: SagaRecordReader = records
+        self._record_reader: SagaRecordReader = record_reader
         self._store: OperationStore = store
 
     def run(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
-        operation: Operation = self._finished(trace_id=trace_id, creation=creation)
+        operation: Operation = self._final_operation(trace_id=trace_id, creation=creation)
         self._store.save(operation=operation)
         return operation
 
-    def _finished(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
+    def _final_operation(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
         try:
             record: SagaRecord = self._executor.run(
                 saga_id=trace_id,
                 plan=self._planner.plan(
-                    cluster=creation.cluster, database=creation.request.database, users=creation.request.users
+                    cluster=creation.cluster, database=creation.spec.database, users=creation.spec.users
                 ),
                 check_before_start=partial(self._ensure_names_free, creation=creation),
             )
         except RedisEnterpriseServicesError as error:
-            public: PublicError = self._public_errors.from_error(
+            public_error: PublicError = self._public_errors.from_error(
                 error=error, cluster_url=creation.cluster.api_url
             )
-            return self._from_record(trace_id=trace_id, creation=creation, missing=public)
+            return self._operation_from_stored_record(
+                trace_id=trace_id, creation=creation, error_if_not_started=public_error
+            )
         except Exception:
             logger.critical(msg=f"creation {trace_id} failed on an unexpected error", exc_info=True)
-            return self._from_record(
-                trace_id=trace_id, creation=creation, missing=self._public_errors.internal_error()
+            return self._operation_from_stored_record(
+                trace_id=trace_id,
+                creation=creation,
+                error_if_not_started=self._public_errors.internal_error(),
             )
-        return self._translated(trace_id=trace_id, creation=creation, record=record)
+        return self._translated_operation(trace_id=trace_id, creation=creation, record=record)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
         self._availability.ensure_free(
             clusters=self._scope.clusters_to_check(chosen=creation.cluster),
-            names=self._names.requested_names(request=creation.request),
+            names=self._creation_names.requested_names(request=creation.spec),
         )
 
-    def _from_record(self, *, trace_id: str, creation: PreparedCreation, missing: PublicError) -> Operation:
+    def _operation_from_stored_record(
+        self, *, trace_id: str, creation: PreparedCreation, error_if_not_started: PublicError
+    ) -> Operation:
         try:
-            stored: SagaRecord | None = self._record_writer.find(saga_id=trace_id)
+            stored: SagaRecord | None = self._record_reader.find(saga_id=trace_id)
         except Exception:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
-            return self._needs_manual_intervention(trace_id=trace_id)
+            return self._manual_intervention_operation(trace_id=trace_id)
         if stored is None:
-            return rejected(trace_id=trace_id, error=missing)
+            return rejected_operation(trace_id=trace_id, error=error_if_not_started)
         logger.critical(
             msg=f"saga {trace_id} stopped after it started, its outcome comes from its record", exc_info=True
         )
-        return self._translated(trace_id=trace_id, creation=creation, record=stored)
+        return self._translated_operation(trace_id=trace_id, creation=creation, record=stored)
 
-    def _translated(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
+    def _translated_operation(
+        self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord
+    ) -> Operation:
         try:
-            return self._outcome.of(trace_id=trace_id, creation=creation, record=record)
+            return self._outcome.operation_for(trace_id=trace_id, creation=creation, record=record)
         except Exception:
             logger.critical(
                 msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
                 exc_info=True,
             )
-            return self._needs_manual_intervention(trace_id=trace_id)
+            return self._manual_intervention_operation(trace_id=trace_id)
 
-    def _needs_manual_intervention(self, *, trace_id: str) -> Operation:
+    def _manual_intervention_operation(self, *, trace_id: str) -> Operation:
         return Operation(
             trace_id=trace_id,
             status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
@@ -107,6 +115,6 @@ class CreationExecution:
         )
 
 
-def rejected(*, trace_id: str, error: PublicError) -> Operation:
+def rejected_operation(*, trace_id: str, error: PublicError) -> Operation:
     logger.warning(msg=f"operation {trace_id} is rejected: {error.code}: {error.message}")
     return Operation(trace_id=trace_id, status=OperationStatus.REJECTED, error=error)

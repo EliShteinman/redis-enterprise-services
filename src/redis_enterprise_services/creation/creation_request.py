@@ -25,4 +25,4 @@ class CreationRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     target: CreationTarget = Field(description="Where to create the database.")
-    body: DatabaseCreationRequest = Field(description="What to create: the database and its users.")
+    spec: DatabaseCreationRequest = Field(description="What to create: the database and its users.")

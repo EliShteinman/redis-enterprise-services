@@ -21,14 +21,16 @@ class CreationPreparation:
         self._defaults: DatabaseDefaults = defaults
 
     def prepare(self, *, request: CreationRequest) -> PreparedCreation:
-        requested: NewDatabase = request.body.database
+        requested_database: NewDatabase = request.spec.database
         self._validator.ensure_valid(
-            name=requested.name,
+            name=requested_database.name,
             context=NamingContext(active_active=request.target.active_active, sites=request.target.sites),
         )
         cluster: ClusterEntry = self._resolver.resolve(placement=request.target.sites[0])
-        database: NewDatabase = self._defaults.complete(cluster=cluster, requested=requested)
-        logger.info(msg=f"creating {database.name} on {cluster.name} is prepared")
+        completed_database: NewDatabase = self._defaults.complete(
+            cluster=cluster, requested=requested_database
+        )
+        logger.info(msg=f"creating {completed_database.name} on {cluster.name} is prepared")
         return PreparedCreation(
-            cluster=cluster, request=request.body.model_copy(update={"database": database})
+            cluster=cluster, spec=request.spec.model_copy(update={"database": completed_database})
         )

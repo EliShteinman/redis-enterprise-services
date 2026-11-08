@@ -6,7 +6,7 @@ from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
-from redis_enterprise_services.creation.creation_outcome import CreationOutcome
+from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -35,7 +35,7 @@ CREATION: PreparedCreation = PreparedCreation(
     cluster=ClusterEntry(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
     ),
-    request=DatabaseCreationRequest(
+    spec=DatabaseCreationRequest(
         database=NewDatabase(name="orders", memory_size=104857600),
         users=[DatabaseUserRequest(name="app", password="p1", acl_rule="+@all ~orders:*")],
     ),
@@ -45,13 +45,19 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_name_template="{database}-{user}-role",
     role_management="db_viewer",
 )
-ERRORS: PublicErrors = PublicErrors(
+PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(
         public_code_by_error_code={"name_taken": "name_taken"}, cluster_caused_public_codes=frozenset()
     ),
     internal_error_message="internal error",
 )
-UIDS: dict[str, int] = {"database": 7, "acl/app": 11, "role/app": 12, "user/app": 13, "permissions": 7}
+UID_BY_STEP_KEY: dict[str, int] = {
+    "database": 7,
+    "acl/app": 11,
+    "role/app": 12,
+    "user/app": 13,
+    "permissions": 7,
+}
 
 
 def saga_record(*, status: SagaStatus) -> SagaRecord:
@@ -65,12 +71,12 @@ def saga_record(*, status: SagaStatus) -> SagaRecord:
                 status=StepStatus.DONE,
                 result={"uid": uid, "name": key, "action_uid": None},
             )
-            for key, uid in UIDS.items()
+            for key, uid in UID_BY_STEP_KEY.items()
         ],
     )
 
 
-class Creation:
+class ExecutionHarness:
     def __init__(self) -> None:
         self.availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
@@ -81,12 +87,14 @@ class Creation:
         self.execution: CreationExecution = CreationExecution(
             scope=ChosenClusterScope(),
             availability=self.availability,
-            names=create_autospec(spec=CreationNames, instance=True),
+            creation_names=create_autospec(spec=CreationNames, instance=True),
             planner=self.planner,
             executor=self.executor,
-            outcome=CreationOutcome(names=UserResourceNames(settings=USER_RESOURCES), public_errors=ERRORS),
-            public_errors=ERRORS,
-            records=self.records,
+            outcome=CreationOutcomeTranslator(
+                resource_names=UserResourceNames(settings=USER_RESOURCES), public_errors=PUBLIC_ERRORS
+            ),
+            public_errors=PUBLIC_ERRORS,
+            record_reader=self.records,
             store=self.store,
         )
 
@@ -95,7 +103,7 @@ class Creation:
 
 
 def test_a_created_database_returns_the_uids_of_each_user() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.return_value = saga_record(status=SagaStatus.SUCCEEDED)
 
     database: DatabaseResult | None = creation.run().database
@@ -111,7 +119,7 @@ def test_a_created_database_returns_the_uids_of_each_user() -> None:
     argnames="status", argvalues=[SagaStatus.ROLLED_BACK, SagaStatus.REQUIRES_MANUAL_INTERVENTION]
 )
 def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.return_value = saga_record(status=status)
 
     operation: Operation = creation.run()
@@ -120,7 +128,7 @@ def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) 
 
 
 def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.side_effect = NameTakenError(message="database orders exists on c1")
 
     operation: Operation = creation.run()
@@ -132,7 +140,7 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
 
 
 def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.side_effect = NameTakenError(message="raised after the first step")
     creation.records.find.return_value = saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION)
 
@@ -140,7 +148,7 @@ def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() ->
 
 
 def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.side_effect = RuntimeError("bug while finishing")
     creation.records.find.return_value = saga_record(status=SagaStatus.RUNNING)
 
@@ -148,12 +156,12 @@ def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -
 
 
 @pytest.mark.parametrize(
-    argnames="outcome",
+    argnames="executor_result",
     argvalues=[saga_record(status=SagaStatus.SUCCEEDED), ResourcesLockedError(message="orders is locked")],
 )
-def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServicesError) -> None:
-    creation: Creation = Creation()
-    creation.executor.run.side_effect = [outcome]
+def test_the_final_operation_is_stored(executor_result: SagaRecord | RedisEnterpriseServicesError) -> None:
+    creation: ExecutionHarness = ExecutionHarness()
+    creation.executor.run.side_effect = [executor_result]
 
     operation: Operation = creation.run()
 
@@ -168,7 +176,7 @@ def test_the_final_operation_is_stored(outcome: SagaRecord | RedisEnterpriseServ
     ],
 )
 def test_an_unexpected_error_still_ends_the_operation(failing: str, status: OperationStatus) -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.planner.plan.side_effect = RuntimeError("bug") if failing == "planner" else None
     creation.executor.run.side_effect = RuntimeError("bug") if failing == "executor" else None
     creation.records.find.return_value = (
@@ -181,7 +189,7 @@ def test_an_unexpected_error_still_ends_the_operation(failing: str, status: Oper
 
 
 def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.side_effect = RuntimeError("bug")
     creation.records.find.return_value = saga_record(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION)
 
@@ -198,7 +206,7 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_it_left() -> None:
 
 
 def test_the_names_are_checked_before_the_saga_starts() -> None:
-    creation: Creation = Creation()
+    creation: ExecutionHarness = ExecutionHarness()
     creation.executor.run.return_value = saga_record(status=SagaStatus.SUCCEEDED)
 
     creation.run()

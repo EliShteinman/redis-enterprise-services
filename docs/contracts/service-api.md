@@ -57,7 +57,7 @@
       {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
     ]
   },
-  "body": {
+  "spec": {
     "database": {"name": "orders", "memory_size": 1073741824},
     "users": [
       {"name": "app", "password": "…", "acl_rule": "+@all ~orders:*"}
@@ -84,7 +84,7 @@
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
-### `body.database`
+### `spec.database`
 
 | שדה | סוג | חובה |
 |---|---|---|
@@ -121,7 +121,7 @@
 השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
 `rolled_back` עם `cluster_request_failed`.
 
-### `body.users[]`
+### `spec.users[]`
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
@@ -254,7 +254,7 @@
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
 ב-`validation_error` יש גם `error.details`: רשימה של `{field, message}` לכל שדה שלא עומד בחוזה, למשל
-`body.body.database.memory_size` או `header.traceparent`.
+`body.spec.database.memory_size` או `header.traceparent`.
 
 | `code` | איפה | מתי |
 |---|---|---|

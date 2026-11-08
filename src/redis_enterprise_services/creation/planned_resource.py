@@ -12,24 +12,24 @@ from redis_enterprise_services.planning.user_resource_names import UserResourceN
 
 
 class PlannedResource(BaseModel):
-    type: str
+    resource_type: str
     name: str
 
 
-def planned_resources(
-    *, request: DatabaseCreationRequest, names: UserResourceNames
+def planned_resources_by_step_key(
+    *, request: DatabaseCreationRequest, resource_names: UserResourceNames
 ) -> dict[str, PlannedResource]:
-    database: str = request.database.name
-    resources: dict[str, PlannedResource] = {
-        DATABASE_STEP_KEY: PlannedResource(type="database", name=database),
-        PERMISSIONS_STEP_KEY: PlannedResource(type="permissions", name=database),
+    database_name: str = request.database.name
+    planned_by_step_key: dict[str, PlannedResource] = {
+        DATABASE_STEP_KEY: PlannedResource(resource_type="database", name=database_name),
+        PERMISSIONS_STEP_KEY: PlannedResource(resource_type="permissions", name=database_name),
     }
     for user in request.users:
-        resources[acl_step_key(user=user)] = PlannedResource(
-            type="acl", name=names.acl_name(database=database, user=user.name)
+        planned_by_step_key[acl_step_key(user=user)] = PlannedResource(
+            resource_type="acl", name=resource_names.acl_name(database=database_name, user=user.name)
         )
-        resources[role_step_key(user=user)] = PlannedResource(
-            type="role", name=names.role_name(database=database, user=user.name)
+        planned_by_step_key[role_step_key(user=user)] = PlannedResource(
+            resource_type="role", name=resource_names.role_name(database=database_name, user=user.name)
         )
-        resources[user_step_key(user=user)] = PlannedResource(type="user", name=user.name)
-    return resources
+        planned_by_step_key[user_step_key(user=user)] = PlannedResource(resource_type="user", name=user.name)
+    return planned_by_step_key

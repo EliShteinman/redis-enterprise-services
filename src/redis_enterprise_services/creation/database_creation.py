@@ -29,6 +29,6 @@ class DatabaseCreation:
     def _prepared_run(self, *, trace_id: str, request: CreationRequest) -> PreparedRun:
         creation: PreparedCreation = self._preparation.prepare(request=request)
         return PreparedRun(
-            task_name=f"creating {creation.request.database.name}",
+            task_name=f"creating {creation.spec.database.name}",
             task=partial(self._execution.run, trace_id=trace_id, creation=creation),
         )

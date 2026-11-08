@@ -10,4 +10,4 @@ class PreparedCreation(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     cluster: ClusterEntry
-    request: DatabaseCreationRequest
+    spec: DatabaseCreationRequest
