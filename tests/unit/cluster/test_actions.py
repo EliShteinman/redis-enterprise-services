@@ -15,6 +15,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionTimeoutError,
     UnreadableAnswerError,
 )
+from redis_enterprise_services.exceptions.edge import OutcomeUnknownError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -31,20 +32,34 @@ def api_answering(*, action: JsonValue) -> MagicMock:
     return api
 
 
-def waiter_answering(*, action: JsonValue, api: MagicMock | None = None) -> ActionWaiter:
+def waiter(*, api: MagicMock) -> ActionWaiter:
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
-    return ActionWaiter(
-        api=api or api_answering(action=action), settings=action_settings, cluster=settings.cluster
-    )
+    return ActionWaiter(api=api, settings=action_settings, cluster=settings.cluster)
+
+
+def waiter_answering(*, action: JsonValue) -> ActionWaiter:
+    return waiter(api=api_answering(action=action))
 
 
 def test_a_completed_action_ends_the_wait_after_asking_for_that_action() -> None:
     api: MagicMock = api_answering(action={"status": "completed"})
 
-    waiter_answering(action={"status": "completed"}, api=api).wait(target=TARGET, action_uid=ACTION_UID)
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
 
     assert api.send.call_args.kwargs["path"].endswith(ACTION_UID)
+
+
+def test_a_relay_error_while_reading_the_action_is_read_again() -> None:
+    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
+    api.send.side_effect = [
+        OutcomeUnknownError(message="relay timed out"),
+        ClusterAnswer(body={"status": "completed"}, cluster_state_id=None),
+    ]
+
+    waiter(api=api).wait(target=TARGET, action_uid=ACTION_UID)
+
+    assert api.send.call_count == 2
 
 
 @pytest.mark.parametrize(

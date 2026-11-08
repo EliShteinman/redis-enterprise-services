@@ -14,6 +14,11 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionTimeoutError,
     UnreadableAnswerError,
 )
+from redis_enterprise_services.exceptions.edge import (
+    OutcomeUnknownError,
+    RequestNotSentError,
+    ResponseRejectedError,
+)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -36,9 +41,13 @@ class ActionWaiter(ActionTracker):
         )
 
     def _is_completed(self, *, target: ClusterTarget, action_uid: str) -> bool:
-        action: JsonValue = self._api.send(
-            target=target, method="GET", path=self._settings.path.format(uid=action_uid)
-        ).body
+        try:
+            action: JsonValue = self._api.send(
+                target=target, method="GET", path=self._settings.path.format(uid=action_uid)
+            ).body
+        except (RequestNotSentError, OutcomeUnknownError, ResponseRejectedError) as error:
+            logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
+            return False
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
         if status is None:
             raise UnreadableAnswerError(message=f"action {action_uid} answered without a status")
