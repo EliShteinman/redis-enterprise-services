@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, Field
 
 from redis_enterprise_services.config.config_model import ConfigModel
+from redis_enterprise_services.config.repeated_values import repeated_values
 
 type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
@@ -21,7 +22,7 @@ def reject_repeated_clusters(clusters: list[ConfiguredCluster]) -> list[Configur
     keys: list[tuple[str, str, str, str]] = [
         (cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters
     ]
-    repeated: set[tuple[str, str, str, str]] = {key for key in keys if keys.count(key) > 1}
+    repeated: set[tuple[str, str, str, str]] = repeated_values(values=keys)
     if repeated:
         raise ValueError(f"clusters configured more than once: {sorted(repeated)}")
     return clusters
