@@ -17,7 +17,7 @@ from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 def created_database_result(*, creation: PreparedCreation, record: SagaRecord) -> DatabaseResult:
     db_uid: int = recorded_uid(record=record, step_key=DATABASE_STEP_KEY)
-    cluster: DatabaseClusterResult = DatabaseClusterResult(
+    cluster_result: DatabaseClusterResult = DatabaseClusterResult(
         cluster_url=creation.cluster.api_url,
         network=creation.cluster.network,
         site=creation.cluster.site,
@@ -26,7 +26,7 @@ def created_database_result(*, creation: PreparedCreation, record: SagaRecord) -
         users=[created_user_result(record=record, user=user) for user in creation.spec.users],
     )
     return DatabaseResult(
-        name=creation.spec.database.name, active_active=False, db_id=db_uid, clusters=[cluster]
+        name=creation.spec.database.name, active_active=False, db_id=db_uid, clusters=[cluster_result]
     )
 
 

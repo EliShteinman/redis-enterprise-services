@@ -24,22 +24,22 @@ class CreationExecution:
     def __init__(
         self,
         *,
-        scope: NameCheckScope,
-        availability: NameAvailability,
+        name_check_scope: NameCheckScope,
+        name_availability: NameAvailability,
         creation_names: CreationNames,
         planner: SingleSiteCreationPlanner,
         executor: SagaExecutor,
-        outcome: CreationOutcomeTranslator,
+        outcome_translator: CreationOutcomeTranslator,
         public_errors: PublicErrors,
         record_reader: SagaRecordReader,
         store: OperationStore,
     ) -> None:
-        self._scope: NameCheckScope = scope
-        self._availability: NameAvailability = availability
+        self._name_check_scope: NameCheckScope = name_check_scope
+        self._name_availability: NameAvailability = name_availability
         self._creation_names: CreationNames = creation_names
         self._planner: SingleSiteCreationPlanner = planner
         self._executor: SagaExecutor = executor
-        self._outcome: CreationOutcomeTranslator = outcome
+        self._outcome_translator: CreationOutcomeTranslator = outcome_translator
         self._public_errors: PublicErrors = public_errors
         self._record_reader: SagaRecordReader = record_reader
         self._store: OperationStore = store
@@ -75,8 +75,8 @@ class CreationExecution:
         return self._translated_operation(trace_id=trace_id, creation=creation, record=record)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
-        self._availability.ensure_free(
-            clusters=self._scope.clusters_to_check(chosen=creation.cluster),
+        self._name_availability.ensure_free(
+            clusters=self._name_check_scope.clusters_to_check(chosen=creation.cluster),
             names=self._creation_names.requested_names(request=creation.spec),
         )
 
@@ -99,7 +99,7 @@ class CreationExecution:
         self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord
     ) -> Operation:
         try:
-            return self._outcome.operation_for(trace_id=trace_id, creation=creation, record=record)
+            return self._outcome_translator.operation_for(trace_id=trace_id, creation=creation, record=record)
         except Exception:
             logger.critical(
                 msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",

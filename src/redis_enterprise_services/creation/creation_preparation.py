@@ -14,20 +14,24 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class CreationPreparation:
     def __init__(
-        self, *, validator: NameValidator, resolver: SiteClusterResolver, defaults: DatabaseDefaults
+        self,
+        *,
+        name_validator: NameValidator,
+        site_cluster_resolver: SiteClusterResolver,
+        database_defaults: DatabaseDefaults,
     ) -> None:
-        self._validator: NameValidator = validator
-        self._resolver: SiteClusterResolver = resolver
-        self._defaults: DatabaseDefaults = defaults
+        self._name_validator: NameValidator = name_validator
+        self._site_cluster_resolver: SiteClusterResolver = site_cluster_resolver
+        self._database_defaults: DatabaseDefaults = database_defaults
 
     def prepare(self, *, request: CreationRequest) -> PreparedCreation:
         requested_database: NewDatabase = request.spec.database
-        self._validator.ensure_valid(
+        self._name_validator.ensure_valid(
             name=requested_database.name,
             context=NamingContext(active_active=request.target.active_active, sites=request.target.sites),
         )
-        cluster: ClusterEntry = self._resolver.resolve(placement=request.target.sites[0])
-        completed_database: NewDatabase = self._defaults.complete(
+        cluster: ClusterEntry = self._site_cluster_resolver.resolve(placement=request.target.sites[0])
+        completed_database: NewDatabase = self._database_defaults.complete(
             cluster=cluster, requested=requested_database
         )
         logger.info(msg=f"creating {completed_database.name} on {cluster.name} is prepared")

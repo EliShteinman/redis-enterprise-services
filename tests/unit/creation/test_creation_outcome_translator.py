@@ -57,7 +57,7 @@ REJECTED_BY_CLUSTER: StepError = StepError(
 COMPENSATION_ERROR: StepError = StepError(code="unreadable_cluster_response", message="relay is down")
 
 
-def step(
+def step_record(
     *,
     key: str,
     status: StepStatus,
@@ -88,8 +88,8 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
     operation: Operation = translated_operation(
         status=SagaStatus.ROLLED_BACK,
         steps=[
-            step(key="database", status=StepStatus.COMPENSATED, uid=7, error=REJECTED_BY_CLUSTER),
-            step(key="acl/app", status=StepStatus.PENDING),
+            step_record(key="database", status=StepStatus.COMPENSATED, uid=7, error=REJECTED_BY_CLUSTER),
+            step_record(key="acl/app", status=StepStatus.PENDING),
         ],
         stopped_at="database",
     )
@@ -109,16 +109,16 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
     operation: Operation = translated_operation(
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
-            step(key="database", status=StepStatus.DONE, uid=7),
-            step(
+            step_record(key="database", status=StepStatus.DONE, uid=7),
+            step_record(
                 key="acl/app",
                 status=StepStatus.COMPENSATION_FAILED,
                 uid=11,
                 error=REJECTED_BY_CLUSTER,
                 compensation_error=COMPENSATION_ERROR,
             ),
-            step(key="role/app", status=StepStatus.COMPENSATED, uid=12),
-            step(key="user/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),
+            step_record(key="role/app", status=StepStatus.COMPENSATED, uid=12),
+            step_record(key="user/app", status=StepStatus.FAILED, error=REJECTED_BY_CLUSTER),
         ],
         stopped_at="user/app",
     )

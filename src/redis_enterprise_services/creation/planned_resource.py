@@ -17,14 +17,14 @@ class PlannedResource(BaseModel):
 
 
 def planned_resources_by_step_key(
-    *, request: DatabaseCreationRequest, resource_names: UserResourceNames
+    *, spec: DatabaseCreationRequest, resource_names: UserResourceNames
 ) -> dict[str, PlannedResource]:
-    database_name: str = request.database.name
+    database_name: str = spec.database.name
     planned_by_step_key: dict[str, PlannedResource] = {
         DATABASE_STEP_KEY: PlannedResource(resource_type="database", name=database_name),
         PERMISSIONS_STEP_KEY: PlannedResource(resource_type="permissions", name=database_name),
     }
-    for user in request.users:
+    for user in spec.users:
         planned_by_step_key[acl_step_key(user=user)] = PlannedResource(
             resource_type="acl", name=resource_names.acl_name(database=database_name, user=user.name)
         )
