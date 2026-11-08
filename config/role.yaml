@@ -1,0 +1,5 @@
+role:
+  collection_path: /v1/roles
+  path: /v1/roles/{uid}
+  list_fields: []
+  database_resource_type: db

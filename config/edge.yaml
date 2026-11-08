@@ -1,0 +1,21 @@
+edge:
+  timeout_seconds: 35
+  headers:
+    method: x-cluster-method
+    url: x-cluster-url
+    authorization: x-cluster-authorization
+    content_type: content-type
+    error: x-edge-error
+    cluster_status: x-edge-cluster-status
+    cluster_state_id: cluster-state-id
+    task_id: x-task-id
+    result_ttl: x-result-ttl
+  content_type: application/json
+  error_codes:
+    invalid_request: invalid_request
+    connection_failed: connection_failed
+    response_rejected: response_rejected
+  networks:
+    local:
+      url: http://127.0.0.1:8000/
+      firewall: null
