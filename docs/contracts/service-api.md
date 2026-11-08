@@ -253,7 +253,7 @@
 ## 6. שגיאות
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
-ב-`validation_error` יש גם `error.details`: רשימה של `{field, message}` לכל שדה שלא עומד בחוזה, למשל
+ב-`validation_error` יש גם `error.details`: רשימה של `{location, message}` לכל שדה שלא עומד בחוזה, למשל
 `body.spec.database.memory_size` או `header.traceparent`.
 
 | `code` | איפה | מתי |
