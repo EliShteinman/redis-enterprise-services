@@ -119,7 +119,7 @@
 | `proxy_policy` | `all-master-shards` |
 
 השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
-`rolled_back` עם `step_rejected`.
+`rolled_back` עם `cluster_request_failed`.
 
 ### `body.users[]`
 
@@ -149,7 +149,7 @@
 
 ## 4. התשובה
 
-![מודלי ה-API](../diagrams/19-api-models.drawio.svg)
+![מודלי ה-API](../diagrams/19-api-models-create.drawio.svg)
 
 ### קבלה (`202`)
 
@@ -194,7 +194,7 @@
   "status": "rolled_back",
   "database": null,
   "error": {
-    "code": "step_rejected",
+    "code": "cluster_request_failed",
     "message": "…",
     "cluster": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
@@ -211,7 +211,7 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
-**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`step_rejected`,
+**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
@@ -233,9 +233,9 @@
 
 ## 5. סטטוס: `GET /v1/operations/{trace_id}`
 
-`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 not_found`.
+`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
-**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
+**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_operation_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
@@ -243,7 +243,7 @@
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
-בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`database_locked`. יוצא מן הכלל: pod שנפל מיד אחרי
+בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`resources_locked`. יוצא מן הכלל: pod שנפל מיד אחרי
 שה-Saga הסתיימה (`succeeded` או `rolled_back`) כבר שחרר את הנעילה. הפעולה מסומנת `requires_manual_intervention`,
 אבל פקודות חדשות על אותם שמות לא נחסמות.
 
@@ -260,13 +260,14 @@
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
-| `not_found` | מיד, `404` | כתובת לא קיימת, או `trace_id` לא מוכר |
+| `not_found` | מיד, `404` | כתובת לא קיימת |
+| `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד |
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה (`message` קבוע: `internal error`), או שגיאה פנימית בלי קוד ציבורי משלה (התיאור שלה ב-`message`). הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
-| `database_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `step_rejected` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
+| `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
+| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 

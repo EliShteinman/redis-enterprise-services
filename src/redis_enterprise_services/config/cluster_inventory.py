@@ -17,7 +17,7 @@ class ClusterEntry(ConfigModel):
     api_url: str = Field(pattern=r"^https?://.*[^/]$")
 
 
-def unique_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]:
+def reject_repeated_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]:
     keys: list[tuple[str, str, str, str]] = [
         (cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters
     ]
@@ -27,4 +27,4 @@ def unique_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]:
     return clusters
 
 
-type ClusterList = Annotated[list[ClusterEntry], AfterValidator(unique_clusters)]
+type ClusterList = Annotated[list[ClusterEntry], AfterValidator(reject_repeated_clusters)]

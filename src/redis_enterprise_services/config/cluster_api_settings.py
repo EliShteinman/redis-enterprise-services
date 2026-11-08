@@ -12,7 +12,7 @@ class FieldsQuerySettings(ConfigModel):
     separator: str
 
 
-class ClusterSettings(ConfigModel):
+class ClusterApiSettings(ConfigModel):
     fields: ClusterFieldSettings
     fields_query: FieldsQuerySettings
     transient_error_codes: frozenset[str]
