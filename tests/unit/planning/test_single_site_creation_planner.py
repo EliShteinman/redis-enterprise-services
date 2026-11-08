@@ -5,9 +5,12 @@ from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSe
 from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.database_request import DatabaseRequest, DatabaseUserRequest
-from redis_enterprise_services.planning.resource_names import ResourceNames
-from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
+from redis_enterprise_services.planning.database_creation_request import (
+    DatabaseCreationRequest,
+    DatabaseUserRequest,
+)
+from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
+from redis_enterprise_services.planning.user_resource_names import UserResourceNames
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -45,7 +48,7 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
         action_uid="action_uid",
         roles_permissions="roles_permissions",
     ),
-    names=ResourceNames(settings=USER_RESOURCES),
+    resource_names=UserResourceNames(settings=USER_RESOURCES),
     create_database=IdleStep(),
     create_acl=IdleStep(),
     create_role=IdleStep(),
@@ -131,7 +134,7 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
 
 def test_a_user_requested_twice_is_refused() -> None:
     with pytest.raises(expected_exception=ValidationError):
-        DatabaseRequest(database=DATABASE, users=[USERS[0], USERS[0]])
+        DatabaseCreationRequest(database=DATABASE, users=[USERS[0], USERS[0]])
 
 
 @pytest.mark.parametrize(

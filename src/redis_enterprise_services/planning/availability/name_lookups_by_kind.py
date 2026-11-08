@@ -2,7 +2,7 @@ from redis_enterprise_services.planning.availability.name_lookup import NameLook
 from redis_enterprise_services.planning.availability.requested_name import NameKind
 
 
-class NameLookups:
+class NameLookupsByKind:
     def __init__(self, *, database: NameLookup, acl: NameLookup, role: NameLookup, user: NameLookup) -> None:
         self._by_kind: dict[NameKind, NameLookup] = {
             "database": database,

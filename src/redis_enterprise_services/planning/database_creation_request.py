@@ -28,7 +28,7 @@ class DatabaseUserRequest(BaseModel):
     )
 
 
-def unique_user_names(users: list[DatabaseUserRequest]) -> list[DatabaseUserRequest]:
+def reject_repeated_users(users: list[DatabaseUserRequest]) -> list[DatabaseUserRequest]:
     names: list[str] = [user.name for user in users]
     repeated: set[str] = {name for name in names if names.count(name) > 1}
     if repeated:
@@ -36,14 +36,14 @@ def unique_user_names(users: list[DatabaseUserRequest]) -> list[DatabaseUserRequ
     return users
 
 
-type DatabaseUsers = Annotated[list[DatabaseUserRequest], AfterValidator(unique_user_names)]
+type UniqueDatabaseUsers = Annotated[list[DatabaseUserRequest], AfterValidator(reject_repeated_users)]
 
 
-class DatabaseRequest(BaseModel):
+class DatabaseCreationRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     database: NewDatabase = Field(description="The database to create.")
-    users: DatabaseUsers = Field(
+    users: UniqueDatabaseUsers = Field(
         default_factory=list,
         description="Users to create with the database, each with its own role and ACL "
         "limited to this database. Each name once.",

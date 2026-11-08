@@ -11,9 +11,9 @@ from redis_enterprise_services.exceptions.configuration import ConfigurationErro
 from redis_enterprise_services.exceptions.planning import UnknownClusterError
 from redis_enterprise_services.planning.cluster_chooser import ClusterChooser
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.cluster_resolver import ClusterResolver
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
-from redis_enterprise_services.planning.site_target import ClusterChoice, SiteTarget
+from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.site_placement import ClusterChoice, SitePlacement
 
 
 def cluster(
@@ -29,19 +29,21 @@ def cluster(
     )
 
 
-def target(*, cluster_type: ClusterType = "generic", name: str | None = None) -> SiteTarget:
-    return SiteTarget(
+def target(*, cluster_type: ClusterType = "generic", name: str | None = None) -> SitePlacement:
+    return SitePlacement(
         network="net-a", site="dc1", environment="PROD", cluster=ClusterChoice(type=cluster_type, name=name)
     )
 
 
 class LastCandidateChooser(ClusterChooser):
-    def choose(self, *, target: SiteTarget, candidates: list[ClusterEntry]) -> ClusterEntry:
+    def choose(self, *, target: SitePlacement, candidates: list[ClusterEntry]) -> ClusterEntry:
         return candidates[-1]
 
 
-def resolver(*, clusters: list[ClusterEntry]) -> ClusterResolver:
-    return ClusterResolver(directory=ClusterDirectory(clusters=clusters), chooser=SingleCandidateChooser())
+def resolver(*, clusters: list[ClusterEntry]) -> SiteClusterResolver:
+    return SiteClusterResolver(
+        directory=ClusterDirectory(clusters=clusters), chooser=SingleCandidateChooser()
+    )
 
 
 def test_a_dedicated_cluster_is_found_by_all_four_parts() -> None:
@@ -54,7 +56,8 @@ def test_a_dedicated_cluster_is_found_by_all_four_parts() -> None:
     ]
 
     assert (
-        resolver(clusters=clusters).resolve(target=target(cluster_type="dedicated", name="orders")) == wanted
+        resolver(clusters=clusters).resolve(site_target=target(cluster_type="dedicated", name="orders"))
+        == wanted
     )
 
 
@@ -62,15 +65,15 @@ def test_a_generic_target_takes_the_only_generic_cluster_at_the_site() -> None:
     generic: ClusterEntry = cluster(name="c1")
     clusters: list[ClusterEntry] = [cluster(name="orders", cluster_type="dedicated"), generic]
 
-    assert resolver(clusters=clusters).resolve(target=target()) == generic
+    assert resolver(clusters=clusters).resolve(site_target=target()) == generic
 
 
 def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser() -> None:
     last: ClusterEntry = cluster(name="c2")
     directory: ClusterDirectory = ClusterDirectory(clusters=[cluster(name="c1"), last])
 
-    chosen: ClusterEntry = ClusterResolver(directory=directory, chooser=LastCandidateChooser()).resolve(
-        target=target()
+    chosen: ClusterEntry = SiteClusterResolver(directory=directory, chooser=LastCandidateChooser()).resolve(
+        site_target=target()
     )
 
     assert chosen == last
@@ -83,14 +86,14 @@ def test_a_generic_target_leaves_the_choice_among_its_candidates_to_the_chooser(
         pytest.param(target(cluster_type="dedicated", name="orders"), id="dedicated"),
     ],
 )
-def test_a_target_without_a_configured_cluster_is_unknown(wanted: SiteTarget) -> None:
+def test_a_target_without_a_configured_cluster_is_unknown(wanted: SitePlacement) -> None:
     with pytest.raises(expected_exception=UnknownClusterError):
-        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(target=wanted)
+        resolver(clusters=[cluster(name="c1", site="dc2")]).resolve(site_target=wanted)
 
 
 def test_several_generic_clusters_at_a_site_cannot_be_chosen_yet() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
-        resolver(clusters=[cluster(name="c1"), cluster(name="c2")]).resolve(target=target())
+        resolver(clusters=[cluster(name="c1"), cluster(name="c2")]).resolve(site_target=target())
 
 
 @pytest.mark.parametrize(

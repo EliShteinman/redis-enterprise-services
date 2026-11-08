@@ -47,7 +47,7 @@ POST /v1/databases/create
 ![קלאסטר וברירות מחדל](../diagrams/13-flow-cluster-and-defaults.drawio.svg)
 
 1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
-2. **הקלאסטר** (`ClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
+2. **הקלאסטר** (`SiteClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
    `environment`, `site`, `type` ו-`api_url`. ההתאמה היא לפי השדות, ולכן אין היררכיה קבועה בין רשת, סביבה ואתר.
    - `dedicated`: הקלאסטר עם אותם רשת, סביבה, אתר ושם.
    - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,

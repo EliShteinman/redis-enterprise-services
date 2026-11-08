@@ -27,7 +27,7 @@ class ClusterChoice(BaseModel):
         return self
 
 
-class SiteTarget(BaseModel):
+class SitePlacement(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
 
     network: str = Field(
