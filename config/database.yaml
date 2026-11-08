@@ -6,6 +6,8 @@ database:
     - name
   active_status: active
   creation_failed_status: creation-failed
+  unordered_fields:
+    - roles_permissions
   default_tags: []
   wait:
     interval_seconds: 1

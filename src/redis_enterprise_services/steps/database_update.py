@@ -32,8 +32,10 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         repository: DatabaseFieldsStore,
         readiness: DatabaseReadiness,
         credentials: ClusterCredentialsProvider,
+        unordered_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsStore = repository
+        self._unordered_fields: frozenset[str] = unordered_fields
         self._readiness: DatabaseReadiness = readiness
         self._credentials: ClusterCredentialsProvider = credentials
 
@@ -59,7 +61,9 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
         if kept is None:
             return None
         current: DatabaseFields = self._read(step_input=step_input, fields=list(step_input.values))
-        if not same_values(stored=current.values, wanted=step_input.values):
+        if not same_values(
+            stored=current.values, wanted=step_input.values, unordered_fields=self._unordered_fields
+        ):
             return None
         self._readiness.wait(target=self._target(step_input=step_input), uid=step_input.uid)
         return kept
@@ -67,7 +71,7 @@ class DatabaseUpdate(SagaStep[DatabaseUpdateInput, DatabaseFields]):
     def compensate(self, *, step_input: DatabaseUpdateInput, result: DatabaseFields) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
         current: DatabaseFields = self._read(step_input=step_input, fields=list(result.values))
-        if same_values(stored=current.values, wanted=result.values):
+        if same_values(stored=current.values, wanted=result.values, unordered_fields=self._unordered_fields):
             logger.info(msg=f"database {step_input.uid} already has its old values")
             return
         self._apply(step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id)

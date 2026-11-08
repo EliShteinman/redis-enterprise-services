@@ -47,6 +47,7 @@ def update(repository: MagicMock, readiness: MagicMock) -> DatabaseUpdate:
         repository=repository,
         readiness=readiness,
         credentials=SharedCredentialsProvider(credentials=CREDENTIALS),
+        unordered_fields=frozenset(),
     )
 
 
