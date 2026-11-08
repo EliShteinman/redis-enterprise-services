@@ -11,4 +11,4 @@ def database_creation(request: Request) -> DatabaseCreation:
 
 
 def operation_store(request: Request) -> OperationStore:
-    return cast(OperationStore, request.app.state.operations)
+    return cast(OperationStore, request.app.state.operation_store)

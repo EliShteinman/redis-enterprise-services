@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.telemetry.trace_id import trace_id_or_zeros
+from redis_enterprise_services.telemetry.trace_id import current_trace_id_or_zeros
 
 
 class FieldError(BaseModel):
@@ -23,9 +23,9 @@ class DetailedPublicError(PublicError):
 
 
 def rejection_response(*, status_code: int, error: DetailedPublicError) -> JSONResponse:
-    rejected: Operation = Operation(
-        trace_id=trace_id_or_zeros(), status=OperationStatus.REJECTED, error=error
+    rejected_operation: Operation = Operation(
+        trace_id=current_trace_id_or_zeros(), status=OperationStatus.REJECTED, error=error
     )
     return JSONResponse(
-        status_code=status_code, content=rejected.model_dump(mode="json", serialize_as_any=True)
+        status_code=status_code, content=rejected_operation.model_dump(mode="json", serialize_as_any=True)
     )

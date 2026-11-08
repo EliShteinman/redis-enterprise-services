@@ -62,7 +62,7 @@ class ClusterWiring:
         database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
             fields_reader=database_fields, settings=settings.database, cluster_api=settings.cluster_api
         )
-        action_waiter: ActionCompletionWaiter = ActionCompletionWaiter(
+        action_completion_waiter: ActionCompletionWaiter = ActionCompletionWaiter(
             action_waiter=PollingActionWaiter(
                 api=api, settings=settings.action, cluster_api=settings.cluster_api
             )
@@ -71,13 +71,19 @@ class ClusterWiring:
             repository=self.databases, completion_waiter=database_waiter, target_resolver=self.target_resolver
         )
         self.create_acl: CreateResourceStep[NewAcl] = CreateResourceStep(
-            repository=self.acls, completion_waiter=action_waiter, target_resolver=self.target_resolver
+            repository=self.acls,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
         self.create_role: CreateResourceStep[NewRole] = CreateResourceStep(
-            repository=self.roles, completion_waiter=action_waiter, target_resolver=self.target_resolver
+            repository=self.roles,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
         self.create_user: CreateResourceStep[NewUser] = CreateResourceStep(
-            repository=self.users, completion_waiter=action_waiter, target_resolver=self.target_resolver
+            repository=self.users,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
         self.update_database: UpdateDatabaseStep = UpdateDatabaseStep(
             repository=database_fields,

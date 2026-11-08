@@ -49,7 +49,7 @@ class ValidationErrorHandler:
         )
 
 
-async def routing_error_handler(request: Request, error: HTTPException) -> Response:
+async def http_exception_handler(request: Request, error: HTTPException) -> Response:
     code: str = HTTPStatus(value=error.status_code).name.lower()
     logger.info(msg=f"{code}: {request.method} {request.url.path}")
     response: Response = rejection_response(

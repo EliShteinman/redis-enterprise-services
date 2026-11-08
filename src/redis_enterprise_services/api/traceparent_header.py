@@ -10,14 +10,14 @@ TRACEPARENT_LOCATION: tuple[str, str] = ("header", "traceparent")
 
 
 def require_traceparent(request: Request, traceparent: Annotated[str | None, Header()] = None) -> None:
-    app_settings: Settings = request.app.state.settings
-    settings: ApiSettings = app_settings.api
-    if traceparent is None or settings.traceparent_pattern.fullmatch(traceparent) is None:
+    settings: Settings = request.app.state.settings
+    api_settings: ApiSettings = settings.api
+    if traceparent is None or api_settings.traceparent_pattern.fullmatch(traceparent) is None:
         raise RequestValidationError(
             errors=[
                 {
                     "loc": TRACEPARENT_LOCATION,
-                    "msg": settings.traceparent_error_message,
+                    "msg": api_settings.traceparent_error_message,
                     "type": "value_error",
                 }
             ]

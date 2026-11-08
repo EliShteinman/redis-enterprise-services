@@ -18,14 +18,14 @@ class RejectedOperation(BaseModel):
     error: DetailedPublicError = Field(description="Why the request was refused.")
 
 
-def rejected_responses(*, statuses: dict[HTTPStatus, str]) -> dict[int | str, dict[str, Any]]:
+def rejection_openapi_responses(*, statuses: dict[HTTPStatus, str]) -> dict[int | str, dict[str, Any]]:
     return {
         int(status): {"model": RejectedOperation, "description": description}
         for status, description in statuses.items()
     }
 
 
-CREATE_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
+CREATION_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
     statuses={
         HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, the traceparent header "
         "is missing or malformed, a name breaks the naming rules, or the target has no configured cluster.",
@@ -33,7 +33,7 @@ CREATE_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
         "request) or internal_error (a bug). The details are in the service log, by trace_id.",
     }
 )
-STATUS_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejected_responses(
+STATUS_ROUTE_REJECTIONS: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
     statuses={
         HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired.",
         HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed, or the trace_id "

@@ -9,14 +9,14 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import creation_route, health, status_route
+from redis_enterprise_services.api import creation_route, health_route, status_route
 from redis_enterprise_services.api.error_handlers import (
     ValidationErrorHandler,
-    routing_error_handler,
+    http_exception_handler,
     service_error_handler,
 )
 from redis_enterprise_services.api.middleware.unexpected_errors import UnexpectedErrorMiddleware
-from redis_enterprise_services.composition.services import Services
+from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -28,13 +28,13 @@ def create_app() -> FastAPI:
     settings: Settings = load_settings()
     configure_logging(settings=settings.log)
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
-    services: Services = Services(settings=settings)
+    wiring: AppWiring = AppWiring(settings=settings)
     app.state.settings = settings
-    app.state.services = services
-    app.state.database_creation = services.database_creation
-    app.state.operations = services.operations
+    app.state.wiring = wiring
+    app.state.database_creation = wiring.database_creation
+    app.state.operation_store = wiring.operation_store
     add_error_handling(app=app, settings=settings.api)
-    app.include_router(router=health.router)
+    app.include_router(router=health_route.router)
     app.include_router(router=creation_route.router)
     app.include_router(router=status_route.router)
     FastAPIInstrumentor.instrument_app(app=app)
@@ -52,22 +52,22 @@ def add_error_handling(*, app: FastAPI, settings: ApiSettings) -> None:
         handler=cast(ExceptionHandler, ValidationErrorHandler(settings=settings)),
     )
     app.add_exception_handler(
-        exc_class_or_status_code=HTTPException, handler=cast(ExceptionHandler, routing_error_handler)
+        exc_class_or_status_code=HTTPException, handler=cast(ExceptionHandler, http_exception_handler)
     )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings: Settings = app.state.settings
-    services: Services = app.state.services
+    wiring: AppWiring = app.state.wiring
     telemetry: TelemetryProviders = TelemetryProviders(settings=settings.telemetry)
     telemetry.install()
     try:
-        services.heartbeat.start()
-        services.sweep.start()
+        wiring.heartbeat.start()
+        wiring.sweep.start()
         yield
     finally:
-        await asyncio.to_thread(services.sweep.stop)
-        await asyncio.to_thread(services.runner.shutdown)
-        await asyncio.to_thread(services.heartbeat.stop)
+        await asyncio.to_thread(wiring.sweep.stop)
+        await asyncio.to_thread(wiring.task_runner.shutdown)
+        await asyncio.to_thread(wiring.heartbeat.stop)
         telemetry.shutdown()

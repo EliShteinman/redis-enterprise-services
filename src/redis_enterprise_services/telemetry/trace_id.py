@@ -16,5 +16,5 @@ def current_trace_id() -> str:
     return format(span_context.trace_id, "032x")
 
 
-def trace_id_or_zeros() -> str:
+def current_trace_id_or_zeros() -> str:
     return format(trace.get_current_span().get_span_context().trace_id, "032x")

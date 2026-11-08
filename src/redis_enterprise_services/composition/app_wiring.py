@@ -42,21 +42,21 @@ from redis_enterprise_services.timing.clock import MonotonicClock
 from redis_enterprise_services.timing.sleeper import SystemSleeper
 
 
-class Services:
+class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         silence_insecure_request_warnings()
-        client: Redis = build_redis_client(settings=settings.state)
+        redis_client: Redis = build_redis_client(settings=settings.state)
         keys: RedisKeys = RedisKeys(prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag)
-        self.operations: OperationStore = RedisOperationStore(
-            client=client,
+        self.operation_store: OperationStore = RedisOperationStore(
+            client=redis_client,
             keys=keys,
             finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
             heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
         )
-        self.runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
+        self.task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
         live_operations: LiveOperations = LiveOperations(
             heartbeat_store=RedisHeartbeatStore(
-                client=client, keys=keys, heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds
+                client=redis_client, keys=keys, heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds
             )
         )
         self.heartbeat: PeriodicThread = PeriodicThread(
@@ -64,20 +64,20 @@ class Services:
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
             task=live_operations.refresh_heartbeats,
         )
-        cluster: ClusterWiring = ClusterWiring(settings=settings)
-        resource_names: UserResourceNames = UserResourceNames(settings=settings.user_resources)
+        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings)
+        user_resource_names: UserResourceNames = UserResourceNames(settings=settings.user_resources)
         public_errors: PublicErrors = PublicErrors(
             settings=settings.operation, internal_error_message=settings.api.internal_error_message
         )
-        lock: RedisSagaLock = RedisSagaLock(
-            client=client,
+        saga_lock: RedisSagaLock = RedisSagaLock(
+            client=redis_client,
             keys=keys,
             settings=settings.state.lock,
             sleeper=SystemSleeper(),
             clock=MonotonicClock(),
         )
         saga_records: RedisSagaRecordStore = RedisSagaRecordStore(
-            client=client,
+            client=redis_client,
             keys=keys,
             finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
         )
@@ -86,7 +86,7 @@ class Services:
             interval_seconds=settings.liveness.sweep_interval_seconds,
             task=AbandonedSweep(
                 store=RedisAbandonedStore(
-                    client=client,
+                    client=redis_client,
                     keys=keys,
                     finished_operation_ttl_seconds=settings.state.finished_operation_ttl_seconds,
                 ),
@@ -105,51 +105,53 @@ class Services:
                 name_check_scope=ChosenClusterScope(),
                 name_availability=NameAvailability(
                     lookups=NameLookupsByKind(
-                        database=ListedNameLookup(lister=cluster.databases),
-                        acl=ListedNameLookup(lister=cluster.acls),
-                        role=ListedNameLookup(lister=cluster.roles),
-                        user=ListedNameLookup(lister=cluster.users),
+                        database=ListedNameLookup(lister=cluster_wiring.databases),
+                        acl=ListedNameLookup(lister=cluster_wiring.acls),
+                        role=ListedNameLookup(lister=cluster_wiring.roles),
+                        user=ListedNameLookup(lister=cluster_wiring.users),
                     ),
-                    target_resolver=cluster.target_resolver,
+                    target_resolver=cluster_wiring.target_resolver,
                 ),
-                creation_names=CreationNames(resource_names=resource_names),
+                creation_names=CreationNames(resource_names=user_resource_names),
                 planner=SingleSiteCreationPlanner(
                     user_resources=settings.user_resources,
                     cluster_fields=settings.cluster_api.fields,
-                    resource_names=resource_names,
-                    create_database=cluster.create_database,
-                    create_acl=cluster.create_acl,
-                    create_role=cluster.create_role,
-                    create_user=cluster.create_user,
-                    update_database=cluster.update_database,
+                    resource_names=user_resource_names,
+                    create_database=cluster_wiring.create_database,
+                    create_acl=cluster_wiring.create_acl,
+                    create_role=cluster_wiring.create_role,
+                    create_user=cluster_wiring.create_user,
+                    update_database=cluster_wiring.update_database,
                 ),
-                executor=saga_executor(settings=settings, lock=lock, saga_records=saga_records),
+                executor=build_saga_executor(
+                    settings=settings, saga_lock=saga_lock, saga_records=saga_records
+                ),
                 outcome_translator=CreationOutcomeTranslator(
-                    resource_names=resource_names, public_errors=public_errors
+                    resource_names=user_resource_names, public_errors=public_errors
                 ),
                 public_errors=public_errors,
                 record_reader=saga_records,
-                store=self.operations,
+                store=self.operation_store,
             ),
             acceptance=OperationAcceptance(
-                store=self.operations,
-                runner=self.runner,
+                store=self.operation_store,
+                runner=self.task_runner,
                 live_operations=live_operations,
                 public_errors=public_errors,
             ),
         )
 
 
-def saga_executor(
-    *, settings: Settings, lock: RedisSagaLock, saga_records: RedisSagaRecordStore
+def build_saga_executor(
+    *, settings: Settings, saga_lock: RedisSagaLock, saga_records: RedisSagaRecordStore
 ) -> SagaExecutor:
-    classifier: ClusterFailureClassifier = ClusterFailureClassifier(
+    failure_classifier: ClusterFailureClassifier = ClusterFailureClassifier(
         transient_error_codes=settings.cluster_api.transient_error_codes
     )
     sleeper: SystemSleeper = SystemSleeper()
     return SagaExecutor(
         record_writer=saga_records,
-        lock=lock,
-        runner=StepRunner(settings=settings.saga, classifier=classifier, sleeper=sleeper),
-        compensator=Compensator(settings=settings.saga, classifier=classifier, sleeper=sleeper),
+        lock=saga_lock,
+        runner=StepRunner(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),
+        compensator=Compensator(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),
     )
