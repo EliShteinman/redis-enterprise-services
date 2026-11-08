@@ -26,6 +26,7 @@ from redis_enterprise_services.telemetry.setup import Telemetry
 
 def create_app() -> FastAPI:
     settings: Settings = load_settings()
+    configure_logging(settings=settings.log)
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
     services: Services = Services(settings=settings)
     app.state.settings = settings
@@ -61,11 +62,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     services: Services = app.state.services
     telemetry: Telemetry = Telemetry(settings=settings.telemetry)
     telemetry.start()
-    configure_logging(settings=settings.log)
-    services.heartbeat.start()
-    services.sweep.start()
-    yield
-    await asyncio.to_thread(services.sweep.stop)
-    await asyncio.to_thread(services.runner.shutdown)
-    await asyncio.to_thread(services.heartbeat.stop)
-    telemetry.shutdown()
+    try:
+        services.heartbeat.start()
+        services.sweep.start()
+        yield
+    finally:
+        await asyncio.to_thread(services.sweep.stop)
+        await asyncio.to_thread(services.runner.shutdown)
+        await asyncio.to_thread(services.heartbeat.stop)
+        telemetry.shutdown()
