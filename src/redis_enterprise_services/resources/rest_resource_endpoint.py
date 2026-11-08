@@ -42,7 +42,7 @@ class RestResourceEndpoint(ResourceEndpoint):
         return created_resource(
             response_body=response_body,
             requested_name=creation_body.get("name"),
-            action_uid_field=self._cluster_api_settings.fields.action_uid,
+            action_uid=self._action_uid(response_body=response_body),
         )
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
@@ -77,15 +77,11 @@ class RestResourceEndpoint(ResourceEndpoint):
 
 
 def created_resource(
-    *, response_body: JsonValue, requested_name: JsonValue, action_uid_field: str
+    *, response_body: JsonValue, requested_name: JsonValue, action_uid: str | None
 ) -> CreatedResource:
     resource: NamedResource = parse_cluster_body(
         body=response_body,
         adapter=NAMED_RESOURCE_ADAPTER,
         message_prefix=f"created {requested_name}, unreadable response fields",
     )
-    return CreatedResource(
-        uid=resource.uid,
-        name=resource.name,
-        action_uid=string_field(body=response_body, name=action_uid_field),
-    )
+    return CreatedResource(uid=resource.uid, name=resource.name, action_uid=action_uid)

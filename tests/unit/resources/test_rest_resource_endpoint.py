@@ -16,10 +16,6 @@ TARGET: ClusterTarget = ClusterTarget(
     api_url="https://cluster.local:9443",
     credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
 )
-USERS: list[JsonValue] = [
-    {"uid": 1, "name": "Administrator", "role_uids": [1], "email": "admin@redis.local"},
-    {"uid": 6, "name": "app-user", "role_uids": [5], "email": ""},
-]
 
 
 def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
@@ -31,11 +27,6 @@ def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
         settings=settings.user,
         cluster_api_settings=settings.cluster_api,
     )
-
-
-@pytest.fixture
-def endpoint() -> RestResourceEndpoint:
-    return endpoint_answering(answer=USERS)
 
 
 def test_start_creation_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
