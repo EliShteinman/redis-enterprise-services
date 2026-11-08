@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class ResourceSettings(BaseModel):
+class ResourceSettings(ConfigModel):
     collection_path: str
     path: str
     list_fields: list[str]

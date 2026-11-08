@@ -1,11 +1,13 @@
-from pydantic import BaseModel, NonNegativeFloat, PositiveInt
+from pydantic import NonNegativeFloat, PositiveInt
+
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class RetrySettings(BaseModel):
+class RetrySettings(ConfigModel):
     attempts: PositiveInt
     backoff_seconds: NonNegativeFloat
 
 
-class SagaSettings(BaseModel):
+class SagaSettings(ConfigModel):
     step_retry: RetrySettings
     compensation_retry: RetrySettings

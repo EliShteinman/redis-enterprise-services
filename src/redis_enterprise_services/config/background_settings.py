@@ -1,5 +1,7 @@
-from pydantic import BaseModel, PositiveInt
+from pydantic import PositiveInt
+
+from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class BackgroundSettings(BaseModel):
+class BackgroundSettings(ConfigModel):
     max_workers: PositiveInt
