@@ -5,5 +5,5 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 
 class OperationNotFoundError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "not_found"
+    code: ClassVar[str] = "operation_not_found"
     status_code: ClassVar[int] = HTTPStatus.NOT_FOUND

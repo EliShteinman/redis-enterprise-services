@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 
 
-class Telemetry:
+class TelemetryProviders:
     def __init__(self, *, settings: TelemetrySettings) -> None:
         resource: Resource = Resource.create(attributes={SERVICE_NAME: settings.service_name})
         self._tracer_provider: TracerProvider = self._build_tracer_provider(
@@ -45,7 +45,7 @@ class Telemetry:
         )
         return MeterProvider(resource=resource, metric_readers=[reader])
 
-    def start(self) -> None:
+    def install(self) -> None:
         trace.set_tracer_provider(tracer_provider=self._tracer_provider)
         metrics.set_meter_provider(meter_provider=self._meter_provider)
         LoggingInstrumentor().instrument(

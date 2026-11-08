@@ -3,9 +3,9 @@ from typing import Protocol
 
 
 class Clock(Protocol):
-    def now(self) -> float: ...
+    def monotonic_seconds(self) -> float: ...
 
 
 class MonotonicClock(Clock):
-    def now(self) -> float:
+    def monotonic_seconds(self) -> float:
         return time.monotonic()

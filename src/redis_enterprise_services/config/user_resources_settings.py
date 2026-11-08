@@ -11,7 +11,7 @@ NAME_SEPARATOR: str = "-"
 JOINED_PLACEHOLDERS: str = f"{{database}}{NAME_SEPARATOR}{{user}}"
 
 
-def names_each_database_user(template: str) -> str:
+def reject_template_without_database_user_placeholders(template: str) -> str:
     placeholders: set[str] = {field for _, field, _, _ in Formatter().parse(template) if field is not None}
     if placeholders != NAME_PLACEHOLDERS:
         raise ValueError(f"{template} must use exactly the placeholders {sorted(NAME_PLACEHOLDERS)}")
@@ -20,10 +20,10 @@ def names_each_database_user(template: str) -> str:
     return template
 
 
-type NameTemplate = Annotated[str, AfterValidator(names_each_database_user)]
+type NameTemplate = Annotated[str, AfterValidator(reject_template_without_database_user_placeholders)]
 
 
-class DecompositionSettings(ConfigModel):
-    acl_name: NameTemplate
-    role_name: NameTemplate
+class UserResourcesSettings(ConfigModel):
+    acl_name_template: NameTemplate
+    role_name_template: NameTemplate
     role_management: RoleManagement

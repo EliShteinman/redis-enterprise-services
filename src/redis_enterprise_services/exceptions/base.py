@@ -9,9 +9,7 @@ class RedisEnterpriseServicesError(Exception):
     def __init__(self, *, message: str) -> None:
         super().__init__(message)
         self.message: str = message
+        self.cluster_error_code: str | None = None
 
-    def remote_code(self) -> str | None:
-        return None
-
-    def describe(self) -> str:
+    def coded_message(self) -> str:
         return f"{self.code}: {self.message}"

@@ -7,7 +7,7 @@ from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.config.wait_settings import WaitSettings
 
 
-def unique_tag_keys(tags: list[DatabaseTag]) -> list[DatabaseTag]:
+def reject_repeated_tag_keys(tags: list[DatabaseTag]) -> list[DatabaseTag]:
     keys: list[str] = [tag.key for tag in tags]
     repeated: set[str] = {key for key in keys if keys.count(key) > 1}
     if repeated:
@@ -17,7 +17,7 @@ def unique_tag_keys(tags: list[DatabaseTag]) -> list[DatabaseTag]:
 
 class DatabaseSettings(ResourceSettings):
     default_user_password: SecretStr = Field(min_length=1)
-    default_tags: Annotated[list[DatabaseTag], AfterValidator(unique_tag_keys)]
+    default_tags: Annotated[list[DatabaseTag], AfterValidator(reject_repeated_tag_keys)]
     active_status: str
     creation_failed_status: str
     wait: WaitSettings

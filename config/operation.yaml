@@ -1,23 +1,23 @@
 operation:
-  public_error_codes:
+  public_code_by_error_code:
     name_taken: name_taken
-    database_locked: database_locked
+    resources_locked: resources_locked
     invalid_name: invalid_name
     unknown_cluster: unknown_cluster
     cluster_unavailable: cluster_unavailable
-    unreadable_cluster_answer: cluster_unavailable
-    cluster_error: step_rejected
-    database_creation_failed: step_rejected
-    cluster_action_failed: step_rejected
+    unreadable_cluster_response: cluster_unavailable
+    cluster_rejected_request: cluster_request_failed
+    database_creation_failed: cluster_request_failed
+    cluster_action_failed: cluster_request_failed
     cluster_action_timeout: cluster_timeout
-    database_not_active: cluster_timeout
-    database_still_exists: cluster_timeout
-    ambiguous_resource: internal_error
+    database_activation_timeout: cluster_timeout
+    database_deletion_timeout: cluster_timeout
+    duplicate_resource_name: internal_error
     unrestorable_fields: internal_error
     configuration_error: internal_error
     invalid_plan: internal_error
     missing_step_result: internal_error
-  cluster_error_codes:
-    - step_rejected
+  cluster_caused_public_codes:
+    - cluster_request_failed
     - cluster_unavailable
     - cluster_timeout
