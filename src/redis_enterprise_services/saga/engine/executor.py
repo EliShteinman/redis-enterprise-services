@@ -41,14 +41,14 @@ class SagaExecutor:
         try:
             before_start()
             self._lock.confirm(keys=plan.lock_keys, owner=saga_id)
+            record: SagaRecord = SagaRecord(
+                saga_id=saga_id, steps=[StepRecord(key=step.key, kind=step.kind) for step in plan.steps]
+            )
+            self._state.save(record=record)
         except BaseException:
             logger.info(msg=f"saga {saga_id} did not start, {plan.lock_keys} released")
             self._lock.release(keys=plan.lock_keys, owner=saga_id)
             raise
-        record: SagaRecord = SagaRecord(
-            saga_id=saga_id, steps=[StepRecord(key=step.key, kind=step.kind) for step in plan.steps]
-        )
-        self._state.save(record=record)
         try:
             record.status = self._run_steps(plan=plan, record=record)
         finally:
