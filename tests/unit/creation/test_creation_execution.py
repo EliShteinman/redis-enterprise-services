@@ -134,6 +134,14 @@ def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() ->
     assert creation.run().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
+def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -> None:
+    creation: Creation = Creation()
+    creation.executor.run.side_effect = RuntimeError("bug while finishing")
+    creation.records.find.return_value = saga_record(status=SagaStatus.RUNNING)
+
+    assert creation.run().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
+
+
 @pytest.mark.parametrize(
     argnames="outcome",
     argvalues=[saga_record(status=SagaStatus.SUCCEEDED), DatabaseLockedError(message="orders is locked")],

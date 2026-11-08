@@ -13,7 +13,7 @@ from redis_enterprise_services.planning.availability.creation_names import Creat
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
 from redis_enterprise_services.planning.single_site_creation import SingleSiteCreationPlanner
-from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.state import SagaRecordReader
 from redis_enterprise_services.saga.engine.executor import SagaExecutor
 
@@ -59,27 +59,12 @@ class CreationExecution:
                 before_start=partial(self._ensure_names_free, creation=creation),
             )
         except RedisEnterpriseServicesError as error:
-            return self._refused(trace_id=trace_id, creation=creation, error=error)
+            public: ErrorInfo = self._errors.of(error=error, cluster=creation.cluster.api_url)
+            return self._from_record(trace_id=trace_id, creation=creation, missing=public)
         except Exception:
             logger.critical(msg=f"saga {trace_id} stopped on an unexpected error", exc_info=True)
-            return self._stopped_saga(trace_id=trace_id, creation=creation)
-        try:
-            return self._outcome.of(trace_id=trace_id, creation=creation, record=record)
-        except Exception:
-            logger.critical(
-                msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
-                exc_info=True,
-            )
-            return self._needs_manual_intervention(trace_id=trace_id)
-
-    def _refused(
-        self, *, trace_id: str, creation: PreparedCreation, error: RedisEnterpriseServicesError
-    ) -> Operation:
-        if self._records.find(saga_id=trace_id) is not None:
-            logger.critical(msg=f"saga {trace_id} raised {error.describe()} after it started", exc_info=error)
-            return self._stopped_saga(trace_id=trace_id, creation=creation)
-        public: ErrorInfo = self._errors.of(error=error, cluster=creation.cluster.api_url)
-        return rejected(trace_id=trace_id, error=public)
+            return self._from_record(trace_id=trace_id, creation=creation, missing=self._errors.internal())
+        return self._translated(trace_id=trace_id, creation=creation, record=record)
 
     def _ensure_names_free(self, *, creation: PreparedCreation) -> None:
         self._availability.ensure_free(
@@ -87,19 +72,24 @@ class CreationExecution:
             names=self._names.of(request=creation.request),
         )
 
-    def _stopped_saga(self, *, trace_id: str, creation: PreparedCreation) -> Operation:
+    def _from_record(self, *, trace_id: str, creation: PreparedCreation, missing: ErrorInfo) -> Operation:
         try:
             stored: SagaRecord | None = self._records.find(saga_id=trace_id)
         except Exception:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
             return self._needs_manual_intervention(trace_id=trace_id)
         if stored is None:
-            return rejected(trace_id=trace_id, error=self._errors.internal())
+            return rejected(trace_id=trace_id, error=missing)
+        logger.critical(msg=f"saga {trace_id} stopped after it started, its outcome comes from its record")
+        return self._translated(trace_id=trace_id, creation=creation, record=stored)
+
+    def _translated(self, *, trace_id: str, creation: PreparedCreation, record: SagaRecord) -> Operation:
+        settled: SagaRecord = ended(record=record)
         try:
-            return self._outcome.of(trace_id=trace_id, creation=creation, record=stored)
+            return self._outcome.of(trace_id=trace_id, creation=creation, record=settled)
         except Exception:
             logger.critical(
-                msg=f"saga {trace_id} ended {stored.status.value}, but its result cannot be read",
+                msg=f"saga {trace_id} ended {settled.status.value}, but its result cannot be read",
                 exc_info=True,
             )
             return self._needs_manual_intervention(trace_id=trace_id)
@@ -115,3 +105,12 @@ class CreationExecution:
 def rejected(*, trace_id: str, error: ErrorInfo) -> Operation:
     logger.warning(msg=f"operation {trace_id} is rejected: {error.code}: {error.message}")
     return Operation(trace_id=trace_id, status=OperationStatus.REJECTED, error=error)
+
+
+def ended(*, record: SagaRecord) -> SagaRecord:
+    if record.status is not SagaStatus.RUNNING:
+        return record
+    logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")
+    stopped: SagaRecord = record.model_copy(deep=True)
+    stopped.stop_running()
+    return stopped
