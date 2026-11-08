@@ -169,7 +169,7 @@
     "db_id": 7,
     "clusters": [
       {
-        "url": "https://cluster-a.net-a:9443",
+        "cluster_url": "https://cluster-a.net-a:9443",
         "network": "net-a", "site": "dc1", "environment": "PROD",
         "db_uid": 7,
         "users": [ {"name": "app", "user_uid": 12, "role_uid": 4, "acl_uid": 9} ]
@@ -183,7 +183,7 @@
 |---|---|
 | `database.db_id` | ה-uid של ה-DB בקלאסטר |
 | `database.clusters[]` | קלאסטר אחד |
-| `database.clusters[].url` | כתובת ה-API של הקלאסטר |
+| `database.clusters[].cluster_url` | כתובת ה-API של הקלאסטר |
 | `database.clusters[].users[]` | היוזרים, עם ה-uids של היוזר, ה-role וה-ACL |
 
 ### כישלון
@@ -196,7 +196,7 @@
   "error": {
     "code": "cluster_request_failed",
     "message": "…",
-    "cluster": "https://cluster-a.net-a:9443",
+    "cluster_url": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
   },
   "not_rolled_back": []
@@ -211,7 +211,7 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
-**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
+**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster_url` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
@@ -223,29 +223,30 @@
 
 | שדה | הערה |
 |---|---|
-| `cluster` | כתובת הקלאסטר |
-| `type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `cluster_url` | כתובת ה-API של הקלאסטר |
+| `resource_type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
-| `error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
+| `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
 ---
 
 ## 5. סטטוס: `GET /v1/operations/{trace_id}`
 
-`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 not_found`.
+`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
 **כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_operation_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
 - `rejected` עם `internal_error`, אם הריצה עוד לא התחילה (לא נוצר כלום);
+- `rolled_back` עם `internal_error`, אם הריצה כבר הסתיימה בביטול מלא ורק שמירת הפעולה אבדה;
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
-בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`resources_locked`. יוצא מן הכלל: pod שנפל מיד אחרי
-שה-Saga הסתיימה (`succeeded` או `rolled_back`) כבר שחרר את הנעילה. הפעולה מסומנת `requires_manual_intervention`,
-אבל פקודות חדשות על אותם שמות לא נחסמות.
+בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`resources_locked`. יוצא מן הכלל: Saga שהסתיימה
+(`succeeded` או `rolled_back`) בלי שה-record הסופי שלה נכתב כבר שחררה את הנעילה. הפעולה מסומנת
+`requires_manual_intervention`, אבל פקודות חדשות על אותם שמות לא נחסמות.
 
 ---
 
@@ -260,7 +261,8 @@
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
-| `not_found` | מיד, `404` | כתובת לא קיימת, או `trace_id` לא מוכר |
+| `not_found` | מיד, `404` | כתובת לא קיימת |
+| `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד |
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה (`message` קבוע: `internal error`), או שגיאה פנימית בלי קוד ציבורי משלה (התיאור שלה ב-`message`). הפרטים בלוג לפי `trace_id` |

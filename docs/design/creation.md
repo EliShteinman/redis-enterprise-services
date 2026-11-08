@@ -38,7 +38,7 @@ POST /v1/databases/create
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
-**נקודת ההרכבה:** `composition/` (`services.py`, `cluster_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
+**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 ---
 
