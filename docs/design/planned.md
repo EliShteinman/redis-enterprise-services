@@ -1,8 +1,8 @@
 # מתוכנן: מה עוד לא בנוי
 
 כל מה שבמסמך הזה **לא בנוי**. זה העיצוב שהקוד הקיים בנוי לאפשר: המנוע גנרי (pivot וצעדים שניתנים לחזרה כבר נתמכים),
-והמשאבים, הצעדים והחוזה עם שירות הקצה משותפים. מה שבנוי: `creation.md` ו-`saga-core.md`. העובדות על ה-REST API
-של הקלאסטר שהעיצוב נשען עליהן: `cluster-api.md`.
+והמשאבים, הצעדים והחוזה עם שירות הקצה משותפים. מה שבנוי: `creation.md` ו-`saga-engine-and-state.md`. העובדות על ה-REST API
+של הקלאסטר שהעיצוב נשען עליהן: `redis-rest-api-behaviour.md`.
 
 | נושא | מה חסר |
 |---|---|
@@ -149,8 +149,8 @@
 
 ## 8. פרטי גישה לכל קלאסטר
 
-היום `SharedCredentialsProvider` נותן את אותם פרטי admin לכל קלאסטר. ספק לכל קלאסטר יחליף אותו מאחורי
-`ClusterCredentialsProvider`, בלי שינוי בצעדים.
+היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin לכל קלאסטר. ספק לכל קלאסטר יחליף אותו מאחורי
+`ClusterTargetResolver`, בלי שינוי בצעדים.
 
 ---
 
@@ -171,4 +171,4 @@
 |---|---|
 | כשתהיה תשובת streaming | להחליף את `UnexpectedErrorMiddleware` (על `BaseHTTPMiddleware`) ב-middleware של ASGI טהור |
 | כשתופעל שליחת telemetry | להוציא את `/health` מה-traces וה-metrics |
-| שחרור ידני של Saga | כלי (endpoint או פקודה) במקום `redis-cli` |
+| טיפול ידני ב-Saga | כלי (endpoint או פקודה) במקום `redis-cli` |

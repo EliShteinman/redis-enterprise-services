@@ -1,6 +1,6 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.config.resource_settings import RoleSettings
+from redis_enterprise_services.config.role_settings import RoleSettings
 from redis_enterprise_services.resources.endpoint_repository import EndpointRepository
 from redis_enterprise_services.resources.resource_calls import ResourceCalls
 from redis_enterprise_services.roles.body import RoleBody, RoleResource

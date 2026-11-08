@@ -3,12 +3,12 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.caller import ClusterCaller
-from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
+from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.connection.models import ClusterCredentials
 from redis_enterprise_services.databases.fields_repository import DatabaseFieldsRepository
-from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
+from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -18,12 +18,12 @@ TARGET: ClusterTarget = ClusterTarget(
 
 
 def test_an_answer_without_a_cluster_state_id_is_unreadable() -> None:
-    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
-    api.send.return_value = ClusterAnswer(body={"memory_size": 100}, cluster_state_id=None)
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.return_value = SuccessfulClusterResponse(body={"memory_size": 100}, cluster_state_id=None)
     settings: Settings = load_settings()
     repository: DatabaseFieldsRepository = DatabaseFieldsRepository(
-        api=api, settings=settings.database, cluster=settings.cluster
+        api=api, settings=settings.database, cluster_api=settings.cluster_api
     )
 
-    with pytest.raises(expected_exception=UnreadableAnswerError):
+    with pytest.raises(expected_exception=UnreadableClusterResponseError):
         repository.get_fields(target=TARGET, uid=1, fields=["memory_size"])

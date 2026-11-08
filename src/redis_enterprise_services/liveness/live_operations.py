@@ -8,30 +8,30 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class LiveOperations:
-    def __init__(self, *, store: HeartbeatStore) -> None:
-        self._store: HeartbeatStore = store
+    def __init__(self, *, heartbeat_store: HeartbeatStore) -> None:
+        self._heartbeat_store: HeartbeatStore = heartbeat_store
         self._lock: Lock = Lock()
-        self._trace_ids: set[str] = set()
+        self._tracked_trace_ids: set[str] = set()
 
     def track(self, *, trace_id: str) -> None:
         with self._lock:
-            self._trace_ids.add(trace_id)
+            self._tracked_trace_ids.add(trace_id)
 
-    def release(self, *, trace_id: str) -> None:
+    def untrack_and_delete_heartbeat(self, *, trace_id: str) -> None:
         with self._lock:
-            self._trace_ids.discard(trace_id)
-            self._store.stop(trace_id=trace_id)
+            self._tracked_trace_ids.discard(trace_id)
+            self._heartbeat_store.delete(trace_id=trace_id)
 
-    def released_after(self, *, trace_id: str, task: Callable[[], object]) -> Callable[[], object]:
-        def run_then_release() -> object:
+    def untracking_when_done(self, *, trace_id: str, task: Callable[[], object]) -> Callable[[], object]:
+        def run_then_untrack() -> object:
             try:
                 return task()
             finally:
-                self.release(trace_id=trace_id)
+                self.untrack_and_delete_heartbeat(trace_id=trace_id)
 
-        return run_then_release
+        return run_then_untrack
 
-    def beat_all(self) -> None:
+    def refresh_heartbeats(self) -> None:
         with self._lock:
-            if self._trace_ids:
-                self._store.beat(trace_ids=sorted(self._trace_ids))
+            if self._tracked_trace_ids:
+                self._heartbeat_store.refresh(trace_ids=sorted(self._tracked_trace_ids))

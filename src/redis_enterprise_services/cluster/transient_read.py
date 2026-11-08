@@ -1,14 +1,14 @@
 from http import HTTPStatus
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.cluster import ClusterRequestError
-from redis_enterprise_services.exceptions.edge import OutcomeUnknownError, RequestNotSentError
+from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
+from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRequestNotSentError
 
 
 def worth_reading_again(*, error: RedisEnterpriseServicesError, transient_codes: frozenset[str]) -> bool:
-    if isinstance(error, (RequestNotSentError, OutcomeUnknownError)):
+    if isinstance(error, (EdgeRequestNotSentError, EdgeOutcomeUnknownError)):
         return True
-    if isinstance(error, ClusterRequestError):
+    if isinstance(error, ClusterRejectedRequestError):
         server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-        return server_failed or error.error_code in transient_codes
+        return server_failed or error.cluster_error_code in transient_codes
     return False

@@ -2,13 +2,14 @@ import logging
 
 from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
 
-from redis_enterprise_services.cluster.caller import ClusterCaller
+from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.fields_query import fields_query
-from redis_enterprise_services.cluster.json_body import failed_fields, string_field
+from redis_enterprise_services.cluster.invalid_field_paths import invalid_field_paths
+from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.cluster_settings import ClusterSettings
+from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
-from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
+from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 from redis_enterprise_services.resources.resource_calls import ResourceCalls
 
@@ -20,10 +21,12 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class ResourceEndpoint(ResourceCalls):
-    def __init__(self, *, api: ClusterCaller, settings: ResourceSettings, cluster: ClusterSettings) -> None:
-        self._api: ClusterCaller = api
+    def __init__(
+        self, *, api: ClusterApiCaller, settings: ResourceSettings, cluster_api: ClusterApiSettings
+    ) -> None:
+        self._api: ClusterApiCaller = api
         self._settings: ResourceSettings = settings
-        self._cluster: ClusterSettings = cluster
+        self._cluster_api: ClusterApiSettings = cluster_api
 
     def create(self, *, target: ClusterTarget, body: dict[str, JsonValue]) -> CreatedResource:
         logger.info(msg=f"creating {self._settings.collection_path} {body.get('name')}")
@@ -33,8 +36,9 @@ class ResourceEndpoint(ResourceCalls):
         try:
             resource: NamedResource = NamedResource.model_validate(obj=answer)
         except ValidationError as error:
-            raise UnreadableAnswerError(
-                message=f"created {body.get('name')}, unreadable answer fields {failed_fields(error=error)}"
+            raise UnreadableClusterResponseError(
+                message=f"created {body.get('name')}, "
+                f"unreadable answer fields {invalid_field_paths(error=error)}"
             ) from error
         return CreatedResource(uid=resource.uid, name=resource.name, action_uid=self._action_uid(body=answer))
 
@@ -55,14 +59,15 @@ class ResourceEndpoint(ResourceCalls):
         try:
             return NAMED_RESOURCE_LIST.validate_python(answer)
         except ValidationError as error:
-            raise UnreadableAnswerError(
-                message=f"cannot read {self._settings.collection_path}, fields {failed_fields(error=error)}"
+            raise UnreadableClusterResponseError(
+                message=f"cannot read {self._settings.collection_path}, "
+                f"fields {invalid_field_paths(error=error)}"
             ) from error
 
     def _list_query(self) -> str | None:
         if not self._settings.list_fields:
             return None
-        return fields_query(settings=self._cluster.fields_query, fields=self._settings.list_fields)
+        return fields_query(settings=self._cluster_api.fields_query, fields=self._settings.list_fields)
 
     def _action_uid(self, *, body: JsonValue) -> str | None:
-        return string_field(body=body, name=self._cluster.fields.action_uid)
+        return string_field(body=body, name=self._cluster_api.fields.action_uid)

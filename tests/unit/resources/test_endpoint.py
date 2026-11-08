@@ -3,11 +3,11 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.caller import ClusterCaller
-from redis_enterprise_services.cluster.models import ClusterAnswer, ClusterTarget
+from redis_enterprise_services.cluster.api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.connection.models import ClusterCredentials
-from redis_enterprise_services.exceptions.cluster import UnreadableAnswerError
+from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 
@@ -23,10 +23,10 @@ USERS: list[JsonValue] = [
 
 
 def endpoint_answering(*, answer: JsonValue) -> ResourceEndpoint:
-    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
-    api.send.return_value = ClusterAnswer(body=answer, cluster_state_id=None)
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.return_value = SuccessfulClusterResponse(body=answer, cluster_state_id=None)
     settings: Settings = load_settings()
-    return ResourceEndpoint(api=api, settings=settings.user, cluster=settings.cluster)
+    return ResourceEndpoint(api=api, settings=settings.user, cluster_api=settings.cluster_api)
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ def test_create_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
 def test_create_reports_an_unreadable_answer_as_its_own_error() -> None:
     endpoint: ResourceEndpoint = endpoint_answering(answer={"name": "app-user"})
 
-    with pytest.raises(expected_exception=UnreadableAnswerError):
+    with pytest.raises(expected_exception=UnreadableClusterResponseError):
         endpoint.create(target=TARGET, body={"name": "app-user"})
 
 
@@ -65,7 +65,7 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
         answer={"name": "db1", "authentication_redis_pass": "s3cret"}
     )
 
-    with pytest.raises(expected_exception=UnreadableAnswerError) as unreadable:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError) as unreadable:
         endpoint.create(target=TARGET, body={"name": "db1"})
 
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
@@ -76,18 +76,18 @@ def test_find_by_name_reports_an_unreadable_list_without_its_values() -> None:
         answer=[{"name": "db1", "authentication_redis_pass": "s3cret"}]
     )
 
-    with pytest.raises(expected_exception=UnreadableAnswerError) as unreadable:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError) as unreadable:
         endpoint.find_by_name(target=TARGET, name="db1")
 
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
 
 
 def test_the_database_list_asks_only_for_the_configured_fields() -> None:
-    api: MagicMock = create_autospec(spec=ClusterCaller, instance=True)
-    api.send.return_value = ClusterAnswer(body=[], cluster_state_id=None)
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.return_value = SuccessfulClusterResponse(body=[], cluster_state_id=None)
     settings: Settings = load_settings()
 
-    ResourceEndpoint(api=api, settings=settings.database, cluster=settings.cluster).find_by_name(
+    ResourceEndpoint(api=api, settings=settings.database, cluster_api=settings.cluster_api).find_by_name(
         target=TARGET, name="orders"
     )
 
