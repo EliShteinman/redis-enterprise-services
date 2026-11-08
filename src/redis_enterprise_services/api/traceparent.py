@@ -14,5 +14,11 @@ def require_traceparent(request: Request, traceparent: Annotated[str | None, Hea
     settings: ApiSettings = app_settings.api
     if traceparent is None or settings.traceparent_pattern.fullmatch(traceparent) is None:
         raise RequestValidationError(
-            errors=[{"loc": TRACEPARENT_LOCATION, "msg": settings.traceparent_message, "type": "value_error"}]
+            errors=[
+                {
+                    "loc": TRACEPARENT_LOCATION,
+                    "msg": settings.traceparent_error_message,
+                    "type": "value_error",
+                }
+            ]
         )

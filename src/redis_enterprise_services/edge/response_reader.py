@@ -8,10 +8,10 @@ from redis_enterprise_services.config.edge_settings import EdgeErrorCodeSettings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.edge import (
+    EdgeOutcomeUnknownError,
+    EdgeRequestNotSentError,
+    InvalidClusterResponseError,
     InvalidEdgeRequestError,
-    OutcomeUnknownError,
-    RequestNotSentError,
-    ResponseRejectedError,
 )
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -33,37 +33,37 @@ class EdgeResponseReader:
         self._settings: EdgeSettings = settings
 
     def read(self, *, response: requests.Response) -> ClusterResponse:
-        edge_error: str | None = response.headers.get(self._settings.headers.error)
-        if edge_error is not None:
-            raise self._edge_error(code=edge_error, response=response)
+        edge_error_code: str | None = response.headers.get(self._settings.headers.edge_error_code)
+        if edge_error_code is not None:
+            raise self._edge_error_for(code=edge_error_code, response=response)
         return ClusterResponse(
             status_code=response.status_code,
             headers=dict(response.headers),
-            body=self._body(response=response),
+            body=self._decoded_body(response=response),
             cluster_state_id=optional_int_header(
                 headers=response.headers, name=self._settings.headers.cluster_state_id
             ),
         )
 
-    def _edge_error(self, *, code: str, response: requests.Response) -> RedisEnterpriseServicesError:
+    def _edge_error_for(self, *, code: str, response: requests.Response) -> RedisEnterpriseServicesError:
         codes: EdgeErrorCodeSettings = self._settings.error_codes
         message: str = f"relay answered {response.status_code} {code}: {response.text}"
         logger.warning(msg=message)
         if code == codes.response_rejected:
-            return ResponseRejectedError(
+            return InvalidClusterResponseError(
                 message=message,
                 cluster_status_code=optional_int_header(
-                    headers=response.headers, name=self._settings.headers.cluster_status
+                    headers=response.headers, name=self._settings.headers.cluster_status_code
                 ),
             )
-        by_code: dict[str, type[RedisEnterpriseServicesError]] = {
+        error_type_by_code: dict[str, type[RedisEnterpriseServicesError]] = {
             codes.invalid_request: InvalidEdgeRequestError,
-            codes.connection_failed: RequestNotSentError,
+            codes.connection_failed: EdgeRequestNotSentError,
         }
-        return by_code.get(code, OutcomeUnknownError)(message=message)
+        return error_type_by_code.get(code, EdgeOutcomeUnknownError)(message=message)
 
     @staticmethod
-    def _body(*, response: requests.Response) -> JsonValue | None:
+    def _decoded_body(*, response: requests.Response) -> JsonValue | None:
         if not response.content:
             return None
         try:

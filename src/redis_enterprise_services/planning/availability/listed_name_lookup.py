@@ -1,5 +1,5 @@
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.resources.named_lister import NamedResourceLister
+from redis_enterprise_services.resources.named_resource_lister import NamedResourceLister
 
 
 class ListedNameLookup:

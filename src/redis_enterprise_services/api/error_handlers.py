@@ -5,7 +5,11 @@ from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
-from redis_enterprise_services.api.error_response import ErrorDetail, FieldError, error_response
+from redis_enterprise_services.api.rejection_response import (
+    DetailedPublicError,
+    FieldError,
+    rejection_response,
+)
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
@@ -19,11 +23,11 @@ def field_path(*, location: tuple[int | str, ...]) -> str:
     return FIELD_PATH_SEPARATOR.join(str(part) for part in location)
 
 
-async def project_error_handler(request: Request, error: RedisEnterpriseServicesError) -> Response:
+async def service_error_handler(request: Request, error: RedisEnterpriseServicesError) -> Response:
     level: int = logging.ERROR if error.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR else logging.WARNING
     logger.log(level=level, msg=f"{error.code}: {error.message}")
-    return error_response(
-        status_code=error.status_code, error=ErrorDetail(code=error.code, message=error.message)
+    return rejection_response(
+        status_code=error.status_code, error=DetailedPublicError(code=error.code, message=error.message)
     )
 
 
@@ -37,19 +41,19 @@ class ValidationErrorHandler:
             for detail in error.errors()
         ]
         logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.field for detail in details]}")
-        return error_response(
+        return rejection_response(
             status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
-            error=ErrorDetail(
+            error=DetailedPublicError(
                 code=VALIDATION_ERROR_CODE, message=self._settings.validation_error_message, details=details
             ),
         )
 
 
-async def http_error_handler(request: Request, error: HTTPException) -> Response:
+async def routing_error_handler(request: Request, error: HTTPException) -> Response:
     code: str = HTTPStatus(value=error.status_code).name.lower()
     logger.info(msg=f"{code}: {request.method} {request.url.path}")
-    response: Response = error_response(
-        status_code=error.status_code, error=ErrorDetail(code=code, message=str(error.detail))
+    response: Response = rejection_response(
+        status_code=error.status_code, error=DetailedPublicError(code=code, message=str(error.detail))
     )
     response.headers.update(error.headers or {})
     return response

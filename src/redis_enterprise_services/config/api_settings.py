@@ -7,6 +7,6 @@ class ApiSettings(ConfigModel):
     validation_error_message: str
     internal_error_message: str
     traceparent_pattern: re.Pattern[str]
-    traceparent_message: str
+    traceparent_error_message: str
     trace_id_pattern: re.Pattern[str]
-    trace_id_message: str
+    trace_id_error_message: str

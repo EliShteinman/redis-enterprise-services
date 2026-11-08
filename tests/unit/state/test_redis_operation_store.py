@@ -9,7 +9,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 
 
-class Scripts:
+class StoreWithMockedScripts:
     def __init__(self) -> None:
         self.open: MagicMock = MagicMock()
         self.finished: MagicMock = MagicMock()
@@ -18,7 +18,7 @@ class Scripts:
         self.store: RedisOperationStore = RedisOperationStore(
             client=client,
             keys=RedisKeys(prefix="res:", hash_tag="state"),
-            finished_ttl_seconds=600,
+            finished_operation_ttl_seconds=600,
             heartbeat_ttl_seconds=60,
         )
 
@@ -28,7 +28,7 @@ class Scripts:
     argvalues=[OperationStatus.SUCCEEDED, OperationStatus.REJECTED, OperationStatus.ROLLED_BACK],
 )
 def test_a_finished_operation_is_stored_with_the_expiry(status: OperationStatus) -> None:
-    scripts: Scripts = Scripts()
+    scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
     scripts.store.save(operation=Operation(trace_id="trace-1", status=status))
 
@@ -39,7 +39,7 @@ def test_a_finished_operation_is_stored_with_the_expiry(status: OperationStatus)
     argnames="status", argvalues=[OperationStatus.RUNNING, OperationStatus.REQUIRES_MANUAL_INTERVENTION]
 )
 def test_an_open_operation_stays_open_without_expiry(status: OperationStatus) -> None:
-    scripts: Scripts = Scripts()
+    scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
     scripts.store.save(operation=Operation(trace_id="trace-1", status=status))
 

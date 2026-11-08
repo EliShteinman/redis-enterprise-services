@@ -1,10 +1,14 @@
 import requests
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError
 
-from redis_enterprise_services.exceptions.edge import EdgeError, OutcomeUnknownError, RequestNotSentError
+from redis_enterprise_services.exceptions.edge import (
+    EdgeError,
+    EdgeOutcomeUnknownError,
+    EdgeRequestNotSentError,
+)
 
 
-def was_not_sent(*, error: requests.RequestException) -> bool:
+def never_reached_relay(*, error: requests.RequestException) -> bool:
     return any(
         isinstance(argument, MaxRetryError)
         and isinstance(argument.reason, (ConnectTimeoutError, NewConnectionError))
@@ -12,7 +16,7 @@ def was_not_sent(*, error: requests.RequestException) -> bool:
     )
 
 
-def transport_error(*, network: str, error: requests.RequestException) -> EdgeError:
-    if was_not_sent(error=error):
-        return RequestNotSentError(message=f"the relay of {network} is unreachable: {error}")
-    return OutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")
+def edge_error_for_transport_failure(*, network: str, error: requests.RequestException) -> EdgeError:
+    if never_reached_relay(error=error):
+        return EdgeRequestNotSentError(message=f"the relay of {network} is unreachable: {error}")
+    return EdgeOutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")

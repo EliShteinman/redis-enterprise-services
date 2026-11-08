@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from redis_enterprise_services.config.clusters_settings import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ClusterEntry
 
 
 class NameCheckScope(Protocol):
-    def clusters(self, *, chosen: ClusterEntry) -> list[ClusterEntry]: ...
+    def clusters_to_check(self, *, chosen: ClusterEntry) -> list[ClusterEntry]: ...

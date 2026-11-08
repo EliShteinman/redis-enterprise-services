@@ -11,23 +11,24 @@ from pydantic_settings import (
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.background_settings import BackgroundSettings
-from redis_enterprise_services.config.cluster_access_settings import ClusterAccessSettings
-from redis_enterprise_services.config.cluster_settings import ClusterSettings
-from redis_enterprise_services.config.clusters_settings import ClusterList
+from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.cluster_inventory import ClusterList
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
-from redis_enterprise_services.config.decomposition_settings import DecompositionSettings
+from redis_enterprise_services.config.edge_network_coverage import networks_missing_from_edge
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.liveness_settings import LivenessSettings
-from redis_enterprise_services.config.log_settings import LoggingSettings
+from redis_enterprise_services.config.log_settings import LogSettings
 from redis_enterprise_services.config.naming_settings import NamingSettings
-from redis_enterprise_services.config.network_coverage import networks_without_relay
 from redis_enterprise_services.config.operation_settings import OperationSettings
-from redis_enterprise_services.config.resource_settings import ResourceSettings, RoleSettings
+from redis_enterprise_services.config.resource_settings import ResourceSettings
+from redis_enterprise_services.config.role_settings import RoleSettings
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.config.server_settings import ServerSettings
 from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
+from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 
 YAML_FILES: tuple[str, ...] = (
     "config/log.yaml",
@@ -36,7 +37,7 @@ YAML_FILES: tuple[str, ...] = (
     "config/edge.yaml",
     "config/action.yaml",
     "config/acl.yaml",
-    "config/cluster.yaml",
+    "config/cluster_api.yaml",
     "config/database.yaml",
     "config/saga.yaml",
     "config/state.yaml",
@@ -45,7 +46,7 @@ YAML_FILES: tuple[str, ...] = (
     "config/server.yaml",
     "config/clusters.yaml",
     "config/database_defaults.yaml",
-    "config/decomposition.yaml",
+    "config/user_resources.yaml",
     "config/naming.yaml",
     "config/operation.yaml",
     "config/background.yaml",
@@ -63,13 +64,13 @@ class Settings(BaseSettings):
         extra="forbid",
     )
 
-    log: LoggingSettings
+    log: LogSettings
     api: ApiSettings
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings
     acl: ResourceSettings
-    cluster: ClusterSettings
+    cluster_api: ClusterApiSettings
     database: DatabaseSettings
     saga: SagaSettings
     state: StateSettings
@@ -78,16 +79,16 @@ class Settings(BaseSettings):
     server: ServerSettings
     clusters: ClusterList
     database_defaults: DatabaseDefaultsSettings
-    decomposition: DecompositionSettings
+    user_resources: UserResourcesSettings
     naming: NamingSettings
     operation: OperationSettings
     background: BackgroundSettings
     liveness: LivenessSettings
-    cluster_access: ClusterAccessSettings
+    cluster_credentials: ClusterCredentialsSettings
 
     @model_validator(mode="after")
-    def every_cluster_network_has_a_relay(self) -> Self:
-        missing: list[str] = networks_without_relay(clusters=self.clusters, networks=self.edge.networks)
+    def reject_cluster_networks_without_edge(self) -> Self:
+        missing: list[str] = networks_missing_from_edge(clusters=self.clusters, networks=self.edge.networks)
         if missing:
             raise ValueError(f"networks in clusters with no entry in edge.networks: {missing}")
         return self

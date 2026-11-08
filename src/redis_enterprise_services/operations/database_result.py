@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.config.clusters_settings import Environment
+from redis_enterprise_services.config.cluster_inventory import Environment
 
 
 class DatabaseUserResult(BaseModel):
@@ -12,8 +12,8 @@ class DatabaseUserResult(BaseModel):
     acl_uid: int = Field(description="The uid of the user's ACL on this cluster.", examples=[9])
 
 
-class ClusterDatabase(BaseModel):
-    url: str = Field(
+class DatabaseClusterResult(BaseModel):
+    cluster_url: str = Field(
         description="The API address of the cluster.",
         examples=["https://cluster-a.net-a:9443"],
     )
@@ -34,4 +34,4 @@ class DatabaseResult(BaseModel):
         "which is not supported yet.",
         examples=[7],
     )
-    clusters: list[ClusterDatabase] = Field(description="One entry per site. One site for now.")
+    clusters: list[DatabaseClusterResult] = Field(description="One entry per site. One site for now.")

@@ -4,14 +4,14 @@ from typing import Protocol
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 
-class Failure(StrEnum):
+class FailureCategory(StrEnum):
     TRANSIENT = "transient"
-    FAILED = "failed"
+    REJECTED = "rejected"
     UNKNOWN = "unknown"
-    MANUAL = "manual"
+    REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
 class FailureClassifier(Protocol):
-    def classify(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
+    def classify_step_error(self, *, error: RedisEnterpriseServicesError) -> FailureCategory: ...
 
-    def classify_lookup(self, *, error: RedisEnterpriseServicesError) -> Failure: ...
+    def classify_find_outcome_error(self, *, error: RedisEnterpriseServicesError) -> FailureCategory: ...

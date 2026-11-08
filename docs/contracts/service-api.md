@@ -57,10 +57,10 @@
       {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
     ]
   },
-  "body": {
+  "spec": {
     "database": {"name": "orders", "memory_size": 1073741824},
     "users": [
-      {"name": "app", "password": "…", "acl": "+@all ~orders:*"}
+      {"name": "app", "password": "…", "acl_rule": "+@all ~orders:*"}
     ]
   }
 }
@@ -84,7 +84,7 @@
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
-### `body.database`
+### `spec.database`
 
 | שדה | סוג | חובה |
 |---|---|---|
@@ -119,21 +119,21 @@
 | `proxy_policy` | `all-master-shards` |
 
 השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
-`rolled_back` עם `step_rejected`.
+`rolled_back` עם `cluster_request_failed`.
 
-### `body.users[]`
+### `spec.users[]`
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
 | `users` | list | | ברירת מחדל `[]`. כל שם פעם אחת |
 | `users[].name` | str | ✅ | בלי `-` |
 | `users[].password` | str | ✅ | לא ריק |
-| `users[].acl` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
+| `users[].acl_rule` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
 
 ### מה נוצר בקלאסטר
 
 1. ה-DB, עם הסיסמה של `default_user` מהשירות.
-2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
+2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl_rule` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
 3. קישור כל role ל-ACL שלו על ה-DB.
 
 לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
@@ -149,7 +149,7 @@
 
 ## 4. התשובה
 
-![מודלי ה-API](../diagrams/19-api-models.drawio.svg)
+![מודלי ה-API](../diagrams/19-api-models-create.drawio.svg)
 
 ### קבלה (`202`)
 
@@ -169,7 +169,7 @@
     "db_id": 7,
     "clusters": [
       {
-        "url": "https://cluster-a.net-a:9443",
+        "cluster_url": "https://cluster-a.net-a:9443",
         "network": "net-a", "site": "dc1", "environment": "PROD",
         "db_uid": 7,
         "users": [ {"name": "app", "user_uid": 12, "role_uid": 4, "acl_uid": 9} ]
@@ -183,7 +183,7 @@
 |---|---|
 | `database.db_id` | ה-uid של ה-DB בקלאסטר |
 | `database.clusters[]` | קלאסטר אחד |
-| `database.clusters[].url` | כתובת ה-API של הקלאסטר |
+| `database.clusters[].cluster_url` | כתובת ה-API של הקלאסטר |
 | `database.clusters[].users[]` | היוזרים, עם ה-uids של היוזר, ה-role וה-ACL |
 
 ### כישלון
@@ -194,9 +194,9 @@
   "status": "rolled_back",
   "database": null,
   "error": {
-    "code": "step_rejected",
+    "code": "cluster_request_failed",
     "message": "…",
-    "cluster": "https://cluster-a.net-a:9443",
+    "cluster_url": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
   },
   "not_rolled_back": []
@@ -211,7 +211,7 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
-**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster` ו-`cluster_error_code` מופיעים רק ב-`step_rejected`,
+**`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster_url` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
@@ -223,19 +223,19 @@
 
 | שדה | הערה |
 |---|---|
-| `cluster` | כתובת הקלאסטר |
-| `type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `cluster_url` | כתובת ה-API של הקלאסטר |
+| `resource_type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
-| `error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
+| `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
 ---
 
 ## 5. סטטוס: `GET /v1/operations/{trace_id}`
 
-`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 not_found`.
+`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
-**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
+**כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_operation_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
 
 **קריסה:** אם ה-pod שהריץ פעולה נפל, pod אחר מזהה את זה תוך כדקה או שתיים ומסמן אותה:
@@ -244,7 +244,7 @@
 - אחרת `requires_manual_intervention` עם `internal_error`, גם אם בפועל עוד לא נוצר כלום.
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
-בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`database_locked`. יוצא מן הכלל: Saga שהסתיימה
+בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`resources_locked`. יוצא מן הכלל: Saga שהסתיימה
 (`succeeded` או `rolled_back`) בלי שה-record הסופי שלה נכתב כבר שחררה את הנעילה. הפעולה מסומנת
 `requires_manual_intervention`, אבל פקודות חדשות על אותם שמות לא נחסמות.
 
@@ -254,20 +254,21 @@
 
 תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
 ב-`validation_error` יש גם `error.details`: רשימה של `{field, message}` לכל שדה שלא עומד בחוזה, למשל
-`body.body.database.memory_size` או `header.traceparent`.
+`body.spec.database.memory_size` או `header.traceparent`.
 
 | `code` | איפה | מתי |
 |---|---|---|
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
-| `not_found` | מיד, `404` | כתובת לא קיימת, או `trace_id` לא מוכר |
+| `not_found` | מיד, `404` | כתובת לא קיימת |
+| `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד |
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה (`message` קבוע: `internal error`), או שגיאה פנימית בלי קוד ציבורי משלה (התיאור שלה ב-`message`). הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
-| `database_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `step_rejected` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
+| `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
+| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 

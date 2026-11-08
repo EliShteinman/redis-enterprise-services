@@ -9,12 +9,12 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 def current_trace_id() -> str:
-    context: SpanContext = trace.get_current_span().get_span_context()
-    if not context.is_valid:
+    span_context: SpanContext = trace.get_current_span().get_span_context()
+    if not span_context.is_valid:
         logger.critical(msg="no active trace, so this request has no trace id to identify it")
         raise NoActiveTraceError(message="no active trace")
-    return format(context.trace_id, "032x")
+    return format(span_context.trace_id, "032x")
 
 
-def reply_trace_id() -> str:
+def trace_id_or_zeros() -> str:
     return format(trace.get_current_span().get_span_context().trace_id, "032x")
