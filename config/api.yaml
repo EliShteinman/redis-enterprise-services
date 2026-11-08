@@ -4,4 +4,4 @@ api:
   traceparent_pattern: "^(?!ff)[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$"
   traceparent_message: the traceparent header is missing or not in the W3C format
   trace_id_pattern: "^(?!0{32})[0-9a-f]{32}$"
-  trace_id_message: the trace_id is not 32 lowercase hex characters
+  trace_id_message: the trace_id is not 32 lowercase hex characters, or it is all zeros
