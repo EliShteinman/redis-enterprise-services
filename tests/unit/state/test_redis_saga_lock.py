@@ -29,13 +29,13 @@ class AdvancingSleeper(Sleeper):
         self._clock.time += seconds
 
 
-def lock_with(*, acquire_all: MagicMock) -> RedisSagaLock:
+def lock_with(*, acquire_all_or_return_holder: MagicMock) -> RedisSagaLock:
     client: MagicMock = create_autospec(spec=Redis, instance=True)
-    client.register_script.side_effect = [acquire_all, MagicMock()]
+    client.register_script.side_effect = [acquire_all_or_return_holder, MagicMock()]
     clock: ManualClock = ManualClock()
     return RedisSagaLock(
         client=client,
-        keys=RedisKeys(prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
         settings=SETTINGS,
         sleeper=AdvancingSleeper(clock=clock),
         clock=clock,
@@ -43,15 +43,17 @@ def lock_with(*, acquire_all: MagicMock) -> RedisSagaLock:
 
 
 def test_a_lock_released_while_waiting_is_taken() -> None:
-    acquire_all: MagicMock = MagicMock(side_effect=["other-saga", None])
+    acquire_all_or_return_holder: MagicMock = MagicMock(side_effect=["other-saga", None])
 
-    lock_with(acquire_all=acquire_all).acquire(keys=["cluster1/db1"], owner="trace-1")
+    lock_with(acquire_all_or_return_holder=acquire_all_or_return_holder).acquire(
+        keys=["cluster1/db1"], owner="trace-1"
+    )
 
-    assert acquire_all.call_count == 2
+    assert acquire_all_or_return_holder.call_count == 2
 
 
 def test_a_lock_still_held_after_the_wait_timeout_is_refused() -> None:
     with pytest.raises(expected_exception=ResourcesLockedError):
-        lock_with(acquire_all=MagicMock(side_effect=["other-saga"] * 10)).acquire(
+        lock_with(acquire_all_or_return_holder=MagicMock(side_effect=["other-saga"] * 10)).acquire(
             keys=["cluster1/db1"], owner="trace-1"
         )

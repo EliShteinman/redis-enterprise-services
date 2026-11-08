@@ -17,9 +17,9 @@ def build_logging_dict_config(*, settings: LogSettings) -> dict[str, JsonValue]:
         "disable_existing_loggers": False,
         "formatters": {
             "line": {
-                "format": settings.line_pattern,
+                "format": settings.line_format,
                 "datefmt": settings.date_format,
-                "defaults": dict(settings.line_pattern_defaults),
+                "defaults": dict(settings.line_format_defaults),
             }
         },
         "handlers": {
@@ -28,6 +28,6 @@ def build_logging_dict_config(*, settings: LogSettings) -> dict[str, JsonValue]:
         "root": {"level": settings.level, "handlers": ["console"]},
         "loggers": {
             name: {"level": settings.level, "handlers": [], "propagate": True}
-            for name in settings.server_loggers
+            for name in settings.root_propagating_loggers
         },
     }

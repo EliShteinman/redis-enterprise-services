@@ -4,7 +4,7 @@ from pydantic import SecretStr
 from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
@@ -18,7 +18,7 @@ class CountingLister:
         self._url_name_pairs: set[tuple[str, str]] = url_name_pairs
         self.calls: int = 0
 
-    def list_named(self, *, target: ClusterTarget) -> list[NamedResource]:
+    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
         self.calls += 1
         return [
             NamedResource(uid=1, name=name)
@@ -27,14 +27,14 @@ class CountingLister:
         ]
 
 
-def cluster(*, name: str) -> ClusterEntry:
-    return ClusterEntry(
+def cluster(*, name: str) -> ConfiguredCluster:
+    return ConfiguredCluster(
         name=name, network="net-a", environment="PROD", site="dc1", type="generic", api_url=f"https://{name}"
     )
 
 
-C1: ClusterEntry = cluster(name="c1")
-C2: ClusterEntry = cluster(name="c2")
+C1: ConfiguredCluster = cluster(name="c1")
+C2: ConfiguredCluster = cluster(name="c2")
 NAMES: list[RequestedName] = [
     RequestedName(kind="database", name="orders"),
     RequestedName(kind="user", name="app"),

@@ -13,7 +13,7 @@ class ClusterApiCaller(Protocol):
         target: ClusterTarget,
         method: HttpMethod,
         path: str,
-        query: str | None = None,
+        query_string: str | None = None,
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
     ) -> SuccessfulClusterResponse: ...

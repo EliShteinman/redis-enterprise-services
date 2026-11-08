@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTar
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.databases.database_activation_waiter import DatabaseActivationWaiter
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsRepository
-from redis_enterprise_services.databases.models import DatabaseFields
+from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.exceptions.cluster import UnrestorableFieldsError, UpdateOutcomeUnclearError
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
@@ -25,17 +25,17 @@ class UpdateDatabaseInput(BaseModel):
     values: dict[str, JsonValue]
 
 
-class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
+class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
     def __init__(
         self,
         *,
         repository: DatabaseFieldsRepository,
         activation_waiter: DatabaseActivationWaiter,
         target_resolver: ClusterTargetResolver,
-        unordered_fields: frozenset[str],
+        order_insensitive_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsRepository = repository
-        self._unordered_fields: frozenset[str] = unordered_fields
+        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
         self._activation_waiter: DatabaseActivationWaiter = activation_waiter
         self._target_resolver: ClusterTargetResolver = target_resolver
 
@@ -43,13 +43,15 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
     def kind(self) -> StepKind:
         return StepKind.COMPENSATABLE
 
-    def execute(self, *, step_input: UpdateDatabaseInput, keep_result: KeepResult[DatabaseFields]) -> None:
-        snapshot: DatabaseFields = self._read_fields(
+    def execute(
+        self, *, step_input: UpdateDatabaseInput, keep_result: KeepResult[DatabaseFieldsSnapshot]
+    ) -> None:
+        snapshot: DatabaseFieldsSnapshot = self._read_fields(
             step_input=step_input, field_names=list(step_input.values)
         )
-        ensure_restorable(step_input=step_input, snapshot=snapshot)
+        reject_fields_missing_from_snapshot(step_input=step_input, snapshot=snapshot)
         keep_result(result=snapshot)
-        self._update_and_wait_until_active(
+        self._update_if_state_unchanged_and_wait_until_active(
             step_input=step_input, values=step_input.values, cluster_state_id=snapshot.cluster_state_id
         )
 
@@ -57,26 +59,29 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
         self,
         *,
         step_input: UpdateDatabaseInput,
-        kept_result: DatabaseFields | None,
-        keep_found_result: KeepResult[DatabaseFields],
-    ) -> DatabaseFields | None:
+        kept_result: DatabaseFieldsSnapshot | None,
+        keep_found_result: KeepResult[DatabaseFieldsSnapshot],
+    ) -> DatabaseFieldsSnapshot | None:
         if kept_result is None:
             return None
-        current: DatabaseFields = self._read_fields(
+        current: DatabaseFieldsSnapshot = self._read_fields(
             step_input=step_input, field_names=list(step_input.values)
         )
         if not self._same(current=current.values, expected=step_input.values):
-            return self._ensure_old_values_remain(
+            self._raise_unless_old_values_remain(
                 step_input=step_input, current=current, kept_result=kept_result
             )
+            return None
         self._activation_waiter.wait_until_active(
             target=self._target(step_input=step_input), uid=step_input.uid
         )
         return kept_result
 
-    def compensate(self, *, step_input: UpdateDatabaseInput, result: DatabaseFields) -> None:
+    def compensate(self, *, step_input: UpdateDatabaseInput, result: DatabaseFieldsSnapshot) -> None:
         logger.info(msg=f"restoring {sorted(result.values)} of database {step_input.uid}")
-        current: DatabaseFields = self._read_fields(step_input=step_input, field_names=list(result.values))
+        current: DatabaseFieldsSnapshot = self._read_fields(
+            step_input=step_input, field_names=list(result.values)
+        )
         if self._same(current=current.values, expected=result.values):
             logger.info(msg=f"database {step_input.uid} already has its old values")
             return
@@ -84,12 +89,16 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
             raise UpdateOutcomeUnclearError(
                 message=f"database {step_input.uid} changed after the update, not restored over that change"
             )
-        self._update_and_wait_until_active(
+        self._update_if_state_unchanged_and_wait_until_active(
             step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id
         )
 
-    def _ensure_old_values_remain(
-        self, *, step_input: UpdateDatabaseInput, current: DatabaseFields, kept_result: DatabaseFields
+    def _raise_unless_old_values_remain(
+        self,
+        *,
+        step_input: UpdateDatabaseInput,
+        current: DatabaseFieldsSnapshot,
+        kept_result: DatabaseFieldsSnapshot,
     ) -> None:
         if self._same(current=current.values, expected=kept_result.values):
             return
@@ -99,18 +108,22 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
         )
 
     def _same(self, *, current: dict[str, JsonValue], expected: dict[str, JsonValue]) -> bool:
-        return same_values(current=current, expected=expected, unordered_fields=self._unordered_fields)
+        return same_values(
+            current=current, expected=expected, order_insensitive_fields=self._order_insensitive_fields
+        )
 
-    def _read_fields(self, *, step_input: UpdateDatabaseInput, field_names: list[str]) -> DatabaseFields:
-        return self._repository.get_fields(
+    def _read_fields(
+        self, *, step_input: UpdateDatabaseInput, field_names: list[str]
+    ) -> DatabaseFieldsSnapshot:
+        return self._repository.read_fields(
             target=self._target(step_input=step_input), uid=step_input.uid, field_names=field_names
         )
 
-    def _update_and_wait_until_active(
+    def _update_if_state_unchanged_and_wait_until_active(
         self, *, step_input: UpdateDatabaseInput, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
         target: ClusterTarget = self._target(step_input=step_input)
-        self._repository.update_fields(
+        self._repository.update_fields_if_state_unchanged(
             target=target, uid=step_input.uid, values=values, cluster_state_id=cluster_state_id
         )
         self._activation_waiter.wait_until_active(target=target, uid=step_input.uid)
@@ -119,7 +132,9 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFields]):
         return self._target_resolver.target_for(address=step_input.cluster)
 
 
-def ensure_restorable(*, step_input: UpdateDatabaseInput, snapshot: DatabaseFields) -> None:
+def reject_fields_missing_from_snapshot(
+    *, step_input: UpdateDatabaseInput, snapshot: DatabaseFieldsSnapshot
+) -> None:
     missing: set[str] = set(step_input.values) - set(snapshot.values)
     if missing:
         raise UnrestorableFieldsError(

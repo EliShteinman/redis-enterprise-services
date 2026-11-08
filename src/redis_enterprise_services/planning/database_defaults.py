@@ -2,7 +2,7 @@ import logging
 
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     OverrideClusterSelector,
@@ -18,7 +18,7 @@ class DatabaseDefaults:
         validate_default_values(settings=settings)
         self._settings: DatabaseDefaultsSettings = settings
 
-    def complete(self, *, cluster: ClusterEntry, requested: NewDatabase) -> NewDatabase:
+    def complete(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
         values: dict[str, JsonValue] = dict(self._settings.values)
         for override in self._settings.overrides:
             if selector_matches(selector=override.when, cluster=cluster):
@@ -28,7 +28,7 @@ class DatabaseDefaults:
         return NewDatabase.model_validate(obj=values)
 
 
-def selector_matches(*, selector: OverrideClusterSelector, cluster: ClusterEntry) -> bool:
+def selector_matches(*, selector: OverrideClusterSelector, cluster: ConfiguredCluster) -> bool:
     labels: dict[str, str] = {
         "network": cluster.network,
         "environment": cluster.environment,

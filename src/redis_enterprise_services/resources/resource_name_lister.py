@@ -4,5 +4,5 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.models import NamedResource
 
 
-class NamedResourceLister(Protocol):
-    def list_named(self, *, target: ClusterTarget) -> list[NamedResource]: ...
+class ResourceNameLister(Protocol):
+    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]: ...

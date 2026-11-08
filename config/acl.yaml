@@ -1,4 +1,4 @@
 acl:
   collection_path: /v1/redis_acls
-  path: /v1/redis_acls/{uid}
+  item_path: /v1/redis_acls/{uid}
   list_fields: []

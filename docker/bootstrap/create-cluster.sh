@@ -1,15 +1,15 @@
 #!/bin/sh
 set -eu
 
-bootstrap_url="https://${CLUSTER_HOST}:${API_PORT}/v1/bootstrap"
+bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
 
 read_state() {
     curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" \
         | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
 }
 
-wait_for_state() {
-    until state="$(read_state)" && [ -n "${state}" ] && [ "${state}" != "$1" ]; do
+wait_for_first_state() {
+    until state="$(read_state)" && [ -n "${state}" ]; do
         sleep "${POLL_INTERVAL_SECONDS}"
     done
     echo "${state}"
@@ -33,7 +33,7 @@ install_license() {
     awk 'BEGIN { printf "{\"license\": \"" } { printf "%s\\n", $0 } END { printf "\"}" }' "${LICENSE_FILE}" \
         | curl --silent --insecure --fail-with-body --output /dev/null \
             --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
-            --request PUT "https://${CLUSTER_HOST}:${API_PORT}/v1/license" \
+            --request PUT "https://${NODE_HOST}:${API_PORT}/v1/license" \
             --header "Content-Type: application/json" \
             --data @-
 }
@@ -51,8 +51,8 @@ wait_for_bootstrap() {
     done
 }
 
-echo "Waiting for ${CLUSTER_HOST} to accept bootstrap requests"
-state="$(wait_for_state "")"
+echo "Waiting for ${NODE_HOST} to accept bootstrap requests"
+state="$(wait_for_first_state)"
 
 if [ "${state}" = "completed" ]; then
     echo "${CLUSTER_NAME} is already bootstrapped"

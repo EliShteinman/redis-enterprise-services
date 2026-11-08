@@ -2,7 +2,7 @@ import pytest
 from pydantic import BaseModel, JsonValue, ValidationError
 
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.database_creation_request import (
@@ -14,8 +14,8 @@ from redis_enterprise_services.planning.user_resource_names import UserResourceN
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.step_kind import StepKind
-from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
+from redis_enterprise_services.saga.plan.step_results import StepResults
 
 
 class IdleStep[TInput: BaseModel, TResult: BaseModel]:
@@ -55,7 +55,7 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
     create_user=IdleStep(),
     update_database=IdleStep(),
 )
-CLUSTER: ClusterEntry = ClusterEntry(
+CLUSTER: ConfiguredCluster = ConfiguredCluster(
     name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
 )
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
@@ -71,10 +71,10 @@ def plan(*, users: list[DatabaseUserRequest]) -> SagaPlan:
 
 
 def inputs_after_earlier_steps() -> dict[str, JsonValue]:
-    context: SagaContext = SagaContext()
+    step_results: StepResults = StepResults()
     for key, uid in UIDS.items():
-        context.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None))
-    return {step.key: step.prepare(context=context).step_input for step in plan(users=USERS).steps}
+        step_results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None))
+    return {step.key: step.prepare(step_results=step_results).step_input for step in plan(users=USERS).steps}
 
 
 def test_the_database_comes_first_then_each_user_then_one_permissions_update() -> None:

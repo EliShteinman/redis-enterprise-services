@@ -1,7 +1,7 @@
 import pytest
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ClusterEntry, Environment
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     DefaultsOverride,
@@ -22,8 +22,8 @@ DEFAULTS: DatabaseDefaults = DatabaseDefaults(
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 
 
-def cluster(*, environment: Environment) -> ClusterEntry:
-    return ClusterEntry(
+def cluster(*, environment: Environment) -> ConfiguredCluster:
+    return ConfiguredCluster(
         name="c1",
         network="net-a",
         environment=environment,

@@ -4,10 +4,12 @@ from pydantic import JsonValue
 
 
 def same_values(
-    *, current: dict[str, JsonValue], expected: dict[str, JsonValue], unordered_fields: frozenset[str]
+    *, current: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
 ) -> bool:
     return current.keys() == expected.keys() and all(
-        same_field(current=current[name], expected=expected[name], ignore_order=name in unordered_fields)
+        same_field(
+            current=current[name], expected=expected[name], ignore_order=name in order_insensitive_fields
+        )
         for name in expected
     )
 
