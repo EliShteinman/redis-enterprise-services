@@ -19,6 +19,9 @@ class PeriodicTask:
 
     def stop(self) -> None:
         self._stopped.set()
+        if self._thread.ident is None:
+            logger.info(msg=f"{self._name} never started")
+            return
         self._thread.join()
         logger.info(msg=f"{self._name} stopped")
 
