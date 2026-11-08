@@ -2,11 +2,11 @@ from typing import Literal
 
 type PublicErrorCode = Literal[
     "name_taken",
-    "database_locked",
+    "resources_locked",
     "invalid_name",
     "unknown_cluster",
     "cluster_unavailable",
-    "step_rejected",
+    "cluster_operation_failed",
     "cluster_timeout",
     "internal_error",
 ]

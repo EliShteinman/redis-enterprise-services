@@ -1,14 +1,14 @@
 operation:
   public_code_by_error_code:
     name_taken: name_taken
-    database_locked: database_locked
+    resources_locked: resources_locked
     invalid_name: invalid_name
     unknown_cluster: unknown_cluster
     cluster_unavailable: cluster_unavailable
     unreadable_cluster_answer: cluster_unavailable
-    cluster_request_error: step_rejected
-    database_creation_failed: step_rejected
-    cluster_action_failed: step_rejected
+    cluster_request_error: cluster_operation_failed
+    database_creation_failed: cluster_operation_failed
+    cluster_action_failed: cluster_operation_failed
     cluster_action_timeout: cluster_timeout
     database_activation_timeout: cluster_timeout
     database_deletion_timeout: cluster_timeout
@@ -18,6 +18,6 @@ operation:
     invalid_plan: internal_error
     missing_step_result: internal_error
   cluster_caused_public_codes:
-    - step_rejected
+    - cluster_operation_failed
     - cluster_unavailable
     - cluster_timeout

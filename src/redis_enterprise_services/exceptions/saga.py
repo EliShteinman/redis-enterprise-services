@@ -5,7 +5,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 
 class ResourcesLockedError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "database_locked"
+    code: ClassVar[str] = "resources_locked"
     status_code: ClassVar[int] = HTTPStatus.CONFLICT
 
 

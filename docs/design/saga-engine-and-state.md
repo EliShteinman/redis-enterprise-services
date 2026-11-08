@@ -226,7 +226,7 @@ PlannedStep(
 **שגיאה לא צפויה (באג) גם מסיימת את הפעולה,** והפרטים בלוג:
 - לפני שה-Saga התחיל (אין record) ⇐ `rejected` עם `internal_error`.
 - אחרי שהתחיל ⇐ הפעולה נבנית מה-saga record שנשמר, כמו בסוף רגיל: הסטטוס שלו, ה-`error` של הצעד שעצר (למשל
-  `step_rejected`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
+  `cluster_operation_failed`, אם הבאג קרה באמצע ביטול), ו-`not_rolled_back`. אם אין לצעד שעצר שגיאה ⇐ `internal_error`.
 - record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error`.
 
 **הרצה ברקע:** `ThreadPoolRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
