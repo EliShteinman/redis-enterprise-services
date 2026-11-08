@@ -16,7 +16,7 @@ def test_an_unreadable_operation_is_skipped_and_the_others_are_still_found() -> 
 
     client.get.side_effect = stored
     store: RedisAbandonedStore = RedisAbandonedStore(
-        client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_ttl_seconds=600
+        client=client, keys=RedisKeys(key_prefix="res:", hash_tag="state"), finished_ttl_seconds=600
     )
 
     assert store.running_trace_ids_without_heartbeat() == ["trace-good"]

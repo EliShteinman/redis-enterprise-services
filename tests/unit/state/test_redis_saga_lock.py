@@ -35,7 +35,7 @@ def lock_with(*, acquire_all: MagicMock) -> RedisSagaLock:
     clock: ManualClock = ManualClock()
     return RedisSagaLock(
         client=client,
-        keys=RedisKeys(prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
         settings=SETTINGS,
         sleeper=AdvancingSleeper(clock=clock),
         clock=clock,

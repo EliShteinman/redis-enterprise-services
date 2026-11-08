@@ -8,7 +8,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-REFRESH_ALL: str = """
+MARK_ALL_ALIVE: str = """
 for _, key in ipairs(KEYS) do
     redis.call('SET', key, 'alive', 'EX', ARGV[1])
 end
@@ -21,10 +21,10 @@ class RedisHeartbeatStore(HeartbeatStore):
         self._client: Redis = client
         self._keys: RedisKeys = keys
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
-        self._refresh_all: Script = client.register_script(script=REFRESH_ALL)
+        self._mark_all_alive: Script = client.register_script(script=MARK_ALL_ALIVE)
 
     def mark_alive(self, *, trace_ids: list[str]) -> None:
-        self._refresh_all(
+        self._mark_all_alive(
             keys=[self._keys.heartbeat(trace_id=trace_id) for trace_id in trace_ids],
             args=[self._heartbeat_ttl_seconds],
         )

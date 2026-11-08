@@ -15,7 +15,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-NO_EXPIRY: int = 0
+KEEP_OPEN_WITHOUT_EXPIRY: int = 0
 STATUS_FIELD: str = "status"
 NO_SAGA: str = ""
 FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
@@ -71,7 +71,7 @@ class RedisAbandonedStore(AbandonedStore):
         )
 
     def running_trace_ids_without_heartbeat(self) -> list[str]:
-        open_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_operations()))
+        open_ids: set[str] = cast(set[str], self._client.smembers(name=self._keys.open_trace_ids()))
         return sorted(
             trace_id
             for trace_id in open_ids
@@ -80,7 +80,7 @@ class RedisAbandonedStore(AbandonedStore):
         )
 
     def find_saga(self, *, trace_id: str) -> StoredSaga | None:
-        raw: str | None = cast(str | None, self._client.get(name=self._keys.saga(saga_id=trace_id)))
+        raw: str | None = cast(str | None, self._client.get(name=self._keys.saga_record(saga_id=trace_id)))
         if raw is None:
             return None
         return StoredSaga(raw_json=raw, record=SagaRecord.model_validate_json(json_data=raw))
@@ -107,16 +107,18 @@ class RedisAbandonedStore(AbandonedStore):
         result_code: int = self._finalize_if_still_abandoned_script(
             keys=[
                 self._keys.operation(trace_id=trace_id),
-                self._keys.open_operations(),
+                self._keys.open_trace_ids(),
                 self._keys.heartbeat(trace_id=trace_id),
-                self._keys.saga(saga_id=trace_id),
+                self._keys.saga_record(saga_id=trace_id),
                 held_locks,
                 *sorted(cast(set[str], self._client.smembers(name=held_locks))),
             ],
             args=[
                 operation.model_dump_json(),
                 trace_id,
-                self._finished_ttl_seconds if operation.status in EXPIRING_STATUSES else NO_EXPIRY,
+                self._finished_ttl_seconds
+                if operation.status in EXPIRING_STATUSES
+                else KEEP_OPEN_WITHOUT_EXPIRY,
                 NO_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
                 OperationStatus.RUNNING.value,
                 NO_SAGA if expected_saga is None else expected_saga.raw_json,

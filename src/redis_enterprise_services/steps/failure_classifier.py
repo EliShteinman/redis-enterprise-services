@@ -19,7 +19,7 @@ FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     DatabaseCreationFailedError,
 )
 
-UNKNOWN_OUTCOME_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseDeletionTimeoutError,
@@ -42,7 +42,7 @@ class ClusterFailureClassifier(FailureClassifier):
             )
         if isinstance(error, FAILED_ERRORS):
             return FailureCategory.FAILED
-        if isinstance(error, (EdgeError, *UNKNOWN_OUTCOME_ERRORS)):
+        if isinstance(error, (EdgeError, *OUTCOME_UNKNOWN_ERRORS)):
             return FailureCategory.OUTCOME_UNKNOWN
         return FailureCategory.FAILED
 

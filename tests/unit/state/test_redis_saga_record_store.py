@@ -14,8 +14,8 @@ class StoreWithMockedScripts:
         self.finished: MagicMock = MagicMock()
         client: MagicMock = create_autospec(spec=Redis, instance=True)
         client.register_script.side_effect = [self.unfinished, self.finished]
-        self.state: RedisSagaRecordStore = RedisSagaRecordStore(
-            client=client, keys=RedisKeys(prefix="res:", hash_tag="state"), finished_ttl_seconds=600
+        self.store: RedisSagaRecordStore = RedisSagaRecordStore(
+            client=client, keys=RedisKeys(key_prefix="res:", hash_tag="state"), finished_ttl_seconds=600
         )
 
 
@@ -25,7 +25,7 @@ class StoreWithMockedScripts:
 def test_an_unsettled_saga_stays_unfinished_without_expiry(status: SagaStatus) -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
-    scripts.state.save_final(record=SagaRecord(saga_id="trace-1", status=status, steps=[]))
+    scripts.store.save_final(record=SagaRecord(saga_id="trace-1", status=status, steps=[]))
 
     assert (scripts.unfinished.call_count, scripts.finished.call_count) == (1, 0)
 
@@ -33,6 +33,6 @@ def test_an_unsettled_saga_stays_unfinished_without_expiry(status: SagaStatus) -
 def test_a_settled_saga_is_stored_with_the_expiry() -> None:
     scripts: StoreWithMockedScripts = StoreWithMockedScripts()
 
-    scripts.state.save_final(record=SagaRecord(saga_id="trace-1", status=SagaStatus.SUCCEEDED, steps=[]))
+    scripts.store.save_final(record=SagaRecord(saga_id="trace-1", status=SagaStatus.SUCCEEDED, steps=[]))
 
     assert scripts.finished.call_args.kwargs["args"][2] == 600

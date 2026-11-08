@@ -47,7 +47,7 @@ def step(repository: MagicMock, activation_waiter: MagicMock) -> UpdateDatabaseS
         repository=repository,
         activation_waiter=activation_waiter,
         target_resolver=SharedCredentialsTargetResolver(credentials=CREDENTIALS),
-        unordered_fields=frozenset(),
+        order_insensitive_fields=frozenset(),
     )
 
 

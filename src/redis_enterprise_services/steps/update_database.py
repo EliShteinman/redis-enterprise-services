@@ -32,10 +32,10 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         repository: DatabaseFieldsRepository,
         activation_waiter: DatabaseActivationWaiter,
         target_resolver: ClusterTargetResolver,
-        unordered_fields: frozenset[str],
+        order_insensitive_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsRepository = repository
-        self._unordered_fields: frozenset[str] = unordered_fields
+        self._unordered_fields: frozenset[str] = order_insensitive_fields
         self._activation_waiter: DatabaseActivationWaiter = activation_waiter
         self._target_resolver: ClusterTargetResolver = target_resolver
 
@@ -49,9 +49,9 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         snapshot: DatabaseFieldsSnapshot = self._read_fields(
             step_input=step_input, field_names=list(step_input.values)
         )
-        ensure_restorable(step_input=step_input, snapshot=snapshot)
+        reject_fields_missing_from_snapshot(step_input=step_input, snapshot=snapshot)
         keep_result(result=snapshot)
-        self._update_and_wait_until_active(
+        self._update_if_state_unchanged_and_wait_until_active(
             step_input=step_input, values=step_input.values, cluster_state_id=snapshot.cluster_state_id
         )
 
@@ -68,7 +68,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
             step_input=step_input, field_names=list(step_input.values)
         )
         if not self._same(current=current.values, expected=step_input.values):
-            return self._ensure_old_values_remain(
+            return self._raise_unless_old_values_remain(
                 step_input=step_input, current=current, kept_result=kept_result
             )
         self._activation_waiter.wait_until_active(
@@ -88,11 +88,11 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
             raise UpdateOutcomeUnclearError(
                 message=f"database {step_input.uid} changed after the update, not restored over that change"
             )
-        self._update_and_wait_until_active(
+        self._update_if_state_unchanged_and_wait_until_active(
             step_input=step_input, values=result.values, cluster_state_id=current.cluster_state_id
         )
 
-    def _ensure_old_values_remain(
+    def _raise_unless_old_values_remain(
         self,
         *,
         step_input: UpdateDatabaseInput,
@@ -107,7 +107,9 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         )
 
     def _same(self, *, current: dict[str, JsonValue], expected: dict[str, JsonValue]) -> bool:
-        return same_values(current=current, expected=expected, unordered_fields=self._unordered_fields)
+        return same_values(
+            current=current, expected=expected, order_insensitive_fields=self._unordered_fields
+        )
 
     def _read_fields(
         self, *, step_input: UpdateDatabaseInput, field_names: list[str]
@@ -116,7 +118,7 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
             target=self._target(step_input=step_input), uid=step_input.uid, field_names=field_names
         )
 
-    def _update_and_wait_until_active(
+    def _update_if_state_unchanged_and_wait_until_active(
         self, *, step_input: UpdateDatabaseInput, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
         target: ClusterTarget = self._target(step_input=step_input)
@@ -129,7 +131,9 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         return self._target_resolver.target_for(address=step_input.cluster)
 
 
-def ensure_restorable(*, step_input: UpdateDatabaseInput, snapshot: DatabaseFieldsSnapshot) -> None:
+def reject_fields_missing_from_snapshot(
+    *, step_input: UpdateDatabaseInput, snapshot: DatabaseFieldsSnapshot
+) -> None:
     missing: set[str] = set(step_input.values) - set(snapshot.values)
     if missing:
         raise UnrestorableFieldsError(

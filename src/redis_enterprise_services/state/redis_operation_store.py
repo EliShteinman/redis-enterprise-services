@@ -10,7 +10,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-SAVE_OPEN: str = """
+SAVE_WITHOUT_EXPIRY_AND_ADD_TO_OPEN_SET: str = """
 redis.call('SET', KEYS[1], ARGV[1])
 redis.call('SADD', KEYS[2], ARGV[2])
 return true
@@ -27,7 +27,7 @@ redis.call('SET', KEYS[3], 'alive', 'EX', ARGV[3])
 return false
 """
 
-SAVE_FINISHED: str = """
+SAVE_WITH_EXPIRY_AND_REMOVE_FROM_OPEN_SET: str = """
 redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
 redis.call('SREM', KEYS[2], ARGV[2])
 return true
@@ -47,8 +47,12 @@ class RedisOperationStore(OperationStore):
         self._keys: RedisKeys = keys
         self._finished_ttl_seconds: int = finished_ttl_seconds
         self._heartbeat_ttl_seconds: int = heartbeat_ttl_seconds
-        self._save_open: Script = client.register_script(script=SAVE_OPEN)
-        self._save_finished: Script = client.register_script(script=SAVE_FINISHED)
+        self._save_without_expiry_and_add_to_open_set: Script = client.register_script(
+            script=SAVE_WITHOUT_EXPIRY_AND_ADD_TO_OPEN_SET
+        )
+        self._save_with_expiry_and_remove_from_open_set: Script = client.register_script(
+            script=SAVE_WITH_EXPIRY_AND_REMOVE_FROM_OPEN_SET
+        )
         self._start_if_absent_script: Script = client.register_script(script=START_IF_ABSENT)
 
     def start_if_absent(self, *, operation: Operation) -> Operation | None:
@@ -68,12 +72,14 @@ class RedisOperationStore(OperationStore):
     def save(self, *, operation: Operation) -> None:
         keys: list[str] = self._record_and_open_set_keys(trace_id=operation.trace_id)
         if operation.status in EXPIRING_STATUSES:
-            self._save_finished(
+            self._save_with_expiry_and_remove_from_open_set(
                 keys=keys,
                 args=[operation.model_dump_json(), operation.trace_id, self._finished_ttl_seconds],
             )
         else:
-            self._save_open(keys=keys, args=[operation.model_dump_json(), operation.trace_id])
+            self._save_without_expiry_and_add_to_open_set(
+                keys=keys, args=[operation.model_dump_json(), operation.trace_id]
+            )
         logger.info(msg=f"operation {operation.trace_id} stored as {operation.status.value}")
 
     def find(self, *, trace_id: str) -> Operation | None:
@@ -84,4 +90,4 @@ class RedisOperationStore(OperationStore):
         return Operation.model_validate_json(json_data=stored)
 
     def _record_and_open_set_keys(self, *, trace_id: str) -> list[str]:
-        return [self._keys.operation(trace_id=trace_id), self._keys.open_operations()]
+        return [self._keys.operation(trace_id=trace_id), self._keys.open_trace_ids()]

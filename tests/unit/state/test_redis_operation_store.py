@@ -17,7 +17,7 @@ class StoreWithMockedScripts:
         client.register_script.side_effect = [self.open, self.finished, MagicMock()]
         self.store: RedisOperationStore = RedisOperationStore(
             client=client,
-            keys=RedisKeys(prefix="res:", hash_tag="state"),
+            keys=RedisKeys(key_prefix="res:", hash_tag="state"),
             finished_ttl_seconds=600,
             heartbeat_ttl_seconds=60,
         )
