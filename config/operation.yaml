@@ -6,12 +6,12 @@ operation:
     unknown_cluster: unknown_cluster
     cluster_unavailable: cluster_unavailable
     unreadable_cluster_answer: cluster_unavailable
-    cluster_error: step_rejected
+    cluster_request_error: step_rejected
     database_creation_failed: step_rejected
     cluster_action_failed: step_rejected
     cluster_action_timeout: cluster_timeout
-    database_not_active: cluster_timeout
-    database_still_exists: cluster_timeout
+    database_activation_timeout: cluster_timeout
+    database_deletion_timeout: cluster_timeout
     ambiguous_resource: internal_error
     unrestorable_fields: internal_error
     configuration_error: internal_error

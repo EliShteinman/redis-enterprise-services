@@ -233,7 +233,7 @@
 
 ## 5. סטטוס: `GET /v1/operations/{trace_id}`
 
-`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 not_found`.
+`200` עם המצב הנוכחי (סעיף 4). `trace_id` לא מוכר ⇐ `404 operation_not_found`.
 
 **כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
@@ -260,7 +260,8 @@
 | `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `unknown_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
-| `not_found` | מיד, `404` | כתובת לא קיימת, או `trace_id` לא מוכר |
+| `not_found` | מיד, `404` | כתובת לא קיימת |
+| `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `configuration_error` | מיד, `500` | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד |
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה (`message` קבוע: `internal error`), או שגיאה פנימית בלי קוד ציבורי משלה (התיאור שלה ב-`message`). הפרטים בלוג לפי `trace_id` |

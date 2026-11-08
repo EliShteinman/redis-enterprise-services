@@ -89,11 +89,11 @@ PlannedStep(
 `SagaExecutor.run(saga_id, plan, before_start)`:
 
 1. **נועל** את כל מפתחות הנעילה של התוכנית (סעיף 6). תפוס ⇐ מחכה עד `state.lock.wait_timeout_seconds` (30), ואז
-   `DatabaseLockedError`.
+   `ResourcesLockedError`.
 2. **`before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
 3. **מוודא שהנעילה עדיין שלו** (`DatabaseLock.confirm`). pod שנעצר יותר מ-TTL של ה-heartbeat בזמן הבדיקה מאבד את
-   הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `DatabaseLockedError`.
+   הנעילה לסריקה (סעיף 9). במקרה כזה הוא לא מתחיל, והשגיאה `ResourcesLockedError`.
 4. **לכל צעד:** בונה קלט, שומר `running`, מריץ `execute`. הצליח ⇐ `done`. נכשל ⇐ לפי המיון (סעיף 5).
 5. **צעד נכשל:** מבטל בסדר הפוך כל צעד `COMPENSATABLE` שיש לו תוצאה.
 6. **סוף:** `succeeded`, `rolled_back` או `requires_manual_intervention`. הנעילה משתחררת רק ב-`succeeded` וב-

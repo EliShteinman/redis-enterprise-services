@@ -22,7 +22,7 @@ class OutcomeUnknownError(EdgeError):
     pass
 
 
-class ResponseRejectedError(EdgeError):
+class ClusterResponseRejectedError(EdgeError):
     def __init__(self, *, message: str, cluster_status_code: int | None) -> None:
         super().__init__(message=message)
         self.cluster_status_code: int | None = cluster_status_code
