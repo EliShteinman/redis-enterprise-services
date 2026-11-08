@@ -3,7 +3,7 @@ from typing import Protocol
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.recovery.mark_result import MarkResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
-from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
 class AbandonedStore(Protocol):

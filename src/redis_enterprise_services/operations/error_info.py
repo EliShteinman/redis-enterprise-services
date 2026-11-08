@@ -6,14 +6,16 @@ class ErrorInfo(BaseModel):
         description="What kind of failure. At once: validation_error (the request does not match), "
         "invalid_name (a name breaks the naming rules), "
         "unknown_cluster (no configured cluster for the target), "
-        "not_found (unknown trace or path), method_not_allowed (the path does not take this method), "
+        "not_found (unknown path), operation_not_found (unknown or expired trace id), "
+        "method_not_allowed (the path does not take this method), "
         "configuration_error (the service configuration cannot serve the request), "
         "internal_error (a bug in the service). "
         "In the status: name_taken, "
-        "database_locked (another operation holds the database), step_rejected (a cluster refused a step), "
+        "resources_locked (another operation holds the database or one of its users), "
+        "cluster_request_failed (the cluster refused or failed a request), "
         "cluster_unavailable (the cluster or the edge service cannot be reached), cluster_timeout "
         "(the cluster did not finish in time), internal_error.",
-        examples=["step_rejected"],
+        examples=["cluster_request_failed"],
     )
     message: str = Field(
         description="What went wrong, for people; not for parsing.",

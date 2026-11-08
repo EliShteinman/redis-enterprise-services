@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 
-from redis_enterprise_services.background.task_runner import TaskRunner
+from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.liveness.live_operations import LiveOperations
 from redis_enterprise_services.operations.admission import Admission
 from redis_enterprise_services.operations.operation import Operation
@@ -15,10 +15,15 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 
 class OperationAcceptance:
     def __init__(
-        self, *, store: OperationStore, runner: TaskRunner, live: LiveOperations, errors: PublicErrors
+        self,
+        *,
+        store: OperationStore,
+        runner: BackgroundTaskRunner,
+        live: LiveOperations,
+        errors: PublicErrors,
     ) -> None:
         self._store: OperationStore = store
-        self._runner: TaskRunner = runner
+        self._runner: BackgroundTaskRunner = runner
         self._live: LiveOperations = live
         self._errors: PublicErrors = errors
 
@@ -36,11 +41,11 @@ class OperationAcceptance:
         self._live.track(trace_id=trace_id)
         try:
             self._runner.submit(
-                name=run.name, task=self._live.released_after(trace_id=trace_id, task=run.task)
+                name=run.name, task=self._live.untracking_when_done(trace_id=trace_id, task=run.task)
             )
         except Exception:
             logger.critical(msg=f"{run.name} cannot run in the background", exc_info=True)
-            self._live.release(trace_id=trace_id)
+            self._live.untrack_and_delete_heartbeat(trace_id=trace_id)
             self._store.save(
                 operation=Operation(
                     trace_id=trace_id, status=OperationStatus.REJECTED, error=self._errors.internal()

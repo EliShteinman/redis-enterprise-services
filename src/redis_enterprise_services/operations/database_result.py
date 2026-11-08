@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.config.clusters_settings import Environment
+from redis_enterprise_services.config.cluster_inventory import Environment
 
 
 class DatabaseUserResult(BaseModel):

@@ -4,7 +4,7 @@ from typing import Self
 from pydantic import BaseModel, JsonValue
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.saga.contract.kind import StepKind
+from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 
 class StepStatus(StrEnum):
@@ -25,7 +25,7 @@ class SagaStatus(StrEnum):
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
-SETTLED: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
+SETTLED_STATUSES: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
 
 
 class ObtainedBy(StrEnum):
@@ -39,8 +39,8 @@ class StepError(BaseModel):
     remote_code: str | None = None
 
     @classmethod
-    def of(cls, *, error: RedisEnterpriseServicesError) -> Self:
-        return cls(code=error.code, message=error.message, remote_code=error.remote_code())
+    def from_exception(cls, *, error: RedisEnterpriseServicesError) -> Self:
+        return cls(code=error.code, message=error.message, remote_code=error.cluster_error_code)
 
 
 class StepRecord(BaseModel):
@@ -60,7 +60,7 @@ class SagaRecord(BaseModel):
     steps: list[StepRecord]
     stopped_at: str | None = None
 
-    def stop_running(self) -> None:
+    def mark_interrupted(self) -> None:
         self.status = SagaStatus.REQUIRES_MANUAL_INTERVENTION
         for step in self.steps:
             if step.status is StepStatus.RUNNING:

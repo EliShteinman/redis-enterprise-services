@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
-from redis_enterprise_services.background.task_runner import TaskRunner
+from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.liveness.live_operations import LiveOperations
@@ -22,7 +22,7 @@ class Acceptance:
         self.store: MagicMock = create_autospec(spec=OperationStore, instance=True)
         self.store.find.return_value = None
         self.store.start.return_value = None
-        self.runner: MagicMock = create_autospec(spec=TaskRunner, instance=True)
+        self.runner: MagicMock = create_autospec(spec=BackgroundTaskRunner, instance=True)
         self.live: MagicMock = create_autospec(spec=LiveOperations, instance=True)
         self.prepare: MagicMock = MagicMock(
             return_value=PreparedRun(name="creating orders", task=lambda: None)
@@ -32,7 +32,9 @@ class Acceptance:
             runner=self.runner,
             live=self.live,
             errors=PublicErrors(
-                settings=OperationSettings(public_error_codes={}, cluster_error_codes=frozenset()),
+                settings=OperationSettings(
+                    public_code_by_error_code={}, cluster_caused_public_codes=frozenset()
+                ),
                 internal_error_message="internal error",
             ),
         )
@@ -121,4 +123,4 @@ def test_an_operation_that_cannot_run_is_no_longer_kept_alive() -> None:
     with pytest.raises(expected_exception=RuntimeError):
         acceptance.admit()
 
-    acceptance.live.release.assert_called_once_with(trace_id="trace-1")
+    acceptance.live.untrack_and_delete_heartbeat.assert_called_once_with(trace_id="trace-1")

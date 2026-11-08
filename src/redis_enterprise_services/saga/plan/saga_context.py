@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from redis_enterprise_services.exceptions.saga import MissingResultError
+from redis_enterprise_services.exceptions.saga import MissingStepResultError
 
 
 class SagaContext:
@@ -16,5 +16,5 @@ class SagaContext:
     def result_of[TResult: BaseModel](self, *, key: str, result_type: type[TResult]) -> TResult:
         result: BaseModel | None = self._results.get(key)
         if not isinstance(result, result_type):
-            raise MissingResultError(message=f"step {key} has no {result_type.__name__} result")
+            raise MissingStepResultError(message=f"step {key} has no {result_type.__name__} result")
         return result

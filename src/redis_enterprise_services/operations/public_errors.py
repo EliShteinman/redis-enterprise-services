@@ -17,20 +17,23 @@ class PublicErrors:
 
     def of(self, *, error: RedisEnterpriseServicesError, cluster: str | None = None) -> ErrorInfo:
         return self.info(
-            code=error.code, message=error.message, cluster=cluster, remote_code=error.remote_code()
+            code=error.code,
+            message=error.message,
+            cluster=cluster,
+            cluster_error_code=error.cluster_error_code,
         )
 
     def info(
-        self, *, code: str, message: str, cluster: str | None = None, remote_code: str | None = None
+        self, *, code: str, message: str, cluster: str | None = None, cluster_error_code: str | None = None
     ) -> ErrorInfo:
         public: str = self.public_code(code=code)
-        if public not in self._settings.cluster_error_codes:
+        if public not in self._settings.cluster_caused_public_codes:
             return ErrorInfo(code=public, message=message)
-        return ErrorInfo(code=public, message=message, cluster=cluster, cluster_error_code=remote_code)
+        return ErrorInfo(code=public, message=message, cluster=cluster, cluster_error_code=cluster_error_code)
 
     def public_code(self, *, code: str) -> str:
         internal: str = RedisEnterpriseServicesError.code
-        public: str | None = self._settings.public_error_codes.get(code)
+        public: str | None = self._settings.public_code_by_error_code.get(code)
         if public is None:
             if code != internal:
                 logger.warning(msg=f"error {code} has no public code and is published as {internal}")

@@ -1,12 +1,12 @@
 from typing import Protocol
 
-from redis_enterprise_services.saga.contract.models import SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
-class SagaStateRepository(Protocol):
+class SagaRecordWriter(Protocol):
     def save(self, *, record: SagaRecord) -> None: ...
 
-    def finish(self, *, record: SagaRecord) -> None: ...
+    def save_final(self, *, record: SagaRecord) -> None: ...
 
 
 class SagaRecordReader(Protocol):

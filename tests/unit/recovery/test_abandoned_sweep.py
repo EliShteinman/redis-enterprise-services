@@ -10,8 +10,8 @@ from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
 from redis_enterprise_services.recovery.mark_result import MarkResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
-from redis_enterprise_services.saga.contract.kind import StepKind
-from redis_enterprise_services.saga.contract.models import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 
 class Sweep:
@@ -25,7 +25,9 @@ class Sweep:
         AbandonedSweep(
             store=self.store,
             errors=PublicErrors(
-                settings=OperationSettings(public_error_codes={}, cluster_error_codes=frozenset()),
+                settings=OperationSettings(
+                    public_code_by_error_code={}, cluster_caused_public_codes=frozenset()
+                ),
                 internal_error_message="internal error",
             ),
         ).sweep()
@@ -99,7 +101,7 @@ def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
     AbandonedSweep(
         store=store,
         errors=PublicErrors(
-            settings=OperationSettings(public_error_codes={}, cluster_error_codes=frozenset()),
+            settings=OperationSettings(public_code_by_error_code={}, cluster_caused_public_codes=frozenset()),
             internal_error_message="internal error",
         ),
     ).sweep()
