@@ -65,7 +65,7 @@ def test_names_missing_from_every_cluster_are_free() -> None:
     assert (
         availability(
             database_url_name_pairs=set(), user_lister=CountingLister(url_name_pairs=set())
-        ).find_taken_names(clusters=[C1, C2], names=NAMES)
+        ).find_taken_names(clusters=[C1, C2], requested_names=NAMES)
         == []
     )
 
@@ -77,7 +77,8 @@ def test_each_taken_name_is_reported_with_its_cluster() -> None:
     )
 
     assert [
-        name.describe() for name in name_availability.find_taken_names(clusters=[C1, C2], names=NAMES)
+        taken_name.describe()
+        for taken_name in name_availability.find_taken_names(clusters=[C1, C2], requested_names=NAMES)
     ] == [
         "user app exists on c1",
         "database orders exists on c2",
@@ -91,7 +92,7 @@ def test_each_kind_is_listed_once_per_cluster() -> None:
     ]
 
     availability(database_url_name_pairs=set(), user_lister=users).find_taken_names(
-        clusters=[C1, C2], names=names
+        clusters=[C1, C2], requested_names=names
     )
 
     assert users.calls == 2
@@ -102,7 +103,7 @@ def test_a_name_is_looked_up_only_among_its_own_kind() -> None:
         database_url_name_pairs={("https://c1", "app")}, user_lister=CountingLister(url_name_pairs=set())
     )
 
-    assert name_availability.find_taken_names(clusters=[C1], names=NAMES) == []
+    assert name_availability.find_taken_names(clusters=[C1], requested_names=NAMES) == []
 
 
 def test_a_taken_name_refuses_the_request() -> None:
@@ -110,4 +111,4 @@ def test_a_taken_name_refuses_the_request() -> None:
         availability(
             database_url_name_pairs={("https://c1", "orders")},
             user_lister=CountingLister(url_name_pairs=set()),
-        ).find_taken_and_raise_if_any(clusters=[C1], names=NAMES)
+        ).find_taken_and_raise_if_any(clusters=[C1], requested_names=NAMES)

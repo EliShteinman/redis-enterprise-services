@@ -88,7 +88,7 @@ class SingleSiteCreationPlanner:
     def _acl_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
     ) -> PreparableStep:
-        acl_name: str = self._resource_naming.acl_name(database=database.name, user=user.name)
+        acl_name: str = self._resource_naming.acl_name(database_name=database.name, user_name=user.name)
         acl: NewAcl = NewAcl(name=acl_name, acl=user.acl_rule)
         return PlannedStep(
             key=acl_step_key(user=user),
@@ -99,7 +99,7 @@ class SingleSiteCreationPlanner:
     def _role_step(
         self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
     ) -> PreparableStep:
-        role_name: str = self._resource_naming.role_name(database=database.name, user=user.name)
+        role_name: str = self._resource_naming.role_name(database_name=database.name, user_name=user.name)
         management: RoleManagement = self._user_resources.role_management
         return PlannedStep(
             key=role_step_key(user=user),

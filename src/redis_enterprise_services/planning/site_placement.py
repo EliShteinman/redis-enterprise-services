@@ -39,5 +39,5 @@ class SitePlacement(BaseModel):
     cluster: ClusterChoice = Field(description="Which cluster at the site.")
 
     def describe(self) -> str:
-        cluster: str = self.cluster.name if self.cluster.name is not None else self.cluster.type
-        return f"{self.network}/{self.environment}/{self.site}/{cluster}"
+        cluster_label: str = self.cluster.name if self.cluster.name is not None else self.cluster.type
+        return f"{self.network}/{self.environment}/{self.site}/{cluster_label}"

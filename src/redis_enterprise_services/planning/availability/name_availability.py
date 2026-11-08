@@ -18,9 +18,9 @@ class NameAvailability:
         self._target_resolver: ClusterTargetResolver = target_resolver
 
     def find_taken_names(
-        self, *, clusters: list[ConfiguredCluster], names: list[RequestedName]
+        self, *, clusters: list[ConfiguredCluster], requested_names: list[RequestedName]
     ) -> list[TakenName]:
-        by_kind: dict[NameKind, set[str]] = names_by_kind(names=names)
+        by_kind: dict[NameKind, set[str]] = names_by_kind(requested_names=requested_names)
         return [
             taken
             for cluster in clusters
@@ -28,14 +28,14 @@ class NameAvailability:
         ]
 
     def find_taken_and_raise_if_any(
-        self, *, clusters: list[ConfiguredCluster], names: list[RequestedName]
+        self, *, clusters: list[ConfiguredCluster], requested_names: list[RequestedName]
     ) -> None:
-        taken: list[TakenName] = self.find_taken_names(clusters=clusters, names=names)
+        taken: list[TakenName] = self.find_taken_names(clusters=clusters, requested_names=requested_names)
         if taken:
-            message: str = "; ".join(name.describe() for name in taken)
+            message: str = "; ".join(taken_name.describe() for taken_name in taken)
             logger.warning(msg=message)
             raise NameTakenError(message=message)
-        logger.info(msg=f"{len(names)} names are free on {[cluster.name for cluster in clusters]}")
+        logger.info(msg=f"{len(requested_names)} names are free on {[cluster.name for cluster in clusters]}")
 
     def _find_taken_on_cluster(
         self, *, cluster: ConfiguredCluster, by_kind: dict[NameKind, set[str]]
@@ -43,15 +43,15 @@ class NameAvailability:
         target: ClusterTarget = self._target_resolver.target_for(address=address_of(cluster=cluster))
         return [
             TakenName(kind=kind, name=name, cluster_name=cluster.name)
-            for kind, requested_names in by_kind.items()
+            for kind, names_of_kind in by_kind.items()
             for name in sorted(
-                self._lookups.for_kind(kind=kind).find_existing(target=target, names=requested_names)
+                self._lookups.for_kind(kind=kind).find_existing(target=target, names=names_of_kind)
             )
         ]
 
 
-def names_by_kind(*, names: list[RequestedName]) -> dict[NameKind, set[str]]:
+def names_by_kind(*, requested_names: list[RequestedName]) -> dict[NameKind, set[str]]:
     by_kind: dict[NameKind, set[str]] = {}
-    for requested in names:
+    for requested in requested_names:
         by_kind.setdefault(requested.kind, set()).add(requested.name)
     return by_kind
