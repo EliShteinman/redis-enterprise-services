@@ -51,7 +51,7 @@ class Compensator:
                 step.compensate()
             except RedisEnterpriseServicesError as error:
                 last_error = StepError.of(error=error)
-                logger.warning(msg=f"compensation of {step.key} failed: {error.describe()}")
+                logger.warning(msg=f"compensation of {step.key} failed: {error.coded_message()}")
                 if self._classifier.classify(error=error) not in RETRIED_UNDO_FAILURES:
                     return last_error
                 if attempt < attempts:

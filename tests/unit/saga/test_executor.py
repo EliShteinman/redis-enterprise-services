@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from redis_enterprise_services.config.saga_settings import RetrySettings, SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.saga import DatabaseLockedError, InvalidPlanError
+from redis_enterprise_services.exceptions.saga import InvalidPlanError, ResourcesLockedError
 from redis_enterprise_services.saga.contract.failure import Failure, FailureClassifier
 from redis_enterprise_services.saga.contract.kind import StepKind
 from redis_enterprise_services.saga.contract.lock import DatabaseLock
@@ -150,7 +150,7 @@ class MemoryLock(DatabaseLock):
 
     def acquire(self, *, keys: list[str], owner: str) -> None:
         if self.held_by is not None:
-            raise DatabaseLockedError(message=f"{keys} locked by {self.held_by}")
+            raise ResourcesLockedError(message=f"{keys} locked by {self.held_by}")
         self.held_by = owner
 
     def release(self, *, keys: list[str], owner: str) -> None:
@@ -159,7 +159,7 @@ class MemoryLock(DatabaseLock):
 
     def confirm(self, *, keys: list[str], owner: str) -> None:
         if self.held_by != owner:
-            raise DatabaseLockedError(message=f"{keys} locked by {self.held_by}")
+            raise ResourcesLockedError(message=f"{keys} locked by {self.held_by}")
 
 
 def planned(
@@ -492,7 +492,7 @@ def test_a_later_step_builds_its_input_from_an_earlier_result(
 
 
 def test_a_locked_database_runs_no_step(journal: list[str], state: MemoryState) -> None:
-    with pytest.raises(expected_exception=DatabaseLockedError):
+    with pytest.raises(expected_exception=ResourcesLockedError):
         run(
             steps=[planned(step=FakeStep(journal=journal), name="a")],
             state=state,
@@ -893,7 +893,7 @@ def test_a_saga_whose_lock_was_taken_over_before_it_started_does_not_start(
     def lose_the_lock() -> None:
         lock.held_by = "other-saga"
 
-    with pytest.raises(expected_exception=DatabaseLockedError):
+    with pytest.raises(expected_exception=ResourcesLockedError):
         run(
             steps=[planned(step=FakeStep(journal=journal), name="a")],
             state=state,

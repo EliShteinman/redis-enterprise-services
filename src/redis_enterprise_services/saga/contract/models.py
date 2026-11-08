@@ -40,7 +40,7 @@ class StepError(BaseModel):
 
     @classmethod
     def of(cls, *, error: RedisEnterpriseServicesError) -> Self:
-        return cls(code=error.code, message=error.message, remote_code=error.remote_code())
+        return cls(code=error.code, message=error.message, remote_code=error.cluster_error_code)
 
 
 class StepRecord(BaseModel):
