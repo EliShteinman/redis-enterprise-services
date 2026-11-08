@@ -149,7 +149,7 @@
 
 ## 4. התשובה
 
-![מודלי ה-API](../diagrams/19-api-models.drawio.svg)
+![מודלי ה-API](../diagrams/19-api-models-create.drawio.svg)
 
 ### קבלה (`202`)
 

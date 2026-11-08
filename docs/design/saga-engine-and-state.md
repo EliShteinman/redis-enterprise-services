@@ -69,7 +69,11 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 ## 3. התוכנית
 
 ```python
-PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
+PlannedStep(
+    key="role/app",
+    step=create_role,
+    build_input=lambda context: CreateResourceInput(cluster=address, spec=role),
+)
 ```
 
 - **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`SagaContext`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
@@ -108,7 +112,7 @@ PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
 
 ## 5. מיון כשלים
 
-![מיון כשלים](../diagrams/14-flow-failure.drawio.svg)
+![מיון כשלים](../diagrams/14-flow-failure-classification.drawio.svg)
 
 המנוע לא מכיר את השגיאות של הקלאסטר. `FailureClassifier` ממיין כל שגיאה לאחת מארבע קטגוריות. המימוש לקלאסטר הוא
 `ClusterFailureClassifier` (`steps/failure_classifier.py`):
@@ -233,7 +237,7 @@ PlannedStep(key="role/app", step=create_role, build_input=RoleInput(...))
 
 ## 9. heartbeat וזיהוי קריסה
 
-![זיהוי קריסה](../diagrams/17-flow-crash.drawio.svg)
+![זיהוי קריסה](../diagrams/17-flow-heartbeat-and-abandoned-sweep.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
 כשהיא מחכה בתור. `LiveOperations` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicTask`) מחדש את המפתחות של
