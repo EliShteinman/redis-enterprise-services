@@ -1,5 +1,4 @@
 import logging
-from http import HTTPStatus
 
 from pydantic import JsonValue
 
@@ -8,15 +7,15 @@ from redis_enterprise_services.cluster.caller import ClusterCaller
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.polling import poll_until
+from redis_enterprise_services.cluster.transient_read import worth_reading_again
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.cluster_settings import ClusterSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
-    ClusterRequestError,
     UnreadableAnswerError,
 )
-from redis_enterprise_services.exceptions.edge import OutcomeUnknownError, RequestNotSentError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -43,13 +42,10 @@ class ActionWaiter(ActionTracker):
             action: JsonValue = self._api.send(
                 target=target, method="GET", path=self._settings.path.format(uid=action_uid)
             ).body
-        except (RequestNotSentError, OutcomeUnknownError) as error:
-            logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
-            return False
-        except ClusterRequestError as error:
-            if not read_again_after(error=error, transient_codes=self._cluster.transient_error_codes):
+        except RedisEnterpriseServicesError as error:
+            if not worth_reading_again(error=error, transient_codes=self._cluster.transient_error_codes):
                 raise
-            logger.warning(msg=f"cluster failed reading action {action_uid}: {error.describe()}")
+            logger.warning(msg=f"reading action {action_uid} failed, it is read again: {error.describe()}")
             return False
         status: str | None = string_field(body=action, name=self._cluster.fields.status)
         if status is None:
@@ -58,8 +54,3 @@ class ActionWaiter(ActionTracker):
             raise ClusterActionFailedError(message=f"action {action_uid} ended as {status}: {action}")
         logger.debug(msg=f"action {action_uid} is {status}")
         return status == self._settings.completed_status
-
-
-def read_again_after(*, error: ClusterRequestError, transient_codes: frozenset[str]) -> bool:
-    server_failed: bool = error.cluster_status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
-    return server_failed or error.error_code in transient_codes
