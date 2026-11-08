@@ -14,7 +14,7 @@
 ```
 POST /v1/databases/create
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
- ├─ OperationAcceptance.accept
+ ├─ OperationStarter.find_or_start
  │   ├─ יש פעולה לאותו trace?                           ⇐ 200 עם המצב שלה
  │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
  │   ├─ התחלה אטומית: running + heartbeat
@@ -27,8 +27,8 @@ POST /v1/databases/create
 
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
-| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationAcceptance.accept` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
-| `OperationAcceptance` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
+| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.find_or_start` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
+| `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
@@ -52,7 +52,7 @@ POST /v1/databases/create
    - `dedicated`: הקלאסטר עם אותם רשת, סביבה, אתר ושם.
    - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
-   - אין קלאסטר מתאים ⇐ `unknown_cluster`.
+   - אין קלאסטר מתאים ⇐ `no_matching_cluster`.
 3. **ברירות מחדל** (`DatabaseDefaults`, `config/database_defaults.yaml`):
 
    ```yaml
@@ -88,7 +88,7 @@ POST /v1/databases/create
 - צעדים 2–4 חוזרים לכל יוזר, לפי הסדר בבקשה. צעד 5 אחד לכל היוזרים, ורק כשיש יוזרים.
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
 - ה-role נוצר אחרי ה-DB כי `resources` חייב uid של DB קיים, והיוזר אחרי ה-role כי הוא חייב role.
-- ה-uids עוברים בין צעדים דרך ה-`SagaContext` (`saga-engine-and-state.md` סעיף 3).
+- ה-uids עוברים בין צעדים דרך ה-`StepResults` (`saga-engine-and-state.md` סעיף 3).
 - שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
@@ -125,7 +125,7 @@ POST /v1/databases/create
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
   `last_error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
-  `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`cluster_caused_public_codes`.
+  `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`public_codes_with_cluster_details`.
 - **סדר השמירה:** המנוע משחרר את הנעילה, ורק אחר כך הפעולה נשמרת.
 
 ---
