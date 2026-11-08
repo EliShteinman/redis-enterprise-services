@@ -9,12 +9,12 @@ class EdgeError(RedisEnterpriseServicesError):
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
 
 
-class InvalidEdgeRequestError(EdgeError):
+class EdgeRejectedRequestError(EdgeError):
     code: ClassVar[str] = "internal_error"
     status_code: ClassVar[int] = HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-class EdgeRequestNotSentError(EdgeError):
+class EdgeConnectionFailedError(EdgeError):
     pass
 
 
@@ -22,7 +22,7 @@ class EdgeOutcomeUnknownError(EdgeError):
     pass
 
 
-class InvalidClusterResponseError(EdgeError):
+class EdgeRejectedResponseError(EdgeError):
     def __init__(self, *, message: str, cluster_status_code: int | None) -> None:
         super().__init__(message=message)
         self.cluster_status_code: int | None = cluster_status_code

@@ -5,12 +5,12 @@ from pydantic import BaseModel
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.prepared_saga_step import PreparedSagaStep
-from redis_enterprise_services.saga.plan.saga_context import SagaContext
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep, PreparedStep
+from redis_enterprise_services.saga.plan.step_results import StepResults
 
 
 class BuildInput[TInput](Protocol):
-    def __call__(self, *, context: SagaContext) -> TInput: ...
+    def __call__(self, *, step_results: StepResults) -> TInput: ...
 
 
 class PlannedStep[TInput: BaseModel, TResult: BaseModel](PreparableStep):
@@ -27,7 +27,10 @@ class PlannedStep[TInput: BaseModel, TResult: BaseModel](PreparableStep):
     def kind(self) -> StepKind:
         return self._step.kind
 
-    def prepare(self, *, context: SagaContext) -> PreparedStep:
+    def prepare(self, *, step_results: StepResults) -> PreparedStep:
         return PreparedSagaStep(
-            key=self._key, step=self._step, step_input=self._build_input(context=context), context=context
+            key=self._key,
+            step=self._step,
+            step_input=self._build_input(step_results=step_results),
+            step_results=step_results,
         )

@@ -8,7 +8,7 @@ type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
 
 
-class ClusterEntry(ConfigModel):
+class ConfiguredCluster(ConfigModel):
     name: str = Field(min_length=1)
     network: str
     environment: Environment
@@ -17,7 +17,7 @@ class ClusterEntry(ConfigModel):
     api_url: str = Field(pattern=r"^https?://.*[^/]$")
 
 
-def reject_repeated_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]:
+def reject_repeated_clusters(clusters: list[ConfiguredCluster]) -> list[ConfiguredCluster]:
     keys: list[tuple[str, str, str, str]] = [
         (cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters
     ]
@@ -27,4 +27,4 @@ def reject_repeated_clusters(clusters: list[ClusterEntry]) -> list[ClusterEntry]
     return clusters
 
 
-type ClusterList = Annotated[list[ClusterEntry], AfterValidator(reject_repeated_clusters)]
+type ConfiguredClusters = Annotated[list[ConfiguredCluster], AfterValidator(reject_repeated_clusters)]

@@ -13,7 +13,7 @@ from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.background_settings import BackgroundSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ClusterList
+from redis_enterprise_services.config.cluster_inventory import ConfiguredClusters
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_network_coverage import networks_missing_from_edge
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     role: RoleSettings
     user: ResourceSettings
     server: ServerSettings
-    clusters: ClusterList
+    clusters: ConfiguredClusters
     database_defaults: DatabaseDefaultsSettings
     user_resources: UserResourcesSettings
     naming: NamingSettings
