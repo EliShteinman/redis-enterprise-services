@@ -49,8 +49,8 @@ uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0
 
 ## Configuration
 
-Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by an environment variable with the
-`RES_` prefix and `__` between levels, for example:
+Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by
+an environment variable with the `RES_` prefix and `__` between levels, for example:
 
 ```bash
 RES_LOG__LEVEL=DEBUG
@@ -64,8 +64,8 @@ Secrets are passed only through environment variables. Required:
 - `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
 
 Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
-the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed, holds only `RES_` variables, and an environment variable with the same name wins over
-it.
+the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed,
+holds only `RES_` variables, and an environment variable with the same name wins over it.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
