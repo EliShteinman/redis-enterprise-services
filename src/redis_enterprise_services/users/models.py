@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from redis_enterprise_services.resources.spec import NamedSpec
+from redis_enterprise_services.resources.named_spec import NamedSpec
 
 
 class NewUser(NamedSpec):

@@ -2,12 +2,12 @@ import pytest
 
 from redis_enterprise_services.config.naming_settings import NameRulesSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
+from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_rule import NameRule
-from redis_enterprise_services.planning.naming.name_rules_factory import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
-from redis_enterprise_services.planning.site_target import ClusterChoice, SiteTarget
+from redis_enterprise_services.planning.site_placement import ClusterChoice, SitePlacement
 
 RULES: list[NameRule] = configured_name_rules(
     settings=NameRulesSettings.model_validate(
@@ -16,7 +16,9 @@ RULES: list[NameRule] = configured_name_rules(
 )
 CONTEXT: NamingContext = NamingContext(
     active_active=False,
-    sites=[SiteTarget(network="net-a", site="ny", environment="PROD", cluster=ClusterChoice(type="generic"))],
+    sites=[
+        SitePlacement(network="net-a", site="ny", environment="PROD", cluster=ClusterChoice(type="generic"))
+    ],
 )
 
 

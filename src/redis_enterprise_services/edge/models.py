@@ -1,6 +1,7 @@
 from pydantic import BaseModel, JsonValue
 
-from redis_enterprise_services.connection.models import ClusterCredentials, HttpMethod
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.cluster_access.http_method import HttpMethod
 
 
 class ClusterRequest(BaseModel):
@@ -9,8 +10,8 @@ class ClusterRequest(BaseModel):
     credentials: ClusterCredentials
     body: JsonValue | None = None
     cluster_state_id: int | None = None
-    task_id: str | None = None
-    result_ttl: int | None = None
+    crdb_task_id: str | None = None
+    result_ttl_seconds: int | None = None
 
 
 class ClusterResponse(BaseModel):

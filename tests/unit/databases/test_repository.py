@@ -5,12 +5,12 @@ from pydantic import JsonValue, SecretStr
 from redis_enterprise_services.config.database_tag import DatabaseTag
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.repository import DatabaseRepository
-from redis_enterprise_services.resources.resource_calls import ResourceCalls
+from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 
 
 def test_the_creation_body_has_the_default_user_secret_the_default_tags_and_only_set_fields() -> None:
     repository: DatabaseRepository = DatabaseRepository(
-        endpoint=create_autospec(spec=ResourceCalls, instance=True),
+        endpoint=create_autospec(spec=ResourceEndpoint, instance=True),
         default_user_password=SecretStr("s3cret"),
         default_tags=[DatabaseTag(key="team", value="core")],
     )

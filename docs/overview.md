@@ -70,7 +70,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | עריכה | עריכת DB ועריכת רשימת היוזרים |
 | קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
 | פרטי גישה לכל קלאסטר | היום פרטי admin אחד לכל הקלאסטרים |
-| שחרור ידני | אין כלי. נעשה ב-`redis-cli` (`design/saga-core.md` סעיף 10) |
+| טיפול ידני | אין כלי. נעשה ב-`redis-cli` (`design/saga-engine-and-state.md` סעיף 10) |
 
 ---
 
@@ -109,9 +109,9 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | `contracts/service-api.md` | ה-API: שדות, תשובות, קודי שגיאה |
 | `contracts/edge-service.md` | מה השירות דורש מ-cluster-relay |
 | `design/creation.md` | איך בקשת יצירה רצה |
-| `design/saga-core.md` | המנוע, Redis, heartbeat וזיהוי קריסה, שחרור ידני |
-| `design/db-model.md` | שדות ה-DB והיוזרים, ומה נשאר בחוץ |
-| `design/cluster-api.md` | התנהגויות של ה-REST API של הקלאסטר שהעיצוב נשען עליהן |
+| `design/saga-engine-and-state.md` | המנוע, Redis, heartbeat וזיהוי קריסה, טיפול ידני |
+| `design/database-and-user-model.md` | שדות ה-DB והיוזרים, ומה נשאר בחוץ |
+| `design/redis-rest-api-behaviour.md` | התנהגויות של ה-REST API של הקלאסטר שהעיצוב נשען עליהן |
 | `design/planned.md` | כל מה שלא בנוי, ושאלות פתוחות |
 
 ### דיאגרמות
@@ -123,12 +123,12 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | `01-layers` | כל השכבות, מלמעלה למטה, והגורמים החיצוניים |
 | `02-context` | מי קורא למי, ומה מתוכנן |
 | `03`–`09` `layer-*` | כל שכבה מבפנים: מי משתמש בה, מה יש בה, ובמה היא משתמשת |
-| `10-seq-create`, `11-seq-rollback` | יצירה מוצלחת, וביטול אחרי כישלון |
+| `10-seq-create-single-site`, `11-seq-rollback-single-site` | יצירה מוצלחת, וביטול אחרי כישלון |
 | `12-flow-admission` | קבלה, trace חוזר, נעילה ובדיקת שמות |
 | `13-flow-cluster-and-defaults` | מציאת הקלאסטר וברירות המחדל |
-| `14-flow-failure` | מה המנוע עושה בכל סוג כישלון |
+| `14-flow-failure-classification` | מה המנוע עושה בכל סוג כישלון |
 | `15-state-step`, `16-state-operation` | הסטטוסים של צעד ושל פעולה |
-| `17-flow-crash` | heartbeat וזיהוי קריסה |
+| `17-flow-heartbeat-and-abandoned-sweep` | heartbeat וזיהוי קריסה |
 | `18-redis-keys` | המפתחות ב-Redis |
-| `19-api-models` | מודלי הבקשה והתוצאה |
+| `19-api-models-create` | מודלי הבקשה והתוצאה |
 | `planned/p1`–`p6` | העיצוב של מה שעוד לא בנוי: Active-Active, מחיקה, עריכה |

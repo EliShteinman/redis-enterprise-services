@@ -3,7 +3,7 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.resources.spec import NamedSpec
+from redis_enterprise_services.resources.named_spec import NamedSpec
 
 
 class NamedResource(BaseModel):

@@ -2,7 +2,7 @@ from typing import Protocol
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
-from redis_enterprise_services.resources.spec import NamedSpec
+from redis_enterprise_services.resources.named_spec import NamedSpec
 
 
 class ResourceRepository[TSpec: NamedSpec](Protocol):

@@ -1,6 +1,6 @@
 from redis_enterprise_services.acls.models import NewAcl
-from redis_enterprise_services.resources.endpoint_repository import EndpointRepository
+from redis_enterprise_services.resources.endpoint_resource_repository import EndpointResourceRepository
 
 
-class AclRepository(EndpointRepository[NewAcl]):
+class AclRepository(EndpointResourceRepository[NewAcl]):
     pass

@@ -4,21 +4,18 @@ from typing import ClassVar
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 
-class ClusterRequestError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "cluster_error"
+class ClusterRejectedRequestError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "cluster_rejected_request"
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
 
-    def __init__(self, *, message: str, cluster_status_code: int, error_code: str | None) -> None:
+    def __init__(self, *, message: str, cluster_status_code: int, cluster_error_code: str | None) -> None:
         super().__init__(message=message)
         self.cluster_status_code: int = cluster_status_code
-        self.error_code: str | None = error_code
-
-    def remote_code(self) -> str | None:
-        return self.error_code
+        self.cluster_error_code = cluster_error_code
 
 
-class DatabaseNotActiveError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "database_not_active"
+class DatabaseActivationTimeoutError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "database_activation_timeout"
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
 
 
@@ -30,8 +27,8 @@ class UpdateOutcomeUnclearError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "update_outcome_unclear"
 
 
-class DatabaseStillExistsError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "database_still_exists"
+class DatabaseDeletionTimeoutError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "database_deletion_timeout"
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
 
 
@@ -50,10 +47,10 @@ class ClusterActionTimeoutError(RedisEnterpriseServicesError):
     status_code: ClassVar[int] = HTTPStatus.GATEWAY_TIMEOUT
 
 
-class AmbiguousResourceError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "ambiguous_resource"
+class DuplicateResourceNameError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "duplicate_resource_name"
 
 
-class UnreadableAnswerError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "unreadable_cluster_answer"
+class UnreadableClusterResponseError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "unreadable_cluster_response"
     status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
