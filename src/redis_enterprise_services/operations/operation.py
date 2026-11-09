@@ -30,7 +30,9 @@ class Operation(BaseModel):
         examples=["succeeded"],
     )
     database: DatabaseResult | None = Field(
-        default=None, description="The database as it is now, when the operation succeeded. Otherwise null."
+        default=None,
+        description="The database as the cluster reported it when the operation ended, when it succeeded. "
+        "Otherwise null.",
     )
     error: PublicError | None = Field(
         default=None,
