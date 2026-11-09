@@ -8,7 +8,6 @@ from redis_enterprise_services.creation.creation_execution import CreationExecut
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
-from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
 from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -41,12 +40,13 @@ from redis_enterprise_services.state.tracked_record_writer import TrackedRecordW
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.timing.clock import MonotonicClock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
-from redis_enterprise_services.timing.sleeper import SystemSleeper
+from redis_enterprise_services.timing.sleeper import Sleeper, SystemSleeper
 
 
 class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
-        silence_insecure_request_warnings()
+        sleeper: SystemSleeper = SystemSleeper()
+        deadline_polling: DeadlinePolling = DeadlinePolling(clock=MonotonicClock(), sleeper=sleeper)
         redis_client: Redis = build_redis_client(settings=settings.state)
         redis_keys: RedisKeys = RedisKeys(
             key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
@@ -72,7 +72,7 @@ class AppWiring:
             interval_seconds=settings.liveness.heartbeat_interval_seconds,
             task=operation_heartbeats.mark_tracked_alive,
         )
-        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings)
+        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings, deadline_polling=deadline_polling)
         user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
         public_errors: PublicErrors = PublicErrors(
             settings=settings.operation, internal_error_message=settings.api.internal_error_message
@@ -81,7 +81,7 @@ class AppWiring:
             client=redis_client,
             keys=redis_keys,
             settings=settings.state.lock,
-            deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
+            deadline_polling=deadline_polling,
         )
         saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
@@ -132,7 +132,10 @@ class AppWiring:
                     update_database_step=cluster_wiring.update_database_step,
                 ),
                 saga_executor=build_saga_executor(
-                    settings=settings, saga_lock=saga_lock, saga_record_store=saga_record_store
+                    settings=settings,
+                    saga_lock=saga_lock,
+                    saga_record_store=saga_record_store,
+                    sleeper=sleeper,
                 ),
                 outcome_translator=CreationOutcomeTranslator(
                     resource_naming=user_resource_naming, public_errors=public_errors
@@ -151,12 +154,11 @@ class AppWiring:
 
 
 def build_saga_executor(
-    *, settings: Settings, saga_lock: RedisSagaLock, saga_record_store: RedisSagaRecordStore
+    *, settings: Settings, saga_lock: RedisSagaLock, saga_record_store: RedisSagaRecordStore, sleeper: Sleeper
 ) -> SagaExecutor:
     failure_classifier: ClusterFailureClassifier = ClusterFailureClassifier(
         transient_error_codes=settings.cluster_api.transient_error_codes
     )
-    sleeper: SystemSleeper = SystemSleeper()
     return SagaExecutor(
         record_writer=saga_record_store,
         lock=saga_lock,

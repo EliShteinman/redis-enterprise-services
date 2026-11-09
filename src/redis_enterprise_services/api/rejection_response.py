@@ -1,8 +1,8 @@
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from redis_enterprise_services.api.operation_json_response import operation_json_response
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.telemetry.trace_id import current_trace_id_or_zeros
 
@@ -22,10 +22,11 @@ class RejectionError(PublicError):
     )
 
 
-def rejection_response(*, status_code: int, error: RejectionError) -> JSONResponse:
-    rejected_operation: Operation = Operation(
-        trace_id=current_trace_id_or_zeros(), status=OperationStatus.REJECTED, error=error
-    )
-    return JSONResponse(
-        status_code=status_code, content=rejected_operation.model_dump(mode="json", serialize_as_any=True)
+def rejection_response(
+    *, status_code: int, error: RejectionError, headers: dict[str, str] | None = None
+) -> JSONResponse:
+    return operation_json_response(
+        operation=Operation.rejected(trace_id=current_trace_id_or_zeros(), error=error),
+        status_code=status_code,
+        headers=headers,
     )

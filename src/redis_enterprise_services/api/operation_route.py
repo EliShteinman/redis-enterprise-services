@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.app_state_dependencies import operation_store_from_app_state
+from redis_enterprise_services.api.operation_json_response import operation_json_response
 from redis_enterprise_services.api.rejected_operation import OPERATION_ROUTE_REJECTION_RESPONSES
 from redis_enterprise_services.api.trace_id_path import checked_trace_id
 from redis_enterprise_services.api.traceparent_header import require_traceparent
@@ -24,4 +25,4 @@ def get_operation(
     operation: Operation | None = operation_store.find(trace_id=trace_id)
     if operation is None:
         raise OperationNotFoundError(message=f"operation {trace_id} is not known")
-    return JSONResponse(content=operation.model_dump(mode="json"))
+    return operation_json_response(operation=operation)

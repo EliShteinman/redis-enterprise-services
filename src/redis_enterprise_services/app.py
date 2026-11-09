@@ -19,6 +19,7 @@ from redis_enterprise_services.api.middleware.unexpected_error_middleware import
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
 from redis_enterprise_services.telemetry.telemetry_providers import (
@@ -29,19 +30,31 @@ from redis_enterprise_services.telemetry.telemetry_providers import (
 
 def create_app() -> FastAPI:
     settings: Settings = load_settings()
-    configure_logging(settings=settings.log)
+    configure_process(settings=settings)
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
-    wiring: AppWiring = AppWiring(settings=settings)
+    store_in_app_state(app=app, settings=settings, wiring=AppWiring(settings=settings))
+    add_error_handling(app=app, settings=settings.api)
+    include_routers(app=app)
+    FastAPIInstrumentor.instrument_app(app=app)
+    return app
+
+
+def configure_process(*, settings: Settings) -> None:
+    configure_logging(settings=settings.log)
+    silence_insecure_request_warnings()
+
+
+def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -> None:
     app.state.settings = settings
     app.state.wiring = wiring
     app.state.database_creation = wiring.database_creation
     app.state.operation_store = wiring.operation_store
-    add_error_handling(app=app, settings=settings.api)
+
+
+def include_routers(*, app: FastAPI) -> None:
     app.include_router(router=liveness_route.router)
     app.include_router(router=creation_route.router)
     app.include_router(router=operation_route.router)
-    FastAPIInstrumentor.instrument_app(app=app)
-    return app
 
 
 def add_error_handling(*, app: FastAPI, settings: ApiSettings) -> None:
