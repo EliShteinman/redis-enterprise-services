@@ -19,21 +19,27 @@ ERROR: PublicError = PublicError(code="internal_error", message="the pod stopped
 
 class AbandonedTrace:
     def __init__(
-        self, *, client: Redis, keys: RedisKeys, trace_id: str, lock_key: str, saga_status: SagaStatus
+        self, *, client: Redis, keys: RedisKeys, trace_id: str, lock_key: str, saga_status: SagaStatus | None
     ) -> None:
         self.client: Redis = client
         self.keys: RedisKeys = keys
         self.trace_id: str = trace_id
         self.lock_key: str = keys.lock(lock_key=lock_key)
-        self.saga: StoredSaga = StoredSaga(
-            raw_json=SagaRecord(saga_id=trace_id, status=saga_status, steps=[]).model_dump_json(), record=None
+        self.saga: StoredSaga | None = (
+            None
+            if saga_status is None
+            else StoredSaga(
+                raw_json=SagaRecord(saga_id=trace_id, status=saga_status, steps=[]).model_dump_json(),
+                record=None,
+            )
         )
         client.set(
             keys.operation(trace_id=trace_id),
             self.operation(status=OperationStatus.RUNNING).model_dump_json(),
         )
         client.sadd(keys.open_trace_ids(), trace_id)
-        client.set(keys.saga_record(saga_id=trace_id), self.saga.raw_json)
+        if self.saga is not None:
+            client.set(keys.saga_record(saga_id=trace_id), self.saga.raw_json)
         client.set(self.lock_key, trace_id)
         client.sadd(keys.held_locks(owner=trace_id), self.lock_key)
 
@@ -60,7 +66,7 @@ def store(client: Redis, keys: RedisKeys, settings: Settings) -> RedisAbandonedS
 @pytest.fixture
 def abandoned(
     client: Redis, keys: RedisKeys, trace_id: str, lock_keys: list[str]
-) -> Callable[[SagaStatus], AbandonedTrace]:
+) -> Callable[[SagaStatus | None], AbandonedTrace]:
     return lambda saga_status: AbandonedTrace(
         client=client, keys=keys, trace_id=trace_id, lock_key=lock_keys[0], saga_status=saga_status
     )
@@ -84,10 +90,8 @@ def finalize(
 
 def test_a_cleanly_ended_saga_frees_its_locks(
     client: Redis,
-    keys: RedisKeys,
-    trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.SUCCEEDED)
 
@@ -98,10 +102,9 @@ def test_a_cleanly_ended_saga_frees_its_locks(
 
 def test_a_saga_that_needs_manual_intervention_keeps_its_locks(
     client: Redis,
-    keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
 
@@ -115,7 +118,7 @@ def test_a_manual_operation_stays_open_without_expiry(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
 
@@ -129,7 +132,7 @@ def test_a_rolled_back_operation_expires_and_leaves_the_open_set(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.ROLLED_BACK)
 
@@ -143,7 +146,7 @@ def test_an_operation_with_a_heartbeat_is_not_finalized(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
     client.set(keys.heartbeat(trace_id=trace_id), "alive")
@@ -158,7 +161,7 @@ def test_a_saga_record_that_changed_since_it_was_read_is_not_overwritten(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
     changed: SagaRecord = SagaRecord(
@@ -178,7 +181,7 @@ def test_an_open_trace_without_an_operation_record_leaves_the_open_set(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
     client.delete(keys.operation(trace_id=trace_id))
@@ -193,7 +196,7 @@ def test_an_interrupted_saga_is_stored_as_its_interrupted_copy(
     keys: RedisKeys,
     trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
     interrupted: SagaRecord = SagaRecord(
@@ -213,10 +216,8 @@ def test_an_interrupted_saga_is_stored_as_its_interrupted_copy(
 
 def test_releasing_leaves_a_lock_that_another_owner_took(
     client: Redis,
-    keys: RedisKeys,
-    trace_id: str,
     store: RedisAbandonedStore,
-    abandoned: Callable[[SagaStatus], AbandonedTrace],
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
 ) -> None:
     trace: AbandonedTrace = abandoned(SagaStatus.SUCCEEDED)
     client.set(trace.lock_key, "itest-other-owner")
@@ -224,3 +225,15 @@ def test_releasing_leaves_a_lock_that_another_owner_took(
     finalize(store, trace, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, release_locks=True)
 
     assert client.get(trace.lock_key) == "itest-other-owner"
+
+
+def test_an_operation_whose_saga_never_started_frees_its_locks(
+    client: Redis,
+    store: RedisAbandonedStore,
+    abandoned: Callable[[SagaStatus | None], AbandonedTrace],
+) -> None:
+    trace: AbandonedTrace = abandoned(None)
+
+    finalize(store, trace, status=OperationStatus.REJECTED, release_locks=True)
+
+    assert not client.exists(trace.lock_key)
