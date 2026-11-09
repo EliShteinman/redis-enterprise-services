@@ -13,3 +13,7 @@ class InvalidPlanError(RedisEnterpriseServicesError):
 
 class MissingStepResultError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_result"
+
+
+class MissingStepRecordError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "missing_step_record"

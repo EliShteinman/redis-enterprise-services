@@ -2,6 +2,7 @@ import json
 import logging
 from typing import cast
 
+from pydantic import ValidationError
 from redis import Redis
 from redis.commands.core import Script
 
@@ -80,7 +81,7 @@ class RedisAbandonedStore(AbandonedStore):
         raw: str | None = cast(str | None, self._client.get(name=self._keys.saga_record(saga_id=trace_id)))
         if raw is None:
             return None
-        return StoredSaga(raw_json=raw, record=SagaRecord.model_validate_json(json_data=raw))
+        return StoredSaga(raw_json=raw, record=readable_saga_record(trace_id=trace_id, raw_json=raw))
 
     def finalize_if_still_abandoned(
         self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
@@ -119,6 +120,14 @@ class RedisAbandonedStore(AbandonedStore):
 
     def _held_lock_keys(self, *, trace_id: str) -> list[str]:
         return sorted(cast(set[str], self._client.smembers(name=self._keys.held_locks(owner=trace_id))))
+
+
+def readable_saga_record(*, trace_id: str, raw_json: str) -> SagaRecord | None:
+    try:
+        return SagaRecord.model_validate_json(json_data=raw_json)
+    except ValidationError:
+        logger.exception(msg=f"the saga record of operation {trace_id} cannot be read")
+        return None
 
 
 def is_running_or_unrecorded(*, trace_id: str, stored_json: str | None) -> bool:

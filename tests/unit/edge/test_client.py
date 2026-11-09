@@ -86,7 +86,7 @@ def test_a_relay_response_without_edge_error_unwraps_to_the_cluster_response(
         ("connection_failed", EdgeConnectionFailedError),
         ("timeout", EdgeOutcomeUnknownError),
         ("response_rejected", EdgeRejectedResponseError),
-        ("something_new", EdgeOutcomeUnknownError),
+        ("internal_error", EdgeOutcomeUnknownError),
     ],
 )
 def test_an_edge_error_code_maps_to_its_edge_error(
@@ -100,6 +100,17 @@ def test_an_edge_error_code_maps_to_its_edge_error(
         send_through_relay_answering(
             settings=settings, relay_outcome=relay_response_value, monkeypatch=monkeypatch
         )
+
+
+def test_a_body_that_is_not_json_without_an_edge_error_code_is_an_unknown_outcome(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
+) -> None:
+    gateway_page: requests.Response = relay_response(
+        status_code=504, headers={}, body=b"<html>timeout</html>"
+    )
+
+    with pytest.raises(expected_exception=EdgeOutcomeUnknownError):
+        send_through_relay_answering(settings=settings, relay_outcome=gateway_page, monkeypatch=monkeypatch)
 
 
 def test_a_cluster_state_id_that_is_not_a_number_is_ignored(
