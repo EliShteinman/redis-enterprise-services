@@ -2,6 +2,7 @@ from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 
 DATABASE_STEP_KEY: str = "database"
 PERMISSIONS_STEP_KEY: str = "permissions"
+READ_DATABASE_STEP_KEY: str = "read-database"
 
 
 def acl_step_key(*, user: DatabaseUserSpec) -> str:

@@ -5,6 +5,7 @@ from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSe
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY
 from redis_enterprise_services.planning.database_spec import (
     DatabaseSpec,
     DatabaseUserSpec,
@@ -59,6 +60,7 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
     create_role_step=IdleStep(),
     create_user_step=IdleStep(),
     update_database_step=IdleStep(),
+    read_database_step=IdleStep(),
 )
 CLUSTER: ConfiguredCluster = ConfiguredCluster(
     name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
@@ -84,11 +86,11 @@ def plan(*, users: list[DatabaseUserSpec]) -> SagaPlan:
 def step_inputs_by_key() -> dict[str, JsonValue]:
     step_results: StepResults = StepResults()
     for key, uid in CREATED_UIDS_BY_STEP_KEY.items():
-        step_results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None))
+        step_results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None, fields={}))
     return {step.key: step.prepare(step_results=step_results).step_input for step in plan(users=USERS).steps}
 
 
-def test_the_database_comes_first_then_each_user_then_one_permissions_update() -> None:
+def test_the_database_comes_first_then_each_user_then_permissions_then_the_read_back() -> None:
     assert [step.key for step in plan(users=USERS).steps] == [
         "database",
         "acl/app",
@@ -98,11 +100,12 @@ def test_the_database_comes_first_then_each_user_then_one_permissions_update() -
         "role/report",
         "user/report",
         "permissions",
+        "read-database",
     ]
 
 
-def test_a_database_without_users_is_one_step() -> None:
-    assert [step.key for step in plan(users=[]).steps] == ["database"]
+def test_a_database_without_users_is_created_then_read_back() -> None:
+    assert [step.key for step in plan(users=[]).steps] == ["database", "read-database"]
 
 
 def test_the_plan_locks_the_database_and_user_names_on_its_cluster_address() -> None:
@@ -148,10 +151,12 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
 
 
 @pytest.mark.parametrize(argnames="users", argvalues=[[], USERS])
-def test_the_planned_resources_name_exactly_the_planned_steps(users: list[DatabaseUserSpec]) -> None:
+def test_the_planned_resources_name_exactly_the_steps_that_create_something(
+    users: list[DatabaseUserSpec],
+) -> None:
     assert set(
         planned_resources_by_step_key(
             spec=DatabaseSpec(database=DATABASE, users=users),
             resource_naming=UserResourceNaming(settings=USER_RESOURCES),
         )
-    ) == {step.key for step in plan(users=users).steps}
+    ) == {step.key for step in plan(users=users).steps} - {READ_DATABASE_STEP_KEY}
