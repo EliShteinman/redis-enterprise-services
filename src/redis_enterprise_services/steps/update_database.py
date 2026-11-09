@@ -116,9 +116,10 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
     def _read_fields(
         self, *, step_input: UpdateDatabaseInput, field_names: list[str]
     ) -> DatabaseFieldsSnapshot:
-        return self._repository.read_fields(
-            target=self._target(step_input=step_input), uid=step_input.uid, field_names=field_names
+        database: DatabaseFieldsSnapshot = self._repository.read(
+            target=self._target(step_input=step_input), uid=step_input.uid
         )
+        return only_fields(snapshot=database, field_names=field_names)
 
     def _apply_values(
         self, *, step_input: UpdateDatabaseInput, values: dict[str, JsonValue], cluster_state_id: int
@@ -141,3 +142,10 @@ def reject_fields_missing_from_snapshot(
         raise UnrestorableFieldsError(
             message=f"fields {sorted(missing)} are not set on database {step_input.uid}, cannot restore"
         )
+
+
+def only_fields(*, snapshot: DatabaseFieldsSnapshot, field_names: list[str]) -> DatabaseFieldsSnapshot:
+    return DatabaseFieldsSnapshot(
+        values={name: snapshot.values[name] for name in field_names if name in snapshot.values},
+        cluster_state_id=snapshot.cluster_state_id,
+    )

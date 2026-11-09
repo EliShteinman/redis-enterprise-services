@@ -31,23 +31,27 @@ class PollingActionWaiter(ClusterActionWaiter):
         self._settings: ActionSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def wait_until_completed(self, *, target: ClusterTarget, action_uid: str | None) -> None:
+    def wait_until_completed(self, *, target: ClusterTarget, action_uid: str | None) -> JsonValue:
         if action_uid is None:
-            return
+            return None
+        last_read: list[JsonValue] = []
         if self._read_again_polling.poll_until(
             is_done=lambda: self._read_whether_completed_or_raise_if_failed(
-                target=target, action_uid=action_uid
+                target=target, action_uid=action_uid, last_read=last_read
             ),
             wait=self._settings.wait,
             subject=f"action {action_uid}",
         ):
-            return
+            return last_read[-1]
         raise ClusterActionTimeoutError(
             message=f"action {action_uid} did not complete in {self._settings.wait.timeout_seconds} seconds"
         )
 
-    def _read_whether_completed_or_raise_if_failed(self, *, target: ClusterTarget, action_uid: str) -> bool:
+    def _read_whether_completed_or_raise_if_failed(
+        self, *, target: ClusterTarget, action_uid: str, last_read: list[JsonValue]
+    ) -> bool:
         action_body: JsonValue = self._read_action_body(target=target, action_uid=action_uid)
+        last_read.append(action_body)
         status: str = required_string_field(
             body=action_body,
             name=self._cluster_api_settings.fields.status,

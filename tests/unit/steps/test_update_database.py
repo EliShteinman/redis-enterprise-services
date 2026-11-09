@@ -32,7 +32,7 @@ def ignore_found(*, result: DatabaseFieldsSnapshot) -> None:
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=DatabaseFieldsRepository, instance=True)
-    repository.read_fields.side_effect = [SNAPSHOT, UPDATED]
+    repository.read.side_effect = [SNAPSHOT, UPDATED]
     return repository
 
 
@@ -57,12 +57,14 @@ def execute_and_collect_kept(*, step: UpdateDatabaseStep) -> list[DatabaseFields
     return kept
 
 
-def test_execute_snapshots_only_the_fields_it_changes(
+def test_execute_keeps_only_the_fields_it_changes_from_the_whole_database(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    execute_and_collect_kept(step=step)
+    repository.read.side_effect = [
+        DatabaseFieldsSnapshot(values={**OLD_VALUES, "port": 12000, "name": "orders"}, cluster_state_id=7)
+    ]
 
-    repository.read_fields.assert_called_once_with(target=TARGET, uid=UID, field_names=list(NEW_VALUES))
+    assert execute_and_collect_kept(step=step) == [SNAPSHOT]
 
 
 def test_execute_hands_the_snapshot_to_the_saga(step: UpdateDatabaseStep) -> None:
@@ -101,9 +103,7 @@ def test_execute_waits_for_active_after_the_put(
 def test_execute_refuses_a_field_missing_from_the_snapshot(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [
-        DatabaseFieldsSnapshot(values={"memory_size": 100}, cluster_state_id=1)
-    ]
+    repository.read.side_effect = [DatabaseFieldsSnapshot(values={"memory_size": 100}, cluster_state_id=1)]
 
     with pytest.raises(expected_exception=UnrestorableFieldsError):
         execute_and_collect_kept(step=step)
@@ -114,7 +114,7 @@ def test_execute_refuses_a_field_missing_from_the_snapshot(
 def test_compensate_puts_the_snapshot_back_with_the_current_state_id(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [UPDATED]
+    repository.read.side_effect = [UPDATED]
 
     step.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
 
@@ -126,7 +126,7 @@ def test_compensate_puts_the_snapshot_back_with_the_current_state_id(
 def test_find_outcome_returns_the_snapshot_when_the_new_values_are_in_place(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [UPDATED]
+    repository.read.side_effect = [UPDATED]
 
     assert (
         step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
@@ -137,7 +137,7 @@ def test_find_outcome_returns_the_snapshot_when_the_new_values_are_in_place(
 def test_find_outcome_returns_none_when_the_old_values_are_still_there(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [SNAPSHOT]
+    repository.read.side_effect = [SNAPSHOT]
 
     assert (
         step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
@@ -148,7 +148,7 @@ def test_find_outcome_returns_none_when_the_old_values_are_still_there(
 def test_find_outcome_raises_when_the_database_holds_neither_the_old_nor_the_new_values(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [
+    repository.read.side_effect = [
         DatabaseFieldsSnapshot(
             values={"memory_size": 150, "eviction_policy": "noeviction"}, cluster_state_id=8
         )
@@ -166,13 +166,13 @@ def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
         is None
     )
 
-    repository.read_fields.assert_not_called()
+    repository.read.assert_not_called()
 
 
 def test_find_outcome_waits_for_active_before_reporting_the_update_done(
     repository: MagicMock, activation_waiter: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [UPDATED]
+    repository.read.side_effect = [UPDATED]
 
     step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
 
@@ -182,7 +182,7 @@ def test_find_outcome_waits_for_active_before_reporting_the_update_done(
 def test_compensate_does_not_restore_over_a_change_made_after_the_update(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [
+    repository.read.side_effect = [
         DatabaseFieldsSnapshot(
             values={"memory_size": 150, "eviction_policy": "noeviction"}, cluster_state_id=8
         )
@@ -195,7 +195,7 @@ def test_compensate_does_not_restore_over_a_change_made_after_the_update(
 def test_compensate_skips_the_put_when_the_old_values_are_still_there(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    repository.read_fields.side_effect = [SNAPSHOT]
+    repository.read.side_effect = [SNAPSHOT]
 
     step.compensate(step_input=STEP_INPUT, result=SNAPSHOT)
 
