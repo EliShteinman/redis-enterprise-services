@@ -14,6 +14,7 @@ class EdgeHeaderSettings(ConfigModel):
     cluster_state_id: str
     crdb_task_id: str
     result_ttl_seconds: str
+    network: str
 
 
 class EdgeErrorCodeSettings(ConfigModel):
@@ -29,11 +30,11 @@ class FirewallSettings(ConfigModel):
 
 
 class EdgeNetworkSettings(ConfigModel):
-    url: RelayUrl
     firewall: FirewallSettings | None
 
 
 class EdgeSettings(ConfigModel):
+    url: RelayUrl
     connect_timeout_seconds: PositiveFloat
     request_timeout_seconds: PositiveFloat
     headers: EdgeHeaderSettings
