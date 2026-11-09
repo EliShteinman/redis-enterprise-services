@@ -67,8 +67,8 @@ CLUSTER: ConfiguredCluster = ConfiguredCluster(
 )
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 USERS: list[DatabaseUserSpec] = [
-    DatabaseUserSpec(name="app", password="p1", acl_rule="+@all ~orders:*"),
-    DatabaseUserSpec(name="report", password="p2", acl_rule="+@read ~orders:*"),
+    DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*"),
+    DatabaseUserSpec(name="report", password="p2-passw0rd", acl_rule="+@read ~orders:*"),
 ]
 CREATED_UIDS_BY_STEP_KEY: dict[str, int] = {
     "database": 7,
@@ -133,7 +133,7 @@ def test_each_role_is_limited_to_the_new_database() -> None:
 def test_each_user_gets_its_own_role() -> None:
     assert step_inputs_by_key()["user/report"] == {
         "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
-        "spec": {"name": "report", "password": "p2", "role_uids": [22]},
+        "spec": {"name": "report", "password": "p2-passw0rd", "role_uids": [22]},
     }
 
 

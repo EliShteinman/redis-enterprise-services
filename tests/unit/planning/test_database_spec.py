@@ -8,7 +8,7 @@ DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 
 
 def user(*, name: str) -> DatabaseUserSpec:
-    return DatabaseUserSpec(name=name, password="s3cret", acl_rule="+@all ~orders:*")
+    return DatabaseUserSpec(name=name, password="s3cret-passw0rd", acl_rule="+@all ~orders:*")
 
 
 def test_a_user_requested_twice_is_refused() -> None:
