@@ -18,9 +18,9 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
 )
 from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError, EdgeRejectedResponseError
-from redis_enterprise_services.timing.clock import MonotonicClock
+from redis_enterprise_services.timing.clock import Clock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
-from redis_enterprise_services.timing.sleeper import SystemSleeper
+from redis_enterprise_services.timing.sleeper import Sleeper
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -28,7 +28,18 @@ TARGET: ClusterTarget = ClusterTarget(
     credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
 )
 ACTION_UID: str = "c7d4bccf-9462-4924-8c8f-345bd94fe89c"
-SHORT_WAIT: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.01)
+SHORT_WAIT: WaitSettings = WaitSettings(poll_interval_seconds=1, timeout_seconds=10)
+
+
+class SimulatedTime(Clock, Sleeper):
+    def __init__(self) -> None:
+        self._now: float = 0.0
+
+    def monotonic_seconds(self) -> float:
+        return self._now
+
+    def sleep(self, *, seconds: float) -> None:
+        self._now += seconds
 
 
 def cluster_api_caller_answering(*, action_body: JsonValue) -> MagicMock:
@@ -40,10 +51,11 @@ def cluster_api_caller_answering(*, action_body: JsonValue) -> MagicMock:
 def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     settings: Settings = load_settings()
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
+    simulated_time: SimulatedTime = SimulatedTime()
     return PollingActionWaiter(
         cluster_api_caller=cluster_api_caller,
         read_again_polling=ReadAgainPolling(
-            deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
+            deadline_polling=DeadlinePolling(clock=simulated_time, sleeper=simulated_time),
             transient_error_codes=settings.cluster_api.transient_error_codes,
         ),
         settings=action_settings,
@@ -150,7 +162,7 @@ def test_a_wait_with_a_read_that_succeeded_still_times_out() -> None:
     running: SuccessfulClusterResponse = SuccessfulClusterResponse(
         body={"status": "running"}, cluster_state_id=None
     )
-    api.send.side_effect = [running, *([EdgeOutcomeUnknownError(message="relay timed out")] * 1000)]
+    api.send.side_effect = [running, *([EdgeOutcomeUnknownError(message="relay timed out")] * 10)]
 
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
         waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
