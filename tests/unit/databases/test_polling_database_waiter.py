@@ -53,19 +53,19 @@ def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
 def test_a_deleted_database_is_gone_once_it_answers_404(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.side_effect = ClusterRejectedRequestError(
+    fields_reader.read.side_effect = ClusterRejectedRequestError(
         message="gone", cluster_status_code=404, cluster_error_code="db_not_exist"
     )
 
     waiter.wait_for_pending_deletion(target=TARGET, uid=11, action_uid=None)
 
-    fields_reader.read_fields.assert_called_once()
+    fields_reader.read.assert_called_once()
 
 
 def test_a_rejection_not_safe_to_read_again_while_waiting_for_a_delete_is_raised(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.side_effect = ClusterRejectedRequestError(
+    fields_reader.read.side_effect = ClusterRejectedRequestError(
         message="no", cluster_status_code=403, cluster_error_code=None
     )
 
@@ -76,7 +76,7 @@ def test_a_rejection_not_safe_to_read_again_while_waiting_for_a_delete_is_raised
 def test_a_cluster_failure_while_waiting_for_a_delete_is_read_again(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.side_effect = [
+    fields_reader.read.side_effect = [
         ClusterRejectedRequestError(message="failing over", cluster_status_code=503, cluster_error_code=None),
         ClusterRejectedRequestError(
             message="gone", cluster_status_code=404, cluster_error_code="db_not_exist"
@@ -85,13 +85,13 @@ def test_a_cluster_failure_while_waiting_for_a_delete_is_read_again(
 
     waiter.wait_for_pending_deletion(target=TARGET, uid=11, action_uid=None)
 
-    assert fields_reader.read_fields.call_count == 2
+    assert fields_reader.read.call_count == 2
 
 
 def test_a_database_whose_creation_failed_stops_the_wait(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(
+    fields_reader.read.return_value = DatabaseFieldsSnapshot(
         values={"status": "creation-failed"}, cluster_state_id=1
     )
 
@@ -102,7 +102,7 @@ def test_a_database_whose_creation_failed_stops_the_wait(
 def test_a_database_answer_without_a_status_is_unreadable(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(values={}, cluster_state_id=1)
+    fields_reader.read.return_value = DatabaseFieldsSnapshot(values={}, cluster_state_id=1)
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
         waiter.wait_until_active(target=TARGET, uid=11)
@@ -111,9 +111,7 @@ def test_a_database_answer_without_a_status_is_unreadable(
 def test_a_database_that_stays_pending_times_out(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(
-        values={"status": "pending"}, cluster_state_id=1
-    )
+    fields_reader.read.return_value = DatabaseFieldsSnapshot(values={"status": "pending"}, cluster_state_id=1)
 
     with pytest.raises(expected_exception=DatabaseActivationTimeoutError):
         waiter.wait_until_active(target=TARGET, uid=11)
@@ -122,11 +120,22 @@ def test_a_database_that_stays_pending_times_out(
 def test_a_database_that_becomes_active_ends_the_wait(
     fields_reader: MagicMock, waiter: PollingDatabaseWaiter
 ) -> None:
-    fields_reader.read_fields.side_effect = [
+    fields_reader.read.side_effect = [
         DatabaseFieldsSnapshot(values={"status": "pending"}, cluster_state_id=1),
         DatabaseFieldsSnapshot(values={"status": "active"}, cluster_state_id=1),
     ]
 
     waiter.wait_until_active(target=TARGET, uid=11)
 
-    assert fields_reader.read_fields.call_count == 2
+    assert fields_reader.read.call_count == 2
+
+
+def test_an_active_database_returns_the_whole_database_last_read(
+    fields_reader: MagicMock, waiter: PollingDatabaseWaiter
+) -> None:
+    active: DatabaseFieldsSnapshot = DatabaseFieldsSnapshot(
+        values={"status": "active", "uid": 11, "port": 12000}, cluster_state_id=4
+    )
+    fields_reader.read.return_value = active
+
+    assert waiter.wait_until_active(target=TARGET, uid=11) == active

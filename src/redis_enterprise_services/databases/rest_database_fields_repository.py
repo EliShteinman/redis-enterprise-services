@@ -4,7 +4,6 @@ from pydantic import JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
-from redis_enterprise_services.cluster.fields_query_string import fields_query_string
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
@@ -30,31 +29,24 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
         self._settings: DatabaseSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def read_fields(
-        self, *, target: ClusterTarget, uid: int, field_names: list[str]
-    ) -> DatabaseFieldsSnapshot:
+    def read(self, *, target: ClusterTarget, uid: int) -> DatabaseFieldsSnapshot:
         response: SuccessfulClusterResponse = self._cluster_api_caller.send(
-            target=target,
-            method="GET",
-            path=self._settings.item_path.format(uid=uid),
-            query_string=self._fields_query_string(field_names=field_names),
+            target=target, method="GET", path=self._settings.item_path.format(uid=uid)
         )
         return fields_snapshot(response=response, uid=uid)
 
     def update_fields_if_state_unchanged(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
-    ) -> None:
+    ) -> dict[str, JsonValue]:
         logger.info(msg=f"updating {sorted(values)} of database {uid}")
-        self._cluster_api_caller.send(
+        response_body: JsonValue = self._cluster_api_caller.send(
             target=target,
             method="PUT",
             path=self._settings.item_path.format(uid=uid),
             body=values,
             cluster_state_id=cluster_state_id,
-        )
-
-    def _fields_query_string(self, *, field_names: list[str]) -> str:
-        return fields_query_string(settings=self._cluster_api_settings.fields_query, field_names=field_names)
+        ).body
+        return response_body if isinstance(response_body, dict) else {}
 
 
 def fields_snapshot(*, response: SuccessfulClusterResponse, uid: int) -> DatabaseFieldsSnapshot:
