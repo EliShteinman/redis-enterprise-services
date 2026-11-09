@@ -29,7 +29,10 @@ class AbandonedSweep:
             trace_id=trace_id, saga=saga, error=self._public_errors.internal_error()
         )
         result: FinalizeAbandonedResult = self._store.finalize_if_still_abandoned(
-            operation=operation, expected_saga=saga, interrupted_saga=interrupted_running_saga(saga=saga)
+            operation=operation,
+            expected_saga=saga,
+            interrupted_saga=interrupted_running_saga(saga=saga),
+            release_locks=locks_are_free_after_crash(saga=saga),
         )
         log_finalize_result(trace_id=trace_id, status=operation.status, result=result)
 
@@ -56,6 +59,12 @@ def interrupted_running_saga(*, saga: StoredSaga | None) -> SagaRecord | None:
     if saga is None or saga.record is None or saga.record.status is not SagaStatus.RUNNING:
         return None
     return saga.record.interrupted_copy()
+
+
+def locks_are_free_after_crash(*, saga: StoredSaga | None) -> bool:
+    if saga is None:
+        return True
+    return saga.record is not None and saga.record.has_ended_cleanly()
 
 
 def log_finalize_result(*, trace_id: str, status: OperationStatus, result: FinalizeAbandonedResult) -> None:
