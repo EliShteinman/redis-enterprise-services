@@ -7,7 +7,7 @@ from redis_enterprise_services.config.database_defaults_settings import (
     DefaultsOverride,
     OverrideClusterSelector,
 )
-from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.database_defaults import (
     DatabaseDefaults,
@@ -15,9 +15,14 @@ from redis_enterprise_services.planning.database_defaults import (
     database_defaults_from,
 )
 
+PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
+    "aof": {"aof_policy": "appendfsync-every-sec"},
+    "snapshot": {"snapshot_policy": [{"secs": 3600, "writes": 1}]},
+}
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
         values={"replication": True, "data_persistence": "aof"},
+        persistence_values=PERSISTENCE_VALUES,
         overrides=[
             DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values={"replication": False})
         ],
@@ -57,6 +62,7 @@ def test_a_later_override_beats_an_earlier_one() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
             values={},
+            persistence_values={},
             overrides=[
                 DefaultsOverride(
                     when=OverrideClusterSelector(environment="DEV"), values={"shards_placement": "dense"}
@@ -77,6 +83,7 @@ def test_an_override_applies_only_when_all_its_labels_match() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
             values={"replication": True},
+            persistence_values={},
             overrides=[
                 DefaultsOverride(
                     when=OverrideClusterSelector(environment="DEV", site="dc2"), values={"replication": False}
@@ -106,6 +113,7 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
         database_defaults_from(
             settings=DatabaseDefaultsSettings(
                 values={},
+                persistence_values={},
                 overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
             )
         )
@@ -115,3 +123,38 @@ def test_every_override_selector_field_is_a_cluster_label() -> None:
     assert set(OverrideClusterSelector.model_fields) == set(
         cluster_labels(cluster=cluster(environment="DEV"))
     )
+
+
+@pytest.mark.parametrize(
+    argnames=("data_persistence", "aof_policy", "snapshot_policy"),
+    argvalues=[
+        pytest.param(None, "appendfsync-every-sec", None, id="default-aof"),
+        pytest.param("snapshot", None, [SnapshotRule(secs=3600, writes=1)], id="snapshot"),
+        pytest.param("disabled", None, None, id="disabled"),
+    ],
+)
+def test_only_the_settings_of_the_chosen_persistence_mode_are_filled_in(
+    data_persistence: str | None, aof_policy: str | None, snapshot_policy: list[SnapshotRule] | None
+) -> None:
+    requested: NewDatabase = NewDatabase.model_validate(
+        obj={"name": "orders", "memory_size": 104857600, "data_persistence": data_persistence}
+    )
+
+    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=requested)
+
+    assert (filled.aof_policy, filled.snapshot_policy) == (aof_policy, snapshot_policy)
+
+
+def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None:
+    requested: NewDatabase = NewDatabase.model_validate(
+        obj={
+            "name": "orders",
+            "memory_size": 104857600,
+            "data_persistence": "snapshot",
+            "snapshot_policy": [{"secs": 60, "writes": 100}],
+        }
+    )
+
+    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=requested)
+
+    assert filled.snapshot_policy == [SnapshotRule(secs=60, writes=100)]
