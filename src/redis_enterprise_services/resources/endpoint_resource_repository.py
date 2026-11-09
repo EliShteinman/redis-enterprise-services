@@ -1,6 +1,7 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.resources.cluster_object_body import without_fields
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 from redis_enterprise_services.resources.models import ClusterObject, CreatedResource, DeletionStarted
 from redis_enterprise_services.resources.named_spec import NamedSpec
@@ -17,10 +18,12 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
         endpoint: ResourceEndpoint,
         body_builder: CreationBodyBuilder[TSpec],
         unreturned_fields: frozenset[str],
+        secret_fields: frozenset[str],
     ) -> None:
         self._endpoint: ResourceEndpoint = endpoint
         self._body_builder: CreationBodyBuilder[TSpec] = body_builder
         self._unreturned_fields: frozenset[str] = unreturned_fields
+        self._secret_fields: frozenset[str] = secret_fields
 
     def start_creation(self, *, target: ClusterTarget, spec: TSpec) -> CreatedResource:
         return self._endpoint.start_creation(
@@ -41,6 +44,11 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
             sent=self._body_builder.creation_body(spec=spec),
             returned=created.fields,
             unreturned_fields=self._unreturned_fields,
+        )
+
+    def without_secrets(self, *, created: CreatedResource) -> CreatedResource:
+        return created.model_copy(
+            update={"fields": without_fields(fields=created.fields, names=self._secret_fields)}
         )
 
     def list_objects(self, *, target: ClusterTarget) -> list[ClusterObject]:
