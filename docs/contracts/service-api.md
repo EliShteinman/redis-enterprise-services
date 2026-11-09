@@ -93,8 +93,8 @@
 | `version` | str | |
 | `replication` | bool | |
 | `data_persistence` | `disabled` / `aof` / `snapshot` | |
-| `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | |
-| `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | |
+| `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | רק יחד עם `data_persistence: aof` |
+| `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | רק יחד עם `data_persistence: snapshot` |
 | `sharding` | bool | |
 | `shards_count` | int, 1–512 | |
 | `shard_key_regex` | list של `{regex}` | |
@@ -114,7 +114,8 @@
 | `version` | `8.4` |
 | `replication` | `true`, וב-`DEV` `false` |
 | `data_persistence` | `aof` |
-| `aof_policy` | `appendfsync-every-sec` |
+| `aof_policy` | `appendfsync-every-sec`, רק כש-`data_persistence` הוא `aof` |
+| `snapshot_policy` | `[{"secs": 3600, "writes": 1}]`, רק כש-`data_persistence` הוא `snapshot` |
 | `shards_placement` | `dense` |
 | `proxy_policy` | `all-master-shards` |
 

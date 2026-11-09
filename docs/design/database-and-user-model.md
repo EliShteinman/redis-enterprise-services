@@ -32,8 +32,8 @@
 | `shards_count` | | | |
 | `shard_key_regex` | | | בלי ערך, חלים כללי ברירת המחדל של Redis. רלוונטי רק כש-`sharding` דלוק. השירות לא בודק את זה, והקלאסטר דוחה |
 | `data_persistence` | | `aof` | |
-| `aof_policy` | | `appendfsync-every-sec` | |
-| `snapshot_policy` | | | רלוונטי רק כש-`data_persistence` הוא `snapshot`. השירות לא בודק את זה |
+| `aof_policy` | | `appendfsync-every-sec` | רק עם `aof`. נשלח רק כש-`data_persistence` הוא `aof` |
+| `snapshot_policy` | | `[{secs: 3600, writes: 1}]` | רק עם `snapshot`. הקלאסטר דוחה `snapshot` בלי מדיניות, ולכן יש ברירת מחדל |
 | `eviction_policy` | | | ב-AA, eviction מתחיל ב-80% מהזיכרון (תיעוד) |
 | `shards_placement` | | `dense` | |
 | `proxy_policy` | | `all-master-shards` | |
