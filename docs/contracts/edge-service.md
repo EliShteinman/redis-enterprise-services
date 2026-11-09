@@ -51,7 +51,8 @@ cluster-state-id: 155          (אופציונלי)
 | C3 | `traceparent` ממשיך לקלאסטר | מעקב מקצה לקצה. ה-trace הוא של הבקשה שהגיעה אלינו |
 | C4 | `cluster-state-id` מועבר לקלאסטר כ-request header, אם נשלח | עדכון מותנה של DB. היום: עדכון ההרשאות על ה-DB |
 | C5 | `x-task-id` ו-`x-result-ttl` מועברים לקלאסטר, אם נשלחו | מתוכנן ל-Active-Active: מזהה task של CRDB שאנחנו קובעים. השירות שלנו עוד לא שולח אותם |
-| C15 | ה-timeout של שירות הקצה מול הקלאסטר קצר מה-timeout שלנו מולו (שלנו: 35 שניות, `edge.request_timeout_seconds`) | שירות הקצה עונה ראשון, עם קוד משלו |
+| C15 | ה-timeout של שירות הקצה מול הקלאסטר קצר מה-timeout שלנו מולו (שלנו: 35 שניות לקריאה, `edge.request_timeout_seconds`, ו-5 שניות להתחברות, `edge.connect_timeout_seconds`) | שירות הקצה עונה ראשון, עם קוד משלו. התחברות שלא מצליחה (חומת אש שזורקת בשקט) נכשלת מהר |
+| C16 | תשובה של הקלאסטר שאינה JSON מוחזרת כ-`response_rejected` | השירות שלנו מתייחס לגוף שאינו JSON בלי `x-edge-error` כתוצאה לא ידועה |
 
 ---
 
@@ -102,11 +103,12 @@ cluster-state-id: 155          (אופציונלי)
 
 | endpoint | שיטה | תשובה |
 |---|---|---|
-| `/v1/bdbs`, `/v1/bdbs/{uid}` | GET (גם עם `fields`), POST, PUT, DELETE | bdb או רשימה |
+| `/v1/bdbs`, `/v1/bdbs/{uid}` | GET (מלא; `fields` נתמך אבל השירות לא שולח אותו), POST, PUT, DELETE | bdb מלא או רשימה של bdbs מלאים |
 | `/v1/redis_acls[/{uid}]` | GET, POST, DELETE | ACL או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/roles[/{uid}]` | GET, POST, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/actions/{uid}` | GET | action |
+| `/v1/bootstrap`, `/v1/bootstrap/create_cluster`, `/v1/bootstrap/join_cluster`, `PUT /v1/license` | GET, POST, PUT | רק ה-bootstrap של הדוקר המקומי |
 | כל endpoint | כל שיטה | גוף שגיאה של הקלאסטר: `{error_code, description}` |
 
 **נדרש לתכונות המתוכננות:**
