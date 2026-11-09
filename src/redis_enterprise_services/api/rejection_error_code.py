@@ -18,10 +18,10 @@ API_ERROR_CODE_BY_HTTP_STATUS: dict[int, ApiErrorCode] = {
     HTTPStatus.NOT_FOUND: "not_found",
     HTTPStatus.METHOD_NOT_ALLOWED: "method_not_allowed",
 }
-API_ERROR_CODE_DESCRIPTION: str = (
-    "validation_error (the request does not match), "
-    "not_found (unknown path), "
-    "operation_not_found (unknown or expired trace id), "
-    "method_not_allowed (the path does not take this method), "
-    "http_error (another HTTP error, with its own status), "
-)
+API_ERROR_CODE_MEANINGS: dict[ApiErrorCode, str] = {
+    "validation_error": "the request does not match",
+    "not_found": "unknown path",
+    "operation_not_found": "unknown or expired trace id",
+    "method_not_allowed": "the path does not take this method",
+    "http_error": "another HTTP error, with its own status",
+}

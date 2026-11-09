@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from fastapi import Depends, Header
-from fastapi.exceptions import RequestValidationError
 
 from redis_enterprise_services.api.app_state_dependencies import api_settings_from_app_state
+from redis_enterprise_services.api.field_validation_error import field_validation_error
 from redis_enterprise_services.config.api_settings import ApiSettings
 
 TRACEPARENT_LOCATION: tuple[str, str] = ("header", "traceparent")
@@ -20,12 +20,6 @@ def require_traceparent(
     ],
 ) -> None:
     if api_settings.traceparent_pattern.fullmatch(traceparent) is None:
-        raise RequestValidationError(
-            errors=[
-                {
-                    "loc": TRACEPARENT_LOCATION,
-                    "msg": api_settings.traceparent_error_message,
-                    "type": "value_error",
-                }
-            ]
+        raise field_validation_error(
+            location=TRACEPARENT_LOCATION, message=api_settings.traceparent_error_message
         )

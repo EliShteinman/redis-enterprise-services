@@ -179,10 +179,10 @@ def build_names_check(
         name_check_scope=ChosenClusterScope(),
         name_availability=NameAvailability(
             lookups=NameLookupsByKind(
-                database=ListedNameLookup(lister=cluster_wiring.database_repository),
-                acl=ListedNameLookup(lister=cluster_wiring.acl_repository),
-                role=ListedNameLookup(lister=cluster_wiring.role_repository),
-                user=ListedNameLookup(lister=cluster_wiring.user_repository),
+                database=ListedNameLookup(lister=cluster_wiring.repositories.database),
+                acl=ListedNameLookup(lister=cluster_wiring.repositories.acl),
+                role=ListedNameLookup(lister=cluster_wiring.repositories.role),
+                user=ListedNameLookup(lister=cluster_wiring.repositories.user),
             ),
             target_resolver=cluster_wiring.target_resolver,
         ),
@@ -197,11 +197,11 @@ def build_planner(
         role_management=settings.user_resources.role_management,
         cluster_fields=settings.cluster_api.fields,
         resource_naming=user_resource_naming,
-        create_database_step=cluster_wiring.create_database_step,
-        create_acl_step=cluster_wiring.create_acl_step,
-        create_role_step=cluster_wiring.create_role_step,
-        create_user_step=cluster_wiring.create_user_step,
-        update_database_step=cluster_wiring.update_database_step,
+        create_database_step=cluster_wiring.steps.create_database_step,
+        create_acl_step=cluster_wiring.steps.create_acl_step,
+        create_role_step=cluster_wiring.steps.create_role_step,
+        create_user_step=cluster_wiring.steps.create_user_step,
+        update_database_step=cluster_wiring.steps.update_database_step,
     )
 
 

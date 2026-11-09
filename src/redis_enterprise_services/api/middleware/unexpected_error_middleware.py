@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 from fastapi import Request, Response
 from opentelemetry import trace
@@ -8,7 +9,6 @@ from starlette.types import ASGIApp
 from redis_enterprise_services.api.rejection_error import RejectionError
 from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
-from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.public_errors import INTERNAL_ERROR_CODE
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -27,7 +27,7 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
             trace.get_current_span().record_exception(exception=error)
             return rejection_response(
                 request=request,
-                status_code=RedisEnterpriseServicesError.status_code,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 error=RejectionError(
                     code=INTERNAL_ERROR_CODE,
                     message=self._settings.internal_error_message,

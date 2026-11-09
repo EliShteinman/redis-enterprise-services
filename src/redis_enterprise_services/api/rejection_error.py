@@ -1,7 +1,14 @@
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.api.rejection_error_code import API_ERROR_CODE_DESCRIPTION, RejectionErrorCode
-from redis_enterprise_services.operations.public_error import PUBLIC_ERROR_CODE_DESCRIPTION
+from redis_enterprise_services.api.rejection_error_code import API_ERROR_CODE_MEANINGS, RejectionErrorCode
+from redis_enterprise_services.operations.public_error import (
+    PUBLIC_ERROR_CODE_DESCRIPTION,
+    code_meanings_description,
+)
+
+REJECTION_ERROR_CODE_DESCRIPTION: str = (
+    code_meanings_description(meanings=API_ERROR_CODE_MEANINGS) + ", " + PUBLIC_ERROR_CODE_DESCRIPTION
+)
 
 
 class FieldError(BaseModel):
@@ -13,7 +20,7 @@ class FieldError(BaseModel):
 
 class RejectionError(BaseModel):
     code: RejectionErrorCode = Field(
-        description="What kind of failure: " + API_ERROR_CODE_DESCRIPTION + PUBLIC_ERROR_CODE_DESCRIPTION,
+        description="What kind of failure: " + REJECTION_ERROR_CODE_DESCRIPTION + ".",
         examples=["validation_error"],
     )
     message: str = Field(

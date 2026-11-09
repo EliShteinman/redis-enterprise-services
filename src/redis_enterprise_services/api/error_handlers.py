@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
+from opentelemetry import trace
 from starlette.exceptions import HTTPException
 
 from redis_enterprise_services.api.rejection_error import FieldError, RejectionError
@@ -34,15 +35,18 @@ class ServiceErrorHandler:
         self._public_errors: PublicErrors = public_errors
 
     async def __call__(self, request: Request, error: RedisEnterpriseServicesError) -> Response:
-        logger.log(
-            level=log_level_for_status(status_code=error.status_code), msg=f"{error.code}: {error.message}"
-        )
+        public_code: RejectionErrorCode = self._public_code(internal_code=error.code)
+        status_code: int = status_code_for(error=error, public_code=public_code)
+        log_service_error(error=error, status_code=status_code)
         return rejection_response(
-            request=request, status_code=error.status_code, error=self._rejection_error(error=error)
+            request=request,
+            status_code=status_code,
+            error=self._rejection_error(error=error, public_code=public_code),
         )
 
-    def _rejection_error(self, *, error: RedisEnterpriseServicesError) -> RejectionError:
-        public_code: RejectionErrorCode = self._public_code(internal_code=error.code)
+    def _rejection_error(
+        self, *, error: RedisEnterpriseServicesError, public_code: RejectionErrorCode
+    ) -> RejectionError:
         if public_code == INTERNAL_ERROR_CODE:
             return RejectionError(code=public_code, message=self._public_errors.internal_error().message)
         return RejectionError(code=public_code, message=error.message)
@@ -82,8 +86,18 @@ async def http_exception_handler(request: Request, error: HTTPException) -> Resp
     )
 
 
-def log_level_for_status(*, status_code: int) -> int:
-    return logging.ERROR if status_code >= HTTPStatus.INTERNAL_SERVER_ERROR else logging.INFO
+def status_code_for(*, error: RedisEnterpriseServicesError, public_code: RejectionErrorCode) -> int:
+    if public_code == INTERNAL_ERROR_CODE:
+        return HTTPStatus.INTERNAL_SERVER_ERROR
+    return error.status_code
+
+
+def log_service_error(*, error: RedisEnterpriseServicesError, status_code: int) -> None:
+    if status_code < HTTPStatus.INTERNAL_SERVER_ERROR:
+        logger.info(msg=error.coded_message())
+        return
+    logger.error(msg=error.coded_message(), exc_info=error)
+    trace.get_current_span().record_exception(exception=error)
 
 
 def http_error_code(*, status_code: int) -> RejectionErrorCode:
