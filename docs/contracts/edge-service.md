@@ -9,12 +9,14 @@
 
 ## 1. רשת וחומת אש
 
-שירות הקצה נמצא ברשת היעד, מאחורי חומת האש של החברה.
+כל קריאה של השירות יוצאת לכתובת אחת קבועה: NGINX (`edge.url`). ה-NGINX בוחר לפי header הרשת את ה-IP והפורט, מוסיף
+header של סיסמת ה-DataPower של אותה רשת, ו-header של Host עם כתובת ה-OpenShift בצד השני. ברשתות האחרות הקריאה עוברת
+דרך ה-DataPower ל-cluster-relay; ברשת של השירות ה-NGINX פונה ישירות ל-cluster-relay.
 
 | # | דרישה |
 |---|---|
-| C0a | לכל רשת יש כתובת משלה לשירות הקצה: `edge.networks.<רשת>.url`. רשת בלי `url`, ורשת של קלאסטר מ-`config/clusters.yaml` שחסרה ב-`edge.networks`, נדחות בעליית השירות |
-| C0b | אם חומת האש של הרשת דורשת אימות, כל בקשה נושאת שם משתמש וסיסמה (`Basic`) של אותה רשת, ב-header מהקונפיג (`edge.networks.<רשת>.firewall`). הסיסמה מגיעה ממשתנה סביבה. `firewall: null` ⇐ לא נשלח header |
+| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`). רשת של קלאסטר מ-`config/clusters.yaml` שחסרה ב-`edge.networks` נדחית בעליית השירות |
+| C0b | את סיסמת ה-DataPower מוסיף ה-NGINX. אם היא צריכה להגיע מהשירות, כל בקשה נושאת שם משתמש וסיסמה (`Basic`) של אותה רשת, ב-header מהקונפיג (`edge.networks.<רשת>.firewall`). הסיסמה מגיעה ממשתנה סביבה. `firewall: null` ⇐ השירות לא שולח header |
 | C0c | אימות חומת האש נפרד מ-`x-cluster-authorization` ולא מתנגש בו |
 | C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
 | C0e | אם הכתובת ב-HTTPS, התעודה לא נבדקת. שגיאת TLS יכולה לקרות גם אחרי שהבקשה נשלחה (חומת האש מפענחת ומצפינה מחדש) |
@@ -32,7 +34,8 @@
 ![cluster, edge, connection](../diagrams/08-layer-transport.drawio.svg)
 
 ```
-POST <edge.networks.<רשת>.url>
+POST <edge.url>                                     (ה-NGINX)
+x-network: <רשת>
 <header האימות של חומת האש>: Basic <פרטי הרשת>     (אם מוגדר)
 x-cluster-method: PUT
 x-cluster-url: https://<cluster>:9443/v1/bdbs/7
