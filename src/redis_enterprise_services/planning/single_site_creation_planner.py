@@ -123,15 +123,18 @@ class SingleSiteCreationPlanner:
         return PlannedStep(
             key=role_step_key(user=user),
             step=self._create_role_step,
-            build_input=lambda step_results: CreateResourceInput(
-                cluster=address,
-                spec=NewRole(
-                    name=role_name,
-                    management=self._role_management,
-                    database_uids=[
-                        uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY)
-                    ],
-                ),
+            build_input=partial(self._role_input, address=address, role_name=role_name),
+        )
+
+    def _role_input(
+        self, *, step_results: StepResults, address: ClusterAddress, role_name: str
+    ) -> CreateResourceInput[NewRole]:
+        return CreateResourceInput(
+            cluster=address,
+            spec=NewRole(
+                name=role_name,
+                management=self._role_management,
+                database_uids=[uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY)],
             ),
         )
 
@@ -139,16 +142,7 @@ class SingleSiteCreationPlanner:
         return PlannedStep(
             key=user_step_key(user=user),
             step=self._create_user_step,
-            build_input=lambda step_results: CreateResourceInput(
-                cluster=address,
-                spec=NewUser(
-                    name=user.name,
-                    password=user.password,
-                    role_uids=[
-                        uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user))
-                    ],
-                ),
-            ),
+            build_input=partial(user_input, address=address, user=user),
         )
 
     def _permissions_steps(
@@ -177,6 +171,19 @@ class SingleSiteCreationPlanner:
                 ]
             },
         )
+
+
+def user_input(
+    *, step_results: StepResults, address: ClusterAddress, user: DatabaseUserSpec
+) -> CreateResourceInput[NewUser]:
+    return CreateResourceInput(
+        cluster=address,
+        spec=NewUser(
+            name=user.name,
+            password=user.password,
+            role_uids=[uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user))],
+        ),
+    )
 
 
 def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list[str]) -> list[str]:

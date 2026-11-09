@@ -1,8 +1,9 @@
 from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.planning.availability.name_lookup import NameLookup
 from redis_enterprise_services.resources.resource_name_lister import ResourceNameLister
 
 
-class ListedNameLookup:
+class ListedNameLookup(NameLookup):
     def __init__(self, *, lister: ResourceNameLister) -> None:
         self._lister: ResourceNameLister = lister
 

@@ -92,3 +92,8 @@ def test_a_placement_without_a_configured_cluster_is_refused(requested_placement
 def test_several_generic_clusters_at_a_site_cannot_be_chosen_yet() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         resolver(clusters=[cluster(name="c1"), cluster(name="c2")]).resolve(placement=placement())
+
+
+def test_the_single_candidate_chooser_refuses_an_empty_candidate_list() -> None:
+    with pytest.raises(expected_exception=NoMatchingClusterError):
+        SingleCandidateChooser().choose(placement=placement(), candidates=[])
