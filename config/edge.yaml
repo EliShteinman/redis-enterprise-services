@@ -1,4 +1,5 @@
 edge:
+  connect_timeout_seconds: 5
   request_timeout_seconds: 35
   headers:
     cluster_method: x-cluster-method

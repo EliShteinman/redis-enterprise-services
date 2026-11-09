@@ -1,6 +1,8 @@
 import logging
 from functools import partial
 
+from pydantic import JsonValue
+
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
@@ -93,7 +95,7 @@ class SingleSiteCreationPlanner:
                 for step in self._steps_for_user(address=address, database=database, user=user)
             ),
             *self._permissions_steps(address=address, users=users),
-            self._read_database_planned_step(address=address),
+            self._read_database_planned_step(address=address, users=users),
         ]
 
     def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> PreparableStep:
@@ -165,11 +167,22 @@ class SingleSiteCreationPlanner:
             )
         ]
 
-    def _read_database_planned_step(self, *, address: ClusterAddress) -> PreparableStep:
+    def _read_database_planned_step(
+        self, *, address: ClusterAddress, users: list[DatabaseUserSpec]
+    ) -> PreparableStep:
         return PlannedStep(
             key=READ_DATABASE_STEP_KEY,
             step=self._read_database_step,
-            build_input=partial(read_database_input, address=address),
+            build_input=partial(self._read_database_input, address=address, users=users),
+        )
+
+    def _read_database_input(
+        self, *, step_results: StepResults, address: ClusterAddress, users: list[DatabaseUserSpec]
+    ) -> ReadDatabaseInput:
+        return ReadDatabaseInput(
+            cluster=address,
+            uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY),
+            expected_values=self._permission_values(step_results=step_results, users=users) if users else {},
         )
 
     def _permissions_input(
@@ -178,19 +191,18 @@ class SingleSiteCreationPlanner:
         return UpdateDatabaseInput(
             cluster=address,
             uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY),
-            values={
-                self._cluster_fields.roles_permissions: [
-                    permission.model_dump(mode="json")
-                    for permission in role_permissions(step_results=step_results, users=users)
-                ]
-            },
+            values=self._permission_values(step_results=step_results, users=users),
         )
 
-
-def read_database_input(*, step_results: StepResults, address: ClusterAddress) -> ReadDatabaseInput:
-    return ReadDatabaseInput(
-        cluster=address, uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY)
-    )
+    def _permission_values(
+        self, *, step_results: StepResults, users: list[DatabaseUserSpec]
+    ) -> dict[str, JsonValue]:
+        return {
+            self._cluster_fields.roles_permissions: [
+                permission.model_dump(mode="json")
+                for permission in role_permissions(step_results=step_results, users=users)
+            ]
+        }
 
 
 def fixed_resource_input[TSpec: NamedSpec](

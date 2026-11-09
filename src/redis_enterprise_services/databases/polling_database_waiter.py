@@ -81,7 +81,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
     ) -> bool:
         status_field: str = self._cluster_api_settings.fields.status
         snapshot: DatabaseFieldsSnapshot = self._fields_reader.read(target=target, uid=uid)
-        last_read.append(snapshot)
+        last_read[:] = [snapshot]
         values: dict[str, JsonValue] = snapshot.values
         status: str = required_string_field(
             body=values, name=status_field, missing_message=f"database {uid} answered without {status_field}"

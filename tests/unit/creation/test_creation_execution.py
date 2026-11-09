@@ -70,7 +70,7 @@ ENDPOINT: dict[str, JsonValue] = {"dns_name": "redis-12000.c1", "port": 12000, "
 READ_BACK_VALUES: dict[str, JsonValue] = {
     **{name: f"stored {name}" for name in NewDatabase.model_fields},
     "name": "orders",
-    "memory_size": 104857600,
+    "memory_size": 104857700,
     "uid": 7,
     "status": "active",
     "endpoints": [ENDPOINT],
@@ -147,6 +147,10 @@ def created() -> DatabaseResult:
     database: DatabaseResult | None = harness.run_and_save().database
     assert database is not None
     return database
+
+
+def test_the_top_of_the_tree_comes_from_the_read_back_not_the_request(created: DatabaseResult) -> None:
+    assert (created.name, created.memory_size) == ("orders", 104857700)
 
 
 def test_a_created_database_returns_the_endpoints_the_cluster_reported(created: DatabaseResult) -> None:

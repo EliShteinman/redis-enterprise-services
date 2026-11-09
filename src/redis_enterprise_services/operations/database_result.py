@@ -22,10 +22,10 @@ class DatabasePermissionResult(BaseModel):
 
 class DatabaseEndpointResult(BaseModel):
     dns_name: str = Field(
-        description="The DNS name clients connect to.", examples=["redis-12000.cluster-a.net-a"]
+        min_length=1, description="The DNS name clients connect to.", examples=["redis-12000.cluster-a.net-a"]
     )
     port: int = Field(description="The port clients connect to.", examples=[12000])
-    addr: list[str] = Field(description="The endpoint's IP addresses.", examples=[["10.0.0.5"]])
+    addr: list[str] = Field(min_length=1, description="The endpoint's IP addresses.", examples=[["10.0.0.5"]])
 
 
 class DatabaseAccessResult(BaseModel):
@@ -49,6 +49,7 @@ class ClusterDatabaseResult(BaseModel):
 
 
 class DatabaseClusterResult(BaseModel):
+    cluster: str = Field(description="The cluster name, as configured.", examples=["cluster-a"])
     cluster_url: str = Field(
         description="The API address of the cluster.",
         examples=["https://cluster-a.net-a:9443"],

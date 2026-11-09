@@ -30,20 +30,27 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_name_template="{database}-{user}-role",
     role_management="db_viewer",
 )
-TRANSLATOR: CreationOutcomeTranslator = CreationOutcomeTranslator(
-    resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-    database_settings=load_settings().database,
-    public_errors=PublicErrors(
-        settings=OperationSettings(
-            public_code_by_internal_code={
-                "cluster_rejected_request": "cluster_request_failed",
-                "unreadable_cluster_response": "cluster_unavailable",
-            },
-            public_codes_with_cluster_details=frozenset({"cluster_request_failed", "cluster_unavailable"}),
+
+
+def translator() -> CreationOutcomeTranslator:
+    return CreationOutcomeTranslator(
+        resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+        database_settings=load_settings().database,
+        public_errors=PublicErrors(
+            settings=OperationSettings(
+                public_code_by_internal_code={
+                    "cluster_rejected_request": "cluster_request_failed",
+                    "unreadable_cluster_response": "cluster_unavailable",
+                },
+                public_codes_with_cluster_details=frozenset(
+                    {"cluster_request_failed", "cluster_unavailable"}
+                ),
+            ),
+            internal_error_message="internal error",
         ),
-        internal_error_message="internal error",
-    ),
-)
+    )
+
+
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
     cluster=ConfiguredCluster(
         name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
@@ -79,7 +86,7 @@ def step_record(
 
 
 def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
-    return TRANSLATOR.operation_from_ended_record(
+    return translator().operation_from_ended_record(
         trace_id="trace-1",
         prepared_creation=PREPARED_CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),

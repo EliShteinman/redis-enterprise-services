@@ -150,6 +150,19 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
     }
 
 
+def test_the_read_back_must_find_the_permissions_the_update_set() -> None:
+    assert step_inputs_by_key()["read-database"] == {
+        "cluster": {"network": "net-a", "api_url": "https://c1:9443"},
+        "uid": 7,
+        "expected_values": {
+            "roles_permissions": [
+                {"role_uid": 12, "redis_acl_uid": 11},
+                {"role_uid": 22, "redis_acl_uid": 21},
+            ]
+        },
+    }
+
+
 @pytest.mark.parametrize(argnames="users", argvalues=[[], USERS])
 def test_the_planned_resources_name_exactly_the_steps_that_create_something(
     users: list[DatabaseUserSpec],
