@@ -34,7 +34,11 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
     def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
 
     def find_outcome(
-        self, *, step_input: TInput, kept_result: TResult | None, keep_result_if_none_kept: KeepResult[TResult]
+        self,
+        *,
+        step_input: TInput,
+        kept_result: TResult | None,
+        keep_result_if_none_kept: KeepResult[TResult],
     ) -> TResult | None: ...
 
     def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
@@ -47,7 +51,9 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
   `ClusterTargetResolver`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin
   לכל קלאסטר.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה לסיום הפעולה בקלאסטר. צעד שיש לו תוצאה מבוטל גם אם לא הגיע
-  ל-`done`. רק ה-`keep_result` הראשון של צעד נשמר, כך שניסיון חוזר לא מחליף snapshot.
+  ל-`done`. בתוך ניסיון נשמרת רק התוצאה הראשונה, כך ש-`find_outcome` לא מחליף את מה ש-`execute` שמר. ניסיון חוזר
+  אחרי שגיאה זמנית, ש-`find_outcome` קבע שלא בוצעה, מתחיל בלי התוצאה הקודמת (`forget_result`, WARNING בלוג) ושומר
+  snapshot חדש.
 - **`find_outcome`** עונה על "האם הפעולה כבר בוצעה?" אחרי תוצאה לא ידועה, ומחזיר את התוצאה אם כן. `None` = לא נמצא.
   הוא מקבל את מה שכבר נשמר (`kept_result`), כי snapshot של עדכון אי אפשר לבנות מחדש מהקלאסטר. הוא מחזיר תוצאה רק אחרי שהפעולה
   הסתיימה בקלאסטר, כדי שהביטול לא ירוץ במקביל לפעולה שעוד רצה.
@@ -72,12 +78,12 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 PlannedStep(
     key="role/app",
     step=create_role,
-    build_input=lambda context: CreateResourceInput(cluster=address, spec=role),
+    build_input=lambda step_results: CreateResourceInput(cluster=address, spec=role),
 )
 ```
 
 - **`build_input`** בונה את הקלט של צעד כשמגיע תורו, מתוך ה-`StepResults`: מיפוי מ-`key` לתוצאה של כל צעד שכבר רץ.
-  כך ה-role מקבל את ה-uid של ה-DB, והיוזר את ה-uid של ה-role. הצעד עצמו לא קורא מה-context.
+  כך ה-role מקבל את ה-uid של ה-DB, והיוזר את ה-uid של ה-role. הצעד עצמו לא קורא מה-`StepResults`.
 - **אי אפשר לבנות את הקלט** (למשל תוצאה חסרה) ⇐ הצעד `failed`, ומה שלפניו מבוטל.
 - **`SagaPlan` נבדק כשהוא נבנה:** לפחות צעד אחד, מפתחות ייחודיים, כלל הסדר, לכל היותר pivot אחד, ולפחות מפתח נעילה
   אחד. תוכנית שלא עומדת בזה נדחית.
@@ -88,7 +94,7 @@ PlannedStep(
 
 `SagaExecutor.run(saga_id, plan, check_before_start)`:
 
-1. **נועל** את כל מפתחות הנעילה של התוכנית (סעיף 6). תפוס ⇐ מחכה עד `state.lock.wait_timeout_seconds` (30), ואז
+1. **נועל** את כל מפתחות הנעילה של התוכנית (סעיף 7). תפוס ⇐ מחכה עד `state.lock.wait_timeout_seconds` (30), ואז
    `ResourcesLockedError`.
 2. **`check_before_start`:** בדיקה שהקורא מעביר, אחרי הנעילה ולפני שה-record נשמר. נכשלה ⇐ הנעילה משתחררת והשגיאה עולה,
    ושום צעד לא רץ. ביצירה זו בדיקת השמות הפנויים.
@@ -132,7 +138,8 @@ PlannedStep(
 - **שגיאות של ה-Redis של המצב הן לא שגיאות של הפרויקט.** הן לא נעטפות, כדי שהמנוע לא יבטל וישחרר נעילה כשהוא לא
   יכול לכתוב record. הן עולות, וה-Saga נעצר.
 
-**ניסיונות חוזרים** (`config/saga.yaml`): `step_retry` (3 ניסיונות) לצעדים, `compensation_retry` (5) לביטולים.
+**ניסיונות חוזרים** (`config/saga.yaml`): `step_retry` (3 ניסיונות) לצעדים, `compensation_retry` (5) לביטולים. בין ניסיון
+לניסיון יש המתנה של `backoff_step_seconds` (2) כפול מספר הניסיון שנכשל: בצעד 2 ואז 4 שניות, ובביטול 2, 4, 6 ו-8 שניות.
 ביטול מנסה שוב רק על שגיאה זמנית או לא ידועה. ביטול שנכשל ⇐ `compensation_failed`, והמנוע ממשיך לבטל את השאר, כי כל
 ביטול שמצליח מצמצם את מה שנשאר. בסוף: `requires_manual_intervention` ולוג `CRITICAL`.
 
@@ -212,7 +219,7 @@ PlannedStep(
 | `status` של הפעולה | מאיפה |
 |---|---|
 | `running` | נשמר כשהבקשה מתקבלת |
-| `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
+| `rejected` | שגיאה לפני שה-Saga התחיל: נעילה תפוסה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית, כישלון בהעברה לרקע, או קריסה לפני שה-Saga התחיל |
 | `succeeded`, `rolled_back`, `requires_manual_intervention` | הסטטוס של ה-Saga |
 
 **`OperationStarter.start_once`**, משותף לכל פקודה:
