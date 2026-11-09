@@ -3,7 +3,7 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
-from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
+from redis_enterprise_services.operations.operation_status import CLEANLY_ENDED_STATUSES, OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
@@ -20,7 +20,8 @@ class Operation(BaseModel):
         description="running: still running. succeeded: done. rejected: refused before anything changed. "
         "rolled_back: failed, and everything was undone. requires_manual_intervention: failed, "
         "and not everything was undone (see not_rolled_back, which is missing after a crash; then the "
-        "saga record is the source).",
+        "saga record is the source), or the pod stopped after the run succeeded and before it saved the "
+        "operation (the database exists, but database is null).",
         examples=["succeeded"],
     )
     database: DatabaseResult | None = Field(
@@ -38,7 +39,7 @@ class Operation(BaseModel):
     )
 
     def has_ended_cleanly(self) -> bool:
-        return self.status in EXPIRING_STATUSES
+        return self.status in CLEANLY_ENDED_STATUSES
 
     @classmethod
     def rejected(cls, *, trace_id: str, error: PublicError) -> Self:
