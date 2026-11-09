@@ -23,8 +23,8 @@ def itest_lock_keys(*, trace_id: str) -> list[str]:
 def settings() -> Settings:
     try:
         return load_settings()
-    except ValidationError:
-        pytest.skip(reason="the RES_ settings of the local clusters are not set")
+    except ValidationError as error:
+        pytest.skip(reason=f"the settings of the local clusters cannot be loaded: {error}")
 
 
 @pytest.fixture(scope="session")

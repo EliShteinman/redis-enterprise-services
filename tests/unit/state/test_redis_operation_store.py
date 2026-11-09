@@ -4,11 +4,14 @@ import pytest
 from redis import Redis
 
 from redis_enterprise_services.exceptions.operation import UnreadableOperationRecordError
-from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.operation import STATUSES_WITHOUT_ERROR, Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
+
+ERROR: PublicError = PublicError(code="internal_error", message="internal error")
 
 
 @pytest.mark.parametrize(
@@ -33,7 +36,8 @@ def test_only_an_operation_in_an_expiring_status_is_stored_with_the_expiry(
         heartbeat_ttl_seconds=60,
     )
 
-    store.save(operation=Operation(trace_id="trace-1", status=status))
+    error: PublicError | None = None if status in STATUSES_WITHOUT_ERROR else ERROR
+    store.save(operation=Operation(trace_id="trace-1", status=status, error=error))
 
     assert record_writer.save.call_args.kwargs["ttl_seconds"] == ttl_seconds
 

@@ -13,7 +13,7 @@ PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
     "cluster_unavailable": "the cluster or the edge service cannot be reached",
     "cluster_timeout": "the cluster did not finish in time",
     "configuration_error": "the service configuration cannot serve the request",
-    "internal_error": "a bug in the service",
+    "internal_error": "an unexpected failure inside the service, such as a bug or the service stopping",
 }
 
 
