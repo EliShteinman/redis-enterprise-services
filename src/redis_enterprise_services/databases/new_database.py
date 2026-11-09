@@ -65,7 +65,7 @@ class DatabaseOptions(BaseModel):
     shards_count: int | None = Field(
         default=None,
         ge=1,
-        le=512,
+        le=1024,
         description="The number of primary shards." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[1],
     )
@@ -115,6 +115,16 @@ class DatabaseOptions(BaseModel):
         description="Move a replica to a healthy node when its node fails." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[True],
     )
+
+    @model_validator(mode="after")
+    def reject_sharding_settings_without_their_rules(self) -> Self:
+        if self.sharding is True and not self.shard_key_regex:
+            raise ValueError("sharding needs shard_key_regex: how a key picks its shard")
+        if self.sharding is not True and (self.shard_key_regex or (self.shards_count or 1) > 1):
+            raise ValueError(
+                "shard_key_regex and shards_count above 1 are sent only together with sharding true"
+            )
+        return self
 
     @model_validator(mode="after")
     def reject_persistence_settings_of_another_mode(self) -> Self:
