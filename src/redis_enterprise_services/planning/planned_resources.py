@@ -19,6 +19,7 @@ type PlannedResourceType = NameKind | Literal["permissions"]
 class PlannedResource(BaseModel):
     resource_type: PlannedResourceType
     name: str
+    uid_step_key: str
 
 
 def planned_resources_by_step_key(
@@ -26,17 +27,25 @@ def planned_resources_by_step_key(
 ) -> dict[str, PlannedResource]:
     database_name: str = spec.database.name
     planned_by_step_key: dict[str, PlannedResource] = {
-        DATABASE_STEP_KEY: PlannedResource(resource_type="database", name=database_name),
-        PERMISSIONS_STEP_KEY: PlannedResource(resource_type="permissions", name=database_name),
+        DATABASE_STEP_KEY: PlannedResource(
+            resource_type="database", name=database_name, uid_step_key=DATABASE_STEP_KEY
+        ),
+        PERMISSIONS_STEP_KEY: PlannedResource(
+            resource_type="permissions", name=database_name, uid_step_key=DATABASE_STEP_KEY
+        ),
     }
     for user in spec.users:
         planned_by_step_key[acl_step_key(user=user)] = PlannedResource(
             resource_type="acl",
             name=resource_naming.acl_name(database_name=database_name, user_name=user.name),
+            uid_step_key=acl_step_key(user=user),
         )
         planned_by_step_key[role_step_key(user=user)] = PlannedResource(
             resource_type="role",
             name=resource_naming.role_name(database_name=database_name, user_name=user.name),
+            uid_step_key=role_step_key(user=user),
         )
-        planned_by_step_key[user_step_key(user=user)] = PlannedResource(resource_type="user", name=user.name)
+        planned_by_step_key[user_step_key(user=user)] = PlannedResource(
+            resource_type="user", name=user.name, uid_step_key=user_step_key(user=user)
+        )
     return planned_by_step_key
