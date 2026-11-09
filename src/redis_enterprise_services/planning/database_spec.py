@@ -19,7 +19,8 @@ class DatabaseUserSpec(BaseModel):
     )
     password: str = Field(
         min_length=1,
-        description="The user's password. Never returned in any response.",
+        description="The user's password. The result returns it in the user's permission: the cluster never "
+        "returns a password, so it is the one the cluster accepted when it created the user.",
         examples=["S3cure-Passw0rd"],
     )
     acl_rule: str = Field(
