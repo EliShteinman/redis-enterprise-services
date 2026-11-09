@@ -22,9 +22,6 @@ class PeriodicThread:
             logger.info(msg=f"{self._name} never started")
             return
         self._stop_requested.set()
-        if self._thread.ident is None:
-            logger.info(msg=f"{self._name} never started")
-            return
         self._thread.join()
         logger.info(msg=f"{self._name} stopped")
 
