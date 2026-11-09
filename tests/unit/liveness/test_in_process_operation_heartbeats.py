@@ -11,7 +11,7 @@ def failing_task() -> object:
     raise RuntimeError("bug")
 
 
-def test_an_untracked_operation_gets_no_more_heartbeats() -> None:
+def test_an_operation_whose_heartbeat_stopped_is_not_marked_alive() -> None:
     heartbeat_store: MagicMock = create_autospec(spec=HeartbeatStore, instance=True)
     operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
         heartbeat_store=heartbeat_store
