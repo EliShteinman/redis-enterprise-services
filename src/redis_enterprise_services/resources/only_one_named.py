@@ -2,7 +2,7 @@ from redis_enterprise_services.exceptions.cluster import DuplicateResourceNameEr
 from redis_enterprise_services.resources.models import NamedResource
 
 
-def only_one_named(*, found: list[NamedResource], name: str) -> NamedResource | None:
+def only_one_named[TResource: NamedResource](*, found: list[TResource], name: str) -> TResource | None:
     if not found:
         return None
     if len(found) > 1:
