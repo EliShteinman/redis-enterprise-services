@@ -105,12 +105,15 @@ def test_a_failed_submit_stores_the_operation_as_rejected() -> None:
     )
 
 
-def test_a_started_operation_is_tracked() -> None:
+def test_a_started_operation_is_tracked_before_it_is_submitted() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
+    calls: MagicMock = MagicMock()
+    calls.attach_mock(mock=harness.operation_heartbeats.track, attribute="track")
+    calls.attach_mock(mock=harness.task_runner.submit, attribute="submit")
 
     harness.start_once()
 
-    harness.operation_heartbeats.track.assert_called_once_with(trace_id="trace-1")
+    assert [name for name, _, _ in calls.mock_calls] == ["track", "submit"]
 
 
 def test_an_operation_started_meanwhile_is_not_tracked() -> None:

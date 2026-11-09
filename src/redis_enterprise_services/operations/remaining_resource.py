@@ -1,12 +1,16 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+type RemainingResourceType = Literal["database", "acl", "role", "user", "permissions"]
 
 
 class RemainingResource(BaseModel):
     cluster_url: str = Field(
         description="The cluster the resource is on.", examples=["https://cluster-a.net-a:9443"]
     )
-    resource_type: str = Field(
-        description="database, acl, role, user, or permissions (the role-to-ACL links of the database).",
+    resource_type: RemainingResourceType = Field(
+        description="permissions are the role-to-ACL links of the database.",
         examples=["acl"],
     )
     name: str = Field(

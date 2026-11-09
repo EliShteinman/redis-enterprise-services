@@ -5,7 +5,7 @@ import redis_enterprise_services.exceptions as exceptions_package
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
-CODES_WITHOUT_PUBLIC_MAPPING: set[str] = {"internal_error", "operation_not_found"}
+CODES_WITHOUT_PUBLIC_MAPPING: set[str] = {"internal_error", "operation_not_found", "edge_error"}
 
 
 def every_subclass(parent: type[RedisEnterpriseServicesError]) -> list[type[RedisEnterpriseServicesError]]:
