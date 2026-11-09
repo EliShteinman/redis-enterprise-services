@@ -28,6 +28,11 @@ class SagaStatus(StrEnum):
 CLEANLY_ENDED_STATUSES: frozenset[SagaStatus] = frozenset({SagaStatus.SUCCEEDED, SagaStatus.ROLLED_BACK})
 
 
+NOT_ROLLED_BACK_STEP_STATUSES: frozenset[StepStatus] = frozenset(
+    {StepStatus.DONE, StepStatus.UNRESOLVED, StepStatus.COMPENSATING, StepStatus.COMPENSATION_FAILED}
+)
+
+
 class ObtainedBy(StrEnum):
     KEPT = "kept"
     FOUND = "found"
@@ -57,12 +62,27 @@ class StepRecord(BaseModel):
     error: StepError | None = None
     compensation_error: StepError | None = None
 
+    def last_error(self) -> StepError | None:
+        return self.compensation_error or self.error
+
 
 class SagaRecord(BaseModel):
     saga_id: str
     status: SagaStatus = SagaStatus.RUNNING
     steps: list[StepRecord]
     stopped_at: str | None = None
+
+    def step(self, *, key: str) -> StepRecord:
+        for step in self.steps:
+            if step.key == key:
+                return step
+        raise KeyError(key)
+
+    def stopped_step(self) -> StepRecord | None:
+        return next((step for step in self.steps if step.key == self.stopped_at), None)
+
+    def not_rolled_back_steps(self) -> list[StepRecord]:
+        return [step for step in self.steps if step.status in NOT_ROLLED_BACK_STEP_STATUSES]
 
     def has_ended_cleanly(self) -> bool:
         return self.status in CLEANLY_ENDED_STATUSES
