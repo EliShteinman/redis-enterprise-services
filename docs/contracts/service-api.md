@@ -95,16 +95,20 @@
 | `data_persistence` | `disabled` / `aof` / `snapshot` | |
 | `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | רק יחד עם `data_persistence: aof` |
 | `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | רק יחד עם `data_persistence: snapshot` |
-| `sharding` | bool | |
-| `shards_count` | int, 1–512 | |
-| `shard_key_regex` | list של `{regex}` | |
+| `sharding` | bool | `true` רק יחד עם `shard_key_regex` |
+| `shards_count` | int, 1–1024 | מעל 1 רק יחד עם `sharding: true` |
+| `shard_key_regex` | list של `{regex}` | רק יחד עם `sharding: true` |
 | `eviction_policy` | אחד מעשרת הערכים של Redis (`noeviction`, `allkeys-lru`, …) | |
 | `shards_placement` | `dense` / `sparse` | |
 | `proxy_policy` | `single` / `all-master-shards` / `all-nodes` | |
 | `slave_ha` | bool | |
 
-**שם ה-DB:** אותיות באנגלית, ספרות ו-`-`, לא מתחיל ולא נגמר ב-`-`, עד 20 תווים (`config/naming.yaml`). אחרת ⇐
-`422 invalid_name`, והכללים שהופרו ב-`error.message`.
+**כללים:** כל שדה עומד קודם בכללים של Redis עצמו (מהסכמה של הקלאסטר, `/v1/jsonschema`, ומבדיקה מול קלאסטר אמיתי), ועליהם
+השירות יכול להוסיף כללים מחמירים יותר בקונפיג. ערך שלא עומד בהם נדחה מיד עם `422`, לפני שמתחילה ריצה.
+
+**שם ה-DB:** הכלל של Redis: אותיות באנגלית, ספרות ו-`-`, לא מתחיל ולא נגמר ב-`-`, עד 64 תווים
+(`naming.redis.database`). השירות מחמיר לעד 20 תווים (`naming.database`). אחרת ⇐ `422 invalid_name`, והכללים שהופרו
+ב-`error.message`.
 
 **ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`config/database_defaults.yaml`).
 אם אין לשירות ברירת מחדל לשדה, ה-DB נוצר עם ברירת המחדל של Redis. היום:
@@ -120,15 +124,16 @@
 | `proxy_policy` | `all-master-shards` |
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
-מעבר לזה השירות לא בודק תלות בין שדות (למשל `shard_key_regex` בלי `sharding`). הקלאסטר בודק, וכשהוא דוחה, התוצאה היא
-`rolled_back` עם `cluster_request_failed`.
+כך גם `sharding: true` בלי `shard_key_regex` (Redis דוחה אותו), ו-`shard_key_regex` או `shards_count` מעל 1 בלי
+`sharding: true`. ערכים שרק הקלאסטר יכול לבדוק (למשל זיכרון גדול מהקלאסטר, או `version` שלא קיים) נבדקים בקלאסטר, וכשהוא
+דוחה, התוצאה היא `rolled_back` עם `cluster_request_failed`.
 
 ### `spec.users[]`
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
 | `users` | list | | ברירת מחדל `[]`. כל שם פעם אחת |
-| `users[].name` | str | ✅ | בלי `-` |
+| `users[].name` | str | ✅ | בלי `-` (המפריד בשמות ה-ACL וה-role). הכלל של Redis: ASCII בלי `" & < >`, עד 255 תווים (`naming.redis.user`). ושמות ה-ACL וה-role שנגזרים ממנו (`{db}-{user}-acl`, `{db}-{user}-role`) חייבים את הכלל של Redis לשמות אלה: אותיות, ספרות, רווח ו-`_ . @ # ; , ( ) [ ] -`, עד 255 תווים (`naming.redis.acl_and_role`). אחרת ⇐ `422 invalid_name` |
 | `users[].password` | str | ✅ | לא ריק |
 | `users[].acl_rule` | str | ✅ | לא ריק. כלל ACL של Redis, למשל `+@all ~orders:*` |
 
