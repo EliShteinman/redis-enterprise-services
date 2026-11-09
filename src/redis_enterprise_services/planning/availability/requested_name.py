@@ -1,8 +1,8 @@
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
-type NameKind = Literal["database", "acl", "role", "user"]
+from redis_enterprise_services.planning.name_kind import NameKind
 
 
 class RequestedName(BaseModel):

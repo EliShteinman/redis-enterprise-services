@@ -8,7 +8,7 @@ from redis_enterprise_services.saga.contract.saga_record_store import SagaRecord
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.point_of_no_return import (
     compensation_allowed,
-    passed_point_of_no_return,
+    has_passed_point_of_no_return,
 )
 from redis_enterprise_services.saga.engine.step_recorder import StepRecorder
 from redis_enterprise_services.saga.engine.step_runner import StepOutcome, StepRunner
@@ -84,7 +84,7 @@ class SagaExecutor:
             record.stopped_at = step.key
             return self._status_after_stop(
                 outcome=outcome,
-                passed_point_of_no_return=passed_point_of_no_return(steps_before=plan.steps[:position]),
+                passed_point_of_no_return=has_passed_point_of_no_return(steps_before=plan.steps[:position]),
                 prepared_steps=prepared_steps,
             )
         return SagaStatus.SUCCEEDED
