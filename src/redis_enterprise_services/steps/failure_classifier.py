@@ -8,6 +8,7 @@ from redis_enterprise_services.exceptions.cluster import (
     DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
     DuplicateResourceNameError,
+    IncompleteClusterObjectError,
     UnreadableClusterResponseError,
     UpdateOutcomeUnclearError,
 )
@@ -27,6 +28,7 @@ REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], .
 CLUSTER_REPORTED_FAILURE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionFailedError,
     DatabaseCreationFailedError,
+    IncompleteClusterObjectError,
 )
 
 FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (

@@ -3,8 +3,11 @@ import logging
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
-from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
-from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterRejectedRequestError,
+    IncompleteClusterObjectError,
+)
+from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
 from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.only_one_named import only_one_named
 from redis_enterprise_services.resources.repository import ResourceRepository
@@ -38,6 +41,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         created: CreatedResource = self._repository.start_creation(target=target, spec=step_input.spec)
         keep_result(result=created)
+        self._require_complete(step_input=step_input, created=created)
         self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
 
     def find_outcome(
@@ -53,6 +57,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         )
         if created is not None:
             keep_result_if_none_kept(result=created)
+            self._require_complete(step_input=step_input, created=created)
             self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
         return created
 
@@ -65,10 +70,20 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
     ) -> CreatedResource | None:
         if kept_result is not None:
             return kept_result
-        return only_one_named(
+        found: NamedResource | None = only_one_named(
             found=self._repository.find_by_name(target=target, name=step_input.spec.name),
             name=step_input.spec.name,
         )
+        if found is None:
+            return None
+        return self._repository.read_created(target=target, uid=found.uid)
+
+    def _require_complete(self, *, step_input: CreateResourceInput[TSpec], created: CreatedResource) -> None:
+        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=created)
+        if missing:
+            raise IncompleteClusterObjectError(
+                message=f"created {created.name} (uid {created.uid}) came back without a value for {missing}"
+            )
 
     def compensate(self, *, step_input: CreateResourceInput[TSpec], result: CreatedResource) -> None:
         logger.info(msg=f"removing created {result.name}")
