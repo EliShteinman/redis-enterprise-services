@@ -11,6 +11,8 @@ x-cluster-bootstrap: &cluster-bootstrap
   volumes:
     - ./bootstrap:/bootstrap:ro
     - ./license:/license:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   restart: "no"
   environment: &bootstrap-environment
     ADMIN_USERNAME: ${CLUSTER_ADMIN_USERNAME}

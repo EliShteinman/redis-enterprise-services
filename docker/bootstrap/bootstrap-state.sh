@@ -1,5 +1,3 @@
-#!/bin/sh
-
 cluster_authorization="Basic $(printf '%s' "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" | base64 | tr -d '\n')"
 
 relay_call() {
@@ -23,7 +21,15 @@ read_state() {
         | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
 }
 
+require_relay() {
+    if ! curl --silent --output /dev/null "${RELAY_URL}"; then
+        echo "cluster-relay is not reachable at ${RELAY_URL}, start it first" >&2
+        exit 1
+    fi
+}
+
 wait_for_first_state() {
+    require_relay
     until state="$(read_state)" && [ -n "${state}" ]; do
         sleep "${POLL_INTERVAL_SECONDS}"
     done
