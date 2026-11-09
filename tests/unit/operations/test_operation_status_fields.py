@@ -35,11 +35,12 @@ DATABASE: DatabaseResult = DatabaseResult.model_validate(
         "crdb_guid": None,
         "clusters": [
             {
+                "cluster": "c",
                 "cluster_url": "https://c:9443",
                 "network": "n",
                 "site": "s",
                 "environment": "DEV",
-                "access": {"endpoints": [{"dns_name": "d", "port": 1, "addr": []}]},
+                "access": {"endpoints": [{"dns_name": "d", "port": 1, "addr": ["10.0.0.1"]}]},
                 "db": {"db_uid": 1, "settings": {}, "permissions": []},
             }
         ],
