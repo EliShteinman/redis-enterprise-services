@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Self
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import MissingStepRecordError
@@ -54,6 +54,8 @@ class StepError(BaseModel):
 
 
 class StepRecord(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(hide_input_in_errors=True)
+
     key: str
     kind: StepKind
     status: StepStatus = StepStatus.PENDING
@@ -68,6 +70,8 @@ class StepRecord(BaseModel):
 
 
 class SagaRecord(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(hide_input_in_errors=True)
+
     saga_id: str
     status: SagaStatus = SagaStatus.RUNNING
     steps: list[StepRecord]
