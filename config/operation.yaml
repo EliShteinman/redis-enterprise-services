@@ -15,7 +15,7 @@ operation:
     duplicate_resource_name: internal_error
     unrestorable_fields: internal_error
     update_outcome_unclear: internal_error
-    configuration_error: internal_error
+    configuration_error: configuration_error
     invalid_plan: internal_error
     missing_step_result: internal_error
     missing_step_record: internal_error
