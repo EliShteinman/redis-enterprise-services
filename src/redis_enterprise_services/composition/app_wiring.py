@@ -197,11 +197,11 @@ def build_planner(
         role_management=settings.user_resources.role_management,
         cluster_fields=settings.cluster_api.fields,
         resource_naming=user_resource_naming,
-        create_database_step=cluster_wiring.steps.create_database_step,
-        create_acl_step=cluster_wiring.steps.create_acl_step,
-        create_role_step=cluster_wiring.steps.create_role_step,
-        create_user_step=cluster_wiring.steps.create_user_step,
-        update_database_step=cluster_wiring.steps.update_database_step,
+        create_database_step=cluster_wiring.steps.create_database,
+        create_acl_step=cluster_wiring.steps.create_acl,
+        create_role_step=cluster_wiring.steps.create_role,
+        create_user_step=cluster_wiring.steps.create_user,
+        update_database_step=cluster_wiring.steps.update_database,
     )
 
 

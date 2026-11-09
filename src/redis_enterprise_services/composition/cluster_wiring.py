@@ -38,7 +38,7 @@ class ClusterWiring:
             transient_error_codes=settings.cluster_api.transient_error_codes,
         )
         self.target_resolver: ClusterTargetResolver = build_target_resolver(settings=settings)
-        self.repositories: CreationRepositories = CreationRepositories(
+        self.repositories: ClusterRepositories = ClusterRepositories(
             database=build_database_repository(settings=settings, cluster_api_caller=cluster_api_caller),
             acl=rest_repository(
                 cluster_api_caller=cluster_api_caller,
@@ -58,6 +58,11 @@ class ClusterWiring:
                 resource=settings.user,
                 body_builder=SpecCreationBody[NewUser](),
             ),
+            database_fields=RestDatabaseFieldsRepository(
+                cluster_api_caller=cluster_api_caller,
+                settings=settings.database,
+                cluster_api_settings=settings.cluster_api,
+            ),
         )
         self.steps: ClusterSteps = ClusterSteps(
             settings=settings,
@@ -68,7 +73,7 @@ class ClusterWiring:
         )
 
 
-class CreationRepositories:
+class ClusterRepositories:
     def __init__(
         self,
         *,
@@ -76,8 +81,10 @@ class CreationRepositories:
         acl: EndpointResourceRepository[NewAcl],
         role: EndpointResourceRepository[NewRole],
         user: EndpointResourceRepository[NewUser],
+        database_fields: RestDatabaseFieldsRepository,
     ) -> None:
         self.database: EndpointResourceRepository[NewDatabase] = database
+        self.database_fields: RestDatabaseFieldsRepository = database_fields
         self.acl: EndpointResourceRepository[NewAcl] = acl
         self.role: EndpointResourceRepository[NewRole] = role
         self.user: EndpointResourceRepository[NewUser] = user
@@ -91,15 +98,10 @@ class ClusterSteps:
         cluster_api_caller: EdgeClusterApiCaller,
         read_again_polling: ReadAgainPolling,
         target_resolver: ClusterTargetResolver,
-        repositories: CreationRepositories,
+        repositories: ClusterRepositories,
     ) -> None:
-        database_fields_repository: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
-            cluster_api_caller=cluster_api_caller,
-            settings=settings.database,
-            cluster_api_settings=settings.cluster_api,
-        )
         database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
-            fields_reader=database_fields_repository,
+            fields_reader=repositories.database_fields,
             read_again_polling=read_again_polling,
             settings=settings.database,
             cluster_api_settings=settings.cluster_api,
@@ -107,28 +109,28 @@ class ClusterSteps:
         action_completion_waiter: ActionCompletionWaiter = build_action_completion_waiter(
             settings=settings, cluster_api_caller=cluster_api_caller, read_again_polling=read_again_polling
         )
-        self.create_database_step: CreateResourceStep[NewDatabase] = CreateResourceStep(
+        self.create_database: CreateResourceStep[NewDatabase] = CreateResourceStep(
             repository=repositories.database,
             completion_waiter=database_waiter,
             target_resolver=target_resolver,
         )
-        self.create_acl_step: CreateResourceStep[NewAcl] = CreateResourceStep(
+        self.create_acl: CreateResourceStep[NewAcl] = CreateResourceStep(
             repository=repositories.acl,
             completion_waiter=action_completion_waiter,
             target_resolver=target_resolver,
         )
-        self.create_role_step: CreateResourceStep[NewRole] = CreateResourceStep(
+        self.create_role: CreateResourceStep[NewRole] = CreateResourceStep(
             repository=repositories.role,
             completion_waiter=action_completion_waiter,
             target_resolver=target_resolver,
         )
-        self.create_user_step: CreateResourceStep[NewUser] = CreateResourceStep(
+        self.create_user: CreateResourceStep[NewUser] = CreateResourceStep(
             repository=repositories.user,
             completion_waiter=action_completion_waiter,
             target_resolver=target_resolver,
         )
-        self.update_database_step: UpdateDatabaseStep = UpdateDatabaseStep(
-            repository=database_fields_repository,
+        self.update_database: UpdateDatabaseStep = UpdateDatabaseStep(
+            repository=repositories.database_fields,
             activation_waiter=database_waiter,
             target_resolver=target_resolver,
             order_insensitive_fields=settings.database.order_insensitive_fields,

@@ -17,9 +17,10 @@ from redis_enterprise_services.api.rejection_error_code import (
     RejectionErrorCode,
 )
 from redis_enterprise_services.api.rejection_response import rejection_response
+from redis_enterprise_services.api.service_rejection import ServiceRejection, service_rejection
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.operations.public_errors import INTERNAL_ERROR_CODE, PublicErrors
+from redis_enterprise_services.operations.public_errors import PublicErrors
 
 LOCATION_SEPARATOR: str = "."
 
@@ -35,21 +36,13 @@ class ServiceErrorHandler:
         self._public_errors: PublicErrors = public_errors
 
     async def __call__(self, request: Request, error: RedisEnterpriseServicesError) -> Response:
-        public_code: RejectionErrorCode = self._public_code(internal_code=error.code)
-        status_code: int = status_code_for(error=error, public_code=public_code)
-        log_service_error(error=error, status_code=status_code)
-        return rejection_response(
-            request=request,
-            status_code=status_code,
-            error=self._rejection_error(error=error, public_code=public_code),
+        rejection: ServiceRejection = service_rejection(
+            error=error,
+            public_code=self._public_code(internal_code=error.code),
+            internal_error_message=self._public_errors.internal_error().message,
         )
-
-    def _rejection_error(
-        self, *, error: RedisEnterpriseServicesError, public_code: RejectionErrorCode
-    ) -> RejectionError:
-        if public_code == INTERNAL_ERROR_CODE:
-            return RejectionError(code=public_code, message=self._public_errors.internal_error().message)
-        return RejectionError(code=public_code, message=error.message)
+        log_service_error(error=error, status_code=rejection.status_code)
+        return rejection_response(request=request, status_code=rejection.status_code, error=rejection.error)
 
     def _public_code(self, *, internal_code: str) -> RejectionErrorCode:
         return API_ERROR_CODE_BY_INTERNAL_CODE.get(internal_code) or self._public_errors.public_code(
@@ -84,12 +77,6 @@ async def http_exception_handler(request: Request, error: HTTPException) -> Resp
         error=RejectionError(code=code, message=str(error.detail)),
         headers=error.headers,
     )
-
-
-def status_code_for(*, error: RedisEnterpriseServicesError, public_code: RejectionErrorCode) -> int:
-    if public_code == INTERNAL_ERROR_CODE:
-        return HTTPStatus.INTERNAL_SERVER_ERROR
-    return error.status_code
 
 
 def log_service_error(*, error: RedisEnterpriseServicesError, status_code: int) -> None:
