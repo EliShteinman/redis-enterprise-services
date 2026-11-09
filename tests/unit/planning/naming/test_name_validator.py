@@ -7,7 +7,7 @@ from redis_enterprise_services.planning.naming.name_rule import NameRule
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
-from redis_enterprise_services.planning.site_placement import ClusterChoice, SitePlacement
+from redis_enterprise_services.planning.site_placement import SitePlacement
 
 RULES: list[NameRule] = configured_name_rules(
     settings=NameRulesSettings.model_validate(
@@ -16,9 +16,7 @@ RULES: list[NameRule] = configured_name_rules(
 )
 CONTEXT: NamingContext = NamingContext(
     active_active=False,
-    sites=[
-        SitePlacement(network="net-a", site="ny", environment="PROD", cluster=ClusterChoice(type="generic"))
-    ],
+    sites=[SitePlacement(network="net-a", site="ny", environment="PROD", cluster="generic")],
 )
 
 

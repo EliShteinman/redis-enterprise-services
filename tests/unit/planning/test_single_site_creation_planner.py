@@ -105,8 +105,12 @@ def test_a_database_without_users_is_one_step() -> None:
     assert [step.key for step in plan(users=[]).steps] == ["database"]
 
 
-def test_the_plan_locks_the_database_and_user_names_on_its_cluster() -> None:
-    assert plan(users=USERS).lock_keys == ["c1/orders", "c1/user/app", "c1/user/report"]
+def test_the_plan_locks_the_database_and_user_names_on_its_cluster_address() -> None:
+    assert plan(users=USERS).lock_keys == [
+        "https://c1:9443/orders",
+        "https://c1:9443/user/app",
+        "https://c1:9443/user/report",
+    ]
 
 
 def test_each_acl_is_named_from_the_config_and_carries_the_requested_rules() -> None:

@@ -70,7 +70,7 @@ class SingleSiteCreationPlanner:
         return SagaPlan(
             steps=steps,
             lock_keys=creation_lock_keys(
-                cluster_name=cluster.name,
+                cluster_url=cluster.api_url,
                 database_name=database.name,
                 user_names=[user.name for user in users],
             ),
@@ -179,10 +179,10 @@ class SingleSiteCreationPlanner:
         )
 
 
-def creation_lock_keys(*, cluster_name: str, database_name: str, user_names: list[str]) -> list[str]:
+def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list[str]) -> list[str]:
     return [
-        f"{cluster_name}/{database_name}",
-        *(f"{cluster_name}/{USER_LOCK_SEGMENT}/{user_name}" for user_name in user_names),
+        f"{cluster_url}/{database_name}",
+        *(f"{cluster_url}/{USER_LOCK_SEGMENT}/{user_name}" for user_name in user_names),
     ]
 
 
