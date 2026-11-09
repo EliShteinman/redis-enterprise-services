@@ -9,6 +9,6 @@ class OperationStatus(StrEnum):
     REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
 
 
-EXPIRING_STATUSES: frozenset[OperationStatus] = frozenset(
+CLEANLY_ENDED_STATUSES: frozenset[OperationStatus] = frozenset(
     {OperationStatus.SUCCEEDED, OperationStatus.REJECTED, OperationStatus.ROLLED_BACK}
 )

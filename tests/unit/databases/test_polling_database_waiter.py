@@ -14,6 +14,7 @@ from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.polling_database_waiter import PollingDatabaseWaiter
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
+    DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
     UnreadableClusterResponseError,
 )
@@ -104,4 +105,15 @@ def test_a_database_answer_without_a_status_is_unreadable(
     fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(values={}, cluster_state_id=1)
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
+        waiter.wait_until_active(target=TARGET, uid=11)
+
+
+def test_a_database_that_stays_pending_times_out(
+    fields_reader: MagicMock, waiter: PollingDatabaseWaiter
+) -> None:
+    fields_reader.read_fields.return_value = DatabaseFieldsSnapshot(
+        values={"status": "pending"}, cluster_state_id=1
+    )
+
+    with pytest.raises(expected_exception=DatabaseActivationTimeoutError):
         waiter.wait_until_active(target=TARGET, uid=11)

@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from redis import Redis
 from redis.commands.core import Script
@@ -69,7 +70,7 @@ class RedisOperationStore(OperationStore):
         logger.info(msg=f"operation {operation.trace_id} stored as {operation.status.value}")
 
     def find(self, *, trace_id: str) -> Operation | None:
-        stored: str | bytes | None = self._client.get(name=self._keys.operation(trace_id=trace_id))
+        stored: str | None = cast(str | None, self._client.get(name=self._keys.operation(trace_id=trace_id)))
         if stored is None:
             logger.info(msg=f"operation {trace_id} is not known")
             return None
