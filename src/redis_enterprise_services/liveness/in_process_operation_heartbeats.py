@@ -3,11 +3,12 @@ from collections.abc import Callable
 from threading import Lock
 
 from redis_enterprise_services.liveness.heartbeat_store import HeartbeatStore
+from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class InProcessOperationHeartbeats:
+class InProcessOperationHeartbeats(OperationHeartbeats):
     def __init__(self, *, heartbeat_store: HeartbeatStore) -> None:
         self._heartbeat_store: HeartbeatStore = heartbeat_store
         self._lock: Lock = Lock()
