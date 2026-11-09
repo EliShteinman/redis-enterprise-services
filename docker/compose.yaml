@@ -63,6 +63,7 @@ services:
       <<: *bootstrap-environment
       NODE_HOST: cluster1-node2
       CLUSTER_NODE_HOST: cluster1-node1
+      CLUSTER_NODE_IP: ${CLUSTER1_NODE1_IP}
 
   cluster2-node1:
     <<: *cluster-node
