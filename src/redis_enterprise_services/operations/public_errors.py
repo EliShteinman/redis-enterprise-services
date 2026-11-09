@@ -1,10 +1,13 @@
 import logging
 
 from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.public_error_code import PublicErrorCode
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.public_error import PublicError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
+
+INTERNAL_ERROR_CODE: PublicErrorCode = "internal_error"
 
 
 class PublicErrors:
@@ -13,7 +16,7 @@ class PublicErrors:
         self._internal_error_message: str = internal_error_message
 
     def internal_error(self) -> PublicError:
-        return PublicError(code=RedisEnterpriseServicesError.code, message=self._internal_error_message)
+        return PublicError(code=INTERNAL_ERROR_CODE, message=self._internal_error_message)
 
     def from_error(
         self, *, error: RedisEnterpriseServicesError, cluster_url: str | None = None
@@ -33,25 +36,26 @@ class PublicErrors:
         cluster_url: str | None = None,
         cluster_error_code: str | None = None,
     ) -> PublicError:
-        public_code: str = self.public_code(internal_code=internal_code)
+        public_code: PublicErrorCode = self.public_code(internal_code=internal_code)
         if not self._shows_cluster_details(public_code=public_code):
             return PublicError(code=public_code, message=message)
         return PublicError(
             code=public_code, message=message, cluster_url=cluster_url, cluster_error_code=cluster_error_code
         )
 
-    def public_code(self, *, internal_code: str) -> str:
-        fallback_public_code: str = RedisEnterpriseServicesError.code
-        mapped_public_code: str | None = self._settings.public_code_by_internal_code.get(internal_code)
+    def public_code(self, *, internal_code: str) -> PublicErrorCode:
+        mapped_public_code: PublicErrorCode | None = self._settings.public_code_by_internal_code.get(
+            internal_code
+        )
         if mapped_public_code is None:
-            if internal_code != fallback_public_code:
+            if internal_code != INTERNAL_ERROR_CODE:
                 logger.warning(
-                    msg=f"error {internal_code} has no public code and is published as {fallback_public_code}"
+                    msg=f"error {internal_code} has no public code and is published as {INTERNAL_ERROR_CODE}"
                 )
-            return fallback_public_code
+            return INTERNAL_ERROR_CODE
         if mapped_public_code != internal_code:
             logger.debug(msg=f"error {internal_code} is published as {mapped_public_code}")
         return mapped_public_code
 
-    def _shows_cluster_details(self, *, public_code: str) -> bool:
+    def _shows_cluster_details(self, *, public_code: PublicErrorCode) -> bool:
         return public_code in self._settings.public_codes_with_cluster_details
