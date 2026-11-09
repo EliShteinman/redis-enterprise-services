@@ -114,8 +114,8 @@ class SagaExecutor:
 
     def _end(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         logger.info(msg=f"saga {record.saga_id} ended {record.status.value}")
-        self._release_lock_if_cleanly_ended(record=record, plan=plan)
         self._record_writer.save_final(record=record)
+        self._release_lock_if_cleanly_ended(record=record, plan=plan)
 
     def _release_lock_if_cleanly_ended(self, *, record: SagaRecord, plan: SagaPlan) -> None:
         if record.has_ended_cleanly():

@@ -260,8 +260,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | מה נמצא | מה מסומן |
 |---|---|
 | אין saga record (ה-Saga לא התחיל) | הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת מ-`operations:open`. הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו. כך pod שנפל בין הנעילה לשמירת ה-record לא משאיר שמות נעולים |
-| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת**, חוץ מ-Saga שכבר הסתיימה ושמירת ה-record האחרונה שלה לא נכתבה (ראו מקרים ידועים) |
-| ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | `rolled_back` ⇐ הפעולה `rolled_back` עם `internal_error`, כי ה-record מראה שהכול בוטל. `succeeded` ⇐ הפעולה `requires_manual_intervention`, כי את עץ ה-DB אי אפשר לבנות כאן. `requires_manual_intervention` ⇐ אותו סטטוס. ה-record לא משתנה |
+| ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת** |
+| ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | `rolled_back` ⇐ הפעולה `rolled_back` עם `internal_error`, כי ה-record מראה שהכול בוטל. `succeeded` ⇐ הפעולה `requires_manual_intervention`, כי את עץ ה-DB אי אפשר לבנות כאן. `requires_manual_intervention` ⇐ אותו סטטוס, והנעילה נשארת. ה-record לא משתנה. ב-`succeeded` וב-`rolled_back` הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו, כי אין מה לתקן בקלאסטר |
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
@@ -271,9 +271,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
     הסופית דורסת את הסימון. אם הוא גם קורס באמצע ה-Saga, הסריקה כבר לא תגיע אליו, והנעילה נשארת עד טיפול ידני.
   - נעצר אחרי שה-Saga התחיל: הוא ממשיך, והתוצאה הסופית דורסת את הסימון.
   עצירה של יותר מ-60 שניות גבוהה בכמה סדרי גודל מעצירה רגילה, ולכן אין לזה מנגנון נוסף.
-- **Saga שהסתיים (`succeeded` או `rolled_back`), וה-record הסופי שלו לא נכתב:** המנוע משחרר את הנעילה לפני השמירה
-  האחרונה. אם השמירה נכשלה, או שה-pod נפל בין השתיים, הנעילה כבר שוחררה וה-record נשאר `running`. הסריקה תסמן
-  אותו `requires_manual_intervention` בלי נעילה. מי שבודק ימצא שכל הצעדים `done`, או שכולם בוטלו.
+- **pod שנפל בין השמירה הסופית של ה-record לשחרור הנעילה:** המנוע שומר קודם את ה-record הסופי, ורק אחר כך משחרר.
+  ה-record כבר `succeeded` או `rolled_back`, והסריקה משחררת את הנעילה (השורה האחרונה בטבלה).
 
 ---
 
