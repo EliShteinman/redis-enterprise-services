@@ -46,7 +46,7 @@ class EdgeClient:
                 url=relay_url,
                 headers=headers,
                 data=data,
-                timeout=self._settings.request_timeout_seconds,
+                timeout=(self._settings.connect_timeout_seconds, self._settings.request_timeout_seconds),
                 allow_redirects=False,
                 verify=False,  # noqa: S501
             )
