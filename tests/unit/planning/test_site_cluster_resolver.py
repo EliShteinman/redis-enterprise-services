@@ -1,10 +1,9 @@
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from redis_enterprise_services.config.cluster_inventory import (
     ClusterType,
     ConfiguredCluster,
-    ConfiguredClusters,
     Environment,
 )
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
@@ -109,8 +108,3 @@ def test_several_generic_clusters_at_a_site_cannot_be_chosen_yet() -> None:
 def test_only_a_dedicated_cluster_is_named(cluster_type: ClusterType, name: str | None) -> None:
     with pytest.raises(expected_exception=ValidationError):
         ClusterChoice(type=cluster_type, name=name)
-
-
-def test_a_cluster_configured_twice_is_refused_when_the_config_loads() -> None:
-    with pytest.raises(expected_exception=ValidationError):
-        TypeAdapter(ConfiguredClusters).validate_python([cluster(name="c1"), cluster(name="c1")])

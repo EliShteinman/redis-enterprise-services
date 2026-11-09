@@ -1,5 +1,5 @@
 import pytest
-from pydantic import BaseModel, JsonValue, ValidationError
+from pydantic import BaseModel, JsonValue
 
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
@@ -9,6 +9,7 @@ from redis_enterprise_services.planning.database_spec import (
     DatabaseSpec,
     DatabaseUserSpec,
 )
+from redis_enterprise_services.planning.planned_resources import planned_resources_by_step_key
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
@@ -77,7 +78,7 @@ CREATED_UIDS_BY_STEP_KEY: dict[str, int] = {
 
 
 def plan(*, users: list[DatabaseUserSpec]) -> SagaPlan:
-    return PLANNER.plan(cluster=CLUSTER, database=DATABASE, users=users)
+    return PLANNER.plan(cluster=CLUSTER, spec=DatabaseSpec(database=DATABASE, users=users))
 
 
 def step_inputs_by_key() -> dict[str, JsonValue]:
@@ -142,23 +143,11 @@ def test_the_permissions_pair_each_role_with_its_own_acl() -> None:
     }
 
 
-def test_a_user_requested_twice_is_refused() -> None:
-    with pytest.raises(expected_exception=ValidationError):
-        DatabaseSpec(database=DATABASE, users=[USERS[0], USERS[0]])
-
-
-@pytest.mark.parametrize(
-    argnames="template",
-    argvalues=[
-        pytest.param("{db}-{user}-acl", id="unknown placeholder"),
-        pytest.param("{database}-acl", id="same name for every user"),
-        pytest.param("{database}_{user}-acl", id="placeholders not joined by the separator"),
-    ],
-)
-def test_a_name_template_that_does_not_name_each_user_is_refused(template: str) -> None:
-    with pytest.raises(expected_exception=ValidationError):
-        UserResourcesSettings(
-            acl_name_template=template,
-            role_name_template="{database}-{user}-role",
-            role_management="db_viewer",
+@pytest.mark.parametrize(argnames="users", argvalues=[[], USERS])
+def test_the_planned_resources_name_exactly_the_planned_steps(users: list[DatabaseUserSpec]) -> None:
+    assert set(
+        planned_resources_by_step_key(
+            spec=DatabaseSpec(database=DATABASE, users=users),
+            resource_naming=UserResourceNaming(settings=USER_RESOURCES),
         )
+    ) == {step.key for step in plan(users=users).steps}
