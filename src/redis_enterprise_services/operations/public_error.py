@@ -14,7 +14,7 @@ class PublicError(BaseModel):
         "resources_locked (another operation holds the database or one of its users), "
         "cluster_request_failed (the cluster refused or failed a request), "
         "cluster_unavailable (the cluster or the edge service cannot be reached), cluster_timeout "
-        "(the cluster did not finish in time), internal_error.",
+        "(the cluster did not finish in time), configuration_error, internal_error.",
         examples=["cluster_request_failed"],
     )
     message: str = Field(
