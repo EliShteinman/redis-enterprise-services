@@ -70,21 +70,42 @@ def with_persistence_settings_of_its_mode(
     of_this_mode: dict[str, JsonValue] = {
         field: value for field, value in values.items() if PERSISTENCE_MODE_BY_FIELD.get(field, mode) == mode
     }
-    return {**persistence_values.get(str(mode), {}), **of_this_mode}
+    mode_defaults: dict[str, JsonValue] = persistence_values.get(mode, {}) if isinstance(mode, str) else {}
+    return {**mode_defaults, **of_this_mode}
 
 
 def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None:
     persistence_defaults: list[dict[str, JsonValue]] = [
         {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in settings.persistence_values.items()
     ]
-    for values in [
-        settings.values,
-        *persistence_defaults,
-        *(override.values for override in settings.overrides),
-    ]:
-        try:
-            DatabaseOptions.model_validate(obj=values)
-        except ValidationError as error:
-            raise ConfigurationError(
-                message=f"database defaults {sorted(values)} are not valid: {error}"
-            ) from error
+    for values in [settings.values, *persistence_defaults]:
+        reject_invalid_options(values=values)
+    for override in settings.overrides:
+        reject_persistence_settings_of_another_mode(base=settings.values, override=override.values)
+        reject_invalid_options(
+            values=with_persistence_settings_of_its_mode(
+                values={**settings.values, **override.values}, persistence_values=settings.persistence_values
+            )
+        )
+
+
+def reject_persistence_settings_of_another_mode(
+    *, base: dict[str, JsonValue], override: dict[str, JsonValue]
+) -> None:
+    mode: JsonValue = {**base, **override}.get(DATA_PERSISTENCE_FIELD)
+    foreign: list[str] = sorted(
+        field for field in override if PERSISTENCE_MODE_BY_FIELD.get(field, mode) != mode
+    )
+    if foreign:
+        raise ConfigurationError(
+            message=f"database defaults override sets {foreign}, which do not apply to persistence {mode}"
+        )
+
+
+def reject_invalid_options(*, values: dict[str, JsonValue]) -> None:
+    try:
+        DatabaseOptions.model_validate(obj=values)
+    except ValidationError as error:
+        raise ConfigurationError(
+            message=f"database defaults {sorted(values)} are not valid: {error}"
+        ) from error

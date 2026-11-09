@@ -158,3 +158,26 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
     filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=requested)
 
     assert filled.snapshot_policy == [SnapshotRule(secs=60, writes=100)]
+
+
+def defaults_with_override(*, values: dict[str, JsonValue]) -> DatabaseDefaults:
+    return database_defaults_from(
+        settings=DatabaseDefaultsSettings(
+            values={"data_persistence": "aof"},
+            persistence_values=PERSISTENCE_VALUES,
+            overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="PROD"), values=values)],
+        )
+    )
+
+
+def test_an_override_may_set_only_the_policy_of_the_default_mode() -> None:
+    defaults: DatabaseDefaults = defaults_with_override(values={"aof_policy": "appendfsync-always"})
+
+    assert defaults.fill_in(cluster=cluster(environment="PROD"), requested=REQUESTED).aof_policy == (
+        "appendfsync-always"
+    )
+
+
+def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        defaults_with_override(values={"snapshot_policy": [{"secs": 60, "writes": 1}]})
