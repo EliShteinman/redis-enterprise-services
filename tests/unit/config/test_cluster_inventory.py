@@ -1,16 +1,22 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, ConfiguredClusters
+from redis_enterprise_services.config.cluster_inventory import (
+    ClusterType,
+    ConfiguredCluster,
+    ConfiguredClusters,
+)
 
 
-def configured_cluster(*, name: str, site: str = "dc1", api_url: str | None = None) -> ConfiguredCluster:
+def configured_cluster(
+    *, name: str, site: str = "dc1", api_url: str | None = None, cluster_type: ClusterType = "generic"
+) -> ConfiguredCluster:
     return ConfiguredCluster(
         name=name,
         network="net-a",
         environment="PROD",
         site=site,
-        type="generic",
+        type=cluster_type,
         api_url=api_url or f"https://{name}:9443",
     )
 
@@ -42,3 +48,8 @@ def test_the_same_cluster_name_on_another_site_loads() -> None:
     ]
 
     assert TypeAdapter(ConfiguredClusters).validate_python(clusters) == clusters
+
+
+def test_a_dedicated_cluster_named_generic_is_refused() -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        configured_cluster(name="generic", cluster_type="dedicated")
