@@ -42,12 +42,17 @@ def ignore_found(*, result: CreatedResource) -> None:
     pass
 
 
+def unchanged(*, created: CreatedResource) -> CreatedResource:
+    return created
+
+
 @pytest.fixture
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=ResourceRepository, instance=True)
     repository.start_creation.return_value = CREATED
     repository.read_created.return_value = READ_BACK
     repository.missing_fields.return_value = []
+    repository.without_secrets.side_effect = unchanged
     repository.start_deletion.return_value = DeletionStarted(
         action_uid=DELETE_ACTION_UID, fields={"action_uid": DELETE_ACTION_UID}
     )
@@ -231,3 +236,23 @@ def test_find_outcome_also_rejects_an_incomplete_kept_object(
 
     with pytest.raises(expected_exception=IncompleteClusterObjectError):
         step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
+
+
+def test_find_outcome_checks_a_kept_object_against_a_fresh_read(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
+
+    repository.missing_fields.assert_called_once_with(spec=SPEC, created=READ_BACK)
+
+
+def test_the_saga_keeps_the_object_without_its_secrets(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.without_secrets.side_effect = None
+    repository.without_secrets.return_value = READ_BACK
+    kept: list[CreatedResource] = []
+
+    step.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
+
+    assert kept == [READ_BACK]

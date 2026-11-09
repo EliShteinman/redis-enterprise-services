@@ -4,7 +4,11 @@ from pydantic import JsonValue
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.steps.read_database import missing_database_values, required_field_names
+from redis_enterprise_services.steps.read_database import (
+    fields_not_holding,
+    missing_database_values,
+    required_field_names,
+)
 
 
 @pytest.fixture
@@ -54,4 +58,39 @@ def test_an_endpoint_without_a_port_is_incomplete(
 
     assert missing_database_values(values=complete, settings=settings) == [
         f"{settings.endpoints_field}[0].port"
+    ]
+
+
+def test_an_endpoint_with_no_address_is_incomplete(
+    settings: DatabaseSettings, complete: dict[str, JsonValue]
+) -> None:
+    complete[settings.endpoints_field] = [{"dns_name": "d", "port": 12000, "addr": []}]
+
+    assert missing_database_values(values=complete, settings=settings) == [
+        f"{settings.endpoints_field}[0].addr"
+    ]
+
+
+def test_permissions_set_earlier_must_be_on_the_database_in_any_order() -> None:
+    held: dict[str, JsonValue] = {
+        "roles_permissions": [{"role_uid": 2, "redis_acl_uid": 3}, {"role_uid": 4, "redis_acl_uid": 5}]
+    }
+    expected: dict[str, JsonValue] = {
+        "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 5}, {"role_uid": 2, "redis_acl_uid": 3}]
+    }
+
+    assert (
+        fields_not_holding(
+            values=held, expected=expected, order_insensitive_fields=frozenset({"roles_permissions"})
+        )
+        == []
+    )
+
+
+def test_a_missing_permission_is_reported() -> None:
+    held: dict[str, JsonValue] = {"roles_permissions": []}
+    expected: dict[str, JsonValue] = {"roles_permissions": [{"role_uid": 4, "redis_acl_uid": 5}]}
+
+    assert fields_not_holding(values=held, expected=expected, order_insensitive_fields=frozenset()) == [
+        "roles_permissions"
     ]
