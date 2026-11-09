@@ -1,5 +1,6 @@
 from pydantic import Field, PositiveFloat, SecretStr
 
+from redis_enterprise_services.config.base_url import RelayUrl
 from redis_enterprise_services.config.config_model import ConfigModel
 
 
@@ -28,7 +29,7 @@ class FirewallSettings(ConfigModel):
 
 
 class EdgeNetworkSettings(ConfigModel):
-    url: str = Field(pattern=r"^https?://.+")
+    url: RelayUrl
     firewall: FirewallSettings | None
 
 
