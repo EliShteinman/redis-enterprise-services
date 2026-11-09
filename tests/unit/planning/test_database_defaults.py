@@ -9,7 +9,11 @@ from redis_enterprise_services.config.database_defaults_settings import (
 )
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
+from redis_enterprise_services.planning.database_defaults import (
+    DatabaseDefaults,
+    cluster_labels,
+    database_defaults_from,
+)
 
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
@@ -105,3 +109,9 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
                 overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
             )
         )
+
+
+def test_every_override_selector_field_is_a_cluster_label() -> None:
+    assert set(OverrideClusterSelector.model_fields) == set(
+        cluster_labels(cluster=cluster(environment="DEV"))
+    )

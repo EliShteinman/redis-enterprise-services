@@ -105,6 +105,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
             raise action
         if action == "interrupt":
             raise SystemExit(1)
+        if action == "succeed without keeping":
+            return
         keep_result(result=FakeResult(name=step_input.name, attempt=self.execute_calls))
         if action == "keep then interrupt":
             raise SystemExit(1)
@@ -964,3 +966,13 @@ def test_a_kept_result_is_saved_before_the_step_ends(calls: list[str], lock: InM
         )
 
     assert record_writer.saved is not None and record_writer.saved.steps[0].result is not None
+
+
+def test_a_compensatable_step_that_succeeds_without_keeping_a_result_needs_manual_intervention(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    step: FakeStep = FakeStep(calls=calls, execute_script=["succeed without keeping"])
+
+    record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
+
+    assert record.steps[0].status is StepStatus.UNRESOLVED
