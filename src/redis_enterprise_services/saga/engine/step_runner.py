@@ -174,7 +174,7 @@ def verdict_after_find_outcome_error(*, category: FailureCategory) -> FindOutcom
 
 
 def mark_input_build_failed(*, step: PreparableStep, recorder: StepRecorder, error: StepError) -> None:
-    logger.error(msg=f"cannot build the input of step {step.key}: {error.message}")
+    logger.error(msg=f"step {step.key} could not start: {error.message}")
     recorder.mark_failed_with_error(error=error)
 
 
