@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.resources.named_spec import NamedSpec
@@ -15,6 +15,7 @@ class NamedResource(BaseModel):
 
 class CreatedResource(NamedResource):
     action_uid: str | None
+    fields: dict[str, JsonValue]
 
 
 class CreateResourceInput[TSpec: NamedSpec](BaseModel):
