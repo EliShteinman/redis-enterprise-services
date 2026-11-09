@@ -58,10 +58,10 @@ class OperationStarter:
 
     def _reject_unsubmitted(self, *, trace_id: str, task_name: str, submit_error: Exception) -> None:
         logger.critical(msg=f"{task_name} cannot run in the background", exc_info=submit_error)
-        self._operation_heartbeats.stop_heartbeat(trace_id=trace_id)
         self._store.save(
             operation=Operation.rejected(trace_id=trace_id, error=self._public_errors.internal_error())
         )
+        self._operation_heartbeats.stop_heartbeat(trace_id=trace_id)
 
 
 def existing_operation_result(*, operation: Operation) -> StartOnceResult:

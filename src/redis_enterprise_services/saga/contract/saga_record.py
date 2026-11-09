@@ -4,6 +4,7 @@ from typing import Self
 from pydantic import BaseModel, JsonValue, ValidationError
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.saga import MissingStepRecordError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 
@@ -76,7 +77,7 @@ class SagaRecord(BaseModel):
         for step in self.steps:
             if step.key == key:
                 return step
-        raise KeyError(key)
+        raise MissingStepRecordError(message=f"saga {self.saga_id} has no step {key}")
 
     def stopped_step(self) -> StepRecord | None:
         return next((step for step in self.steps if step.key == self.stopped_at), None)

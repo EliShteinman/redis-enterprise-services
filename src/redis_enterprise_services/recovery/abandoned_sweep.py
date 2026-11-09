@@ -1,7 +1,5 @@
 import logging
 
-from pydantic import ValidationError
-
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
@@ -23,13 +21,7 @@ class AbandonedSweep:
         trace_ids: list[str] = self._store.abandoned_candidate_trace_ids()
         logger.debug(msg=f"checking {len(trace_ids)} running operations without a heartbeat")
         for trace_id in trace_ids:
-            self._finalize_unless_unreadable(trace_id=trace_id)
-
-    def _finalize_unless_unreadable(self, *, trace_id: str) -> None:
-        try:
             self._finalize_abandoned(trace_id=trace_id)
-        except ValidationError:
-            logger.exception(msg=f"the saga record of operation {trace_id} cannot be read, it is skipped")
 
     def _finalize_abandoned(self, *, trace_id: str) -> None:
         saga: StoredSaga | None = self._store.find_saga(trace_id=trace_id)
@@ -55,13 +47,13 @@ def operation_after_crash(*, trace_id: str, saga: StoredSaga | None, error: Publ
 def status_after_crash(*, saga: StoredSaga | None) -> OperationStatus:
     if saga is None:
         return OperationStatus.REJECTED
-    if saga.record.status is SagaStatus.ROLLED_BACK:
+    if saga.record is not None and saga.record.status is SagaStatus.ROLLED_BACK:
         return OperationStatus.ROLLED_BACK
     return OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
 def interrupted_running_saga(*, saga: StoredSaga | None) -> SagaRecord | None:
-    if saga is None or saga.record.status is not SagaStatus.RUNNING:
+    if saga is None or saga.record is None or saga.record.status is not SagaStatus.RUNNING:
         return None
     return saga.record.interrupted_copy()
 

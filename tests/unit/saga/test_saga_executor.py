@@ -106,6 +106,8 @@ class FakeStep(SagaStep[FakeInput, FakeResult]):
         if action == "interrupt":
             raise SystemExit(1)
         keep_result(result=FakeResult(name=step_input.name, attempt=self.execute_calls))
+        if action == "keep then interrupt":
+            raise SystemExit(1)
         if action == "keep then busy":
             raise BUSY
         if action == "keep then failed":
@@ -951,3 +953,21 @@ def test_a_saga_whose_lock_was_taken_over_before_it_started_does_not_start(
             check_before_start=lose_the_lock,
         )
     assert record_writer.saved is None
+
+
+class FinalSaveFailingWriter(InMemorySagaRecordWriter):
+    def save_final(self, *, record: SagaRecord) -> None:
+        raise RuntimeError("the final save never happens")
+
+
+def test_a_kept_result_is_saved_before_the_step_ends(calls: list[str], lock: InMemorySagaLock) -> None:
+    record_writer: FinalSaveFailingWriter = FinalSaveFailingWriter()
+
+    with pytest.raises(expected_exception=RuntimeError):
+        run(
+            steps=[planned(step=FakeStep(calls=calls, execute_script=["keep then interrupt"]), key="a")],
+            record_writer=record_writer,
+            lock=lock,
+        )
+
+    assert record_writer.saved is not None and record_writer.saved.steps[0].result is not None
