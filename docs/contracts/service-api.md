@@ -12,7 +12,7 @@
 | נושא | ערך |
 |---|---|
 | פורמט | JSON. שדה לא מוכר בגוף הבקשה ⇐ `422 validation_error` |
-| מזהה בקשה | header `traceparent` בפורמט W3C, חובה בכל route חוץ מ-`/health`. חסר או לא תקין ⇐ `422 validation_error` על `header.traceparent`. ה-`trace_id` של הפעולה הוא ה-trace id שבו (32 תווי hex) |
+| מזהה בקשה | header `traceparent` בפורמט W3C, חובה ב-routes של `/v1/`. חסר או לא תקין ⇐ `422 validation_error` על `header.traceparent`. ה-`trace_id` של הפעולה הוא ה-trace id שבו (32 תווי hex) |
 | אסינכרוני | פקודה מחזירה מיד `202` עם `trace_id` ו-`status: running`. התוצאה בשאילתת הסטטוס (סעיף 5) |
 | IDs | ביצירה לא שולחים IDs. הם חוזרים בתוצאה |
 | סיסמאות | נשלחות בבקשה, ולא חוזרות אף פעם |
@@ -254,8 +254,8 @@
 
 **נעילה אחרי `requires_manual_intervention`:** בדרך כלל הנעילה על ה-DB ועל היוזרים נשארת, גם אחרי קריסה. עד שמטפלים
 בפעולה ידנית, כל פקודה על אותם שמות באותו קלאסטר מסתיימת ב-`resources_locked`. יוצא מן הכלל: הריצה עצמה הסתיימה
-ב-`succeeded` או ב-`rolled_back`, ורק הפעולה סומנה `requires_manual_intervention`: ה-pod נפל לפני ששמר את הפעולה, או
-שאת התוצאה לא היה אפשר לבנות מה-record. ה-record הסופי כבר נכתב, ולכן הנעילה משתחררת, ופקודות חדשות על אותם שמות לא
+ב-`succeeded` או ב-`rolled_back`, ורק הפעולה סומנה `requires_manual_intervention`: ב-`succeeded` כשה-pod נפל לפני ששמר
+את הפעולה, ובשניהם כשאת התוצאה לא היה אפשר לבנות מה-record. ה-record הסופי כבר נכתב, ולכן הנעילה משתחררת, ופקודות חדשות על אותם שמות לא
 נחסמות.
 
 ---
@@ -281,7 +281,7 @@
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `http_error` | מיד, עם ה-status של ה-HTTP | שגיאת HTTP אחרת של ה-framework, שאין לה קוד משלה |
 | `configuration_error` | מיד `500`, או בסטטוס | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד. בסטטוס רק כרשת ביטחון: רשת בלי ריליי נדחית כבר בעלייה |
-| `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. מיד: `message` קבוע (`internal error`). בסטטוס: התיאור של השגיאה ב-`message`. הפרטים בלוג לפי `trace_id` |
+| `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. מיד: `message` קבוע (`internal error`). בסטטוס: כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרת (קריסה, record שלא נקרא, תוצאה שלא נבנתה) ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
 | `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
