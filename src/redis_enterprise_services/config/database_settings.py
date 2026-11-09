@@ -17,5 +17,8 @@ class DatabaseSettings(ResourceSettings):
     default_user_password: SecretStr = Field(min_length=1)
     default_tags: Annotated[list[DatabaseTag], AfterValidator(reject_repeated_tag_keys)]
     active_status: str
+    read_fields: list[str]
+    endpoints_field: str
+    endpoint_fields: list[str]
     creation_failed_status: str
     wait: WaitSettings
