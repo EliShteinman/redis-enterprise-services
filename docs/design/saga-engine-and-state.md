@@ -265,6 +265,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | אין saga record (ה-Saga לא התחיל) | הפעולה `rejected` עם `internal_error`, עם TTL, ויוצאת מ-`operations:open`. הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו. כך pod שנפל בין הנעילה לשמירת ה-record לא משאיר שמות נעולים |
 | ה-Saga `running` | ה-Saga `requires_manual_intervention`, וצעד שרץ ⇐ `unresolved`. הפעולה `requires_manual_intervention` עם `internal_error`. לוג `CRITICAL`. **הנעילה נשארת** |
 | ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | `rolled_back` ⇐ הפעולה `rolled_back` עם `internal_error`, כי ה-record מראה שהכול בוטל. `succeeded` ⇐ הפעולה `requires_manual_intervention`, כי את עץ ה-DB אי אפשר לבנות כאן. `requires_manual_intervention` ⇐ אותו סטטוס, והנעילה נשארת. ה-record לא משתנה. ב-`succeeded` וב-`rolled_back` הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו, כי אין מה לתקן בקלאסטר |
+| אין רשומת פעולה (`operation:{trace_id}` חסר) | ה-trace יוצא מ-`operations:open`, לוג WARNING. הנעילות וה-saga record לא נוגעים |
 
 **מקרים ידועים:**
 - **pod שנעצר יותר מ-60 שניות ואז ממשיך** (GC, הקפאת מכונה): מסומן כאילו מת.
@@ -282,7 +283,9 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 ## 10. טיפול ידני
 
 1. קוראים את `res:{state}saga:{saga_id}`: אילו צעדים `done`, איזה `unresolved` או `compensation_failed`, ומה הקלט
-   והתוצאה שלהם.
+   והתוצאה שלהם. את הפעולות שמחכות מוצאים ב-`operations:open`. כשה-Saga עצמו הסתיים (`succeeded` או `rolled_back`)
+   ורק הפעולה סומנה ידנית, ה-record לא ב-`sagas:unfinished` ונמחק אחרי 7 ימים (`state.finished_ttl_seconds`), ואחר כך
+   נשארת רק רשומת הפעולה.
 2. בודקים בקלאסטר מה קיים לפי השמות שבקלט, ומשלימים או מוחקים ידנית.
 3. מוחקים את מפתחות הנעילה של ה-`saga_id` (הרשימה ב-`locks:{saga_id}`) ואת ה-set, רק כשהקלאסטר במצב נקי או מלא.
 4. מוציאים את ה-trace מ-`sagas:unfinished` ומ-`operations:open`, ומעדכנים את `operation:{trace_id}` לתוצאה.
