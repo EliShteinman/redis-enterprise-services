@@ -30,7 +30,8 @@ class Operation(BaseModel):
     error: PublicError | None = Field(
         default=None,
         exclude_if=lambda error: error is None,
-        description="Why the operation failed. Only when it failed.",
+        description="Why the operation did not succeed. Present for every status except running and "
+        "succeeded.",
     )
     not_rolled_back: list[RemainingResource] | None = Field(
         default=None,
