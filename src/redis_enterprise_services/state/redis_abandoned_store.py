@@ -20,6 +20,8 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 STATUS_FIELD: str = "status"
 NO_INTERRUPTED_SAGA: str = ""
 NO_EXPECTED_SAGA: str = ""
+RELEASE_LOCKS: str = "1"
+KEEP_LOCKS: str = "0"
 FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
     0: FinalizeAbandonedResult.NOT_ABANDONED,
     1: FinalizeAbandonedResult.FINALIZED,
@@ -51,7 +53,7 @@ end
 if ARGV[4] ~= '' then
     redis.call('SET', KEYS[4], ARGV[4])
 end
-if ARGV[6] == '' then
+if ARGV[7] == '1' then
     for i = 6, #KEYS do
         if redis.call('GET', KEYS[i]) == ARGV[2] then
             redis.call('DEL', KEYS[i])
@@ -84,7 +86,12 @@ class RedisAbandonedStore(AbandonedStore):
         return StoredSaga(raw_json=raw, record=readable_saga_record(trace_id=trace_id, raw_json=raw))
 
     def finalize_if_still_abandoned(
-        self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
+        self,
+        *,
+        operation: Operation,
+        expected_saga: StoredSaga | None,
+        interrupted_saga: SagaRecord | None,
+        release_locks: bool,
     ) -> FinalizeAbandonedResult:
         trace_id: str = operation.trace_id
         result_code: int = self._finalize_if_still_abandoned_script(
@@ -95,6 +102,7 @@ class RedisAbandonedStore(AbandonedStore):
                 operation=operation,
                 expected_saga=expected_saga,
                 interrupted_saga=interrupted_saga,
+                release_locks=release_locks,
                 finished_ttl_seconds=self._finished_ttl_seconds,
             ),
         )
@@ -164,6 +172,7 @@ def finalize_script_args(
     operation: Operation,
     expected_saga: StoredSaga | None,
     interrupted_saga: SagaRecord | None,
+    release_locks: bool,
     finished_ttl_seconds: int,
 ) -> list[str | int]:
     return [
@@ -175,4 +184,5 @@ def finalize_script_args(
         NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),
         OperationStatus.RUNNING.value,
         NO_EXPECTED_SAGA if expected_saga is None else expected_saga.raw_json,
+        RELEASE_LOCKS if release_locks else KEEP_LOCKS,
     ]
