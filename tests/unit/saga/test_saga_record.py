@@ -1,3 +1,5 @@
+import pytest
+
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
@@ -29,3 +31,25 @@ def test_an_interrupted_copy_leaves_the_original_record_unchanged() -> None:
     original.interrupted_copy()
 
     assert original == running_record()
+
+
+@pytest.mark.parametrize(
+    argnames=("status", "left_behind"),
+    argvalues=[
+        (StepStatus.DONE, True),
+        (StepStatus.UNRESOLVED, True),
+        (StepStatus.COMPENSATING, True),
+        (StepStatus.COMPENSATION_FAILED, True),
+        (StepStatus.COMPENSATED, False),
+        (StepStatus.FAILED, False),
+        (StepStatus.PENDING, False),
+    ],
+)
+def test_only_steps_whose_resource_may_remain_are_not_rolled_back(
+    status: StepStatus, left_behind: bool
+) -> None:
+    record: SagaRecord = SagaRecord(
+        saga_id="trace-1", steps=[StepRecord(key="database", kind=StepKind.COMPENSATABLE, status=status)]
+    )
+
+    assert bool(record.not_rolled_back_steps()) is left_behind

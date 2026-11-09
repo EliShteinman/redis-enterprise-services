@@ -49,3 +49,6 @@ class DatabaseSpec(BaseModel):
         description="Users to create with the database, each with its own role and ACL "
         "limited to this database. Each name once.",
     )
+
+    def with_database(self, *, database: NewDatabase) -> DatabaseSpec:
+        return self.model_copy(update={"database": database})
