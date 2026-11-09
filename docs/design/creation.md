@@ -49,6 +49,7 @@ POST /v1/databases/create
 1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
 2. **הקלאסטר** (`SiteClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
    `environment`, `site`, `type` ו-`api_url`. ההתאמה היא לפי השדות, ולכן אין היררכיה קבועה בין רשת, סביבה ואתר.
+   כל קלאסטר מופיע פעם אחת: `name` ו-`api_url` ייחודיים, אחרת הקונפיג נדחה בעלייה. מפתחות הנעילה בנויים מ-`name`.
    - `dedicated`: הקלאסטר מסוג `dedicated` עם אותם רשת, סביבה, אתר ושם.
    - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
