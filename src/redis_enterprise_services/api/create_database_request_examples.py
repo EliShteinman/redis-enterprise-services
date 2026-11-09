@@ -15,7 +15,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
                         "network": "net-a",
                         "site": "dc1",
                         "environment": "PROD",
-                        "cluster": {"type": "dedicated", "name": "cluster-a"},
+                        "cluster": "cluster-a",
                     }
                 ],
             },
@@ -50,9 +50,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "value": {
             "target": {
                 "active_active": False,
-                "sites": [
-                    {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
-                ],
+                "sites": [{"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}],
             },
             "spec": {
                 "database": {"name": "orders", "memory_size": 1073741824},
