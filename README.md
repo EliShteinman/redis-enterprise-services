@@ -86,8 +86,10 @@ run in pre-commit; the tests do not.
 
 ## Local clusters
 
-`docker/compose.yaml` runs two Redis Enterprise clusters. Copy `docker/.env.example` to `docker/.env` and fill in
-the passwords. Put the Redis Software license in `docker/license/license.txt` (never committed), then:
+`docker/compose.yaml` runs two Redis Enterprise clusters, for local development only. Copy `docker/.env.example` to
+`docker/.env` and fill in the passwords. Put the Redis Software license in `docker/license/license.txt` (never
+committed). The bootstrap jobs send every cluster call through cluster-relay (`BOOTSTRAP_RELAY_URL`, by default
+`http://host.docker.internal:8000/`), so start the relay first, then:
 
 ```bash
 docker compose -f docker/compose.yaml up -d
