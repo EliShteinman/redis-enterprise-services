@@ -12,5 +12,10 @@ class AbandonedStore(Protocol):
     def find_saga(self, *, trace_id: str) -> StoredSaga | None: ...
 
     def finalize_if_still_abandoned(
-        self, *, operation: Operation, expected_saga: StoredSaga | None, interrupted_saga: SagaRecord | None
+        self,
+        *,
+        operation: Operation,
+        expected_saga: StoredSaga | None,
+        interrupted_saga: SagaRecord | None,
+        release_locks: bool,
     ) -> FinalizeAbandonedResult: ...
