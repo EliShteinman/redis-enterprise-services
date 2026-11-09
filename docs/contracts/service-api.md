@@ -54,7 +54,7 @@
   "target": {
     "active_active": false,
     "sites": [
-      {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": {"type": "generic"}}
+      {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}
     ]
   },
   "spec": {
@@ -75,11 +75,11 @@
 | `sites[].network` | str | ✅ | |
 | `sites[].site` | str | ✅ | |
 | `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
-| `sites[].cluster.type` | `dedicated` / `generic` | ✅ | |
-| `sites[].cluster.name` | str | רק ב-`dedicated` | אסור ב-`generic` |
+| `sites[].cluster` | str | ✅ | `generic`, או שם של קלאסטר ייעודי |
 
-**איך נמצא הקלאסטר:** לפי `config/clusters.yaml`, קלאסטר עם אותם `network`, `environment`, `site` ו-`type`, וב-`dedicated`
-גם אותו `name`.
+**איך נמצא הקלאסטר:** הבקשה מתארת את הקלאסטר ולא יודעת את הכתובת שלו. השירות מתרגם אותו לכתובת לפי
+`config/clusters.yaml`, באותם `network`, `environment` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, ובשם קלאסטר
+הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).

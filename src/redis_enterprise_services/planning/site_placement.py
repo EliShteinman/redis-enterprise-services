@@ -1,30 +1,8 @@
-from typing import ClassVar, Self
+from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.cluster_inventory import ClusterType, Environment
-
-
-class ClusterChoice(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
-
-    type: ClusterType = Field(
-        description="generic: the service picks a cluster at the site. "
-        "dedicated: the cluster named in `name`.",
-        examples=["generic"],
-    )
-    name: str | None = Field(
-        default=None,
-        description="Only with dedicated: the cluster's name in the service configuration. "
-        "Not sent with generic.",
-        examples=["cluster-a"],
-    )
-
-    @model_validator(mode="after")
-    def require_name_exactly_when_dedicated(self) -> Self:
-        if (self.type == "dedicated") != (self.name is not None):
-            raise ValueError("a dedicated cluster has a name, and a generic one does not")
-        return self
+from redis_enterprise_services.config.cluster_inventory import Environment
 
 
 class SitePlacement(BaseModel):
@@ -36,8 +14,12 @@ class SitePlacement(BaseModel):
     )
     site: str = Field(description="The site (data center) of the cluster.", examples=["dc1"])
     environment: Environment = Field(description="The environment of the cluster.", examples=["PROD"])
-    cluster: ClusterChoice = Field(description="Which cluster at the site.")
+    cluster: str = Field(
+        min_length=1,
+        description="generic: the service picks a cluster at the site. "
+        "Any other value: the name of a dedicated cluster in the service configuration.",
+        examples=["generic"],
+    )
 
     def describe(self) -> str:
-        cluster_label: str = self.cluster.name if self.cluster.name is not None else self.cluster.type
-        return f"{self.network}/{self.environment}/{self.site}/{cluster_label}"
+        return f"{self.network}/{self.environment}/{self.site}/{self.cluster}"
