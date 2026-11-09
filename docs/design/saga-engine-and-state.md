@@ -238,7 +238,8 @@ PlannedStep(
 
 **הרצה ברקע:** `ThreadPoolTaskRunner`, בגודל `background.max_workers`. מעביר את ה-context (ה-trace ממשיך בלוגים ובקריאות
 לשירות הקצה), ורושם `CRITICAL` על כל שגיאה שיצאה ממשימה. בכיבוי מחכה לריצות שהתחילו ומבטל את אלה שבתור. הן נשארות
-`running`, וזיהוי הקריסה מסמן אותן.
+`running`, וזיהוי הקריסה מסמן אותן. את סדר הכיבוי מחזיק `AppWiring.stop`: הסריקה נעצרת, ההרצה ברקע מחכה לריצות שהתחילו,
+ורק אז ה-heartbeat נעצר והחיבור ל-Redis נסגר, כדי שריצה שעוד רצה לא תיראה כמו pod שמת.
 
 ---
 
@@ -247,7 +248,7 @@ PlannedStep(
 ![זיהוי קריסה](../diagrams/17-flow-heartbeat-and-abandoned-sweep.drawio.svg)
 
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
-כשהיא מחכה בתור. `InProcessOperationHeartbeats` (`liveness/`) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
+כשהיא מחכה בתור. `InProcessOperationHeartbeats` (`liveness/`, מממש את הממשק `OperationHeartbeats` ש-`OperationStarter` תלוי בו) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
 לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
@@ -300,7 +301,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | `saga/plan/` | `SagaPlan`, `PlannedStep`, `PreparableStep`/`PreparedStep`, `StepResults` | `contract` |
 | `saga/engine/` | `SagaExecutor`, `StepRunner`, `Compensator`, `StepRecorder` | `contract`, `plan` |
 | `operations/` | `Operation`, `OperationStore`, `OperationStarter`, `PublicErrors` | |
-| `liveness/` | `InProcessOperationHeartbeats`, `HeartbeatStore` | |
+| `liveness/` | `OperationHeartbeats`, `InProcessOperationHeartbeats`, `HeartbeatStore` | |
 | `recovery/` | `AbandonedSweep`, `AbandonedStore` | |
 | `state/` | המימושים ב-Redis של כל הממשקים | |
 

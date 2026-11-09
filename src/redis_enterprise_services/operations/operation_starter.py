@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
-from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
+from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.prepared_run import PreparedRun
@@ -18,12 +18,12 @@ class OperationStarter:
         *,
         store: OperationStore,
         task_runner: BackgroundTaskRunner,
-        operation_heartbeats: InProcessOperationHeartbeats,
+        operation_heartbeats: OperationHeartbeats,
         public_errors: PublicErrors,
     ) -> None:
         self._store: OperationStore = store
         self._task_runner: BackgroundTaskRunner = task_runner
-        self._operation_heartbeats: InProcessOperationHeartbeats = operation_heartbeats
+        self._operation_heartbeats: OperationHeartbeats = operation_heartbeats
         self._public_errors: PublicErrors = public_errors
 
     def start_once(self, *, trace_id: str, prepare_run: Callable[[], PreparedRun]) -> StartOnceResult:
