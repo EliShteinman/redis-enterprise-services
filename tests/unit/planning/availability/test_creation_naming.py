@@ -20,7 +20,7 @@ def test_the_requested_names_are_the_database_then_each_users_acl_role_and_user(
     )
     spec: DatabaseSpec = DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
-        users=[DatabaseUserSpec(name="app", password="p1", acl_rule="+@all")],
+        users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all")],
     )
 
     assert [(name.kind, name.name) for name in creation_naming.requested_names(spec=spec)] == [

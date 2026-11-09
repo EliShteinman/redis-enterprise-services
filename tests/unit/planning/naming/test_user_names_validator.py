@@ -38,7 +38,7 @@ def validator() -> UserNamesValidator:
 def spec_with_user(*, name: str) -> DatabaseSpec:
     return DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=1),
-        users=[DatabaseUserSpec(name=name, password="p", acl_rule="+@all")],
+        users=[DatabaseUserSpec(name=name, password="p-passw0rd", acl_rule="+@all")],
     )
 
 

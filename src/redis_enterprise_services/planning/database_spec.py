@@ -6,6 +6,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from redis_enterprise_services.config.repeated_values import repeated_values
 from redis_enterprise_services.config.user_resources_settings import NAME_SEPARATOR
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.planning.acl_rule_syntax import ACL_RULE_PATTERN, REDIS_MIN_PASSWORD_LENGTH
 
 
 class DatabaseUserSpec(BaseModel):
@@ -18,14 +19,19 @@ class DatabaseUserSpec(BaseModel):
         examples=["app"],
     )
     password: str = Field(
-        min_length=1,
-        description="The user's password. The result returns it in the user's permission: the cluster never "
-        "returns a password, so it is the one the cluster accepted when it created the user.",
+        min_length=REDIS_MIN_PASSWORD_LENGTH,
+        description="The user's password, at least 8 characters (Redis's lowest password_min_length; a "
+        "cluster set higher refuses a shorter one). The result returns it in the user's permission: the "
+        "cluster never returns a password, so it is the one the cluster accepted when it created the user.",
         examples=["S3cure-Passw0rd"],
     )
     acl_rule: str = Field(
-        min_length=1,
-        description="A Redis ACL rule for this user on this database: which commands and which keys.",
+        pattern=ACL_RULE_PATTERN,
+        description="A Redis ACL rule for this user on this database: which commands and which keys. "
+        "Words separated by spaces: +@category, -@category, +command, -command|subcommand, ~keys, "
+        "%R~keys, %W~keys, %RW~keys, &channels, allkeys, allcommands, nocommands, resetkeys, allchannels, "
+        "resetchannels, on, off, and selectors in parentheses. The cluster checks that the commands and "
+        "categories exist.",
         examples=["+@all ~orders:*"],
     )
 
