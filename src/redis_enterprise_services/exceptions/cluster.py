@@ -9,7 +9,7 @@ class ClusterRejectedRequestError(RedisEnterpriseServicesError):
     def __init__(self, *, message: str, cluster_status_code: int, cluster_error_code: str | None) -> None:
         super().__init__(message=message)
         self.cluster_status_code: int = cluster_status_code
-        self.cluster_error_code = cluster_error_code
+        self.cluster_error_code: str | None = cluster_error_code
 
 
 class DatabaseActivationTimeoutError(RedisEnterpriseServicesError):

@@ -7,7 +7,7 @@ class EdgeError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "cluster_unavailable"
 
 
-class EdgeRejectedRequestError(EdgeError):
+class EdgeRejectedRequestError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "internal_error"
 
 
