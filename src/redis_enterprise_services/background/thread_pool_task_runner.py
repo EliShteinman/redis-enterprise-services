@@ -35,8 +35,10 @@ def task_outcome_logger(*, context: Context, task_name: str) -> Callable[[Future
 
 def log_task_outcome(*, task_name: str, future: Future[object]) -> None:
     if future.cancelled():
-        logger.warning(msg=f"{task_name} was cancelled before it started, it is left to the abandoned sweep")
+        logger.warning(msg=f"{task_name} was cancelled before it started")
         return
     error: BaseException | None = future.exception()
     if error is not None:
         logger.critical(msg=f"{task_name} failed in the background", exc_info=error)
+        return
+    logger.debug(msg=f"{task_name} finished in the background")

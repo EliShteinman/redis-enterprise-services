@@ -1,8 +1,6 @@
 #!/bin/sh
 set -eu
 
-bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
-
 . "$(dirname "$0")/bootstrap-state.sh"
 
 create_cluster() {
@@ -27,7 +25,6 @@ install_license() {
             --header "Content-Type: application/json" \
             --data @-
 }
-
 
 echo "Waiting for ${NODE_HOST} to accept bootstrap requests"
 state="$(wait_for_first_state)"
