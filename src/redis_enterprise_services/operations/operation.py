@@ -3,13 +3,14 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
-from redis_enterprise_services.operations.operation_status import CLEANLY_ENDED_STATUSES, OperationStatus
+from redis_enterprise_services.operations.operation_status import (
+    CLEANLY_ENDED_STATUSES,
+    STATUSES_WITH_REMAINING_RESOURCES,
+    STATUSES_WITHOUT_ERROR,
+    OperationStatus,
+)
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-
-STATUSES_WITHOUT_ERROR: frozenset[OperationStatus] = frozenset(
-    {OperationStatus.RUNNING, OperationStatus.SUCCEEDED}
-)
 
 
 class Operation(BaseModel):
@@ -44,9 +45,10 @@ class Operation(BaseModel):
     )
 
     @model_validator(mode="after")
-    def reject_an_error_that_does_not_fit_the_status(self) -> Self:
-        if (self.error is None) != (self.status in STATUSES_WITHOUT_ERROR):
-            raise ValueError(f"an operation {self.status.value} has an error exactly when it did not succeed")
+    def reject_fields_that_do_not_fit_the_status(self) -> Self:
+        problem: str | None = status_fields_problem(operation=self)
+        if problem is not None:
+            raise ValueError(f"an operation that is {self.status.value} {problem}")
         return self
 
     def has_ended_cleanly(self) -> bool:
@@ -59,3 +61,15 @@ class Operation(BaseModel):
     @classmethod
     def requires_manual_intervention(cls, *, trace_id: str, error: PublicError) -> Self:
         return cls(trace_id=trace_id, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=error)
+
+
+def status_fields_problem(*, operation: Operation) -> str | None:
+    if (operation.error is None) != (operation.status in STATUSES_WITHOUT_ERROR):
+        return "must have an error" if operation.error is None else "cannot have an error"
+    if operation.database is not None and operation.status is not OperationStatus.SUCCEEDED:
+        return "cannot have a database"
+    if operation.not_rolled_back is not None and operation.status not in STATUSES_WITH_REMAINING_RESOURCES:
+        return "cannot list resources that were not rolled back"
+    if operation.status is OperationStatus.ROLLED_BACK and operation.not_rolled_back:
+        return "cannot list resources that were not rolled back"
+    return None
