@@ -50,7 +50,7 @@ class OperationStarter:
                     trace_id=trace_id, task=prepared_run.task
                 ),
             )
-        except Exception as submit_error:
+        except RuntimeError as submit_error:
             self._reject_unsubmitted(
                 trace_id=trace_id, task_name=prepared_run.task_name, submit_error=submit_error
             )
