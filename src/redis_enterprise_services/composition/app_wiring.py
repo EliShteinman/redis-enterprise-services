@@ -12,6 +12,7 @@ from redis_enterprise_services.operations.operation_starter import OperationStar
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
+from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
@@ -25,11 +26,11 @@ from redis_enterprise_services.planning.single_site_creation_planner import Sing
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
+from redis_enterprise_services.saga.contract.saga_lock import SagaLock
+from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordWriter
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
-from redis_enterprise_services.state.redis_saga_lock import RedisSagaLock
-from redis_enterprise_services.state.redis_saga_record_store import RedisSagaRecordStore
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.timing.clock import MonotonicClock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
@@ -65,39 +66,20 @@ class AppWiring:
             ).sweep,
         )
         self.database_creation: DatabaseCreation = DatabaseCreation(
-            preparation=CreationPreparation(
-                name_validator=NameValidator(rules=configured_name_rules(settings=settings.naming.database)),
-                site_cluster_resolver=SiteClusterResolver(
-                    directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
-                ),
-                database_defaults=database_defaults_from(settings=settings.database_defaults),
-            ),
+            preparation=build_creation_preparation(settings=settings),
             execution=CreationExecution(
-                name_check_scope=ChosenClusterScope(),
-                name_availability=NameAvailability(
-                    lookups=NameLookupsByKind(
-                        database=ListedNameLookup(lister=cluster_wiring.database_repository),
-                        acl=ListedNameLookup(lister=cluster_wiring.acl_repository),
-                        role=ListedNameLookup(lister=cluster_wiring.role_repository),
-                        user=ListedNameLookup(lister=cluster_wiring.user_repository),
-                    ),
-                    target_resolver=cluster_wiring.target_resolver,
+                names_check=build_names_check(
+                    cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
                 ),
-                creation_naming=CreationNaming(resource_naming=user_resource_naming),
-                planner=SingleSiteCreationPlanner(
-                    role_management=settings.user_resources.role_management,
-                    cluster_fields=settings.cluster_api.fields,
-                    resource_naming=user_resource_naming,
-                    create_database_step=cluster_wiring.create_database_step,
-                    create_acl_step=cluster_wiring.create_acl_step,
-                    create_role_step=cluster_wiring.create_role_step,
-                    create_user_step=cluster_wiring.create_user_step,
-                    update_database_step=cluster_wiring.update_database_step,
+                planner=build_planner(
+                    settings=settings,
+                    cluster_wiring=cluster_wiring,
+                    user_resource_naming=user_resource_naming,
                 ),
                 saga_executor=build_saga_executor(
                     settings=settings,
                     saga_lock=state_wiring.saga_lock,
-                    saga_record_store=state_wiring.saga_record_store,
+                    saga_record_writer=state_wiring.saga_record_store,
                     sleeper=sleeper,
                 ),
                 outcome_translator=CreationOutcomeTranslator(
@@ -114,16 +96,63 @@ class AppWiring:
                 public_errors=public_errors,
             ),
         )
+        self._state_wiring: StateWiring = state_wiring
+
+    def close(self) -> None:
+        self._state_wiring.close()
+
+
+def build_creation_preparation(*, settings: Settings) -> CreationPreparation:
+    return CreationPreparation(
+        name_validator=NameValidator(rules=configured_name_rules(settings=settings.naming.database)),
+        site_cluster_resolver=SiteClusterResolver(
+            directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
+        ),
+        database_defaults=database_defaults_from(settings=settings.database_defaults),
+    )
+
+
+def build_names_check(
+    *, cluster_wiring: ClusterWiring, user_resource_naming: UserResourceNaming
+) -> CreationNamesCheck:
+    return CreationNamesCheck(
+        name_check_scope=ChosenClusterScope(),
+        name_availability=NameAvailability(
+            lookups=NameLookupsByKind(
+                database=ListedNameLookup(lister=cluster_wiring.database_repository),
+                acl=ListedNameLookup(lister=cluster_wiring.acl_repository),
+                role=ListedNameLookup(lister=cluster_wiring.role_repository),
+                user=ListedNameLookup(lister=cluster_wiring.user_repository),
+            ),
+            target_resolver=cluster_wiring.target_resolver,
+        ),
+        creation_naming=CreationNaming(resource_naming=user_resource_naming),
+    )
+
+
+def build_planner(
+    *, settings: Settings, cluster_wiring: ClusterWiring, user_resource_naming: UserResourceNaming
+) -> SingleSiteCreationPlanner:
+    return SingleSiteCreationPlanner(
+        role_management=settings.user_resources.role_management,
+        cluster_fields=settings.cluster_api.fields,
+        resource_naming=user_resource_naming,
+        create_database_step=cluster_wiring.create_database_step,
+        create_acl_step=cluster_wiring.create_acl_step,
+        create_role_step=cluster_wiring.create_role_step,
+        create_user_step=cluster_wiring.create_user_step,
+        update_database_step=cluster_wiring.update_database_step,
+    )
 
 
 def build_saga_executor(
-    *, settings: Settings, saga_lock: RedisSagaLock, saga_record_store: RedisSagaRecordStore, sleeper: Sleeper
+    *, settings: Settings, saga_lock: SagaLock, saga_record_writer: SagaRecordWriter, sleeper: Sleeper
 ) -> SagaExecutor:
     failure_classifier: ClusterFailureClassifier = ClusterFailureClassifier(
         transient_error_codes=settings.cluster_api.transient_error_codes
     )
     return SagaExecutor(
-        record_writer=saga_record_store,
+        record_writer=saga_record_writer,
         lock=saga_lock,
         runner=StepRunner(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),
         compensator=Compensator(settings=settings.saga, classifier=failure_classifier, sleeper=sleeper),
