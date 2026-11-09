@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-. "$(dirname "$0")/bootstrap-state.sh"
+. "$(dirname "$0")/bootstrap-helpers.sh"
 
 create_cluster() {
     relay_call POST /v1/bootstrap/create_cluster --fail-with-body --data @- <<EOF
