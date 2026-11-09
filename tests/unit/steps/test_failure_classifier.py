@@ -38,7 +38,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         ),
         (
             ClusterRejectedRequestError(message="m", cluster_status_code=503, cluster_error_code=None),
-            FailureCategory.FAILED,
+            FailureCategory.OUTCOME_UNKNOWN,
         ),
         (EdgeRejectedRequestError(message="m"), FailureCategory.FAILED),
         (ClusterActionFailedError(message="m"), FailureCategory.FAILED),

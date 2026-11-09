@@ -1,4 +1,4 @@
-from redis_enterprise_services.cluster.rejection_kind import has_transient_error_code
+from redis_enterprise_services.cluster.rejection_kind import has_transient_error_code, is_server_failure
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
@@ -63,4 +63,6 @@ class ClusterFailureClassifier(FailureClassifier):
     def _classify_rejection(self, *, error: ClusterRejectedRequestError) -> FailureCategory:
         if has_transient_error_code(error=error, transient_error_codes=self._transient_error_codes):
             return FailureCategory.TRANSIENT
+        if is_server_failure(error=error):
+            return FailureCategory.OUTCOME_UNKNOWN
         return FailureCategory.FAILED
