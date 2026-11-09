@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
+from redis_enterprise_services.config.repeated_values import repeated_values
 from redis_enterprise_services.config.user_resources_settings import NAME_SEPARATOR
 from redis_enterprise_services.databases.new_database import NewDatabase
 
@@ -30,7 +31,7 @@ class DatabaseUserSpec(BaseModel):
 
 def reject_repeated_users(users: list[DatabaseUserSpec]) -> list[DatabaseUserSpec]:
     names: list[str] = [user.name for user in users]
-    repeated: set[str] = {name for name in names if names.count(name) > 1}
+    repeated: set[str] = repeated_values(values=names)
     if repeated:
         raise ValueError(f"users requested more than once: {sorted(repeated)}")
     return users
@@ -48,3 +49,6 @@ class DatabaseSpec(BaseModel):
         description="Users to create with the database, each with its own role and ACL "
         "limited to this database. Each name once.",
     )
+
+    def with_database(self, *, database: NewDatabase) -> DatabaseSpec:
+        return self.model_copy(update={"database": database})

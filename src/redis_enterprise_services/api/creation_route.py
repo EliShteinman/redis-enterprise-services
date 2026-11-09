@@ -11,8 +11,8 @@ from redis_enterprise_services.api.rejected_operation import CREATION_ROUTE_REJE
 from redis_enterprise_services.api.traceparent_header import require_traceparent
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
-from redis_enterprise_services.operations.find_or_start_result import FindOrStartResult
 from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.start_once_result import StartOnceResult
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 router: APIRouter = APIRouter(
@@ -33,17 +33,17 @@ router: APIRouter = APIRouter(
         }
     },
 )
-def find_or_start_database_creation(
+def start_database_creation_once(
     creation_request: Annotated[
         CreateDatabaseRequest, Body(openapi_examples=CREATE_DATABASE_REQUEST_EXAMPLES)
     ],
     database_creation: Annotated[DatabaseCreation, Depends(dependency=database_creation_from_app_state)],
 ) -> AcceptedOperation | JSONResponse:
-    find_or_start_result: FindOrStartResult = database_creation.find_or_start(
+    start_once_result: StartOnceResult = database_creation.start_once(
         trace_id=current_trace_id(), creation_request=creation_request
     )
-    if find_or_start_result.already_existed:
-        return JSONResponse(content=find_or_start_result.operation.model_dump(mode="json"))
+    if start_once_result.already_existed:
+        return JSONResponse(content=start_once_result.operation.model_dump(mode="json"))
     return AcceptedOperation(
-        trace_id=find_or_start_result.operation.trace_id, status=find_or_start_result.operation.status
+        trace_id=start_once_result.operation.trace_id, status=start_once_result.operation.status
     )

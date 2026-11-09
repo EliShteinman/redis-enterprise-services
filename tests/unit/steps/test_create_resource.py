@@ -132,7 +132,7 @@ def test_find_outcome_finds_the_resource_by_the_spec_name(
     repository.find_by_name.return_value = [NamedResource(uid=6, name="app-user")]
 
     found: CreatedResource | None = step.find_outcome(
-        step_input=STEP_INPUT, kept_result=None, keep_found_result=ignore_found
+        step_input=STEP_INPUT, kept_result=None, keep_result_if_none_kept=ignore_found
     )
 
     assert found == CreatedResource(uid=6, name="app-user", action_uid=None)
@@ -149,7 +149,9 @@ def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_fa
 
     with pytest.raises(expected_exception=ClusterActionFailedError):
         step.find_outcome(
-            step_input=STEP_INPUT, kept_result=None, keep_found_result=lambda result: kept.append(result)
+            step_input=STEP_INPUT,
+            kept_result=None,
+            keep_result_if_none_kept=lambda result: kept.append(result),
         )
 
     assert kept == [CreatedResource(uid=6, name="app-user", action_uid=None)]
@@ -160,7 +162,10 @@ def test_find_outcome_returns_none_when_the_resource_does_not_exist(
 ) -> None:
     repository.find_by_name.return_value = []
 
-    assert step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_found_result=ignore_found) is None
+    assert (
+        step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_result_if_none_kept=ignore_found)
+        is None
+    )
 
 
 def test_find_outcome_refuses_more_than_one_resource_with_the_name(
@@ -172,14 +177,14 @@ def test_find_outcome_refuses_more_than_one_resource_with_the_name(
     ]
 
     with pytest.raises(expected_exception=DuplicateResourceNameError):
-        step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_found_result=ignore_found)
+        step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_result_if_none_kept=ignore_found)
 
 
 def test_find_outcome_trusts_what_was_kept_without_searching(
     repository: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
     assert (
-        step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_found_result=ignore_found)
+        step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
         == CREATED
     )
 
@@ -189,6 +194,6 @@ def test_find_outcome_trusts_what_was_kept_without_searching(
 def test_find_outcome_waits_until_the_kept_resource_is_created(
     completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
-    step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_found_result=ignore_found)
+    step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
 
     completion_waiter.wait_for_pending_creation.assert_called_once_with(target=TARGET, resource=CREATED)

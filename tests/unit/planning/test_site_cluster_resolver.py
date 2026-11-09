@@ -46,6 +46,13 @@ def resolver(*, clusters: list[ConfiguredCluster]) -> SiteClusterResolver:
     )
 
 
+def test_a_generic_cluster_does_not_answer_a_dedicated_placement_with_its_name() -> None:
+    with pytest.raises(expected_exception=NoMatchingClusterError):
+        resolver(clusters=[cluster(name="orders")]).resolve(
+            placement=placement(cluster_type="dedicated", name="orders")
+        )
+
+
 def test_a_dedicated_cluster_must_match_name_type_environment_and_site() -> None:
     wanted: ConfiguredCluster = cluster(name="orders", cluster_type="dedicated")
     clusters: list[ConfiguredCluster] = [

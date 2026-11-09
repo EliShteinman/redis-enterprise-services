@@ -6,7 +6,6 @@ from redis_enterprise_services.creation.prepared_creation import PreparedCreatio
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
-from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -24,23 +23,18 @@ class CreationPreparation:
         self._site_cluster_resolver: SiteClusterResolver = site_cluster_resolver
         self._database_defaults: DatabaseDefaults = database_defaults
 
-    def validate_name_resolve_cluster_and_fill_defaults(
-        self, *, creation_request: CreateDatabaseRequest
-    ) -> PreparedCreation:
+    def prepare(self, *, creation_request: CreateDatabaseRequest) -> PreparedCreation:
         requested_database: NewDatabase = creation_request.spec.database
         self._name_validator.ensure_valid(
-            name=requested_database.name,
-            context=NamingContext(
-                active_active=creation_request.target.active_active, sites=creation_request.target.sites
-            ),
+            name=requested_database.name, context=creation_request.target.naming_context()
         )
         cluster: ConfiguredCluster = self._site_cluster_resolver.resolve(
-            placement=creation_request.target.sites[0]
+            placement=creation_request.target.single_site()
         )
         filled_database: NewDatabase = self._database_defaults.fill_in(
             cluster=cluster, requested=requested_database
         )
         logger.info(msg=f"creating {filled_database.name} on {cluster.name} is prepared")
         return PreparedCreation(
-            cluster=cluster, spec=creation_request.spec.model_copy(update={"database": filled_database})
+            cluster=cluster, spec=creation_request.spec.with_database(database=filled_database)
         )

@@ -36,6 +36,10 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
             ClusterRejectedRequestError(message="m", cluster_status_code=400, cluster_error_code="invalid"),
             FailureCategory.FAILED,
         ),
+        (
+            ClusterRejectedRequestError(message="m", cluster_status_code=503, cluster_error_code=None),
+            FailureCategory.FAILED,
+        ),
         (EdgeRejectedRequestError(message="m"), FailureCategory.FAILED),
         (ClusterActionFailedError(message="m"), FailureCategory.FAILED),
         (DatabaseCreationFailedError(message="m"), FailureCategory.FAILED),

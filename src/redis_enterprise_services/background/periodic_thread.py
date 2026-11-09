@@ -27,9 +27,10 @@ class PeriodicThread:
 
     def _run_every_interval_until_stopped(self) -> None:
         while not self._stop_requested.wait(timeout=self._interval_seconds):
-            try:
-                self._task()
-            except Exception:
-                logger.exception(
-                    msg=f"{self._name} failed, it runs again in {self._interval_seconds} seconds"
-                )
+            self._run_once_surviving_failure()
+
+    def _run_once_surviving_failure(self) -> None:
+        try:
+            self._task()
+        except Exception:
+            logger.exception(msg=f"{self._name} failed, it runs again in {self._interval_seconds} seconds")

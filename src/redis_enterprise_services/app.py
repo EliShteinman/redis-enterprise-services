@@ -21,7 +21,10 @@ from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
-from redis_enterprise_services.telemetry.telemetry_providers import TelemetryProviders
+from redis_enterprise_services.telemetry.telemetry_providers import (
+    TelemetryProviders,
+    build_telemetry_providers,
+)
 
 
 def create_app() -> FastAPI:
@@ -60,14 +63,14 @@ def add_error_handling(*, app: FastAPI, settings: ApiSettings) -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings: Settings = app.state.settings
     wiring: AppWiring = app.state.wiring
-    telemetry: TelemetryProviders = TelemetryProviders(settings=settings.telemetry)
-    telemetry.install_and_instrument()
+    telemetry: TelemetryProviders = build_telemetry_providers(settings=settings.telemetry)
+    telemetry.install()
     try:
         wiring.operation_heartbeat_thread.start()
         wiring.abandoned_sweep_thread.start()
         yield
     finally:
         await asyncio.to_thread(wiring.abandoned_sweep_thread.stop)
-        await asyncio.to_thread(wiring.task_runner.close_cancelling_queued_and_waiting_for_running)
+        await asyncio.to_thread(wiring.task_runner.close)
         await asyncio.to_thread(wiring.operation_heartbeat_thread.stop)
         telemetry.shutdown()

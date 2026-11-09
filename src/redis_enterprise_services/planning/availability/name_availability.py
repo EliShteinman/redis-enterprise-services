@@ -27,27 +27,41 @@ class NameAvailability:
             for taken in self._find_taken_on_cluster(cluster=cluster, by_kind=by_kind)
         ]
 
-    def find_taken_and_raise_if_any(
-        self, *, clusters: list[ConfiguredCluster], requested_names: list[RequestedName]
-    ) -> None:
-        taken: list[TakenName] = self.find_taken_names(clusters=clusters, requested_names=requested_names)
-        if taken:
-            message: str = "; ".join(taken_name.describe() for taken_name in taken)
-            logger.warning(msg=message)
-            raise NameTakenError(message=message)
+    def ensure_free(self, *, clusters: list[ConfiguredCluster], requested_names: list[RequestedName]) -> None:
+        raise_if_any_taken(taken=self.find_taken_names(clusters=clusters, requested_names=requested_names))
         logger.info(msg=f"{len(requested_names)} names are free on {[cluster.name for cluster in clusters]}")
 
     def _find_taken_on_cluster(
         self, *, cluster: ConfiguredCluster, by_kind: dict[NameKind, set[str]]
     ) -> list[TakenName]:
         target: ClusterTarget = self._target_resolver.target_for(address=address_of(cluster=cluster))
-        return [
-            TakenName(kind=kind, name=name, cluster_name=cluster.name)
+        return taken_names(
+            cluster_name=cluster.name, existing_by_kind=self._existing_by_kind(target=target, by_kind=by_kind)
+        )
+
+    def _existing_by_kind(
+        self, *, target: ClusterTarget, by_kind: dict[NameKind, set[str]]
+    ) -> dict[NameKind, set[str]]:
+        return {
+            kind: self._lookups.for_kind(kind=kind).find_existing(target=target, names=names_of_kind)
             for kind, names_of_kind in by_kind.items()
-            for name in sorted(
-                self._lookups.for_kind(kind=kind).find_existing(target=target, names=names_of_kind)
-            )
-        ]
+        }
+
+
+def taken_names(*, cluster_name: str, existing_by_kind: dict[NameKind, set[str]]) -> list[TakenName]:
+    return [
+        TakenName(kind=kind, name=name, cluster_name=cluster_name)
+        for kind, existing in existing_by_kind.items()
+        for name in sorted(existing)
+    ]
+
+
+def raise_if_any_taken(*, taken: list[TakenName]) -> None:
+    if not taken:
+        return
+    message: str = "; ".join(taken_name.describe() for taken_name in taken)
+    logger.warning(msg=message)
+    raise NameTakenError(message=message)
 
 
 def names_by_kind(*, requested_names: list[RequestedName]) -> dict[NameKind, set[str]]:

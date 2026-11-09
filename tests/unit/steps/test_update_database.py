@@ -129,7 +129,7 @@ def test_find_outcome_returns_the_snapshot_when_the_new_values_are_in_place(
     repository.read_fields.side_effect = [UPDATED]
 
     assert (
-        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found)
+        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
         == SNAPSHOT
     )
 
@@ -140,7 +140,8 @@ def test_find_outcome_returns_none_when_the_old_values_are_still_there(
     repository.read_fields.side_effect = [SNAPSHOT]
 
     assert (
-        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found) is None
+        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
+        is None
     )
 
 
@@ -154,13 +155,16 @@ def test_find_outcome_raises_when_the_database_holds_neither_the_old_nor_the_new
     ]
 
     with pytest.raises(expected_exception=UpdateOutcomeUnclearError):
-        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found)
+        step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
 
 
 def test_find_outcome_without_a_kept_snapshot_asks_the_cluster_nothing(
     repository: MagicMock, step: UpdateDatabaseStep
 ) -> None:
-    assert step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_found_result=ignore_found) is None
+    assert (
+        step.find_outcome(step_input=STEP_INPUT, kept_result=None, keep_result_if_none_kept=ignore_found)
+        is None
+    )
 
     repository.read_fields.assert_not_called()
 
@@ -170,7 +174,7 @@ def test_find_outcome_waits_for_active_before_reporting_the_update_done(
 ) -> None:
     repository.read_fields.side_effect = [UPDATED]
 
-    step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_found_result=ignore_found)
+    step.find_outcome(step_input=STEP_INPUT, kept_result=SNAPSHOT, keep_result_if_none_kept=ignore_found)
 
     activation_waiter.wait_until_active.assert_called_once_with(target=TARGET, uid=UID)
 

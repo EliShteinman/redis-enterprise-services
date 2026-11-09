@@ -25,6 +25,11 @@ class PublicErrors:
             cluster_error_code=error.cluster_error_code,
         )
 
+    def from_exception(self, *, error: Exception, cluster_url: str | None = None) -> PublicError:
+        if isinstance(error, RedisEnterpriseServicesError):
+            return self.from_error(error=error, cluster_url=cluster_url)
+        return self.internal_error()
+
     def from_code(
         self,
         *,
@@ -34,7 +39,7 @@ class PublicErrors:
         cluster_error_code: str | None = None,
     ) -> PublicError:
         public_code: str = self.public_code(internal_code=internal_code)
-        if public_code not in self._settings.public_codes_with_cluster_details:
+        if not self._shows_cluster_details(public_code=public_code):
             return PublicError(code=public_code, message=message)
         return PublicError(
             code=public_code, message=message, cluster_url=cluster_url, cluster_error_code=cluster_error_code
@@ -52,3 +57,6 @@ class PublicErrors:
         if mapped_public_code != internal_code:
             logger.debug(msg=f"error {internal_code} is published as {mapped_public_code}")
         return mapped_public_code
+
+    def _shows_cluster_details(self, *, public_code: str) -> bool:
+        return public_code in self._settings.public_codes_with_cluster_details

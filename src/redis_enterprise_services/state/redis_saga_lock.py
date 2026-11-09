@@ -7,9 +7,9 @@ from redis.commands.core import Script
 from redis_enterprise_services.config.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError
 from redis_enterprise_services.saga.contract.saga_lock import SagaLock
+from redis_enterprise_services.state.lock_attempts import LockAttempts
 from redis_enterprise_services.state.redis_keys import RedisKeys
-from redis_enterprise_services.timing.clock import Clock
-from redis_enterprise_services.timing.sleeper import Sleeper
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -41,48 +41,55 @@ return released
 
 class RedisSagaLock(SagaLock):
     def __init__(
-        self, *, client: Redis, keys: RedisKeys, settings: LockSettings, sleeper: Sleeper, clock: Clock
+        self, *, client: Redis, keys: RedisKeys, settings: LockSettings, deadline_polling: DeadlinePolling
     ) -> None:
         self._client: Redis = client
         self._keys: RedisKeys = keys
         self._settings: LockSettings = settings
-        self._sleeper: Sleeper = sleeper
-        self._clock: Clock = clock
+        self._deadline_polling: DeadlinePolling = deadline_polling
         self._acquire_all_or_return_holder: Script = client.register_script(
             script=ACQUIRE_ALL_OR_RETURN_HOLDER
         )
         self._release_owned: Script = client.register_script(script=RELEASE_OWNED)
 
-    def acquire(self, *, keys: list[str], owner: str) -> None:
-        deadline: float = self._clock.monotonic_seconds() + self._settings.wait_timeout_seconds
-        holder: str | None = self._acquire_all_or_return_holder(
-            keys=self._held_set_and_lock_keys(keys=keys, owner=owner), args=[owner]
+    def acquire(self, *, lock_keys: list[str], owner: str) -> None:
+        attempts: LockAttempts = LockAttempts(
+            lock_keys=lock_keys, try_acquire=lambda: self._try_acquire(lock_keys=lock_keys, owner=owner)
         )
-        if holder is not None:
-            logger.warning(msg=f"{keys} locked by {holder}, waiting")
-        while holder is not None:
-            if self._clock.monotonic_seconds() >= deadline:
-                logger.error(msg=f"{keys} still locked by {holder}")
-                raise ResourcesLockedError(message=f"{keys} locked by {holder}")
-            self._sleeper.sleep(seconds=self._settings.poll_interval_seconds)
-            holder = self._acquire_all_or_return_holder(
-                keys=self._held_set_and_lock_keys(keys=keys, owner=owner), args=[owner]
-            )
-        logger.info(msg=f"{keys} locked by {owner}")
+        if not self._deadline_polling.poll_until(
+            is_done=attempts.acquired_now,
+            timeout_seconds=self._settings.wait_timeout_seconds,
+            poll_interval_seconds=self._settings.poll_interval_seconds,
+        ):
+            logger.error(msg=f"{lock_keys} still locked by {attempts.last_holder}")
+            raise ResourcesLockedError(message=f"{lock_keys} locked by {attempts.last_holder}")
+        logger.info(msg=f"{lock_keys} locked by {owner}")
 
-    def ensure_held(self, *, keys: list[str], owner: str) -> None:
-        holders: list[str | None] = cast(
-            list[str | None], self._client.mget(keys=[self._keys.lock(lock_key=key) for key in keys])
-        )
-        if any(holder != owner for holder in holders):
-            logger.error(msg=f"{keys} are no longer held by {owner}: {holders}")
-            raise ResourcesLockedError(message=f"{keys} are no longer held by {owner}")
+    def raise_unless_held(self, *, lock_keys: list[str], owner: str) -> None:
+        holders: list[str | None] = self._holders(lock_keys=lock_keys)
+        if not all_held_by(holders=holders, owner=owner):
+            logger.error(msg=f"{lock_keys} are no longer held by {owner}: {holders}")
+            raise ResourcesLockedError(message=f"{lock_keys} are no longer held by {owner}")
 
-    def release(self, *, keys: list[str], owner: str) -> None:
+    def release(self, *, lock_keys: list[str], owner: str) -> None:
         released: int = self._release_owned(
-            keys=self._held_set_and_lock_keys(keys=keys, owner=owner), args=[owner]
+            keys=self._held_set_and_lock_keys(lock_keys=lock_keys, owner=owner), args=[owner]
         )
-        logger.info(msg=f"{released} of {keys} released by {owner}")
+        logger.info(msg=f"{released} of {lock_keys} released by {owner}")
 
-    def _held_set_and_lock_keys(self, *, keys: list[str], owner: str) -> list[str]:
-        return [self._keys.held_locks(owner=owner), *(self._keys.lock(lock_key=key) for key in keys)]
+    def _holders(self, *, lock_keys: list[str]) -> list[str | None]:
+        return cast(
+            list[str | None], self._client.mget(keys=[self._keys.lock(lock_key=key) for key in lock_keys])
+        )
+
+    def _try_acquire(self, *, lock_keys: list[str], owner: str) -> str | None:
+        return self._acquire_all_or_return_holder(
+            keys=self._held_set_and_lock_keys(lock_keys=lock_keys, owner=owner), args=[owner]
+        )
+
+    def _held_set_and_lock_keys(self, *, lock_keys: list[str], owner: str) -> list[str]:
+        return [self._keys.held_locks(owner=owner), *(self._keys.lock(lock_key=key) for key in lock_keys)]
+
+
+def all_held_by(*, holders: list[str | None], owner: str) -> bool:
+    return all(holder == owner for holder in holders)

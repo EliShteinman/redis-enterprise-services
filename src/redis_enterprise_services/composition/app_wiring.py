@@ -19,7 +19,7 @@ from redis_enterprise_services.planning.availability.listed_name_lookup import L
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.database_defaults import database_defaults_from
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
@@ -37,8 +37,10 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.redis_saga_lock import RedisSagaLock
 from redis_enterprise_services.state.redis_saga_record_store import RedisSagaRecordStore
+from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.timing.clock import MonotonicClock
+from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 from redis_enterprise_services.timing.sleeper import SystemSleeper
 
 
@@ -49,9 +51,11 @@ class AppWiring:
         redis_keys: RedisKeys = RedisKeys(
             key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
         )
+        record_writer: TrackedRecordWriter = TrackedRecordWriter(client=redis_client)
         self.operation_store: OperationStore = RedisOperationStore(
             client=redis_client,
             keys=redis_keys,
+            record_writer=record_writer,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
             heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
         )
@@ -77,12 +81,12 @@ class AppWiring:
             client=redis_client,
             keys=redis_keys,
             settings=settings.state.lock,
-            sleeper=SystemSleeper(),
-            clock=MonotonicClock(),
+            deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
         )
         saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
             keys=redis_keys,
+            record_writer=record_writer,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
         )
         self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
@@ -103,7 +107,7 @@ class AppWiring:
                 site_cluster_resolver=SiteClusterResolver(
                     directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
                 ),
-                database_defaults=DatabaseDefaults(settings=settings.database_defaults),
+                database_defaults=database_defaults_from(settings=settings.database_defaults),
             ),
             execution=CreationExecution(
                 name_check_scope=ChosenClusterScope(),
@@ -118,14 +122,14 @@ class AppWiring:
                 ),
                 creation_naming=CreationNaming(resource_naming=user_resource_naming),
                 planner=SingleSiteCreationPlanner(
-                    user_resources=settings.user_resources,
+                    role_management=settings.user_resources.role_management,
                     cluster_fields=settings.cluster_api.fields,
                     resource_naming=user_resource_naming,
-                    create_database=cluster_wiring.create_database,
-                    create_acl=cluster_wiring.create_acl,
-                    create_role=cluster_wiring.create_role,
-                    create_user=cluster_wiring.create_user,
-                    update_database=cluster_wiring.update_database,
+                    create_database_step=cluster_wiring.create_database_step,
+                    create_acl_step=cluster_wiring.create_acl_step,
+                    create_role_step=cluster_wiring.create_role_step,
+                    create_user_step=cluster_wiring.create_user_step,
+                    update_database_step=cluster_wiring.update_database_step,
                 ),
                 saga_executor=build_saga_executor(
                     settings=settings, saga_lock=saga_lock, saga_record_store=saga_record_store

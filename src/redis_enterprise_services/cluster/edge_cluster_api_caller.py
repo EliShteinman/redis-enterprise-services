@@ -3,6 +3,7 @@ from http import HTTPStatus
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.cluster_url import cluster_url
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
@@ -27,22 +28,26 @@ class EdgeClusterApiCaller(ClusterApiCaller):
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
     ) -> SuccessfulClusterResponse:
-        url: str = target.api_url + path
         request: ClusterRequest = ClusterRequest(
             method=method,
-            url=f"{url}?{query_string}" if query_string else url,
+            url=cluster_url(api_url=target.api_url, path=path, query_string=query_string),
             credentials=target.credentials,
             body=body,
             cluster_state_id=cluster_state_id,
         )
         response: ClusterResponse = self._edge_transport.send(network=target.network, request=request)
-        if response.status_code >= HTTPStatus.MULTIPLE_CHOICES:
-            raise self._rejection_from(response=response)
+        if is_cluster_rejection(status_code=response.status_code):
+            raise cluster_rejection(response=response, error_code_field=self._settings.fields.error_code)
         return SuccessfulClusterResponse(body=response.body, cluster_state_id=response.cluster_state_id)
 
-    def _rejection_from(self, *, response: ClusterResponse) -> ClusterRejectedRequestError:
-        return ClusterRejectedRequestError(
-            message=f"cluster answered {response.status_code}: {response.body}",
-            cluster_status_code=response.status_code,
-            cluster_error_code=string_field(body=response.body, name=self._settings.fields.error_code),
-        )
+
+def is_cluster_rejection(*, status_code: int) -> bool:
+    return status_code >= HTTPStatus.MULTIPLE_CHOICES
+
+
+def cluster_rejection(*, response: ClusterResponse, error_code_field: str) -> ClusterRejectedRequestError:
+    return ClusterRejectedRequestError(
+        message=f"cluster answered {response.status_code}: {response.body}",
+        cluster_status_code=response.status_code,
+        cluster_error_code=string_field(body=response.body, name=error_code_field),
+    )

@@ -111,4 +111,4 @@ def test_a_taken_name_refuses_the_request() -> None:
         availability(
             database_url_name_pairs={("https://c1", "orders")},
             user_lister=CountingLister(url_name_pairs=set()),
-        ).find_taken_and_raise_if_any(clusters=[C1], requested_names=NAMES)
+        ).ensure_free(clusters=[C1], requested_names=NAMES)
