@@ -1,6 +1,7 @@
 user:
   collection_path: /v1/users
   item_path: /v1/users/{uid}
+  secret_fields: []
   list_fields: []
   unreturned_fields:
     - password
