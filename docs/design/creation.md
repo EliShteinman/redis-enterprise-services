@@ -60,6 +60,9 @@ POST /v1/databases/create
    ```yaml
    database_defaults:
      values: {version: "8.4", replication: true, data_persistence: aof, ...}
+     persistence_values:
+       aof: {aof_policy: appendfsync-every-sec}
+       snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
      overrides:
        - when: {environment: DEV}
          values: {replication: false}
@@ -69,6 +72,10 @@ POST /v1/databases/create
      שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
    - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
+   - **שדות של מצב שמירה:** `aof_policy` שייך ל-`aof` ו-`snapshot_policy` ל-`snapshot`. אחרי המיזוג נקבע
+     `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` שלו אם הבקשה
+     לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
+     שלהם, אחרת `422 validation_error`.
    - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות.
 
 כל מה שבשלב הזה לא נוגע בקלאסטר, ולכן כשל בו הוא תשובה מיידית, ושום דבר לא נשמר.
