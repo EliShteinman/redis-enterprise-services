@@ -57,11 +57,12 @@ class EdgeResponseReader:
             edge_error_code=edge_error_code, codes=self._settings.error_codes
         )
         if error_type is EdgeRejectedResponseError:
+            cluster_status_code: int | None = optional_int_header(
+                headers=relay_response.headers, name=self._settings.headers.cluster_status_code
+            )
             return EdgeRejectedResponseError(
-                message=message,
-                cluster_status_code=optional_int_header(
-                    headers=relay_response.headers, name=self._settings.headers.cluster_status_code
-                ),
+                message=f"{message} (cluster status {cluster_status_code})",
+                cluster_status_code=cluster_status_code,
             )
         return error_type(message=message)
 
