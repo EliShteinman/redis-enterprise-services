@@ -5,9 +5,10 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
-from redis_enterprise_services.planning.availability.requested_name import NameKind, RequestedName
+from redis_enterprise_services.planning.availability.requested_name import RequestedName
 from redis_enterprise_services.planning.availability.taken_name import TakenName
 from redis_enterprise_services.planning.cluster_address import address_of
+from redis_enterprise_services.planning.name_kind import NameKind
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
