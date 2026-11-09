@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from redis import Redis
 
+from redis_enterprise_services.exceptions.operation import UnreadableOperationRecordError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.state.redis_keys import RedisKeys
@@ -35,3 +36,18 @@ def test_only_an_operation_in_an_expiring_status_is_stored_with_the_expiry(
     store.save(operation=Operation(trace_id="trace-1", status=status))
 
     assert record_writer.save.call_args.kwargs["ttl_seconds"] == ttl_seconds
+
+
+def test_an_unreadable_operation_record_raises_a_project_error() -> None:
+    client: MagicMock = create_autospec(spec=Redis, instance=True)
+    client.get.return_value = '{"status": "unknown"}'
+    store: RedisOperationStore = RedisOperationStore(
+        client=client,
+        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
+        record_writer=create_autospec(spec=TrackedRecordWriter, instance=True),
+        finished_ttl_seconds=600,
+        heartbeat_ttl_seconds=60,
+    )
+
+    with pytest.raises(expected_exception=UnreadableOperationRecordError):
+        store.find(trace_id="trace-1")

@@ -76,7 +76,7 @@ uv run pytest
 ```
 
 `tests/integration/` runs the Redis scripts against the saga-state Redis of the local clusters (see Local clusters),
-with the `RES_STATE__*` settings. Without it, those tests are skipped.
+with the `RES_STATE__*` settings. Without that Redis or those settings, the tests are skipped.
 
 ```bash
 uv run ruff check . && uv run ruff format .
