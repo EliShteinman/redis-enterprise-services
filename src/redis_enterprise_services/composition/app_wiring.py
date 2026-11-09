@@ -152,7 +152,9 @@ def build_database_creation(
                 sleeper=sleeper,
             ),
             outcome_translator=CreationOutcomeTranslator(
-                resource_naming=user_resource_naming, public_errors=public_errors
+                resource_naming=user_resource_naming,
+                public_errors=public_errors,
+                database_settings=settings.database,
             ),
             public_errors=public_errors,
             saga_record_reader=state_wiring.saga_record_store,
@@ -202,6 +204,7 @@ def build_planner(
         create_role_step=cluster_wiring.steps.create_role,
         create_user_step=cluster_wiring.steps.create_user,
         update_database_step=cluster_wiring.steps.update_database,
+        read_database_step=cluster_wiring.steps.read_database,
     )
 
 

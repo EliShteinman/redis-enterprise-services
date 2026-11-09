@@ -25,6 +25,7 @@ from redis_enterprise_services.resources.rest_resource_endpoint import RestResou
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.roles.role_creation_body_builder import RoleCreationBodyBuilder
 from redis_enterprise_services.steps.create_resource import CreateResourceStep
+from redis_enterprise_services.steps.read_database import ReadDatabaseStep
 from redis_enterprise_services.steps.update_database import UpdateDatabaseStep
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 from redis_enterprise_services.users.models import NewUser
@@ -111,6 +112,11 @@ class ClusterSteps:
             activation_waiter=database_waiter,
             target_resolver=target_resolver,
             order_insensitive_fields=settings.database.order_insensitive_fields,
+        )
+        self.read_database: ReadDatabaseStep = ReadDatabaseStep(
+            fields_reader=repositories.database_fields,
+            target_resolver=target_resolver,
+            settings=settings.database,
         )
 
 
@@ -203,4 +209,5 @@ def rest_repository[TSpec: NamedSpec](
             cluster_api_settings=cluster_api_settings,
         ),
         body_builder=body_builder,
+        unreturned_fields=frozenset(resource.unreturned_fields),
     )
