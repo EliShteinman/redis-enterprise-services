@@ -13,7 +13,15 @@ class NamedResource(BaseModel):
     name: str
 
 
-class CreatedResource(NamedResource):
+class ClusterObject(NamedResource):
+    fields: dict[str, JsonValue]
+
+
+class CreatedResource(ClusterObject):
+    action_uid: str | None
+
+
+class DeletionStarted(BaseModel):
     action_uid: str | None
     fields: dict[str, JsonValue]
 
