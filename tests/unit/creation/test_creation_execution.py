@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
 
@@ -11,7 +11,7 @@ from redis_enterprise_services.creation.prepared_creation import PreparedCreatio
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
-from redis_enterprise_services.exceptions.saga import ResourcesLockedError
+from redis_enterprise_services.exceptions.saga import ResourcesLockedError, UnreadableSagaRecordError
 from redis_enterprise_services.operations.database_result import DatabaseResult, DatabaseUserResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -161,14 +161,10 @@ def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -
     assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
-def unreadable_record(*, saga_id: str) -> SagaRecord:
-    return SagaRecord.model_validate_json(json_data="{}")
-
-
 def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_intervention() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
-    harness.saga_record_reader.find.side_effect = unreadable_record
+    harness.saga_record_reader.find.side_effect = UnreadableSagaRecordError(message="unreadable")
 
     assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
@@ -243,4 +239,6 @@ def test_the_check_before_start_looks_for_taken_names() -> None:
     harness.run_and_save()
     harness.saga_executor.run.call_args.kwargs["check_before_start"]()
 
-    assert harness.name_availability.ensure_free.called
+    harness.name_availability.ensure_free.assert_called_once_with(
+        clusters=[PREPARED_CREATION.cluster], requested_names=ANY
+    )
