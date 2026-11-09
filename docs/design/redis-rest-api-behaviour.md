@@ -67,8 +67,8 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 
 - יצירה: `POST /v1/bdbs` מחזיר את ה-bdb המלא עם `uid`, `status: pending` ו-`action_uid`.
 - **התשובות ליצירה, ל-`GET` המלא ולמחיקה כוללות `authentication_redis_pass`, `authentication_admin_pass` ו-
-  `authentication_sasl_pass` בטקסט גלוי.** לכן תוצאה של צעד היא רק `uid`, `name` ו-`action_uid`, ו-snapshot מבקש רק
-  שדות מסוימים.
+  `authentication_sasl_pass` בטקסט גלוי.** לכן השירות מוחק אותם (`database.secret_fields`) מכל אובייקט לפני שהוא נשמר,
+  אחרי בדיקת השלמות.
 - `default_user: true` עם `authentication_redis_pass` ⇐ חיבור בלי סיסמה נדחה (`NOAUTH`), ועם הסיסמה עובד. בלי
   סיסמה, כל אחד מתחבר.
 - `GET /v1/bdbs/{uid}?fields=a,b` מחזיר רק את השדות. שם שדה לא קיים ⇐ `406 invalid_fields_query_param`. שדה קיים שלא
