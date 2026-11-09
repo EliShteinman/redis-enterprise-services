@@ -167,26 +167,48 @@
   "status": "succeeded",
   "database": {
     "name": "orders",
+    "memory_size": 1073741824,
     "active_active": false,
-    "db_id": 7,
+    "crdb_guid": null,
     "clusters": [
       {
         "cluster_url": "https://cluster-a.net-a:9443",
         "network": "net-a", "site": "dc1", "environment": "PROD",
-        "db_uid": 7,
-        "users": [ {"name": "app", "user_uid": 12, "role_uid": 4, "acl_uid": 9} ]
+        "access": {
+          "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
+        },
+        "db": {
+          "db_uid": 7,
+          "settings": {"name": "orders", "memory_size": 1073741824, "version": "8.4.0", "replication": true,
+                       "data_persistence": "aof", "aof_policy": "appendfsync-every-sec", "…": "…"},
+          "permissions": [
+            {"user_uid": 12, "user_name": "app", "user_password": "S3cure-Passw0rd",
+             "acl_uid": 9, "acl_rule": "+@all ~orders:*"}
+          ]
+        }
       }
     ]
   }
 }
 ```
 
+כל ערך בתוצאה נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה, ולכן חוזרת
+הסיסמה שהקלאסטר קיבל כשיצר את היוזר.
+
 | שדה | הערה |
 |---|---|
-| `database.db_id` | ה-uid של ה-DB בקלאסטר |
-| `database.clusters[]` | קלאסטר אחד |
-| `database.clusters[].cluster_url` | כתובת ה-API של הקלאסטר |
-| `database.clusters[].users[]` | היוזרים, עם ה-uids של היוזר, ה-role וה-ACL |
+| `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
+| `database.crdb_guid` | ה-id של Active-Active. `null` ל-DB באתר אחד |
+| `database.clusters[]` | ענף לכל קלאסטר. היום קלאסטר אחד |
+| `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד |
+| `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
+| `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
+| `clusters[].db.permissions[]` | לכל יוזר: היוזר וה-ACL שלו, שנוצרים ונמחקים יחד. ה-role פנימי ולא מוחזר |
+
+**מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
+פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB
+עם כל שדות מודל היצירה, `uid`, `status` ו-`endpoints`. אובייקט לא מלא, שדה בלי ערך, או DB בלי endpoint עם `dns_name`,
+`port` ו-`addr`, הם כישלון ודאי (`incomplete_cluster_object`, בציבורי `cluster_request_failed`): הכל מתבטל.
 
 ### כישלון
 
@@ -303,8 +325,8 @@
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
-| Active-Active | `active_active: true` עם כמה `sites`. `db_id` יהיה UUID, ו-`clusters[]` יכיל אתר לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
-| עריכה ומחיקה: היעד | `target: {active_active, db_id, clusters}`, מהתוצאה של היצירה, שונה מה-`target` של יצירה |
+| Active-Active | `active_active: true` עם כמה `sites`. `crdb_guid` יהיה ה-UUID של ה-CRDB, ו-`clusters[]` יכיל ענף לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
+| עריכה ומחיקה: היעד | `target: {active_active, crdb_guid, clusters}` (עם ה-`db_uid` וה-uids של כל ענף), מהתוצאה של היצירה, שונה מה-`target` של יצירה |
 | עריכה ומחיקה: קודים | `database_not_found`, `clusters_mismatch`, `sites_diverged` בסטטוס (`rejected`) |
 | עריכת DB | `POST /v1/databases/update` |
 | עריכת יוזרים | `POST /v1/databases/users`, עם רשימת היוזרים המלאה. סיסמה חסרה או מיותרת ⇐ `422 password_rules` |
