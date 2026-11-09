@@ -8,16 +8,19 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
 from redis_enterprise_services.api.rejection_error import FieldError, RejectionError
+from redis_enterprise_services.api.rejection_error_code import (
+    API_ERROR_CODE_BY_HTTP_STATUS,
+    API_ERROR_CODE_BY_INTERNAL_CODE,
+    UNKNOWN_HTTP_ERROR_CODE,
+    VALIDATION_ERROR_CODE,
+    RejectionErrorCode,
+)
 from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.exceptions.operation import OperationNotFoundError
-from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.public_errors import INTERNAL_ERROR_CODE, PublicErrors
 
-VALIDATION_ERROR_CODE: str = "validation_error"
 LOCATION_SEPARATOR: str = "."
-UNKNOWN_HTTP_ERROR_CODE: str = "http_error"
-API_ONLY_ERROR_CODES: frozenset[str] = frozenset({OperationNotFoundError.code})
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -39,15 +42,15 @@ class ServiceErrorHandler:
         )
 
     def _rejection_error(self, *, error: RedisEnterpriseServicesError) -> RejectionError:
-        public_code: str = self._public_code(internal_code=error.code)
-        if public_code == RedisEnterpriseServicesError.code:
+        public_code: RejectionErrorCode = self._public_code(internal_code=error.code)
+        if public_code == INTERNAL_ERROR_CODE:
             return RejectionError(code=public_code, message=self._public_errors.internal_error().message)
         return RejectionError(code=public_code, message=error.message)
 
-    def _public_code(self, *, internal_code: str) -> str:
-        if internal_code in API_ONLY_ERROR_CODES:
-            return internal_code
-        return self._public_errors.public_code(internal_code=internal_code)
+    def _public_code(self, *, internal_code: str) -> RejectionErrorCode:
+        return API_ERROR_CODE_BY_INTERNAL_CODE.get(internal_code) or self._public_errors.public_code(
+            internal_code=internal_code
+        )
 
 
 class ValidationErrorHandler:
@@ -69,7 +72,7 @@ class ValidationErrorHandler:
 
 
 async def http_exception_handler(request: Request, error: HTTPException) -> Response:
-    code: str = http_error_code(status_code=error.status_code)
+    code: RejectionErrorCode = http_error_code(status_code=error.status_code)
     logger.info(msg=f"{code}: {request.method} {request.url.path}")
     return rejection_response(
         request=request,
@@ -83,11 +86,8 @@ def log_level_for_status(*, status_code: int) -> int:
     return logging.ERROR if status_code >= HTTPStatus.INTERNAL_SERVER_ERROR else logging.INFO
 
 
-def http_error_code(*, status_code: int) -> str:
-    try:
-        return HTTPStatus(value=status_code).name.lower()
-    except ValueError:
-        return UNKNOWN_HTTP_ERROR_CODE
+def http_error_code(*, status_code: int) -> RejectionErrorCode:
+    return API_ERROR_CODE_BY_HTTP_STATUS.get(status_code, UNKNOWN_HTTP_ERROR_CODE)
 
 
 def field_errors_from(*, error_details: Sequence[Any]) -> list[FieldError]:

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.operations.public_error import PublicError
+from redis_enterprise_services.api.rejection_error_code import API_ERROR_CODE_DESCRIPTION, RejectionErrorCode
+from redis_enterprise_services.operations.public_error import PUBLIC_ERROR_CODE_DESCRIPTION
 
 
 class FieldError(BaseModel):
@@ -10,7 +11,15 @@ class FieldError(BaseModel):
     message: str = Field(description="What is wrong there.", examples=["Field required"])
 
 
-class RejectionError(PublicError):
+class RejectionError(BaseModel):
+    code: RejectionErrorCode = Field(
+        description="What kind of failure: " + API_ERROR_CODE_DESCRIPTION + PUBLIC_ERROR_CODE_DESCRIPTION,
+        examples=["validation_error"],
+    )
+    message: str = Field(
+        description="What went wrong, for people; not for parsing.",
+        examples=["the request does not match the contract"],
+    )
     details: list[FieldError] | None = Field(
         default=None,
         exclude_if=lambda details: details is None,

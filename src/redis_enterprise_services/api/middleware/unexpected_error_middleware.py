@@ -9,6 +9,7 @@ from redis_enterprise_services.api.rejection_error import RejectionError
 from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.operations.public_errors import INTERNAL_ERROR_CODE
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -28,7 +29,7 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
                 request=request,
                 status_code=RedisEnterpriseServicesError.status_code,
                 error=RejectionError(
-                    code=RedisEnterpriseServicesError.code,
+                    code=INTERNAL_ERROR_CODE,
                     message=self._settings.internal_error_message,
                 ),
             )
