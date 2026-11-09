@@ -106,7 +106,7 @@ class ExecutionHarness:
         return self.execution.run_and_save(trace_id="trace-1", prepared_creation=PREPARED_CREATION)
 
 
-def test_a_created_database_returns_the_uids_of_each_user() -> None:
+def test_a_created_database_returns_its_uid_and_the_uids_of_each_user() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
 

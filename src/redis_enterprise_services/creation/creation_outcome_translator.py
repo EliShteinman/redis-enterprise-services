@@ -51,7 +51,10 @@ class CreationOutcomeTranslator:
     def _stopped_step_error(self, *, cluster: ConfiguredCluster, record: SagaRecord) -> PublicError:
         stopped_step: StepRecord | None = record.stopped_step()
         if stopped_step is None or stopped_step.error is None:
-            logger.error(msg=f"saga {record.saga_id} ended {record.status.value} with no failed step")
+            logger.warning(
+                msg=f"saga {record.saga_id} ended {record.status.value} and its stopped step has no error "
+                "(it was interrupted), reported as internal_error"
+            )
             return self._public_errors.internal_error()
         return self._public_errors.from_code(
             internal_code=stopped_step.error.code,
