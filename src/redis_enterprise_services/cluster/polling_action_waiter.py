@@ -51,7 +51,7 @@ class PollingActionWaiter(ClusterActionWaiter):
         self, *, target: ClusterTarget, action_uid: str, last_read: list[JsonValue]
     ) -> bool:
         action_body: JsonValue = self._read_action_body(target=target, action_uid=action_uid)
-        last_read.append(action_body)
+        last_read[:] = [action_body]
         status: str = required_string_field(
             body=action_body,
             name=self._cluster_api_settings.fields.status,

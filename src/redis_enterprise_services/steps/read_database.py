@@ -10,9 +10,11 @@ from redis_enterprise_services.databases.database_fields_repository import Datab
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
+from redis_enterprise_services.resources.cluster_object_body import without_fields
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
+from redis_enterprise_services.steps.same_values import same_field
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -22,6 +24,7 @@ class ReadDatabaseInput(BaseModel):
 
     cluster: ClusterAddress
     uid: int
+    expected_values: dict[str, JsonValue]
 
 
 class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
@@ -70,7 +73,22 @@ class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
             raise IncompleteClusterObjectError(
                 message=f"database {step_input.uid} came back without a value for {missing}"
             )
-        return snapshot
+        differing: list[str] = fields_not_holding(
+            values=snapshot.values,
+            expected=step_input.expected_values,
+            order_insensitive_fields=self._settings.order_insensitive_fields,
+        )
+        if differing:
+            raise IncompleteClusterObjectError(
+                message=f"database {step_input.uid} does not hold what was set for {differing}"
+            )
+        return snapshot.model_copy(
+            update={
+                "values": without_fields(
+                    fields=snapshot.values, names=frozenset(self._settings.secret_fields)
+                )
+            }
+        )
 
 
 def required_field_names(*, settings: DatabaseSettings) -> list[str]:
@@ -83,11 +101,28 @@ def missing_database_values(*, values: dict[str, JsonValue], settings: DatabaseS
     ]
     endpoints: JsonValue = values.get(settings.endpoints_field)
     if not isinstance(endpoints, list) or not endpoints:
-        return sorted({*missing, settings.endpoints_field})
+        return [*missing, settings.endpoints_field]
     for index, endpoint in enumerate(endpoints):
         missing += [
             f"{settings.endpoints_field}[{index}].{name}"
             for name in settings.endpoint_fields
-            if not isinstance(endpoint, dict) or endpoint.get(name) is None
+            if not isinstance(endpoint, dict) or is_empty(value=endpoint.get(name))
         ]
     return missing
+
+
+def is_empty(*, value: JsonValue) -> bool:
+    return value is None or value == "" or value == []
+
+
+def fields_not_holding(
+    *, values: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
+) -> list[str]:
+    return [
+        name
+        for name, expected_value in expected.items()
+        if name not in values
+        or not same_field(
+            current=values[name], expected=expected_value, ignore_order=name in order_insensitive_fields
+        )
+    ]

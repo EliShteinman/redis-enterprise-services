@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from redis_enterprise_services.config.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 from redis_enterprise_services.saga.contract.saga_record import StepError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -66,9 +67,13 @@ class StepRunner:
             outcome=attempts_outcome, has_result=step.has_result, kind=step.kind
         )
         if outcome is not attempts_outcome:
-            logger.error(
-                msg=f"step {step.key} ended {attempts_outcome.value} in a way the saga cannot compensate, "
-                f"it needs manual intervention"
+            reason: str = (
+                f"step {step.key} ended {attempts_outcome.value} without a kept result, "
+                "so the saga cannot compensate it: it needs manual intervention"
+            )
+            logger.error(msg=reason)
+            recorder.save_error(
+                error=StepError.from_exception(error=StepNeedsManualInterventionError(message=reason))
             )
         mark_outcome(recorder=recorder, outcome=outcome)
         logger.info(msg=f"step {step.key} ended {outcome.value}")
