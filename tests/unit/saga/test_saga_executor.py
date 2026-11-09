@@ -284,6 +284,34 @@ def test_an_unknown_outcome_that_is_found_is_done_without_running_again(
     )
 
 
+def test_an_outcome_lookup_that_fails_on_a_transient_error_looks_again(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    step: FakeStep = FakeStep(
+        calls=calls,
+        execute_script=[OUTCOME_UNKNOWN],
+        find_outcome_answers=[BUSY, FakeResult(name="a", attempt=0)],
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
+
+    assert (record.status, record.steps[0].obtained_by) == (SagaStatus.SUCCEEDED, "found")
+
+
+def test_an_outcome_lookup_that_keeps_failing_on_transient_errors_stops_for_manual_intervention(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    step: FakeStep = FakeStep(
+        calls=calls,
+        execute_script=[OUTCOME_UNKNOWN],
+        find_outcome_answers=[BUSY for _attempt in range(SETTINGS.step_retry.attempts)],
+    )
+
+    record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
+
+    assert record.status is SagaStatus.REQUIRES_MANUAL_INTERVENTION
+
+
 def test_an_unknown_outcome_that_is_not_found_runs_the_step_again(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
