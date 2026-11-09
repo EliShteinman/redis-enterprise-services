@@ -38,7 +38,7 @@ POST /v1/databases/create
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
-**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
+**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `state_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 ---
 
@@ -91,6 +91,11 @@ POST /v1/databases/create
 - ה-uids עוברים בין צעדים דרך ה-`StepResults` (`saga-engine-and-state.md` סעיף 3).
 - שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
+- **המתנה בקלאסטר:** כל המתנה קוראת את המצב כל `poll_interval_seconds` עד `timeout_seconds` (`database.wait`,
+  `action.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
+  או לא ענה, 5xx של הקלאסטר, או קוד מ-`cluster_api.transient_error_codes`) נרשמת כ-WARNING, והקריאה חוזרת. כל שגיאה
+  אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout` או
+  `database_deletion_timeout` (בחוזה: `cluster_timeout`).
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
 
@@ -103,8 +108,8 @@ POST /v1/databases/create
 **בדיקת שמות פנויים** (`NameAvailability`), כ-`check_before_start`: אחרי הנעילה ולפני הצעד הראשון. היא בודקת את ה-DB, ולכל
 יוזר את השם שלו ואת שמות ה-ACL וה-role. ל-REST API אין חיפוש לפי שם, ולכן היא שולפת פעם אחת כל סוג משאב (`bdbs`,
 `users`, `redis_acls`, `roles`) ומסננת בקוד. היא רצה תחת הנעילה, כי הקלאסטר לא אוכף שם DB ייחודי, ושתי בקשות שבודקות
-לפני הנעילה היו עוברות יחד. ההיקף (`ChosenClusterScope`: רק הקלאסטר שנבחר) הוא ממשק נפרד, כך שאפשר להרחיב אותו
-לקלאסטרים נוספים בלי לשנות את הבדיקה. שם תפוס ⇐ `name_taken`, והנעילה משתחררת.
+לפני הנעילה היו עוברות יחד. ההיקף הוא ממשק נפרד (`NameCheckScope`), והמימוש היום (`ChosenClusterScope`)
+מחזיר רק את הקלאסטר שנבחר, כך שאפשר להרחיב אותו לקלאסטרים נוספים בלי לשנות את הבדיקה. שם תפוס ⇐ `name_taken`, והנעילה משתחררת.
 
 ---
 
@@ -118,7 +123,7 @@ POST /v1/databases/create
 |---|---|
 | ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`): ה-uids מהתוצאות של הצעדים |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
-| שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס) | `rejected` עם הקוד שלה |
+| שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
 | שגיאה לא צפויה | אין saga record ⇐ `rejected` עם `internal_error`. יש record ⇐ כמו בסוף רגיל, מתוך ה-record. record שלא נקרא ⇐ `requires_manual_intervention` עם `internal_error` |
 
 - **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
