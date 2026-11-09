@@ -44,5 +44,9 @@ class DuplicateResourceNameError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "duplicate_resource_name"
 
 
+class IncompleteClusterObjectError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "incomplete_cluster_object"
+
+
 class UnreadableClusterResponseError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unreadable_cluster_response"

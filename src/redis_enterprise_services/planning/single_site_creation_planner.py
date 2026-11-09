@@ -12,6 +12,7 @@ from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.creation_step_keys import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
+    READ_DATABASE_STEP_KEY,
     acl_step_key,
     role_step_key,
     user_step_key,
@@ -27,6 +28,7 @@ from redis_enterprise_services.saga.plan.planned_step import PlannedStep
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 from redis_enterprise_services.saga.plan.step_results import StepResults
+from redis_enterprise_services.steps.read_database import ReadDatabaseInput
 from redis_enterprise_services.steps.update_database import UpdateDatabaseInput
 from redis_enterprise_services.users.models import NewUser
 
@@ -48,6 +50,7 @@ class SingleSiteCreationPlanner:
         create_role_step: SagaStep[CreateResourceInput[NewRole], CreatedResource],
         create_user_step: SagaStep[CreateResourceInput[NewUser], CreatedResource],
         update_database_step: SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot],
+        read_database_step: SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot],
     ) -> None:
         self._role_management: RoleManagement = role_management
         self._cluster_fields: ClusterFieldSettings = cluster_fields
@@ -61,6 +64,7 @@ class SingleSiteCreationPlanner:
         self._update_database_step: SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot] = (
             update_database_step
         )
+        self._read_database_step: SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot] = read_database_step
 
     def plan(self, *, cluster: ConfiguredCluster, spec: DatabaseSpec) -> SagaPlan:
         database: NewDatabase = spec.database
@@ -89,6 +93,7 @@ class SingleSiteCreationPlanner:
                 for step in self._steps_for_user(address=address, database=database, user=user)
             ),
             *self._permissions_steps(address=address, users=users),
+            self._read_database_planned_step(address=address),
         ]
 
     def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> PreparableStep:
@@ -160,6 +165,13 @@ class SingleSiteCreationPlanner:
             )
         ]
 
+    def _read_database_planned_step(self, *, address: ClusterAddress) -> PreparableStep:
+        return PlannedStep(
+            key=READ_DATABASE_STEP_KEY,
+            step=self._read_database_step,
+            build_input=partial(read_database_input, address=address),
+        )
+
     def _permissions_input(
         self, *, step_results: StepResults, address: ClusterAddress, users: list[DatabaseUserSpec]
     ) -> UpdateDatabaseInput:
@@ -173,6 +185,12 @@ class SingleSiteCreationPlanner:
                 ]
             },
         )
+
+
+def read_database_input(*, step_results: StepResults, address: ClusterAddress) -> ReadDatabaseInput:
+    return ReadDatabaseInput(
+        cluster=address, uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY)
+    )
 
 
 def fixed_resource_input[TSpec: NamedSpec](

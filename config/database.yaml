@@ -1,10 +1,20 @@
 database:
   collection_path: /v1/bdbs
   item_path: /v1/bdbs/{uid}
+  unreturned_fields: []
   list_fields:
     - uid
     - name
   active_status: active
+  read_fields:
+    - uid
+    - status
+    - endpoints
+  endpoints_field: endpoints
+  endpoint_fields:
+    - dns_name
+    - port
+    - addr
   creation_failed_status: creation-failed
   order_insensitive_fields:
     - roles_permissions

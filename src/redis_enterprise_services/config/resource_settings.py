@@ -6,3 +6,4 @@ class ResourceSettings(ConfigModel):
     collection_path: ApiPath
     item_path: ItemPath
     list_fields: list[str]
+    unreturned_fields: list[str]
