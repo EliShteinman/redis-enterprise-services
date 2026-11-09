@@ -1,8 +1,10 @@
 import logging
 from typing import cast
 
+from pydantic import ValidationError
 from redis import Redis
 
+from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader, SagaRecordWriter
 from redis_enterprise_services.state.record_expiry import KEEP_OPEN_WITHOUT_EXPIRY, finished_ttl_or_keep_open
@@ -40,7 +42,10 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
         if stored is None:
             logger.debug(msg=f"saga {saga_id} is not stored")
             return None
-        return SagaRecord.model_validate_json(json_data=stored)
+        try:
+            return SagaRecord.model_validate_json(json_data=stored)
+        except ValidationError as error:
+            raise UnreadableSagaRecordError(message=f"the record of saga {saga_id} cannot be read") from error
 
     def _write(self, *, record: SagaRecord, ttl_seconds: int) -> None:
         self._record_writer.save(

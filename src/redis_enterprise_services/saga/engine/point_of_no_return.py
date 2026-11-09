@@ -3,7 +3,7 @@ from redis_enterprise_services.saga.engine.step_runner import StepOutcome
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 
 
-def passed_point_of_no_return(*, steps_before: list[PreparableStep]) -> bool:
+def has_passed_point_of_no_return(*, steps_before: list[PreparableStep]) -> bool:
     return any(step.kind is not StepKind.COMPENSATABLE for step in steps_before)
 
 

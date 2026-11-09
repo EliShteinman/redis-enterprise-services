@@ -2,11 +2,10 @@ import logging
 from collections.abc import Callable
 from functools import partial
 
-from pydantic import ValidationError
-
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
@@ -93,7 +92,7 @@ class CreationExecution:
     ) -> Operation:
         try:
             stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
-        except ValidationError:
+        except UnreadableSagaRecordError:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
             return Operation.requires_manual_intervention(
                 trace_id=trace_id, error=self._public_errors.internal_error()

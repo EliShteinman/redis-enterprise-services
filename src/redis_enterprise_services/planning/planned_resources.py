@@ -2,7 +2,6 @@ from typing import ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from redis_enterprise_services.planning.availability.requested_name import NameKind
 from redis_enterprise_services.planning.creation_step_keys import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
@@ -11,6 +10,7 @@ from redis_enterprise_services.planning.creation_step_keys import (
     user_step_key,
 )
 from redis_enterprise_services.planning.database_spec import DatabaseSpec
+from redis_enterprise_services.planning.name_kind import NameKind
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
 type PlannedResourceType = NameKind | Literal["permissions"]

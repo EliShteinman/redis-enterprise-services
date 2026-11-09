@@ -17,3 +17,7 @@ class MissingStepResultError(RedisEnterpriseServicesError):
 
 class MissingStepRecordError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_record"
+
+
+class UnreadableSagaRecordError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "unreadable_saga_record"
