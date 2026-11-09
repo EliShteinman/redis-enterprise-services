@@ -9,6 +9,7 @@ from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
+from redis_enterprise_services.resources.cluster_object_body import object_body
 from redis_enterprise_services.resources.models import (
     ClusterObject,
     CreatedResource,
@@ -50,7 +51,7 @@ class RestResourceEndpoint(ResourceEndpoint):
         ).body
         return created_resource(
             response_body=response_body,
-            requested_name=requested_name,
+            requested_name=f"created {requested_name}",
             action_uid=self._action_uid(response_body=response_body),
         )
 
@@ -61,13 +62,13 @@ class RestResourceEndpoint(ResourceEndpoint):
         ).body
         return DeletionStarted(
             action_uid=self._action_uid(response_body=response_body),
-            fields=response_body if isinstance(response_body, dict) else {},
+            fields=object_body(body=response_body, message_prefix=f"deleted {uid}, unreadable answer"),
         )
 
     def read_item(self, *, target: ClusterTarget, uid: int) -> CreatedResource:
         path: str = self._settings.item_path.format(uid=uid)
         response_body: JsonValue = self._cluster_api_caller.send(target=target, method="GET", path=path).body
-        return created_resource(response_body=response_body, requested_name=path, action_uid=None)
+        return created_resource(response_body=response_body, requested_name=f"read {path}", action_uid=None)
 
     def list_objects(self, *, target: ClusterTarget) -> list[ClusterObject]:
         response_body: JsonValue = self._cluster_api_caller.send(
@@ -105,7 +106,9 @@ def created_resource(
     resource: NamedResource = parse_cluster_body(
         body=response_body,
         adapter=NAMED_RESOURCE_ADAPTER,
-        message_prefix=f"created {requested_name}, unreadable response fields",
+        message_prefix=f"{requested_name}, unreadable response fields",
     )
-    fields: dict[str, JsonValue] = response_body if isinstance(response_body, dict) else {}
+    fields: dict[str, JsonValue] = object_body(
+        body=response_body, message_prefix=f"{requested_name}, unreadable answer"
+    )
     return CreatedResource(uid=resource.uid, name=resource.name, action_uid=action_uid, fields=fields)

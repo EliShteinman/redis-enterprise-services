@@ -45,8 +45,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
     ) -> None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         created: CreatedResource = self._repository.start_creation(target=target, spec=step_input.spec)
-        keep_result(result=created)
-        self._require_complete(step_input=step_input, created=created)
+        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=created)
+        keep_result(result=self._repository.without_secrets(created=created))
+        raise_if_incomplete(created=created, missing=missing)
         self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
 
     def find_outcome(
@@ -57,16 +58,19 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         keep_result_if_none_kept: KeepResult[CreatedResource],
     ) -> CreatedResource | None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
-        created: CreatedResource | None = self._kept_or_found_by_name(
+        current: CreatedResource | None = self._read_current(
             target=target, step_input=step_input, kept_result=kept_result
         )
-        if created is not None:
-            keep_result_if_none_kept(result=created)
-            self._require_complete(step_input=step_input, created=created)
-            self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
-        return created
+        if current is None:
+            return None
+        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=current)
+        kept: CreatedResource = kept_result or self._repository.without_secrets(created=current)
+        keep_result_if_none_kept(result=kept)
+        raise_if_incomplete(created=current, missing=missing)
+        self._completion_waiter.wait_for_pending_creation(target=target, resource=kept)
+        return kept
 
-    def _kept_or_found_by_name(
+    def _read_current(
         self,
         *,
         target: ClusterTarget,
@@ -74,7 +78,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         kept_result: CreatedResource | None,
     ) -> CreatedResource | None:
         if kept_result is not None:
-            return kept_result
+            return self._repository.read_created(target=target, uid=kept_result.uid)
         found: NamedResource | None = only_one_named(
             found=self._repository.find_by_name(target=target, name=step_input.spec.name),
             name=step_input.spec.name,
@@ -82,13 +86,6 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         if found is None:
             return None
         return self._repository.read_created(target=target, uid=found.uid)
-
-    def _require_complete(self, *, step_input: CreateResourceInput[TSpec], created: CreatedResource) -> None:
-        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=created)
-        if missing:
-            raise IncompleteClusterObjectError(
-                message=f"created {created.name} (uid {created.uid}) came back without a value for {missing}"
-            )
 
     def compensate(self, *, step_input: CreateResourceInput[TSpec], result: CreatedResource) -> None:
         logger.info(msg=f"removing created {result.name}")
@@ -102,4 +99,11 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
             return
         self._completion_waiter.wait_for_pending_deletion(
             target=target, uid=result.uid, action_uid=deletion.action_uid
+        )
+
+
+def raise_if_incomplete(*, created: CreatedResource, missing: list[str]) -> None:
+    if missing:
+        raise IncompleteClusterObjectError(
+            message=f"created {created.name} (uid {created.uid}) came back without a value for {missing}"
         )

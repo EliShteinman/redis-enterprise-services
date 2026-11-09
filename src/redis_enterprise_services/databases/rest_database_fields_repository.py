@@ -9,6 +9,7 @@ from redis_enterprise_services.config.cluster_api_settings import ClusterApiSett
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsRepository
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
+from redis_enterprise_services.resources.cluster_object_body import object_body
 
 DATABASE_FIELDS_SNAPSHOT_ADAPTER: TypeAdapter[DatabaseFieldsSnapshot] = TypeAdapter(
     type=DatabaseFieldsSnapshot
@@ -46,7 +47,7 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
             body=values,
             cluster_state_id=cluster_state_id,
         ).body
-        return response_body if isinstance(response_body, dict) else {}
+        return object_body(body=response_body, message_prefix=f"updated database {uid}, unreadable answer")
 
 
 def fields_snapshot(*, response: SuccessfulClusterResponse, uid: int) -> DatabaseFieldsSnapshot:
