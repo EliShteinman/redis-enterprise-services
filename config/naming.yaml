@@ -2,3 +2,13 @@ naming:
   database:
     pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
     max_length: 20
+  redis:
+    database:
+      pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+      max_length: 64
+    user:
+      pattern: "^[ !#-%'-;=?-~]+$"
+      max_length: 255
+    acl_and_role:
+      pattern: "^[a-zA-Z0-9_ ()\\[\\]@,.;#-]+$"
+      max_length: 255
