@@ -107,7 +107,7 @@ def test_a_database_without_users_is_one_step() -> None:
 
 def test_the_plan_locks_the_database_and_user_names_on_its_cluster_address() -> None:
     assert plan(users=USERS).lock_keys == [
-        "https://c1:9443/orders",
+        "https://c1:9443/database/orders",
         "https://c1:9443/user/app",
         "https://c1:9443/user/report",
     ]

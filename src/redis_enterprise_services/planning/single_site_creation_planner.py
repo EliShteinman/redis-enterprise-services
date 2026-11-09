@@ -31,6 +31,7 @@ from redis_enterprise_services.users.models import NewUser
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
+DATABASE_LOCK_SEGMENT: str = "database"
 USER_LOCK_SEGMENT: str = "user"
 
 
@@ -188,7 +189,7 @@ def user_input(
 
 def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list[str]) -> list[str]:
     return [
-        f"{cluster_url}/{database_name}",
+        f"{cluster_url}/{DATABASE_LOCK_SEGMENT}/{database_name}",
         *(f"{cluster_url}/{USER_LOCK_SEGMENT}/{user_name}" for user_name in user_names),
     ]
 
