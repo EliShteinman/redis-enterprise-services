@@ -14,15 +14,18 @@ class DeadlinePolling:
     ) -> bool:
         deadline: float = self._clock.monotonic_seconds() + timeout_seconds
         while not is_done():
-            if not another_poll_fits(
+            wait_seconds: float | None = next_wait_seconds(
                 now=self._clock.monotonic_seconds(),
                 deadline=deadline,
                 poll_interval_seconds=poll_interval_seconds,
-            ):
+            )
+            if wait_seconds is None:
                 return False
-            self._sleeper.sleep(seconds=poll_interval_seconds)
+            self._sleeper.sleep(seconds=wait_seconds)
         return True
 
 
-def another_poll_fits(*, now: float, deadline: float, poll_interval_seconds: float) -> bool:
-    return now + poll_interval_seconds < deadline
+def next_wait_seconds(*, now: float, deadline: float, poll_interval_seconds: float) -> float | None:
+    if now >= deadline:
+        return None
+    return min(poll_interval_seconds, deadline - now)
