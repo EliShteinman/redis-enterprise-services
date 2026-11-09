@@ -8,5 +8,6 @@ type PublicErrorCode = Literal[
     "cluster_unavailable",
     "cluster_request_failed",
     "cluster_timeout",
+    "configuration_error",
     "internal_error",
 ]
