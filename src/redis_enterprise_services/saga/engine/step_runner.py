@@ -154,11 +154,13 @@ class StepRunner:
             )
         except RedisEnterpriseServicesError as error:
             category: FailureCategory = self._classifier.classify_find_outcome_error(error=error)
-            logger.warning(
+            verdict: FindOutcomeVerdict | None = verdict_after_find_outcome_error(category=category)
+            logger.log(
+                level=logging.WARNING if verdict is None else logging.ERROR,
                 msg=f"finding the outcome of step {step.key} failed ({category.value}), the step's own "
-                f"error stays: {error.coded_message()}"
+                f"error stays: {error.coded_message()}",
             )
-            return verdict_after_find_outcome_error(category=category)
+            return verdict
 
 
 def verdict_after_find_outcome_error(*, category: FailureCategory) -> FindOutcomeVerdict | None:
