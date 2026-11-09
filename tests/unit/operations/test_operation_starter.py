@@ -5,7 +5,7 @@ import pytest
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
-from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
+from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -23,9 +23,7 @@ class OperationStarterHarness:
         self.store.find.return_value = None
         self.store.create_if_absent.return_value = None
         self.task_runner: MagicMock = create_autospec(spec=BackgroundTaskRunner, instance=True)
-        self.operation_heartbeats: MagicMock = create_autospec(
-            spec=InProcessOperationHeartbeats, instance=True
-        )
+        self.operation_heartbeats: MagicMock = create_autospec(spec=OperationHeartbeats, instance=True)
         self.prepare_run: MagicMock = MagicMock(
             return_value=PreparedRun(task_name="creating orders", task=lambda: None)
         )
