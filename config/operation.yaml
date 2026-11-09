@@ -9,6 +9,7 @@ operation:
     edge_rejected_response: cluster_unavailable
     edge_rejected_request: internal_error
     unreadable_cluster_response: cluster_unavailable
+    incomplete_cluster_object: cluster_request_failed
     cluster_rejected_request: cluster_request_failed
     database_creation_failed: cluster_request_failed
     cluster_action_failed: cluster_request_failed
