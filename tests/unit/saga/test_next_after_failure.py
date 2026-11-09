@@ -7,8 +7,13 @@ from redis_enterprise_services.saga.engine.step_runner import NextAfterFailure, 
 @pytest.mark.parametrize(
     argnames=("failure", "had_unknown_outcome", "has_result", "expected"),
     argvalues=[
-        (FailureCategory.REQUIRES_MANUAL_INTERVENTION, False, False, NextAfterFailure.MANUAL),
-        (FailureCategory.TRANSIENT, True, False, NextAfterFailure.MANUAL),
+        (
+            FailureCategory.REQUIRES_MANUAL_INTERVENTION,
+            False,
+            False,
+            NextAfterFailure.REQUIRES_MANUAL_INTERVENTION,
+        ),
+        (FailureCategory.TRANSIENT, True, False, NextAfterFailure.REQUIRES_MANUAL_INTERVENTION),
         (FailureCategory.FAILED, False, False, NextAfterFailure.FAILED),
         (FailureCategory.TRANSIENT, False, False, NextAfterFailure.RETRY),
         (FailureCategory.OUTCOME_UNKNOWN, False, False, NextAfterFailure.FIND_OUTCOME),
