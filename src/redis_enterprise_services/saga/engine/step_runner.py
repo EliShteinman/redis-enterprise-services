@@ -31,7 +31,7 @@ class FindOutcomeVerdict(StrEnum):
 
 
 class NextAfterFailure(StrEnum):
-    MANUAL = "manual"
+    REQUIRES_MANUAL_INTERVENTION = "requires_manual_intervention"
     FAILED = "failed"
     RETRY = "retry"
     FIND_OUTCOME = "find_outcome"
@@ -104,7 +104,7 @@ class StepRunner:
         match next_after_failure(
             failure=failure, had_unknown_outcome=had_unknown_outcome, has_result=step.has_result
         ):
-            case NextAfterFailure.MANUAL:
+            case NextAfterFailure.REQUIRES_MANUAL_INTERVENTION:
                 return StepOutcome.REQUIRES_MANUAL_INTERVENTION
             case NextAfterFailure.FAILED:
                 return StepOutcome.FAILED
@@ -176,7 +176,7 @@ def next_after_failure(
     *, failure: FailureCategory, had_unknown_outcome: bool, has_result: bool
 ) -> NextAfterFailure:
     if failure is FailureCategory.REQUIRES_MANUAL_INTERVENTION or had_unknown_outcome:
-        return NextAfterFailure.MANUAL
+        return NextAfterFailure.REQUIRES_MANUAL_INTERVENTION
     if failure is not FailureCategory.OUTCOME_UNKNOWN and not has_result:
         return NextAfterFailure.FAILED if failure is FailureCategory.FAILED else NextAfterFailure.RETRY
     return NextAfterFailure.FIND_OUTCOME
