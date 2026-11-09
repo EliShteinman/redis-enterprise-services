@@ -1009,3 +1009,15 @@ def test_a_compensatable_step_that_succeeds_without_keeping_a_result_needs_manua
     record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
 
     assert record.steps[0].status is StepStatus.UNRESOLVED
+
+
+def test_a_step_escalated_for_lack_of_a_result_records_that_reason(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    step: FakeStep = FakeStep(calls=calls, execute_script=["succeed without keeping"])
+
+    record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
+
+    assert (
+        record.steps[0].error is not None and record.steps[0].error.code == "step_needs_manual_intervention"
+    )
