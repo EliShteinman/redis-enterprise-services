@@ -4,10 +4,7 @@ set -eu
 . "$(dirname "$0")/bootstrap-state.sh"
 
 create_cluster() {
-    curl --silent --insecure --fail-with-body \
-        --request POST "${bootstrap_url}/create_cluster" \
-        --header "Content-Type: application/json" \
-        --data @- <<EOF
+    relay_call POST /v1/bootstrap/create_cluster --fail-with-body --data @- <<EOF
 {
   "action": "create_cluster",
   "cluster": {"name": "${CLUSTER_NAME}"},
@@ -19,11 +16,7 @@ EOF
 
 install_license() {
     awk 'BEGIN { printf "{\"license\": \"" } { printf "%s\\n", $0 } END { printf "\"}" }' "${LICENSE_FILE}" \
-        | curl --silent --insecure --fail-with-body --output /dev/null \
-            --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
-            --request PUT "https://${NODE_HOST}:${API_PORT}/v1/license" \
-            --header "Content-Type: application/json" \
-            --data @-
+        | relay_call PUT /v1/license --fail-with-body --output /dev/null --data @-
 }
 
 echo "Waiting for ${NODE_HOST} to accept bootstrap requests"

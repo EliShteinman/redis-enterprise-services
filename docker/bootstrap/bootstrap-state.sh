@@ -1,9 +1,21 @@
 #!/bin/sh
 
-bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
+cluster_authorization="Basic $(printf '%s' "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" | base64 | tr -d '\n')"
+
+relay_call() {
+    method="$1"
+    path="$2"
+    shift 2
+    curl --silent --request POST "${RELAY_URL}" \
+        --header "x-cluster-method: ${method}" \
+        --header "x-cluster-url: ${NODE_API_URL}${path}" \
+        --header "x-cluster-authorization: ${cluster_authorization}" \
+        --header "content-type: application/json" \
+        "$@"
+}
 
 fetch_bootstrap() {
-    curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}"
+    relay_call GET /v1/bootstrap
 }
 
 read_state() {
