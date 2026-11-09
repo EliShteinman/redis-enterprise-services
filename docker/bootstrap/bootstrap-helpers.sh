@@ -28,9 +28,22 @@ require_relay() {
     fi
 }
 
+give_up_after_max_polls() {
+    polls="$1"
+    failure_message="$2"
+    if [ "${polls}" -ge "${MAX_POLLS}" ]; then
+        echo "${failure_message} after ${MAX_POLLS} polls; the last relay answer:" >&2
+        fetch_bootstrap --include >&2
+        exit 1
+    fi
+}
+
 wait_for_first_state() {
     require_relay
+    polls=0
     until state="$(read_state)" && [ -n "${state}" ]; do
+        polls=$((polls + 1))
+        give_up_after_max_polls "${polls}" "No bootstrap state" >&2
         sleep "${POLL_INTERVAL_SECONDS}"
     done
     echo "${state}"
@@ -39,12 +52,15 @@ wait_for_first_state() {
 wait_until_completed() {
     failure_message="$1"
     state="$(read_state)"
+    polls=0
     while [ "${state}" != "completed" ]; do
         if [ "${state}" = "error" ]; then
             echo "${failure_message}" >&2
             fetch_bootstrap >&2
             exit 1
         fi
+        polls=$((polls + 1))
+        give_up_after_max_polls "${polls}" "${failure_message}"
         sleep "${POLL_INTERVAL_SECONDS}"
         state="$(read_state)"
     done
