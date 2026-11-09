@@ -1,13 +1,13 @@
 import re
 
-from pydantic import Field
+from pydantic import PositiveInt
 
 from redis_enterprise_services.config.config_model import ConfigModel
 
 
 class NameRulesSettings(ConfigModel):
     pattern: re.Pattern[str]
-    max_length: int = Field(gt=0)
+    max_length: PositiveInt
 
 
 class NamingSettings(ConfigModel):

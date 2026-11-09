@@ -38,7 +38,7 @@ class EdgeResponseReader:
             error: RedisEnterpriseServicesError = self._error_for_edge_error_code(
                 edge_error_code=edge_error_code, relay_response=relay_response
             )
-            logger.warning(msg=error.message)
+            logger.debug(msg=error.message)
             raise error
         return ClusterResponse(
             status_code=relay_response.status_code,
@@ -75,7 +75,7 @@ class EdgeResponseReader:
             message: str = (
                 f"answered {relay_response.status_code} with a body that is not JSON and no edge error code"
             )
-            logger.warning(msg=message)
+            logger.debug(msg=message)
             raise EdgeOutcomeUnknownError(message=message) from error
 
 

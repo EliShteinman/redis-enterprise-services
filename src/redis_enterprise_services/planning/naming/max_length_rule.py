@@ -1,10 +1,11 @@
+from redis_enterprise_services.planning.naming.name_rule import NameRule
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 
 MAX_LENGTH_RULE_ID: str = "max_length"
 
 
-class MaxLengthRule:
+class MaxLengthRule(NameRule):
     def __init__(self, *, max_length: int) -> None:
         self._max_length: int = max_length
 
