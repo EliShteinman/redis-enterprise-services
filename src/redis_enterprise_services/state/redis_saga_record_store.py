@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from redis import Redis
 
@@ -35,9 +36,9 @@ class RedisSagaRecordStore(SagaRecordWriter, SagaRecordReader):
         log_final_save(record=record, ended_cleanly=ended_cleanly)
 
     def find(self, *, saga_id: str) -> SagaRecord | None:
-        stored: str | bytes | None = self._client.get(name=self._keys.saga_record(saga_id=saga_id))
+        stored: str | None = cast(str | None, self._client.get(name=self._keys.saga_record(saga_id=saga_id)))
         if stored is None:
-            logger.warning(msg=f"saga {saga_id} is not stored")
+            logger.debug(msg=f"saga {saga_id} is not stored")
             return None
         return SagaRecord.model_validate_json(json_data=stored)
 

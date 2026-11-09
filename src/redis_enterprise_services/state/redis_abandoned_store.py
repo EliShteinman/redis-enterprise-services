@@ -12,7 +12,7 @@ from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
-from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
+from redis_enterprise_services.state.record_expiry import KEEP_OPEN_WITHOUT_EXPIRY, finished_ttl_or_keep_open
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -26,16 +26,19 @@ FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
     0: FinalizeAbandonedResult.NOT_ABANDONED,
     1: FinalizeAbandonedResult.FINALIZED,
     2: FinalizeAbandonedResult.SAGA_CHANGED,
+    3: FinalizeAbandonedResult.NOT_ABANDONED,
 }
+OPERATION_MISSING_CODE: int = 3
 
-FINALIZE_IF_STILL_ABANDONED: str = """
+FINALIZE_IF_STILL_ABANDONED: str = (
+    """
 if redis.call('EXISTS', KEYS[3]) == 1 then
     return 0
 end
 local stored = redis.call('GET', KEYS[1])
 if not stored then
     redis.call('SREM', KEYS[2], ARGV[2])
-    return 0
+    return 3
 end
 if cjson.decode(stored)['status'] ~= ARGV[5] then
     return 0
@@ -44,7 +47,9 @@ local saga = redis.call('GET', KEYS[4])
 if (saga or '') ~= ARGV[6] then
     return 2
 end
-if ARGV[3] == '0' then
+if ARGV[3] == '"""
+    + str(KEEP_OPEN_WITHOUT_EXPIRY)
+    + """' then
     redis.call('SET', KEYS[1], ARGV[1])
 else
     redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
@@ -63,6 +68,7 @@ if ARGV[7] == '1' then
 end
 return 1
 """
+)
 
 
 class RedisAbandonedStore(AbandonedStore):
@@ -106,6 +112,11 @@ class RedisAbandonedStore(AbandonedStore):
                 finished_ttl_seconds=self._finished_ttl_seconds,
             ),
         )
+        if result_code == OPERATION_MISSING_CODE:
+            logger.warning(
+                msg=f"operation {trace_id} was open but its record is gone, it leaves the open set; "
+                "its locks and saga record are left as they are"
+            )
         result: FinalizeAbandonedResult = FINALIZE_ABANDONED_RESULT_BY_CODE[result_code]
         logger.debug(msg=f"operation {trace_id}: {result.value}")
         return result
