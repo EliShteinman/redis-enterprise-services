@@ -1,7 +1,7 @@
 import pytest
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.databases.new_database import DatabaseOptions
+from redis_enterprise_services.databases.new_database import DatabaseOptions, SnapshotRule
 
 
 @pytest.mark.parametrize(
@@ -26,4 +26,4 @@ def test_a_persistence_setting_with_its_mode_is_accepted() -> None:
         obj={"data_persistence": "snapshot", "snapshot_policy": [{"secs": 60, "writes": 1}]}
     )
 
-    assert options.data_persistence == "snapshot"
+    assert options.snapshot_policy == [SnapshotRule(secs=60, writes=1)]
