@@ -226,4 +226,4 @@ def test_the_check_before_start_looks_for_taken_names() -> None:
     harness.run_and_save()
     harness.saga_executor.run.call_args.kwargs["check_before_start"]()
 
-    assert harness.name_availability.find_taken_and_raise_if_any.called
+    assert harness.name_availability.ensure_free.called

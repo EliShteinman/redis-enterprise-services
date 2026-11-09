@@ -3,13 +3,16 @@ import logging
 from pydantic import ValidationError
 
 from redis_enterprise_services.creation.created_database_result import created_database_result
-from redis_enterprise_services.creation.planned_resource import PlannedResource, planned_resources_by_step_key
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+from redis_enterprise_services.planning.planned_resources import (
+    PlannedResource,
+    planned_resources_by_step_key,
+)
 from redis_enterprise_services.planning.single_site_creation_planner import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,

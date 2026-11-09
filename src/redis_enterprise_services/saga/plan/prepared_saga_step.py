@@ -50,7 +50,7 @@ class PreparedSagaStep[TInput: BaseModel, TResult: BaseModel](PreparedStep):
         found: TResult | None = self._step.find_outcome(
             step_input=self._step_input,
             kept_result=self._result,
-            keep_found_result=lambda result: self._keep_if_none_kept(
+            keep_result_if_none_kept=lambda result: self._keep_if_none_kept(
                 result=result, obtained_by=ObtainedBy.FOUND, on_result_kept=on_result_kept
             ),
         )

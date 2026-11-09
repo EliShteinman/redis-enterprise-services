@@ -1,5 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
+from redis_enterprise_services.planning.availability.requested_name import NameKind
 from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.single_site_creation_planner import (
     DATABASE_STEP_KEY,
@@ -10,9 +13,11 @@ from redis_enterprise_services.planning.single_site_creation_planner import (
 )
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
+type PlannedResourceType = NameKind | Literal["permissions"]
+
 
 class PlannedResource(BaseModel):
-    resource_type: str
+    resource_type: PlannedResourceType
     name: str
 
 

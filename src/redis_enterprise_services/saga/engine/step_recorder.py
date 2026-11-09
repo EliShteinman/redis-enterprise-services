@@ -40,6 +40,10 @@ class StepRecorder:
         self._step_record.error = None
         self._save_status(status=StepStatus.DONE)
 
+    def mark_failed_with_error(self, *, error: StepError) -> None:
+        self._step_record.error = error
+        self._save_status(status=StepStatus.FAILED)
+
     def mark_failed(self) -> None:
         self._save_status(status=StepStatus.FAILED)
 

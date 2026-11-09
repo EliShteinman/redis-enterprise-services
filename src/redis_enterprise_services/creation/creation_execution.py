@@ -62,7 +62,7 @@ class CreationExecution:
                     database=prepared_creation.spec.database,
                     users=prepared_creation.spec.users,
                 ),
-                check_before_start=partial(self._raise_if_names_taken, prepared_creation=prepared_creation),
+                check_before_start=partial(self._ensure_names_free, prepared_creation=prepared_creation),
             )
         except RedisEnterpriseServicesError as error:
             public_error: PublicError = self._public_errors.from_error(
@@ -82,8 +82,8 @@ class CreationExecution:
             trace_id=trace_id, prepared_creation=prepared_creation, record=record
         )
 
-    def _raise_if_names_taken(self, *, prepared_creation: PreparedCreation) -> None:
-        self._name_availability.find_taken_and_raise_if_any(
+    def _ensure_names_free(self, *, prepared_creation: PreparedCreation) -> None:
+        self._name_availability.ensure_free(
             clusters=self._name_check_scope.clusters_to_check(chosen=prepared_creation.cluster),
             requested_names=self._creation_naming.requested_names(spec=prepared_creation.spec),
         )

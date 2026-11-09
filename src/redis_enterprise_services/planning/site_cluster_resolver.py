@@ -15,23 +15,16 @@ class SiteClusterResolver:
         self._chooser: ClusterChooser = chooser
 
     def resolve(self, *, placement: SitePlacement) -> ConfiguredCluster:
-        candidates: list[ConfiguredCluster] = self._candidates(placement=placement)
-        if not candidates:
-            message: str = f"no cluster is configured for {placement.describe()}"
-            logger.warning(msg=message)
-            raise NoMatchingClusterError(message=message)
-        chosen: ConfiguredCluster = (
-            self._chooser.choose(placement=placement, candidates=candidates)
-            if placement.cluster.type == "generic"
-            else candidates[0]
-        )
+        candidates: list[ConfiguredCluster] = self._directory.candidates_for(placement=placement)
+        raise_if_no_candidates(placement=placement, candidates=candidates)
+        chosen: ConfiguredCluster = self._chooser.choose(placement=placement, candidates=candidates)
         logger.info(msg=f"{placement.describe()} resolves to cluster {chosen.name}")
         return chosen
 
-    def _candidates(self, *, placement: SitePlacement) -> list[ConfiguredCluster]:
-        at_site: list[ConfiguredCluster] = self._directory.of_type_at_site(
-            placement=placement, cluster_type=placement.cluster.type
-        )
-        if placement.cluster.type == "generic":
-            return at_site
-        return [cluster for cluster in at_site if cluster.name == placement.cluster.name]
+
+def raise_if_no_candidates(*, placement: SitePlacement, candidates: list[ConfiguredCluster]) -> None:
+    if candidates:
+        return
+    message: str = f"no cluster is configured for {placement.describe()}"
+    logger.warning(msg=message)
+    raise NoMatchingClusterError(message=message)

@@ -9,7 +9,7 @@ from redis_enterprise_services.config.database_defaults_settings import (
 )
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
 
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
@@ -99,7 +99,7 @@ def test_a_field_sent_as_null_keeps_the_default() -> None:
 )
 def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
-        DatabaseDefaults(
+        database_defaults_from(
             settings=DatabaseDefaultsSettings(
                 values={},
                 overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
