@@ -96,10 +96,3 @@ def succeeded_operation(
         status=OperationStatus.SUCCEEDED,
         database=created_database_result(prepared_creation=prepared_creation, record=record),
     )
-
-
-def record_interrupted_if_running(*, record: SagaRecord) -> SagaRecord:
-    if record.status is not SagaStatus.RUNNING:
-        return record
-    logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")
-    return record.interrupted_copy()

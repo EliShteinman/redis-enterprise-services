@@ -1,10 +1,7 @@
 import logging
 from functools import partial
 
-from redis_enterprise_services.creation.creation_outcome_translator import (
-    CreationOutcomeTranslator,
-    record_interrupted_if_running,
-)
+from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.operation import Operation
@@ -15,7 +12,7 @@ from redis_enterprise_services.planning.availability.creation_naming import Crea
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
-from redis_enterprise_services.saga.contract.saga_record import SagaRecord
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
@@ -60,12 +57,20 @@ class CreationExecution:
             record: SagaRecord = self._run_saga(trace_id=trace_id, prepared_creation=prepared_creation)
         except RedisEnterpriseServicesError as error:
             return self._operation_after_saga_error(
-                trace_id=trace_id, prepared_creation=prepared_creation, saga_error=error
+                trace_id=trace_id,
+                prepared_creation=prepared_creation,
+                saga_error=error,
+                error_if_not_started=self._public_errors.from_error(
+                    error=error, cluster_url=prepared_creation.cluster.api_url
+                ),
             )
         except Exception as error:
             logger.critical(msg=f"creation {trace_id} failed on an unexpected error", exc_info=True)
             return self._operation_after_saga_error(
-                trace_id=trace_id, prepared_creation=prepared_creation, saga_error=error
+                trace_id=trace_id,
+                prepared_creation=prepared_creation,
+                saga_error=error,
+                error_if_not_started=self._public_errors.internal_error(),
             )
         return self._translated_or_manual_intervention_operation(
             trace_id=trace_id, prepared_creation=prepared_creation, record=record
@@ -89,11 +94,13 @@ class CreationExecution:
         )
 
     def _operation_after_saga_error(
-        self, *, trace_id: str, prepared_creation: PreparedCreation, saga_error: Exception
+        self,
+        *,
+        trace_id: str,
+        prepared_creation: PreparedCreation,
+        saga_error: Exception,
+        error_if_not_started: PublicError,
     ) -> Operation:
-        error_if_not_started: PublicError = self._public_errors.from_exception(
-            error=saga_error, cluster_url=prepared_creation.cluster.api_url
-        )
         stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
         if stored_record is None:
             return rejected_operation(trace_id=trace_id, error=error_if_not_started)
@@ -127,3 +134,10 @@ class CreationExecution:
 def rejected_operation(*, trace_id: str, error: PublicError) -> Operation:
     logger.warning(msg=f"operation {trace_id} is rejected: {error.code}: {error.message}")
     return Operation.rejected(trace_id=trace_id, error=error)
+
+
+def record_interrupted_if_running(*, record: SagaRecord) -> SagaRecord:
+    if record.status is not SagaStatus.RUNNING:
+        return record
+    logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")
+    return record.interrupted_copy()

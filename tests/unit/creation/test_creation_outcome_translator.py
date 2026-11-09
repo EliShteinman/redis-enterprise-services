@@ -135,3 +135,19 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
             last_error="cluster_unavailable: relay is down",
         ),
     ]
+
+
+def test_the_permissions_left_behind_report_the_database_uid() -> None:
+    operation: Operation = translated_operation(
+        status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        steps=[
+            step_record(key="database", status=StepStatus.DONE, uid=7),
+            step_record(key="acl/app", status=StepStatus.DONE, uid=11),
+            step_record(key="role/app", status=StepStatus.DONE, uid=12),
+            step_record(key="user/app", status=StepStatus.DONE, uid=13),
+            step_record(key="permissions", status=StepStatus.UNRESOLVED, error=REJECTED_BY_CLUSTER),
+        ],
+        stopped_at="permissions",
+    )
+
+    assert operation.not_rolled_back is not None and operation.not_rolled_back[-1].uid == 7
