@@ -63,6 +63,10 @@ UID_BY_STEP_KEY: dict[str, int] = {
 
 
 def saga_record_with_every_step_done(*, status: SagaStatus) -> SagaRecord:
+    return saga_record_with_steps(status=status, step_status=StepStatus.DONE)
+
+
+def saga_record_with_steps(*, status: SagaStatus, step_status: StepStatus) -> SagaRecord:
     return SagaRecord(
         saga_id="trace-1",
         status=status,
@@ -70,7 +74,7 @@ def saga_record_with_every_step_done(*, status: SagaStatus) -> SagaRecord:
             StepRecord(
                 key=key,
                 kind=StepKind.COMPENSATABLE,
-                status=StepStatus.DONE,
+                status=step_status,
                 result={"uid": uid, "name": key, "action_uid": None},
             )
             for key, uid in UID_BY_STEP_KEY.items()
@@ -120,11 +124,17 @@ def test_a_created_database_returns_its_uid_and_the_uids_of_each_user() -> None:
 
 
 @pytest.mark.parametrize(
-    argnames="status", argvalues=[SagaStatus.ROLLED_BACK, SagaStatus.REQUIRES_MANUAL_INTERVENTION]
+    argnames=("status", "step_status"),
+    argvalues=[
+        (SagaStatus.ROLLED_BACK, StepStatus.COMPENSATED),
+        (SagaStatus.REQUIRES_MANUAL_INTERVENTION, StepStatus.COMPENSATION_FAILED),
+    ],
 )
-def test_a_failed_saga_ends_with_its_status_and_no_database(status: SagaStatus) -> None:
+def test_a_failed_saga_ends_with_its_status_and_no_database(
+    status: SagaStatus, step_status: StepStatus
+) -> None:
     harness: ExecutionHarness = ExecutionHarness()
-    harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=status)
+    harness.saga_executor.run.return_value = saga_record_with_steps(status=status, step_status=step_status)
 
     operation: Operation = harness.run_and_save()
 
