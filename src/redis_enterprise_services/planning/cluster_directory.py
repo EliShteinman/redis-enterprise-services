@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.cluster_inventory import GENERIC_CLUSTER, ConfiguredCluster
 from redis_enterprise_services.planning.site_placement import SitePlacement
 
 
@@ -15,6 +15,11 @@ def fits_placement(*, cluster: ConfiguredCluster, placement: SitePlacement) -> b
         cluster.network == placement.network
         and cluster.environment == placement.environment
         and cluster.site == placement.site
-        and cluster.type == placement.cluster.type
     )
-    return at_site and (placement.cluster.type == "generic" or cluster.name == placement.cluster.name)
+    return at_site and is_requested_cluster(cluster=cluster, requested=placement.cluster)
+
+
+def is_requested_cluster(*, cluster: ConfiguredCluster, requested: str) -> bool:
+    if requested == GENERIC_CLUSTER:
+        return cluster.type == GENERIC_CLUSTER
+    return cluster.type != GENERIC_CLUSTER and cluster.name == requested
