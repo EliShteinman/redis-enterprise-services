@@ -166,3 +166,12 @@ def test_a_wait_with_a_read_that_succeeded_still_times_out() -> None:
 
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
         waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+
+
+def test_a_completed_action_returns_the_whole_action_the_cluster_reported() -> None:
+    action: dict[str, JsonValue] = {"status": "completed", "progress": "100", "name": "SMUpdateBDB"}
+
+    assert (
+        waiter_answering(action_body=action).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        == action
+    )

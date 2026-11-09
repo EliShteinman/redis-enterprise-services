@@ -12,6 +12,7 @@ from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_activation_waiter import DatabaseActivationWaiter
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsReader
 from redis_enterprise_services.databases.database_status import is_active_or_raise_if_creation_failed
+from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     DatabaseActivationTimeoutError,
@@ -37,11 +38,15 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         self._settings: DatabaseSettings = settings
         self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
-    def wait_until_active(self, *, target: ClusterTarget, uid: int) -> None:
+    def wait_until_active(self, *, target: ClusterTarget, uid: int) -> DatabaseFieldsSnapshot:
+        last_read: list[DatabaseFieldsSnapshot] = []
         if self._poll_until(
-            is_done=lambda: self._read_whether_active_or_raise_if_failed(target=target, uid=uid), uid=uid
+            is_done=lambda: self._read_whether_active_or_raise_if_failed(
+                target=target, uid=uid, last_read=last_read
+            ),
+            uid=uid,
         ):
-            return
+            return last_read[-1]
         raise DatabaseActivationTimeoutError(
             message=f"database {uid} is not {self._settings.active_status} "
             f"after {self._settings.wait.timeout_seconds} seconds"
@@ -64,20 +69,20 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
 
     def _read_whether_deleted(self, *, target: ClusterTarget, uid: int) -> bool:
         try:
-            self._fields_reader.read_fields(
-                target=target, uid=uid, field_names=[self._cluster_api_settings.fields.status]
-            )
+            self._fields_reader.read(target=target, uid=uid)
         except ClusterRejectedRequestError as error:
             if is_not_found(error=error):
                 return True
             raise
         return False
 
-    def _read_whether_active_or_raise_if_failed(self, *, target: ClusterTarget, uid: int) -> bool:
+    def _read_whether_active_or_raise_if_failed(
+        self, *, target: ClusterTarget, uid: int, last_read: list[DatabaseFieldsSnapshot]
+    ) -> bool:
         status_field: str = self._cluster_api_settings.fields.status
-        values: dict[str, JsonValue] = self._fields_reader.read_fields(
-            target=target, uid=uid, field_names=[status_field]
-        ).values
+        snapshot: DatabaseFieldsSnapshot = self._fields_reader.read(target=target, uid=uid)
+        last_read.append(snapshot)
+        values: dict[str, JsonValue] = snapshot.values
         status: str = required_string_field(
             body=values, name=status_field, missing_message=f"database {uid} answered without {status_field}"
         )

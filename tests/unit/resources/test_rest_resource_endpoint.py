@@ -8,7 +8,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulCl
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
-from redis_enterprise_services.resources.models import CreatedResource
+from redis_enterprise_services.resources.models import ClusterObject, CreatedResource, DeletionStarted
 from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 
 TARGET: ClusterTarget = ClusterTarget(
@@ -51,15 +51,16 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
 
 
-def test_the_database_list_asks_only_for_the_configured_fields() -> None:
-    cluster_api_caller: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
-    cluster_api_caller.send.return_value = SuccessfulClusterResponse(body=[], cluster_state_id=None)
-    settings: Settings = load_settings()
+def test_a_list_returns_every_object_in_full() -> None:
+    database: dict[str, JsonValue] = {"uid": 1, "name": "orders", "status": "active", "port": 12000}
+    endpoint: RestResourceEndpoint = endpoint_answering(answer=[database])
 
-    RestResourceEndpoint(
-        cluster_api_caller=cluster_api_caller,
-        settings=settings.database,
-        cluster_api_settings=settings.cluster_api,
-    ).list_uids_and_names(target=TARGET)
+    assert endpoint.list_objects(target=TARGET) == [ClusterObject(uid=1, name="orders", fields=database)]
 
-    assert cluster_api_caller.send.call_args.kwargs["query_string"] == "fields=uid,name"
+
+def test_a_deletion_returns_the_whole_answer() -> None:
+    endpoint: RestResourceEndpoint = endpoint_answering(answer={"action_uid": "c7d4bccf"})
+
+    assert endpoint.start_deletion(target=TARGET, uid=6) == DeletionStarted(
+        action_uid="c7d4bccf", fields={"action_uid": "c7d4bccf"}
+    )
