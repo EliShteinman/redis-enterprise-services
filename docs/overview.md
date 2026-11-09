@@ -79,8 +79,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 ![שכבות הקוד](diagrams/01-layers.drawio.svg)
 
 `src/redis_enterprise_services/`. כיווני הייבוא נאכפים ב-`import-linter` (`pyproject.toml`), מלמעלה למטה. כל שורה
-בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `resources` מתחת לארבע חבילות המשאבים, ו-`recovery` מעל
-`saga` ו-`operations`) נמצא ב-`pyproject.toml`.
+בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לארבע
+חבילות המשאבים) נמצא ב-`pyproject.toml`.
 
 | שכבה | חבילות | מה יש בה |
 |---|---|---|
@@ -88,16 +88,16 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | כניסה | `api` | routes, `traceparent`, טיפול בשגיאות |
 | פקודות | `creation` | הכנה, ריצה ברקע, תרגום התוצאה |
 | תכנון | `planning` | בקשה ⇐ קלאסטר, ברירות מחדל, תוכנית צעדים, בדיקת שמות |
-| צעדים ומצב | `steps`, `state` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis |
+| צעדים, מצב וזיהוי קריסה | `steps`, `state`, `recovery` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis; זיהוי קריסה |
 | משאבים | `databases`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
 | תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
-| מנוע ופעולות | `recovery`, `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה, זיהוי קריסה |
+| מנוע ופעולות | `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה |
 | תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |
 
 - המנוע (`saga/`) גנרי: הוא לא מכיר קלאסטר, DB או שירות קצה.
 - המשאבים והתעבורה לא מכירים את ה-Saga.
-- טסטים: `tests/unit/`, על הלוגיקה המרכזית. אין טסטי אינטגרציה אוטומטיים. הזרימה נבדקה ידנית מול הקלאסטרים
-  המקומיים (`design/creation.md` סעיף 5).
+- טסטים: `tests/unit/`, על הלוגיקה המרכזית. `tests/integration/` מריץ את סקריפטי ה-Lua מול ה-Redis של ה-saga-state
+  בקלאסטרים המקומיים, ומדלג כשהוא לא זמין. הזרימה המלאה נבדקה ידנית מול הקלאסטרים המקומיים (`design/creation.md` סעיף 5).
 
 ---
 
