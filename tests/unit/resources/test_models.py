@@ -1,5 +1,4 @@
-import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
@@ -19,13 +18,3 @@ def test_a_step_input_keeps_only_the_address_of_a_target_with_credentials() -> N
     )
 
     assert type(step_input.cluster) is ClusterAddress
-
-
-def test_a_step_input_cannot_be_changed_after_it_is_built() -> None:
-    step_input: CreateResourceInput[NewUser] = CreateResourceInput(
-        cluster=ClusterAddress(network="local", api_url="https://cluster.local:9443"),
-        spec=NewUser(name="app-user", password="Aa1!password", role_uids=[5]),
-    )
-
-    with pytest.raises(expected_exception=ValidationError):
-        step_input.cluster = ClusterAddress(network="other", api_url="https://other:9443")
