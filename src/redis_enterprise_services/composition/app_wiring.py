@@ -2,6 +2,7 @@ from redis_enterprise_services.background.periodic_thread import PeriodicThread
 from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
 from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
 from redis_enterprise_services.composition.state_wiring import StateWiring
+from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
@@ -21,6 +22,7 @@ from redis_enterprise_services.planning.cluster_directory import ClusterDirector
 from redis_enterprise_services.planning.database_defaults import database_defaults_from
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
+from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
@@ -137,7 +139,7 @@ def build_database_creation(
 ) -> DatabaseCreation:
     user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
     return DatabaseCreation(
-        preparation=build_creation_preparation(settings=settings),
+        preparation=build_creation_preparation(settings=settings, resource_naming=user_resource_naming),
         execution=CreationExecution(
             names_check=build_names_check(
                 cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
@@ -164,9 +166,24 @@ def build_database_creation(
     )
 
 
-def build_creation_preparation(*, settings: Settings) -> CreationPreparation:
+def build_creation_preparation(
+    *, settings: Settings, resource_naming: UserResourceNaming
+) -> CreationPreparation:
+    redis_names: RedisNameRulesSettings = settings.naming.redis
     return CreationPreparation(
-        name_validator=NameValidator(rules=configured_name_rules(settings=settings.naming.database)),
+        name_validator=NameValidator(
+            rules=[
+                *configured_name_rules(settings=redis_names.database),
+                *configured_name_rules(settings=settings.naming.database),
+            ]
+        ),
+        user_names_validator=UserNamesValidator(
+            user_name_validator=NameValidator(rules=configured_name_rules(settings=redis_names.user)),
+            acl_and_role_name_validator=NameValidator(
+                rules=configured_name_rules(settings=redis_names.acl_and_role)
+            ),
+            resource_naming=resource_naming,
+        ),
         site_cluster_resolver=SiteClusterResolver(
             directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
         ),
