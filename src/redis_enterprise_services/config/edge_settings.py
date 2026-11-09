@@ -34,6 +34,7 @@ class EdgeNetworkSettings(ConfigModel):
 
 
 class EdgeSettings(ConfigModel):
+    connect_timeout_seconds: PositiveFloat
     request_timeout_seconds: PositiveFloat
     headers: EdgeHeaderSettings
     request_content_type: str
