@@ -5,6 +5,7 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.recovery.abandoned_sweep import (
     interrupted_running_saga,
+    locks_are_free_after_crash,
     operation_after_crash,
 )
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
@@ -75,3 +76,20 @@ def test_an_unreadable_saga_needs_manual_intervention() -> None:
     )
 
     assert operation.status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
+
+
+@pytest.mark.parametrize(
+    argnames=("saga", "free"),
+    argvalues=[
+        pytest.param(None, True, id="never-started"),
+        pytest.param(stored_saga(status=SagaStatus.SUCCEEDED), True, id="succeeded"),
+        pytest.param(stored_saga(status=SagaStatus.ROLLED_BACK), True, id="rolled-back"),
+        pytest.param(stored_saga(status=SagaStatus.RUNNING), False, id="running"),
+        pytest.param(stored_saga(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION), False, id="manual"),
+        pytest.param(StoredSaga(raw_json="{}", record=None), False, id="unreadable"),
+    ],
+)
+def test_the_locks_are_freed_after_a_crash_only_when_nothing_is_left_to_fix(
+    saga: StoredSaga | None, free: bool
+) -> None:
+    assert locks_are_free_after_crash(saga=saga) is free
