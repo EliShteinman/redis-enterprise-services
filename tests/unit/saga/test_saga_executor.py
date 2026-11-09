@@ -664,9 +664,7 @@ class FinalSaveFailingRecordWriter(InMemorySagaRecordWriter):
         raise ConnectionError("state store is down")
 
 
-def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
-    calls: list[str], lock: InMemorySagaLock
-) -> None:
+def test_a_saga_whose_last_save_fails_keeps_the_lock(calls: list[str], lock: InMemorySagaLock) -> None:
     with pytest.raises(expected_exception=ConnectionError):
         run(
             steps=[planned(step=FakeStep(calls=calls), key="a")],
@@ -674,7 +672,7 @@ def test_a_succeeded_saga_releases_the_lock_even_when_the_last_save_fails(
             lock=lock,
         )
 
-    assert lock.held_by is None
+    assert lock.held_by == SAGA_ID
 
 
 @pytest.mark.parametrize(argnames="failure", argvalues=[FAILED, BUSY, OUTCOME_UNKNOWN])
