@@ -148,7 +148,7 @@ forbidden_modules = ["redis_enterprise_services.edge"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
-name = "the listed packages import interfaces only: not the concrete edge client, cluster REST/polling classes, resource repositories, background runner, or the Redis client, lock, writer and stores"
+name = "the listed packages import interfaces only: not the concrete edge client, cluster REST/polling classes, resource repositories, background runner, operation heartbeats, or the Redis client, lock, writer and stores"
 type = "forbidden"
 source_modules = [
     "redis_enterprise_services.steps",
@@ -170,6 +170,7 @@ forbidden_modules = [
     "redis_enterprise_services.resources.endpoint_resource_repository",
     "redis_enterprise_services.cluster.read_again_polling",
     "redis_enterprise_services.background.thread_pool_task_runner",
+    "redis_enterprise_services.liveness.in_process_operation_heartbeats",
     "redis_enterprise_services.databases.rest_database_fields_repository",
     "redis_enterprise_services.databases.polling_database_waiter",
     "redis_enterprise_services.state.redis_client",

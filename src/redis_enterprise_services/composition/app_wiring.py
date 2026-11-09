@@ -41,65 +41,104 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         sleeper: SystemSleeper = SystemSleeper()
         deadline_polling: DeadlinePolling = DeadlinePolling(clock=MonotonicClock(), sleeper=sleeper)
-        state_wiring: StateWiring = StateWiring(settings=settings, deadline_polling=deadline_polling)
-        self.operation_store: OperationStore = state_wiring.operation_store
-        self.task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
+        self._state_wiring: StateWiring = StateWiring(settings=settings, deadline_polling=deadline_polling)
+        self._task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
         operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
-            heartbeat_store=state_wiring.heartbeat_store
+            heartbeat_store=self._state_wiring.heartbeat_store
         )
-        self.operation_heartbeat_thread: PeriodicThread = PeriodicThread(
-            name="operation heartbeat",
-            interval_seconds=settings.liveness.heartbeat_interval_seconds,
-            task=operation_heartbeats.mark_tracked_alive,
+        public_errors: PublicErrors = build_public_errors(settings=settings)
+        self._operation_heartbeat_thread: PeriodicThread = build_operation_heartbeat_thread(
+            settings=settings, operation_heartbeats=operation_heartbeats
         )
-        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings, deadline_polling=deadline_polling)
-        user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
-        public_errors: PublicErrors = PublicErrors(
-            settings=settings.operation, internal_error_message=settings.api.internal_error_message
+        self._abandoned_sweep_thread: PeriodicThread = build_abandoned_sweep_thread(
+            settings=settings, state_wiring=self._state_wiring, public_errors=public_errors
         )
-        self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
-            name="abandoned operations sweep",
-            interval_seconds=settings.liveness.abandoned_sweep_interval_seconds,
-            task=AbandonedSweep(
-                store=state_wiring.abandoned_store,
-                public_errors=public_errors,
-            ).sweep,
-        )
-        self.database_creation: DatabaseCreation = DatabaseCreation(
-            preparation=build_creation_preparation(settings=settings),
-            execution=CreationExecution(
-                names_check=build_names_check(
-                    cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
-                ),
-                planner=build_planner(
-                    settings=settings,
-                    cluster_wiring=cluster_wiring,
-                    user_resource_naming=user_resource_naming,
-                ),
-                saga_executor=build_saga_executor(
-                    settings=settings,
-                    saga_lock=state_wiring.saga_lock,
-                    saga_record_writer=state_wiring.saga_record_store,
-                    sleeper=sleeper,
-                ),
-                outcome_translator=CreationOutcomeTranslator(
-                    resource_naming=user_resource_naming, public_errors=public_errors
-                ),
-                public_errors=public_errors,
-                saga_record_reader=state_wiring.saga_record_store,
-                operation_store=self.operation_store,
-            ),
+        self.operation_store: OperationStore = self._state_wiring.operation_store
+        self.database_creation: DatabaseCreation = build_database_creation(
+            settings=settings,
+            state_wiring=self._state_wiring,
+            cluster_wiring=ClusterWiring(settings=settings, deadline_polling=deadline_polling),
             operation_starter=OperationStarter(
                 store=self.operation_store,
-                task_runner=self.task_runner,
+                task_runner=self._task_runner,
                 operation_heartbeats=operation_heartbeats,
                 public_errors=public_errors,
             ),
+            public_errors=public_errors,
+            sleeper=sleeper,
         )
-        self._state_wiring: StateWiring = state_wiring
 
-    def close(self) -> None:
+    def start(self) -> None:
+        self._operation_heartbeat_thread.start()
+        self._abandoned_sweep_thread.start()
+
+    def stop(self) -> None:
+        self._abandoned_sweep_thread.stop()
+        self._task_runner.close()
+        self._operation_heartbeat_thread.stop()
         self._state_wiring.close()
+
+
+def build_public_errors(*, settings: Settings) -> PublicErrors:
+    return PublicErrors(
+        settings=settings.operation, internal_error_message=settings.api.internal_error_message
+    )
+
+
+def build_operation_heartbeat_thread(
+    *, settings: Settings, operation_heartbeats: InProcessOperationHeartbeats
+) -> PeriodicThread:
+    return PeriodicThread(
+        name="operation heartbeat",
+        interval_seconds=settings.liveness.heartbeat_interval_seconds,
+        task=operation_heartbeats.mark_tracked_alive,
+    )
+
+
+def build_abandoned_sweep_thread(
+    *, settings: Settings, state_wiring: StateWiring, public_errors: PublicErrors
+) -> PeriodicThread:
+    return PeriodicThread(
+        name="abandoned operations sweep",
+        interval_seconds=settings.liveness.abandoned_sweep_interval_seconds,
+        task=AbandonedSweep(store=state_wiring.abandoned_store, public_errors=public_errors).sweep,
+    )
+
+
+def build_database_creation(
+    *,
+    settings: Settings,
+    state_wiring: StateWiring,
+    cluster_wiring: ClusterWiring,
+    operation_starter: OperationStarter,
+    public_errors: PublicErrors,
+    sleeper: Sleeper,
+) -> DatabaseCreation:
+    user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
+    return DatabaseCreation(
+        preparation=build_creation_preparation(settings=settings),
+        execution=CreationExecution(
+            names_check=build_names_check(
+                cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
+            ),
+            planner=build_planner(
+                settings=settings, cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
+            ),
+            saga_executor=build_saga_executor(
+                settings=settings,
+                saga_lock=state_wiring.saga_lock,
+                saga_record_writer=state_wiring.saga_record_store,
+                sleeper=sleeper,
+            ),
+            outcome_translator=CreationOutcomeTranslator(
+                resource_naming=user_resource_naming, public_errors=public_errors
+            ),
+            public_errors=public_errors,
+            saga_record_reader=state_wiring.saga_record_store,
+            operation_store=state_wiring.operation_store,
+        ),
+        operation_starter=operation_starter,
+    )
 
 
 def build_creation_preparation(*, settings: Settings) -> CreationPreparation:
