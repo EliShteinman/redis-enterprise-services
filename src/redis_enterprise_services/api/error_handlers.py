@@ -7,11 +7,8 @@ from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
-from redis_enterprise_services.api.rejection_response import (
-    FieldError,
-    RejectionError,
-    rejection_response,
-)
+from redis_enterprise_services.api.rejection_error import FieldError, RejectionError
+from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
@@ -31,6 +28,7 @@ async def service_error_handler(request: Request, error: RedisEnterpriseServices
         level=log_level_for_status(status_code=error.status_code), msg=f"{error.code}: {error.message}"
     )
     return rejection_response(
+        request=request,
         status_code=error.status_code,
         error=RejectionError(code=error.code, message=error.message),
     )
@@ -44,6 +42,7 @@ class ValidationErrorHandler:
         field_errors: list[FieldError] = field_errors_from(error_details=error.errors())
         logger.info(msg=f"{VALIDATION_ERROR_CODE}: {[detail.location for detail in field_errors]}")
         return rejection_response(
+            request=request,
             status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
             error=RejectionError(
                 code=VALIDATION_ERROR_CODE,
@@ -57,6 +56,7 @@ async def http_exception_handler(request: Request, error: HTTPException) -> Resp
     code: str = http_error_code(status_code=error.status_code)
     logger.info(msg=f"{code}: {request.method} {request.url.path}")
     return rejection_response(
+        request=request,
         status_code=error.status_code,
         error=RejectionError(code=code, message=str(error.detail)),
         headers=error.headers,

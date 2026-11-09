@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.accepted_operation import AcceptedOperation
 from redis_enterprise_services.api.app_state_dependencies import database_creation_from_app_state
+from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.create_database_request_examples import CREATE_DATABASE_REQUEST_EXAMPLES
 from redis_enterprise_services.api.rejected_operation import CREATION_ROUTE_REJECTION_RESPONSES
 from redis_enterprise_services.api.start_once_response import start_once_response
@@ -16,7 +17,9 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 router: APIRouter = APIRouter(
-    dependencies=[Depends(dependency=require_traceparent)], responses=CREATION_ROUTE_REJECTION_RESPONSES
+    tags=[COMMAND_ROUTE_TAG],
+    dependencies=[Depends(dependency=require_traceparent)],
+    responses=CREATION_ROUTE_REJECTION_RESPONSES,
 )
 
 
