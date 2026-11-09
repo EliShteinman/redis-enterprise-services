@@ -77,6 +77,8 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
   שדה לא קיים ⇐ `400 invalid_schema`. `PUT` עם `uid` ⇐ `500`.
 - `tags`: הקלאסטר מוסיף לכל tag `isSystem: false`. `[]` מנקה. `null` ⇐ `400 invalid_schema`.
 - בגרסה 8.x כל DB נוצר עם `bf`, `ReJSON`, `timeseries` ו-`search`.
+- **`data_persistence: snapshot` חייב `snapshot_policy`.** בלי מדיניות ⇐ `406 invalid_data_persistence` ("Snapshot policy is
+  missing"). `aof_policy` שנשלח עם `snapshot` נשמר בלי שימוש. נבדק ב-2026-11-09.
 - **לא קובעים `uid` ביצירה.** לפי התיעוד, מי שקובע uid חייב לקבוע אותו בכל ה-DBs שאחריו, כי המספור האוטומטי עלול
   להתנגש בו.
 

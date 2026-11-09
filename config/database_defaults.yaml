@@ -3,9 +3,13 @@ database_defaults:
     version: "8.4"
     replication: true
     data_persistence: aof
-    aof_policy: appendfsync-every-sec
     shards_placement: dense
     proxy_policy: all-master-shards
+  persistence_values:
+    aof:
+      aof_policy: appendfsync-every-sec
+    snapshot:
+      snapshot_policy: [{secs: 3600, writes: 1}]
   overrides:
     - when: {environment: DEV}
       values: {replication: false}
