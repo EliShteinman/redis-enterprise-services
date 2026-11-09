@@ -185,8 +185,8 @@ PlannedStep(
 |---|---|---|---|
 | `res:{state}saga:{saga_id}` | JSON | ה-saga record | 7 ימים אחרי `succeeded` או `rolled_back`. אחרת בלי |
 | `res:{state}sagas:unfinished` | set | Sagas שעוד רצים או מחכים לטיפול ידני. אינדקס לטיפול ידני | |
-| `res:{state}lock:{cluster}/{db}` | string | ה-`saga_id` שמחזיק בנעילה | בלי |
-| `res:{state}lock:{cluster}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת | בלי |
+| `res:{state}lock:{api_url}/{db}` | string | ה-`saga_id` שמחזיק בנעילה | בלי |
+| `res:{state}lock:{api_url}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת | בלי |
 | `res:{state}locks:{saga_id}` | set | מפתחות הנעילה שה-Saga מחזיק. מתמלא בנעילה ומתרוקן בשחרור | בלי |
 | `res:{state}operation:{trace_id}` | JSON | הפעולה, כפי ששאילתת הסטטוס מחזירה אותה | 7 ימים ב-`succeeded`, `rejected`, `rolled_back`. אחרת בלי |
 | `res:{state}operations:open` | set | פעולות שעוד לא הסתיימו, לזיהוי קריסה | |
