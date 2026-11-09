@@ -1,12 +1,17 @@
-from concurrent.futures import Future
+from contextvars import ContextVar
 
-import pytest
+from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
+from redis_enterprise_services.config.background_settings import BackgroundSettings
 
-from redis_enterprise_services.background.thread_pool_task_runner import log_task_outcome
+REQUEST_TRACE: ContextVar[str] = ContextVar("request_trace", default="none")
 
 
-def test_a_task_cancelled_before_it_started_is_logged_as_cancelled(caplog: pytest.LogCaptureFixture) -> None:
-    cancelled_future: Future[object] = Future()
-    cancelled_future.cancel()
-    log_task_outcome(task_name="create orders", future=cancelled_future)
-    assert "create orders was cancelled before it started" in caplog.text
+def test_a_background_task_runs_in_the_context_of_the_request_that_submitted_it() -> None:
+    seen: list[str] = []
+    runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=BackgroundSettings(max_workers=1))
+    REQUEST_TRACE.set("trace-1")
+
+    runner.submit(task_name="create orders", task=lambda: seen.append(REQUEST_TRACE.get()))
+    runner.close()
+
+    assert seen == ["trace-1"]
