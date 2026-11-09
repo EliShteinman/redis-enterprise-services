@@ -4,7 +4,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.steps.read_database import missing_database_values, read_field_names
+from redis_enterprise_services.steps.read_database import missing_database_values, required_field_names
 
 
 @pytest.fixture
@@ -14,13 +14,15 @@ def settings() -> DatabaseSettings:
 
 @pytest.fixture
 def complete(settings: DatabaseSettings) -> dict[str, JsonValue]:
-    values: dict[str, JsonValue] = {name: "set" for name in read_field_names(settings=settings)}
+    values: dict[str, JsonValue] = {name: "set" for name in required_field_names(settings=settings)}
     values[settings.endpoints_field] = [{name: "set" for name in settings.endpoint_fields}]
     return values
 
 
-def test_the_read_asks_for_every_creation_field_and_the_configured_extras(settings: DatabaseSettings) -> None:
-    assert read_field_names(settings=settings) == [*NewDatabase.model_fields, *settings.read_fields]
+def test_a_read_database_must_hold_every_creation_field_and_the_configured_extras(
+    settings: DatabaseSettings,
+) -> None:
+    assert required_field_names(settings=settings) == [*NewDatabase.model_fields, *settings.required_fields]
 
 
 def test_a_complete_database_misses_nothing(

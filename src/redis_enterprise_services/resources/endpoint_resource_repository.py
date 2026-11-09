@@ -2,7 +2,7 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
-from redis_enterprise_services.resources.models import CreatedResource, NamedResource
+from redis_enterprise_services.resources.models import ClusterObject, CreatedResource, DeletionStarted
 from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
@@ -27,11 +27,11 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
             target=target, creation_body=self._body_builder.creation_body(spec=spec)
         )
 
-    def start_deletion(self, *, target: ClusterTarget, uid: int) -> str | None:
+    def start_deletion(self, *, target: ClusterTarget, uid: int) -> DeletionStarted:
         return self._endpoint.start_deletion(target=target, uid=uid)
 
-    def find_by_name(self, *, target: ClusterTarget, name: str) -> list[NamedResource]:
-        return resources_named(resources=self._endpoint.list_uids_and_names(target=target), name=name)
+    def find_by_name(self, *, target: ClusterTarget, name: str) -> list[ClusterObject]:
+        return resources_named(resources=self._endpoint.list_objects(target=target), name=name)
 
     def read_created(self, *, target: ClusterTarget, uid: int) -> CreatedResource:
         return self._endpoint.read_item(target=target, uid=uid)
@@ -43,8 +43,8 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
             unreturned_fields=self._unreturned_fields,
         )
 
-    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
-        return self._endpoint.list_uids_and_names(target=target)
+    def list_objects(self, *, target: ClusterTarget) -> list[ClusterObject]:
+        return self._endpoint.list_objects(target=target)
 
 
 def fields_without_value(

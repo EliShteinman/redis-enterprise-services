@@ -13,7 +13,12 @@ from redis_enterprise_services.exceptions.cluster import (
     DuplicateResourceNameError,
     IncompleteClusterObjectError,
 )
-from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
+from redis_enterprise_services.resources.models import (
+    CreatedResource,
+    CreateResourceInput,
+    DeletionStarted,
+    NamedResource,
+)
 from redis_enterprise_services.resources.repository import ResourceRepository
 from redis_enterprise_services.resources.resource_completion_waiter import ResourceCompletionWaiter
 from redis_enterprise_services.steps.create_resource import CreateResourceStep
@@ -43,7 +48,9 @@ def repository() -> MagicMock:
     repository.start_creation.return_value = CREATED
     repository.read_created.return_value = READ_BACK
     repository.missing_fields.return_value = []
-    repository.start_deletion.return_value = DELETE_ACTION_UID
+    repository.start_deletion.return_value = DeletionStarted(
+        action_uid=DELETE_ACTION_UID, fields={"action_uid": DELETE_ACTION_UID}
+    )
     return repository
 
 

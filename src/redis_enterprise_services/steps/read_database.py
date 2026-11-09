@@ -62,10 +62,8 @@ class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
         logger.info(msg=f"nothing to undo for the read of database {step_input.uid}")
 
     def _complete_snapshot(self, *, step_input: ReadDatabaseInput) -> DatabaseFieldsSnapshot:
-        snapshot: DatabaseFieldsSnapshot = self._fields_reader.read_fields(
-            target=self._target_resolver.target_for(address=step_input.cluster),
-            uid=step_input.uid,
-            field_names=read_field_names(settings=self._settings),
+        snapshot: DatabaseFieldsSnapshot = self._fields_reader.read(
+            target=self._target_resolver.target_for(address=step_input.cluster), uid=step_input.uid
         )
         missing: list[str] = missing_database_values(values=snapshot.values, settings=self._settings)
         if missing:
@@ -75,12 +73,14 @@ class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
         return snapshot
 
 
-def read_field_names(*, settings: DatabaseSettings) -> list[str]:
-    return [*NewDatabase.model_fields, *settings.read_fields]
+def required_field_names(*, settings: DatabaseSettings) -> list[str]:
+    return [*NewDatabase.model_fields, *settings.required_fields]
 
 
 def missing_database_values(*, values: dict[str, JsonValue], settings: DatabaseSettings) -> list[str]:
-    missing: list[str] = [name for name in read_field_names(settings=settings) if values.get(name) is None]
+    missing: list[str] = [
+        name for name in required_field_names(settings=settings) if values.get(name) is None
+    ]
     endpoints: JsonValue = values.get(settings.endpoints_field)
     if not isinstance(endpoints, list) or not endpoints:
         return sorted({*missing, settings.endpoints_field})

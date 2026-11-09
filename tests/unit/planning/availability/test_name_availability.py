@@ -10,7 +10,7 @@ from redis_enterprise_services.planning.availability.listed_name_lookup import L
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.availability.requested_name import RequestedName
-from redis_enterprise_services.resources.models import NamedResource
+from redis_enterprise_services.resources.models import ClusterObject
 
 
 class CountingLister:
@@ -18,10 +18,10 @@ class CountingLister:
         self._url_name_pairs: set[tuple[str, str]] = url_name_pairs
         self.calls: int = 0
 
-    def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
+    def list_objects(self, *, target: ClusterTarget) -> list[ClusterObject]:
         self.calls += 1
         return [
-            NamedResource(uid=1, name=name)
+            ClusterObject(uid=1, name=name, fields={"uid": 1, "name": name})
             for url, name in sorted(self._url_name_pairs)
             if url == target.api_url
         ]

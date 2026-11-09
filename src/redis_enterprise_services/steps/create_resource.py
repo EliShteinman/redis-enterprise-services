@@ -7,7 +7,12 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     IncompleteClusterObjectError,
 )
-from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
+from redis_enterprise_services.resources.models import (
+    CreatedResource,
+    CreateResourceInput,
+    DeletionStarted,
+    NamedResource,
+)
 from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.only_one_named import only_one_named
 from redis_enterprise_services.resources.repository import ResourceRepository
@@ -89,12 +94,12 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         logger.info(msg=f"removing created {result.name}")
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         try:
-            action_uid: str | None = self._repository.start_deletion(target=target, uid=result.uid)
+            deletion: DeletionStarted = self._repository.start_deletion(target=target, uid=result.uid)
         except ClusterRejectedRequestError as error:
             if not is_not_found(error=error):
                 raise
             logger.info(msg=f"{result.name} is already gone")
             return
         self._completion_waiter.wait_for_pending_deletion(
-            target=target, uid=result.uid, action_uid=action_uid
+            target=target, uid=result.uid, action_uid=deletion.action_uid
         )
