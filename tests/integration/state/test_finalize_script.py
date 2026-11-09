@@ -67,12 +67,17 @@ def abandoned(
 
 
 def finalize(
-    store: RedisAbandonedStore, trace: AbandonedTrace, *, status: OperationStatus, release_locks: bool
+    store: RedisAbandonedStore,
+    trace: AbandonedTrace,
+    *,
+    status: OperationStatus,
+    release_locks: bool,
+    interrupted_saga: SagaRecord | None = None,
 ) -> FinalizeAbandonedResult:
     return store.finalize_if_still_abandoned(
         operation=trace.operation(status=status),
         expected_saga=trace.saga,
-        interrupted_saga=None,
+        interrupted_saga=interrupted_saga,
         release_locks=release_locks,
     )
 
@@ -181,3 +186,41 @@ def test_an_open_trace_without_an_operation_record_leaves_the_open_set(
     finalize(store, trace, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, release_locks=False)
 
     assert not trace.is_open()
+
+
+def test_an_interrupted_saga_is_stored_as_its_interrupted_copy(
+    client: Redis,
+    keys: RedisKeys,
+    trace_id: str,
+    store: RedisAbandonedStore,
+    abandoned: Callable[[SagaStatus], AbandonedTrace],
+) -> None:
+    trace: AbandonedTrace = abandoned(SagaStatus.RUNNING)
+    interrupted: SagaRecord = SagaRecord(
+        saga_id=trace_id, status=SagaStatus.RUNNING, steps=[]
+    ).interrupted_copy()
+
+    finalize(
+        store,
+        trace,
+        status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+        release_locks=False,
+        interrupted_saga=interrupted,
+    )
+
+    assert client.get(keys.saga_record(saga_id=trace_id)) == interrupted.model_dump_json()
+
+
+def test_releasing_leaves_a_lock_that_another_owner_took(
+    client: Redis,
+    keys: RedisKeys,
+    trace_id: str,
+    store: RedisAbandonedStore,
+    abandoned: Callable[[SagaStatus], AbandonedTrace],
+) -> None:
+    trace: AbandonedTrace = abandoned(SagaStatus.SUCCEEDED)
+    client.set(trace.lock_key, "itest-other-owner")
+
+    finalize(store, trace, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, release_locks=True)
+
+    assert client.get(trace.lock_key) == "itest-other-owner"

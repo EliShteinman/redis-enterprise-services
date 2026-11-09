@@ -74,7 +74,9 @@ class ClusterFailureClassifier(FailureClassifier):
 
     def _is_transient_lookup_error(self, *, error: RedisEnterpriseServicesError) -> bool:
         if isinstance(error, ClusterRejectedRequestError):
-            return self._classify_rejection(error=error) is not FailureCategory.FAILED
+            return has_transient_error_code(
+                error=error, transient_error_codes=self._transient_error_codes
+            ) or is_server_failure(error=error)
         return isinstance(error, TRANSIENT_LOOKUP_EDGE_ERRORS)
 
     def _classify_rejection(self, *, error: ClusterRejectedRequestError) -> FailureCategory:
