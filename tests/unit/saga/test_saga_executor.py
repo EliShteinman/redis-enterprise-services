@@ -299,7 +299,10 @@ def test_an_outcome_lookup_that_fails_on_a_transient_error_looks_again(
 
 
 def test_an_outcome_lookup_that_keeps_failing_on_transient_errors_stops_for_manual_intervention(
-    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+    calls: list[str],
+    record_writer: InMemorySagaRecordWriter,
+    lock: InMemorySagaLock,
+    sleeper: RecordingSleeper,
 ) -> None:
     step: FakeStep = FakeStep(
         calls=calls,
@@ -307,9 +310,11 @@ def test_an_outcome_lookup_that_keeps_failing_on_transient_errors_stops_for_manu
         find_outcome_answers=[BUSY for _attempt in range(SETTINGS.step_retry.attempts)],
     )
 
-    record: SagaRecord = run(steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock)
+    record: SagaRecord = run(
+        steps=[planned(step=step, key="a")], record_writer=record_writer, lock=lock, sleeper=sleeper
+    )
 
-    assert record.status is SagaStatus.REQUIRES_MANUAL_INTERVENTION
+    assert (record.status, sleeper.slept) == (SagaStatus.REQUIRES_MANUAL_INTERVENTION, [1, 2])
 
 
 def test_an_unknown_outcome_that_is_not_found_runs_the_step_again(
