@@ -71,8 +71,12 @@ class EdgeResponseReader:
             return None
         try:
             return relay_response.json()
-        except requests.JSONDecodeError:
-            return relay_response.text
+        except requests.JSONDecodeError as error:
+            message: str = (
+                f"answered {relay_response.status_code} with a body that is not JSON and no edge error code"
+            )
+            logger.warning(msg=message)
+            raise EdgeOutcomeUnknownError(message=message) from error
 
 
 def edge_error_type_for(

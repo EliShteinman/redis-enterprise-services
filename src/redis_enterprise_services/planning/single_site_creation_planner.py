@@ -123,7 +123,9 @@ class SingleSiteCreationPlanner:
                 spec=NewRole(
                     name=role_name,
                     management=self._role_management,
-                    database_uids=[created_uid(step_results=step_results, step_key=DATABASE_STEP_KEY)],
+                    database_uids=[
+                        uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY)
+                    ],
                 ),
             ),
         )
@@ -137,7 +139,9 @@ class SingleSiteCreationPlanner:
                 spec=NewUser(
                     name=user.name,
                     password=user.password,
-                    role_uids=[created_uid(step_results=step_results, step_key=role_step_key(user=user))],
+                    role_uids=[
+                        uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user))
+                    ],
                 ),
             ),
         )
@@ -160,7 +164,7 @@ class SingleSiteCreationPlanner:
     ) -> UpdateDatabaseInput:
         return UpdateDatabaseInput(
             cluster=address,
-            uid=created_uid(step_results=step_results, step_key=DATABASE_STEP_KEY),
+            uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY),
             values={
                 self._cluster_fields.roles_permissions: [
                     permission.model_dump(mode="json")
@@ -180,14 +184,14 @@ def creation_lock_keys(*, cluster_name: str, database_name: str, user_names: lis
 def role_permissions(*, step_results: StepResults, users: list[DatabaseUserSpec]) -> list[RolePermission]:
     return [
         RolePermission(
-            role_uid=created_uid(step_results=step_results, step_key=role_step_key(user=user)),
-            redis_acl_uid=created_uid(step_results=step_results, step_key=acl_step_key(user=user)),
+            role_uid=uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user)),
+            redis_acl_uid=uid_created_by_step(step_results=step_results, step_key=acl_step_key(user=user)),
         )
         for user in users
     ]
 
 
-def created_uid(*, step_results: StepResults, step_key: str) -> int:
+def uid_created_by_step(*, step_results: StepResults, step_key: str) -> int:
     return step_results.result_of(key=step_key, result_type=CreatedResource).uid
 
 
