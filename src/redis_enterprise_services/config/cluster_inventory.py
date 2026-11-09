@@ -1,12 +1,15 @@
-from typing import Annotated, Literal
+from collections.abc import Hashable
+from typing import Annotated, Literal, Self
 
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, Field, model_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.repeated_values import repeated_values
 
 type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
+
+GENERIC_CLUSTER: ClusterType = "generic"
 
 
 class ConfiguredCluster(ConfigModel):
@@ -17,17 +20,28 @@ class ConfiguredCluster(ConfigModel):
     type: ClusterType
     api_url: str = Field(pattern=r"^https?://.*[^/]$")
 
+    @model_validator(mode="after")
+    def reject_a_dedicated_cluster_named_generic(self) -> Self:
+        if self.type != GENERIC_CLUSTER and self.name == GENERIC_CLUSTER:
+            raise ValueError(
+                f"a dedicated cluster cannot be named {GENERIC_CLUSTER}, a request asks for it by name"
+            )
+        return self
+
 
 def reject_repeated_clusters(clusters: list[ConfiguredCluster]) -> list[ConfiguredCluster]:
-    reject_repeated_field(field="name", values=[cluster.name for cluster in clusters])
-    reject_repeated_field(field="api_url", values=[cluster.api_url for cluster in clusters])
+    reject_repeated(
+        what="clusters",
+        values=[(cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters],
+    )
+    reject_repeated(what="cluster api_urls", values=[cluster.api_url for cluster in clusters])
     return clusters
 
 
-def reject_repeated_field(*, field: str, values: list[str]) -> None:
-    repeated: set[str] = repeated_values(values=values)
+def reject_repeated[T: Hashable](*, what: str, values: list[T]) -> None:
+    repeated: set[T] = repeated_values(values=values)
     if repeated:
-        raise ValueError(f"cluster {field} configured more than once: {sorted(repeated)}")
+        raise ValueError(f"{what} configured more than once: {sorted(repeated, key=str)}")
 
 
 type ConfiguredClusters = Annotated[list[ConfiguredCluster], AfterValidator(reject_repeated_clusters)]

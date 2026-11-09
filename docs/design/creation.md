@@ -49,8 +49,9 @@ POST /v1/databases/create
 1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
 2. **הקלאסטר** (`SiteClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
    `environment`, `site`, `type` ו-`api_url`. ההתאמה היא לפי השדות, ולכן אין היררכיה קבועה בין רשת, סביבה ואתר.
-   כל קלאסטר מופיע פעם אחת: `name` ו-`api_url` ייחודיים, אחרת הקונפיג נדחה בעלייה. מפתחות הנעילה בנויים מ-`name`.
-   - `dedicated`: הקלאסטר מסוג `dedicated` עם אותם רשת, סביבה, אתר ושם.
+   הקונפיג נדחה בעלייה אם `api_url` חוזר, אם הצירוף של `network`, `environment`, `site` ו-`name` חוזר, או אם קלאסטר
+   `dedicated` נקרא `generic`. הבקשה שולחת ב-`cluster` את `generic` או שם של קלאסטר `dedicated`:
+   - שם: הקלאסטר מסוג `dedicated` עם אותם רשת, סביבה, אתר ושם.
    - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
    - אין קלאסטר מתאים ⇐ `no_matching_cluster`.
@@ -103,7 +104,7 @@ POST /v1/databases/create
 **שמות.** כל ACL ו-role שייכים ליוזר אחד ב-DB אחד. שם יוזר עם `-` נדחה בולידציה, כי אחרת שתי בקשות שונות יכולות לקבל
 אותו שם נגזר (DB `orders` עם יוזר `app-x`, ו-DB `orders-app` עם יוזר `x`).
 
-**נעילה.** מפתחות `{cluster}/{db}` ו-`{cluster}/user/{user}` לכל יוזר. שמות ה-ACL וה-role נגזרים משם ה-DB, ולכן
+**נעילה.** מפתחות `{api_url}/{db}` ו-`{api_url}/user/{user}` לכל יוזר, לפי כתובת הקלאסטר שנבחר. שמות ה-ACL וה-role נגזרים משם ה-DB, ולכן
 הנעילה של ה-DB מכסה אותם.
 
 **בדיקת שמות פנויים** (`NameAvailability`), כ-`check_before_start`: אחרי הנעילה ולפני הצעד הראשון. היא בודקת את ה-DB, ולכל
