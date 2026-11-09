@@ -2,6 +2,7 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
@@ -31,6 +32,7 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
 )
 TRANSLATOR: CreationOutcomeTranslator = CreationOutcomeTranslator(
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+    database_settings=load_settings().database,
     public_errors=PublicErrors(
         settings=OperationSettings(
             public_code_by_internal_code={
@@ -65,7 +67,7 @@ def step_record(
     error: StepError | None = None,
     compensation_error: StepError | None = None,
 ) -> StepRecord:
-    result: JsonValue = None if uid is None else {"uid": uid, "name": key, "action_uid": None}
+    result: JsonValue = None if uid is None else {"uid": uid, "name": key, "action_uid": None, "fields": {}}
     return StepRecord(
         key=key,
         kind=StepKind.COMPENSATABLE,

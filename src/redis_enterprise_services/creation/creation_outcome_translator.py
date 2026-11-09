@@ -1,6 +1,7 @@
 import logging
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.operations.operation import Operation
@@ -25,15 +26,27 @@ OPERATION_STATUS_BY_FAILED_SAGA_STATUS: dict[SagaStatus, OperationStatus] = {
 
 
 class CreationOutcomeTranslator:
-    def __init__(self, *, resource_naming: UserResourceNaming, public_errors: PublicErrors) -> None:
+    def __init__(
+        self,
+        *,
+        resource_naming: UserResourceNaming,
+        public_errors: PublicErrors,
+        database_settings: DatabaseSettings,
+    ) -> None:
         self._resource_naming: UserResourceNaming = resource_naming
         self._public_errors: PublicErrors = public_errors
+        self._database_settings: DatabaseSettings = database_settings
 
     def operation_from_ended_record(
         self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
     ) -> Operation:
         if record.status is SagaStatus.SUCCEEDED:
-            return succeeded_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
+            return succeeded_operation(
+                trace_id=trace_id,
+                prepared_creation=prepared_creation,
+                record=record,
+                database_settings=self._database_settings,
+            )
         return self._failed_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
 
     def _failed_operation(
@@ -77,6 +90,7 @@ class CreationOutcomeTranslator:
                 step=step,
             )
             for step in record.not_rolled_back_steps()
+            if step.key in planned_by_step_key
         ]
 
     def _remaining_resource(
@@ -97,10 +111,16 @@ class CreationOutcomeTranslator:
 
 
 def succeeded_operation(
-    *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+    *,
+    trace_id: str,
+    prepared_creation: PreparedCreation,
+    record: SagaRecord,
+    database_settings: DatabaseSettings,
 ) -> Operation:
     return Operation(
         trace_id=trace_id,
         status=OperationStatus.SUCCEEDED,
-        database=created_database_result(prepared_creation=prepared_creation, record=record),
+        database=created_database_result(
+            prepared_creation=prepared_creation, record=record, database_settings=database_settings
+        ),
     )

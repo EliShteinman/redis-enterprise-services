@@ -1,9 +1,11 @@
 from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
+from pydantic import JsonValue
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
@@ -12,7 +14,7 @@ from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError, UnreadableSagaRecordError
-from redis_enterprise_services.operations.database_result import DatabaseResult, DatabaseUserResult
+from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -60,6 +62,24 @@ UID_BY_STEP_KEY: dict[str, int] = {
     "user/app": 13,
     "permissions": 7,
 }
+FIELDS_BY_STEP_KEY: dict[str, dict[str, JsonValue]] = {
+    "acl/app": {"uid": 11, "name": "orders-app-acl", "acl": "+@all ~orders:*"},
+    "user/app": {"uid": 13, "name": "app", "role_uids": [12]},
+}
+ENDPOINT: dict[str, JsonValue] = {"dns_name": "redis-12000.c1", "port": 12000, "addr": ["10.0.0.5"]}
+READ_BACK_VALUES: dict[str, JsonValue] = {
+    **{name: f"stored {name}" for name in NewDatabase.model_fields},
+    "name": "orders",
+    "memory_size": 104857600,
+    "uid": 7,
+    "status": "active",
+    "endpoints": [ENDPOINT],
+}
+
+
+def step_result(*, key: str, uid: int) -> dict[str, JsonValue]:
+    fields: dict[str, JsonValue] = FIELDS_BY_STEP_KEY.get(key, {})
+    return {"uid": uid, "name": fields.get("name", key), "action_uid": None, "fields": fields}
 
 
 def saga_record_with_every_step_done(*, status: SagaStatus) -> SagaRecord:
@@ -71,13 +91,21 @@ def saga_record_with_steps(*, status: SagaStatus, step_status: StepStatus) -> Sa
         saga_id="trace-1",
         status=status,
         steps=[
+            *(
+                StepRecord(
+                    key=key,
+                    kind=StepKind.COMPENSATABLE,
+                    status=step_status,
+                    result=step_result(key=key, uid=uid),
+                )
+                for key, uid in UID_BY_STEP_KEY.items()
+            ),
             StepRecord(
-                key=key,
+                key="read-database",
                 kind=StepKind.COMPENSATABLE,
                 status=step_status,
-                result={"uid": uid, "name": key, "action_uid": None},
-            )
-            for key, uid in UID_BY_STEP_KEY.items()
+                result={"values": READ_BACK_VALUES, "cluster_state_id": 3},
+            ),
         ],
     )
 
@@ -99,7 +127,9 @@ class ExecutionHarness:
             planner=self.planner,
             saga_executor=self.saga_executor,
             outcome_translator=CreationOutcomeTranslator(
-                resource_naming=UserResourceNaming(settings=USER_RESOURCES), public_errors=PUBLIC_ERRORS
+                resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+                public_errors=PUBLIC_ERRORS,
+                database_settings=load_settings().database,
             ),
             public_errors=PUBLIC_ERRORS,
             saga_record_reader=self.saga_record_reader,
@@ -110,17 +140,33 @@ class ExecutionHarness:
         return self.execution.run_and_save(trace_id="trace-1", prepared_creation=PREPARED_CREATION)
 
 
-def test_a_created_database_returns_its_uid_and_the_uids_of_each_user() -> None:
+@pytest.fixture
+def created() -> DatabaseResult:
     harness: ExecutionHarness = ExecutionHarness()
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
-
     database: DatabaseResult | None = harness.run_and_save().database
-
     assert database is not None
-    assert (database.db_id, database.clusters[0].users) == (
-        7,
-        [DatabaseUserResult(name="app", user_uid=13, role_uid=12, acl_uid=11)],
-    )
+    return database
+
+
+def test_a_created_database_returns_the_endpoints_the_cluster_reported(created: DatabaseResult) -> None:
+    assert created.clusters[0].access.model_dump()["endpoints"] == [ENDPOINT]
+
+
+def test_a_created_database_returns_every_creation_field_as_the_cluster_stored_it(
+    created: DatabaseResult,
+) -> None:
+    assert created.clusters[0].db.settings == {
+        name: READ_BACK_VALUES[name] for name in NewDatabase.model_fields
+    }
+
+
+def test_each_user_comes_back_with_its_acl_as_one_permission(created: DatabaseResult) -> None:
+    assert created.clusters[0].db.permissions == [
+        DatabasePermissionResult(
+            user_uid=13, user_name="app", user_password="p1", acl_uid=11, acl_rule="+@all ~orders:*"
+        )
+    ]
 
 
 @pytest.mark.parametrize(
