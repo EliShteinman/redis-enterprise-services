@@ -1,6 +1,6 @@
-from typing import Self
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.operation_status import EXPIRING_STATUSES, OperationStatus
@@ -9,6 +9,8 @@ from redis_enterprise_services.operations.remaining_resource import RemainingRes
 
 
 class Operation(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(json_schema_serialization_defaults_required=True)
+
     trace_id: str = Field(
         description="The trace ID of the request that started the operation.",
         examples=["4bf92f3577b34da6a3ce929d0e0e4736"],
