@@ -21,7 +21,7 @@ class DatabaseClusterResult(BaseModel):
     site: str = Field(description="The site of the cluster.", examples=["dc1"])
     environment: Environment = Field(description="The environment of the cluster.", examples=["PROD"])
     db_uid: int = Field(description="The database uid on this cluster.", examples=[7])
-    users: list[DatabaseUserResult] = Field(default_factory=list, description="The users on this cluster.")
+    users: list[DatabaseUserResult] = Field(description="The users on this cluster.")
 
 
 class DatabaseResult(BaseModel):

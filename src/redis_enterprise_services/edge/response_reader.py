@@ -6,9 +6,9 @@ from requests.structures import CaseInsensitiveDict
 
 from redis_enterprise_services.config.edge_settings import EdgeErrorCodeSettings, EdgeSettings
 from redis_enterprise_services.edge.models import ClusterResponse
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.edge import (
     EdgeConnectionFailedError,
-    EdgeError,
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
     EdgeRejectedResponseError,
@@ -35,7 +35,7 @@ class EdgeResponseReader:
     def unwrap_cluster_response(self, *, relay_response: requests.Response) -> ClusterResponse:
         edge_error_code: str | None = relay_response.headers.get(self._settings.headers.edge_error_code)
         if edge_error_code is not None:
-            error: EdgeError = self._error_for_edge_error_code(
+            error: RedisEnterpriseServicesError = self._error_for_edge_error_code(
                 edge_error_code=edge_error_code, relay_response=relay_response
             )
             logger.debug(msg=error.message)
@@ -51,9 +51,9 @@ class EdgeResponseReader:
 
     def _error_for_edge_error_code(
         self, *, edge_error_code: str, relay_response: requests.Response
-    ) -> EdgeError:
+    ) -> RedisEnterpriseServicesError:
         message: str = f"relay answered {relay_response.status_code} {edge_error_code}: {relay_response.text}"
-        error_type: type[EdgeError] = edge_error_type_for(
+        error_type: type[RedisEnterpriseServicesError] = edge_error_type_for(
             edge_error_code=edge_error_code, codes=self._settings.error_codes
         )
         if error_type is EdgeRejectedResponseError:
@@ -79,8 +79,10 @@ class EdgeResponseReader:
             raise EdgeOutcomeUnknownError(message=message) from error
 
 
-def edge_error_type_for(*, edge_error_code: str, codes: EdgeErrorCodeSettings) -> type[EdgeError]:
-    error_type_by_code: dict[str, type[EdgeError]] = {
+def edge_error_type_for(
+    *, edge_error_code: str, codes: EdgeErrorCodeSettings
+) -> type[RedisEnterpriseServicesError]:
+    error_type_by_code: dict[str, type[RedisEnterpriseServicesError]] = {
         codes.invalid_request: EdgeRejectedRequestError,
         codes.connection_failed: EdgeConnectionFailedError,
         codes.response_rejected: EdgeRejectedResponseError,
