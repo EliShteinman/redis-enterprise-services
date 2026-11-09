@@ -1,19 +1,19 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.acls.models import NewAcl
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
 from redis_enterprise_services.planning.creation_step_keys import (
-    DATABASE_STEP_KEY,
     READ_DATABASE_STEP_KEY,
     acl_step_key,
     user_step_key,
 )
 from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
-from redis_enterprise_services.resources.models import CreatedResource
+from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
@@ -23,7 +23,7 @@ def created_database_result(
     database: dict[str, JsonValue] = DatabaseFieldsSnapshot.model_validate(
         obj=record.step(key=READ_DATABASE_STEP_KEY).result
     ).values
-    cluster = prepared_creation.cluster
+    cluster: ConfiguredCluster = prepared_creation.cluster
     return DatabaseResult.model_validate(
         obj={
             "name": database["name"],
@@ -32,13 +32,14 @@ def created_database_result(
             "crdb_guid": None,
             "clusters": [
                 {
+                    "cluster": cluster.name,
                     "cluster_url": cluster.api_url,
                     "network": cluster.network,
                     "site": cluster.site,
                     "environment": cluster.environment,
                     "access": {"endpoints": database[database_settings.endpoints_field]},
                     "db": {
-                        "db_uid": created_resource(record=record, step_key=DATABASE_STEP_KEY).uid,
+                        "db_uid": NamedResource.model_validate(obj=database).uid,
                         "settings": {name: database[name] for name in NewDatabase.model_fields},
                         "permissions": [
                             created_permission(record=record, user=user).model_dump()
