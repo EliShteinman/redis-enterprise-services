@@ -15,5 +15,9 @@ class MissingStepResultError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_result"
 
 
+class StepNeedsManualInterventionError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "step_needs_manual_intervention"
+
+
 class MissingStepRecordError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "missing_step_record"
