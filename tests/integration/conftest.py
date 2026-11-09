@@ -11,7 +11,7 @@ from redis_enterprise_services.state.redis_client import build_redis_client
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 TRACE_ID_PREFIX: str = "itest"
-PROBE_KEY: str = "res:itest-probe"
+ITEST_KEY_PREFIX: str = "itest:"
 LOCK_KEY_KINDS: tuple[str, ...] = ("database", "user")
 
 
@@ -31,7 +31,7 @@ def settings() -> Settings:
 def client(settings: Settings) -> Iterator[Redis]:
     redis_client: Redis = build_redis_client(settings=settings.state)
     try:
-        redis_client.exists(PROBE_KEY)
+        redis_client.exists(f"{settings.state.key_prefix}{ITEST_KEY_PREFIX}probe")
     except RedisError:
         pytest.skip(reason="the saga-state Redis of the local clusters is not reachable")
     yield redis_client
@@ -40,7 +40,9 @@ def client(settings: Settings) -> Iterator[Redis]:
 
 @pytest.fixture(scope="session")
 def keys(settings: Settings) -> RedisKeys:
-    return RedisKeys(key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag)
+    return RedisKeys(
+        key_prefix=settings.state.key_prefix + ITEST_KEY_PREFIX, hash_tag=settings.state.hash_tag
+    )
 
 
 @pytest.fixture

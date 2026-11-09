@@ -4,8 +4,8 @@ import pytest
 from redis import Redis
 
 from redis_enterprise_services.exceptions.operation import UnreadableOperationRecordError
-from redis_enterprise_services.operations.operation import STATUSES_WITHOUT_ERROR, Operation
-from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.operation_status import STATUSES_WITHOUT_ERROR, OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
