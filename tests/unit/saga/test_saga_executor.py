@@ -849,7 +849,7 @@ def failed_step_whose_compensation_fails(
     return run(steps=steps, record_writer=record_writer, lock=lock)
 
 
-def test_a_failed_step_that_kept_a_result_is_still_the_step_that_stopped_the_saga_after_its_undo(
+def test_a_failed_step_that_kept_a_result_is_still_the_step_that_stopped_the_saga_after_its_compensation(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
     record: SagaRecord = failed_step_whose_compensation_fails(
@@ -953,15 +953,10 @@ def test_a_saga_whose_lock_was_taken_over_before_it_started_does_not_start(
     assert record_writer.saved is None
 
 
-class FinalSaveFailingWriter(InMemorySagaRecordWriter):
-    def save_final(self, *, record: SagaRecord) -> None:
-        raise RuntimeError("the final save never happens")
-
-
 def test_a_kept_result_is_saved_before_the_step_ends(calls: list[str], lock: InMemorySagaLock) -> None:
-    record_writer: FinalSaveFailingWriter = FinalSaveFailingWriter()
+    record_writer: FinalSaveFailingRecordWriter = FinalSaveFailingRecordWriter()
 
-    with pytest.raises(expected_exception=RuntimeError):
+    with pytest.raises(expected_exception=ConnectionError):
         run(
             steps=[planned(step=FakeStep(calls=calls, execute_script=["keep then interrupt"]), key="a")],
             record_writer=record_writer,
