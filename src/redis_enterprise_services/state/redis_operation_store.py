@@ -1,9 +1,11 @@
 import logging
 from typing import cast
 
+from pydantic import ValidationError
 from redis import Redis
 from redis.commands.core import Script
 
+from redis_enterprise_services.exceptions.operation import UnreadableOperationRecordError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
@@ -54,7 +56,7 @@ class RedisOperationStore(OperationStore):
             logger.info(msg=f"operation {operation.trace_id} started")
             return None
         logger.info(msg=f"operation {operation.trace_id} already exists")
-        return Operation.model_validate_json(json_data=existing)
+        return readable_operation(trace_id=operation.trace_id, stored_json=existing)
 
     def save(self, *, operation: Operation) -> None:
         self._record_writer.save(
@@ -74,4 +76,13 @@ class RedisOperationStore(OperationStore):
         if stored is None:
             logger.info(msg=f"operation {trace_id} is not known")
             return None
-        return Operation.model_validate_json(json_data=stored)
+        return readable_operation(trace_id=trace_id, stored_json=stored)
+
+
+def readable_operation(*, trace_id: str, stored_json: str) -> Operation:
+    try:
+        return Operation.model_validate_json(json_data=stored_json)
+    except ValidationError as error:
+        raise UnreadableOperationRecordError(
+            message=f"the record of operation {trace_id} cannot be read"
+        ) from error

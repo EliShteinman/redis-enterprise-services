@@ -15,6 +15,10 @@ PROBE_KEY: str = "res:itest-probe"
 LOCK_KEY_KINDS: tuple[str, ...] = ("database", "user")
 
 
+def itest_lock_keys(*, trace_id: str) -> list[str]:
+    return [f"https://itest:9443/{kind}/{trace_id}" for kind in LOCK_KEY_KINDS]
+
+
 @pytest.fixture(scope="session")
 def settings() -> Settings:
     try:
@@ -48,7 +52,7 @@ def trace_id(client: Redis, keys: RedisKeys) -> Iterator[str]:
         keys.heartbeat(trace_id=test_trace_id),
         keys.saga_record(saga_id=test_trace_id),
         keys.held_locks(owner=test_trace_id),
-        *[keys.lock(lock_key=f"https://itest:9443/{kind}/{test_trace_id}") for kind in LOCK_KEY_KINDS],
+        *[keys.lock(lock_key=lock_key) for lock_key in itest_lock_keys(trace_id=test_trace_id)],
     )
     client.srem(keys.open_trace_ids(), test_trace_id)
     client.srem(keys.unfinished_saga_ids(), test_trace_id)
@@ -56,4 +60,4 @@ def trace_id(client: Redis, keys: RedisKeys) -> Iterator[str]:
 
 @pytest.fixture
 def lock_keys(trace_id: str) -> list[str]:
-    return [f"https://itest:9443/{kind}/{trace_id}" for kind in LOCK_KEY_KINDS]
+    return itest_lock_keys(trace_id=trace_id)

@@ -4,7 +4,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 
 class EdgeError(RedisEnterpriseServicesError):
-    code: ClassVar[str] = "cluster_unavailable"
+    code: ClassVar[str] = "edge_error"
 
 
 class EdgeRejectedRequestError(RedisEnterpriseServicesError):

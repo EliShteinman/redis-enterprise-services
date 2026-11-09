@@ -1,7 +1,9 @@
 from typing import Annotated, Literal, Self
+from urllib.parse import SplitResult, urlsplit
 
 from pydantic import AfterValidator, Field, model_validator
 
+from redis_enterprise_services.config.base_url import BaseUrl
 from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.repeated_values import reject_repeated
 
@@ -9,6 +11,7 @@ type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]
 
 GENERIC_CLUSTER: ClusterType = "generic"
+DEFAULT_PORT_BY_SCHEME: dict[str, int] = {"http": 80, "https": 443}
 
 
 class ConfiguredCluster(ConfigModel):
@@ -17,7 +20,7 @@ class ConfiguredCluster(ConfigModel):
     environment: Environment
     site: str = Field(min_length=1)
     type: ClusterType
-    api_url: str = Field(pattern=r"^https?://.*[^/]$")
+    api_url: BaseUrl
 
     @model_validator(mode="after")
     def reject_a_dedicated_cluster_named_generic(self) -> Self:
@@ -33,8 +36,17 @@ def reject_repeated_clusters(clusters: list[ConfiguredCluster]) -> list[Configur
         what="clusters",
         values=[(cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters],
     )
-    reject_repeated(what="cluster api_urls", values=[cluster.api_url for cluster in clusters])
+    reject_repeated(
+        what="cluster api_urls", values=[comparable_url(url=cluster.api_url) for cluster in clusters]
+    )
     return clusters
+
+
+def comparable_url(*, url: str) -> str:
+    parts: SplitResult = urlsplit(url)
+    scheme: str = parts.scheme.lower()
+    port: int = parts.port or DEFAULT_PORT_BY_SCHEME[scheme]
+    return f"{scheme}://{(parts.hostname or '').lower()}:{port}{parts.path}"
 
 
 type ConfiguredClusters = Annotated[list[ConfiguredCluster], AfterValidator(reject_repeated_clusters)]
