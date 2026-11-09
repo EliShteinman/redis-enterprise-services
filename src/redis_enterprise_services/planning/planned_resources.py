@@ -3,14 +3,14 @@ from typing import Literal
 from pydantic import BaseModel
 
 from redis_enterprise_services.planning.availability.requested_name import NameKind
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
-from redis_enterprise_services.planning.single_site_creation_planner import (
+from redis_enterprise_services.planning.creation_step_keys import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
     acl_step_key,
     role_step_key,
     user_step_key,
 )
+from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
 type PlannedResourceType = NameKind | Literal["permissions"]
@@ -30,9 +30,6 @@ def planned_resources_by_step_key(
         DATABASE_STEP_KEY: PlannedResource(
             resource_type="database", name=database_name, uid_step_key=DATABASE_STEP_KEY
         ),
-        PERMISSIONS_STEP_KEY: PlannedResource(
-            resource_type="permissions", name=database_name, uid_step_key=DATABASE_STEP_KEY
-        ),
     }
     for user in spec.users:
         planned_by_step_key[acl_step_key(user=user)] = PlannedResource(
@@ -47,5 +44,9 @@ def planned_resources_by_step_key(
         )
         planned_by_step_key[user_step_key(user=user)] = PlannedResource(
             resource_type="user", name=user.name, uid_step_key=user_step_key(user=user)
+        )
+    if spec.users:
+        planned_by_step_key[PERMISSIONS_STEP_KEY] = PlannedResource(
+            resource_type="permissions", name=database_name, uid_step_key=DATABASE_STEP_KEY
         )
     return planned_by_step_key
