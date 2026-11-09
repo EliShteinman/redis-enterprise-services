@@ -58,7 +58,7 @@ services:
     entrypoint: ["/bin/sh", "/bootstrap/join-cluster.sh"]
     profiles: [multinode]
     depends_on:
-      cluster1-bootstrap:
+      cluster1-create:
         condition: service_completed_successfully
       cluster1-node2:
         condition: service_started

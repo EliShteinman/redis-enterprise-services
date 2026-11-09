@@ -1,8 +1,6 @@
 #!/bin/sh
 set -eu
 
-bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
-
 . "$(dirname "$0")/bootstrap-state.sh"
 
 join_cluster() {
@@ -12,7 +10,7 @@ join_cluster() {
         --data @- <<EOF
 {
   "action": "join_cluster",
-  "cluster": {"nodes": ["${cluster_node_ip}"]},
+  "cluster": {"nodes": ["${CLUSTER_NODE_IP}"]},
   "node": {"paths": {"persistent_path": "${PERSISTENT_PATH}", "ephemeral_path": "${EPHEMERAL_PATH}"}},
   "credentials": {"username": "${ADMIN_USERNAME}", "password": "${ADMIN_PASSWORD}"}
 }
@@ -27,8 +25,7 @@ if [ "${state}" = "completed" ]; then
     exit 0
 fi
 
-cluster_node_ip="${CLUSTER_NODE_IP}"
-echo "Joining ${NODE_HOST} to ${CLUSTER_NODE_HOST} (${cluster_node_ip})"
+echo "Joining ${NODE_HOST} to ${CLUSTER_NODE_HOST} (${CLUSTER_NODE_IP})"
 join_cluster
 
 wait_until_completed "Join of ${NODE_HOST} failed"
