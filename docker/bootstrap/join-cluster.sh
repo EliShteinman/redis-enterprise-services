@@ -4,10 +4,7 @@ set -eu
 . "$(dirname "$0")/bootstrap-state.sh"
 
 join_cluster() {
-    curl --silent --insecure --fail-with-body \
-        --request POST "${bootstrap_url}/join_cluster" \
-        --header "Content-Type: application/json" \
-        --data @- <<EOF
+    relay_call POST /v1/bootstrap/join_cluster --fail-with-body --data @- <<EOF
 {
   "action": "join_cluster",
   "cluster": {"nodes": ["${CLUSTER_NODE_IP}"]},
