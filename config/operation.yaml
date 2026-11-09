@@ -4,7 +4,6 @@ operation:
     resources_locked: resources_locked
     invalid_name: invalid_name
     no_matching_cluster: no_matching_cluster
-    cluster_unavailable: cluster_unavailable
     edge_connection_failed: cluster_unavailable
     edge_outcome_unknown: cluster_unavailable
     edge_rejected_response: cluster_unavailable

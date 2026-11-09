@@ -32,6 +32,13 @@ def configured_cluster(
             [configured_cluster(name="c1"), configured_cluster(name="c2", api_url="https://c1:9443")],
             id="same-api-url",
         ),
+        pytest.param(
+            [
+                configured_cluster(name="c1", api_url="https://c1"),
+                configured_cluster(name="c2", api_url="https://C1:443"),
+            ],
+            id="same-api-url-spelled-another-way",
+        ),
     ],
 )
 def test_a_cluster_configured_twice_is_refused_when_the_config_loads(
