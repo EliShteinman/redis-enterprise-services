@@ -93,6 +93,9 @@ the passwords. Put the Redis Software license in `docker/license/license.txt` (n
 docker compose -f docker/compose.yaml up -d
 ```
 
+The service logs in to these clusters with `RES_CLUSTER_CREDENTIALS__USERNAME` and `RES_CLUSTER_CREDENTIALS__PASSWORD`,
+so set them to `CLUSTER_ADMIN_USERNAME` and `CLUSTER_ADMIN_PASSWORD` from `docker/.env`.
+
 To use another subnet, change `NETWORK_SUBNET`, `NETWORK_DYNAMIC_IP_RANGE` and the three `*_IP` values together in
 `docker/.env`.
 

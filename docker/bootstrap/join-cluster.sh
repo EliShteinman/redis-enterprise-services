@@ -3,17 +3,7 @@ set -eu
 
 bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
 
-read_state() {
-    curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" \
-        | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
-}
-
-wait_for_first_state() {
-    until state="$(read_state)" && [ -n "${state}" ]; do
-        sleep "${POLL_INTERVAL_SECONDS}"
-    done
-    echo "${state}"
-}
+. "$(dirname "$0")/bootstrap-state.sh"
 
 join_cluster() {
     curl --silent --insecure --fail-with-body \
@@ -37,19 +27,10 @@ if [ "${state}" = "completed" ]; then
     exit 0
 fi
 
-cluster_node_ip="$(getent hosts "${CLUSTER_NODE_HOST}" | cut -d ' ' -f 1)"
+cluster_node_ip="${CLUSTER_NODE_IP}"
 echo "Joining ${NODE_HOST} to ${CLUSTER_NODE_HOST} (${cluster_node_ip})"
 join_cluster
 
-state="$(read_state)"
-while [ "${state}" != "completed" ]; do
-    if [ "${state}" = "error" ]; then
-        echo "Join of ${NODE_HOST} failed" >&2
-        curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" >&2
-        exit 1
-    fi
-    sleep "${POLL_INTERVAL_SECONDS}"
-    state="$(read_state)"
-done
+wait_until_completed "Join of ${NODE_HOST} failed"
 
 echo "${NODE_HOST} joined ${CLUSTER_NODE_HOST}"
