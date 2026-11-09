@@ -27,4 +27,5 @@ class DefaultsOverride(ConfigModel):
 
 class DatabaseDefaultsSettings(ConfigModel):
     values: dict[str, JsonValue]
+    persistence_values: dict[str, dict[str, JsonValue]]
     overrides: list[DefaultsOverride]
