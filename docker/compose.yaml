@@ -15,7 +15,7 @@ x-cluster-bootstrap: &cluster-bootstrap
   environment: &bootstrap-environment
     ADMIN_USERNAME: ${CLUSTER_ADMIN_USERNAME}
     ADMIN_PASSWORD: ${CLUSTER_ADMIN_PASSWORD}
-    API_PORT: ${CLUSTER_API_PORT}
+    RELAY_URL: ${BOOTSTRAP_RELAY_URL}
     PERSISTENT_PATH: ${PERSISTENT_PATH}
     EPHEMERAL_PATH: ${EPHEMERAL_PATH}
     POLL_INTERVAL_SECONDS: ${BOOTSTRAP_POLL_INTERVAL_SECONDS}
@@ -43,12 +43,15 @@ services:
     environment:
       <<: *bootstrap-environment
       NODE_HOST: cluster1-node1
+      NODE_API_URL: https://localhost:${CLUSTER1_API_HOST_PORT}
       CLUSTER_NAME: ${CLUSTER1_FQDN}
 
   cluster1-node2:
     <<: *cluster-node
     hostname: ${CLUSTER1_NODE2_HOSTNAME}
     profiles: [multinode]
+    ports:
+      - "${CLUSTER1_NODE2_API_HOST_PORT}:${CLUSTER_API_PORT}"
     networks:
       default:
         ipv4_address: ${CLUSTER1_NODE2_IP}
@@ -65,6 +68,7 @@ services:
     environment:
       <<: *bootstrap-environment
       NODE_HOST: cluster1-node2
+      NODE_API_URL: https://localhost:${CLUSTER1_NODE2_API_HOST_PORT}
       CLUSTER_NODE_HOST: cluster1-node1
       CLUSTER_NODE_IP: ${CLUSTER1_NODE1_IP}
 
@@ -89,6 +93,7 @@ services:
     environment:
       <<: *bootstrap-environment
       NODE_HOST: cluster2-node1
+      NODE_API_URL: https://localhost:${CLUSTER2_API_HOST_PORT}
       CLUSTER_NAME: ${CLUSTER2_FQDN}
 
 networks:
