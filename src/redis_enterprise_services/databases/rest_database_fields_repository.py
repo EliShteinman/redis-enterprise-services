@@ -41,9 +41,6 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
         )
         return fields_snapshot(response=response, uid=uid)
 
-    def _fields_query_string(self, *, field_names: list[str]) -> str:
-        return fields_query_string(settings=self._cluster_api_settings.fields_query, field_names=field_names)
-
     def update_fields_if_state_unchanged(
         self, *, target: ClusterTarget, uid: int, values: dict[str, JsonValue], cluster_state_id: int
     ) -> None:
@@ -55,6 +52,9 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
             body=values,
             cluster_state_id=cluster_state_id,
         )
+
+    def _fields_query_string(self, *, field_names: list[str]) -> str:
+        return fields_query_string(settings=self._cluster_api_settings.fields_query, field_names=field_names)
 
 
 def fields_snapshot(*, response: SuccessfulClusterResponse, uid: int) -> DatabaseFieldsSnapshot:

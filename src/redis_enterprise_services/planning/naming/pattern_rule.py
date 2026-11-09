@@ -1,12 +1,13 @@
 import re
 
+from redis_enterprise_services.planning.naming.name_rule import NameRule
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 
 PATTERN_RULE_ID: str = "pattern"
 
 
-class PatternRule:
+class PatternRule(NameRule):
     def __init__(self, *, pattern: re.Pattern[str]) -> None:
         self._pattern: re.Pattern[str] = pattern
 

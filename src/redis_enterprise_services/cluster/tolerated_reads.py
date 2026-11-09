@@ -7,7 +7,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 
-class ReadAgainReads:
+class ToleratedReads:
     def __init__(
         self, *, is_done: Callable[[], bool], transient_error_codes: frozenset[str], subject: str
     ) -> None:
@@ -17,7 +17,7 @@ class ReadAgainReads:
         self._any_read_succeeded: bool = False
         self._last_read_error: RedisEnterpriseServicesError | None = None
 
-    def is_done_or_read_again(self) -> bool:
+    def is_done_tolerating_read_again_errors(self) -> bool:
         try:
             done: bool = self._is_done()
         except RedisEnterpriseServicesError as error:

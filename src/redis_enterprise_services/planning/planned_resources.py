@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import ClassVar, Final, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.planning.availability.requested_name import NameKind
 from redis_enterprise_services.planning.creation_step_keys import (
@@ -15,8 +15,12 @@ from redis_enterprise_services.planning.user_resource_naming import UserResource
 
 type PlannedResourceType = NameKind | Literal["permissions"]
 
+PERMISSIONS_RESOURCE_TYPE: Final[Literal["permissions"]] = "permissions"
+
 
 class PlannedResource(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     resource_type: PlannedResourceType
     name: str
     uid_step_key: str
@@ -47,6 +51,6 @@ def planned_resources_by_step_key(
         )
     if spec.users:
         planned_by_step_key[PERMISSIONS_STEP_KEY] = PlannedResource(
-            resource_type="permissions", name=database_name, uid_step_key=DATABASE_STEP_KEY
+            resource_type=PERMISSIONS_RESOURCE_TYPE, name=database_name, uid_step_key=DATABASE_STEP_KEY
         )
     return planned_by_step_key

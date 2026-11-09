@@ -1,10 +1,15 @@
 from redis import Redis
 from redis.commands.core import Script
 
-SAVE_TRACKED_RECORD: str = """
+from redis_enterprise_services.state.record_expiry import KEEP_OPEN_WITHOUT_EXPIRY
+
+SAVE_TRACKED_RECORD: str = (
+    """
 local record_key, tracking_set_key = KEYS[1], KEYS[2]
 local record_json, member, ttl_seconds = ARGV[1], ARGV[2], ARGV[3]
-if ttl_seconds == '0' then
+if ttl_seconds == '"""
+    + str(KEEP_OPEN_WITHOUT_EXPIRY)
+    + """' then
     redis.call('SET', record_key, record_json)
     redis.call('SADD', tracking_set_key, member)
 else
@@ -13,6 +18,7 @@ else
 end
 return true
 """
+)
 
 
 class TrackedRecordWriter:

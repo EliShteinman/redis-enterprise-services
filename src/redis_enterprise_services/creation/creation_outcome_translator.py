@@ -18,6 +18,11 @@ from redis_enterprise_services.saga.contract.saga_record import SagaRecord, Saga
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
+OPERATION_STATUS_BY_FAILED_SAGA_STATUS: dict[SagaStatus, OperationStatus] = {
+    SagaStatus.ROLLED_BACK: OperationStatus.ROLLED_BACK,
+    SagaStatus.REQUIRES_MANUAL_INTERVENTION: OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+}
+
 
 class CreationOutcomeTranslator:
     def __init__(self, *, resource_naming: UserResourceNaming, public_errors: PublicErrors) -> None:
@@ -36,7 +41,7 @@ class CreationOutcomeTranslator:
     ) -> Operation:
         return Operation(
             trace_id=trace_id,
-            status=OperationStatus(record.status.value),
+            status=OPERATION_STATUS_BY_FAILED_SAGA_STATUS[record.status],
             error=self._stopped_step_error(cluster=prepared_creation.cluster, record=record),
             not_rolled_back=self._not_rolled_back_resources(
                 prepared_creation=prepared_creation, record=record

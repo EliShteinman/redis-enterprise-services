@@ -101,8 +101,8 @@ class CreationExecution:
         if stored_record is None:
             return rejected_operation(trace_id=trace_id, error=error_if_not_started())
         logger.critical(
-            msg=f"saga {trace_id} stopped after it started, its outcome comes from its record",
-            exc_info=saga_error,
+            msg=f"saga {trace_id} stopped after it started ({type(saga_error).__name__}), "
+            "its outcome comes from its record"
         )
         return self._translated_or_manual_intervention_operation(
             trace_id=trace_id,
