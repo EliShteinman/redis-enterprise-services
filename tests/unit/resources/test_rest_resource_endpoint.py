@@ -29,14 +29,15 @@ def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
     )
 
 
-def test_start_creation_reads_the_uid_name_and_action_uid_of_the_answer() -> None:
-    endpoint: RestResourceEndpoint = endpoint_answering(
-        answer={"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
-    )
+ANSWER: dict[str, JsonValue] = {"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
+
+
+def test_start_creation_keeps_the_whole_answer() -> None:
+    endpoint: RestResourceEndpoint = endpoint_answering(answer=ANSWER)
 
     created: CreatedResource = endpoint.start_creation(target=TARGET, creation_body={"name": "app-user"})
 
-    assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
+    assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf", fields=ANSWER)
 
 
 def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
