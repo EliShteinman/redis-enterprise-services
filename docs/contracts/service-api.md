@@ -238,7 +238,8 @@
 ## 5. סטטוס: `GET /v1/operations/{trace_id}`
 
 `200` עם המצב הנוכחי (סעיף 4). `trace_id` שאינו 32 תווי hex קטנים, או שכולו אפסים ⇐ `422 validation_error` על
-`path.trace_id`. `trace_id` לא מוכר ⇐ `404 operation_not_found`.
+`path.trace_id`. `trace_id` לא מוכר ⇐ `404 operation_not_found`. גוף השגיאות כאן הוא `{"trace_id", "error"}`, בלי `status`
+(סעיף 6), כדי ש-`404` לא ייקרא כמו פעולה שנדחתה.
 
 **כמה זמן התוצאה נשמרת:** `succeeded`, `rejected` ו-`rolled_back` נשמרים 7 ימים (`state.finished_ttl_seconds`),
 ואחר כך ה-`trace_id` לא מוכר. `requires_manual_intervention` נשמר עד שמטפלים בו ידנית.
@@ -258,7 +259,12 @@
 
 ## 6. שגיאות
 
-תשובה מיידית עם שגיאה בנויה כמו כישלון בסטטוס: `{"trace_id", "status": "rejected", "database": null, "error"}`.
+תשובה מיידית עם שגיאה:
+- **בפקודה** (`POST /v1/databases/create`): בנויה כמו כישלון בסטטוס, `{"trace_id", "status": "rejected", "database": null, "error"}`,
+  כי הפקודה נדחתה ושום דבר לא השתנה.
+- **בכל השאר** (שאילתת הסטטוס, כתובת לא קיימת): `{"trace_id", "error"}`, בלי `status`, כי אין פעולה שנדחתה.
+  `trace_id` הוא של הבקשה עצמה.
+
 ב-`validation_error` יש גם `error.details`: רשימה של `{location, message}` לכל שדה שלא עומד בחוזה, למשל
 `body.spec.database.memory_size` או `header.traceparent`.
 
