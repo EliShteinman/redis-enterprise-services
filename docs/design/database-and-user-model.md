@@ -40,7 +40,8 @@
 | `slave_ha` | | | |
 
 **מה השירות מוסיף לגוף היצירה:**
-- `default_user: true` ו-`authentication_redis_pass`, עם הסיסמה הקבועה מ-Secret. חיבור בלי סיסמה נדחה (`NOAUTH`),
+- `default_user: true` ו-`authentication_redis_pass`, עם הסיסמה הקבועה מ-Secret. אותה סיסמה בכל ה-DBs, בכוונה (החלטת
+  הבעלים): זו לא פרצה. חיבור בלי סיסמה נדחה (`NOAUTH`),
   וחיבור עם הסיסמה עובד. הסיסמה לא נכנסת לקלט של הצעד ולא ל-saga record: היא ב-`database.secret_fields`, ונמחקת
   מתשובת ה-bdb לפני שהיא נשמרת.
 - `tags` מ-`database.default_tags` (היום `[]`). כך השדה קיים תמיד, ועדכון שלו בהמשך יוכל לשמור snapshot.
