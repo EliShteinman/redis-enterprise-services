@@ -27,7 +27,24 @@ def test_an_error_that_does_not_fit_the_status_is_refused(
         Operation(trace_id="trace-1", status=status, error=error)
 
 
-DATABASE: DatabaseResult = DatabaseResult(name="orders", active_active=False, db_id=1, clusters=[])
+DATABASE: DatabaseResult = DatabaseResult.model_validate(
+    {
+        "name": "orders",
+        "memory_size": 1,
+        "active_active": False,
+        "crdb_guid": None,
+        "clusters": [
+            {
+                "cluster_url": "https://c:9443",
+                "network": "n",
+                "site": "s",
+                "environment": "DEV",
+                "access": {"endpoints": [{"dns_name": "d", "port": 1, "addr": []}]},
+                "db": {"db_uid": 1, "settings": {}, "permissions": []},
+            }
+        ],
+    }
+)
 REMAINING: RemainingResource = RemainingResource(
     cluster_url="https://c1:9443", resource_type="acl", name="orders-app", uid=None, last_error=None
 )
