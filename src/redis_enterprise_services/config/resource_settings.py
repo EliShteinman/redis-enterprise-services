@@ -7,3 +7,4 @@ class ResourceSettings(ConfigModel):
     item_path: ItemPath
     list_fields: list[str]
     unreturned_fields: list[str]
+    secret_fields: list[str]
