@@ -16,4 +16,3 @@ class InvalidNameError(RedisEnterpriseServicesError):
 
 class NameTakenError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "name_taken"
-    status_code: ClassVar[int] = HTTPStatus.CONFLICT
