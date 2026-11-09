@@ -134,6 +134,18 @@ class StepRunner:
         return None
 
     def _find_outcome(self, *, step: PreparedStep, recorder: StepRecorder) -> FindOutcomeVerdict:
+        for _attempt in paced_attempts(
+            attempts=self._settings.step_retry.attempts,
+            backoff_step_seconds=self._settings.step_retry.backoff_step_seconds,
+            sleeper=self._sleeper,
+        ):
+            verdict: FindOutcomeVerdict | None = self._find_outcome_once(step=step, recorder=recorder)
+            if verdict is not None:
+                return verdict
+        logger.error(msg=f"finding the outcome of step {step.key} kept failing on transient errors")
+        return FindOutcomeVerdict.REQUIRES_MANUAL_INTERVENTION
+
+    def _find_outcome_once(self, *, step: PreparedStep, recorder: StepRecorder) -> FindOutcomeVerdict | None:
         try:
             return (
                 FindOutcomeVerdict.FOUND
@@ -141,12 +153,21 @@ class StepRunner:
                 else FindOutcomeVerdict.NOT_FOUND
             )
         except RedisEnterpriseServicesError as error:
-            logger.error(
-                msg=f"finding the outcome of step {step.key} failed, the step's own error stays: "
-                f"{error.coded_message()}"
+            category: FailureCategory = self._classifier.classify_find_outcome_error(error=error)
+            logger.warning(
+                msg=f"finding the outcome of step {step.key} failed ({category.value}), the step's own "
+                f"error stays: {error.coded_message()}"
             )
-            if self._classifier.classify_find_outcome_error(error=error) is FailureCategory.FAILED:
-                return FindOutcomeVerdict.FAILED
+            return verdict_after_find_outcome_error(category=category)
+
+
+def verdict_after_find_outcome_error(*, category: FailureCategory) -> FindOutcomeVerdict | None:
+    match category:
+        case FailureCategory.TRANSIENT:
+            return None
+        case FailureCategory.FAILED:
+            return FindOutcomeVerdict.FAILED
+        case FailureCategory.OUTCOME_UNKNOWN | FailureCategory.REQUIRES_MANUAL_INTERVENTION:
             return FindOutcomeVerdict.REQUIRES_MANUAL_INTERVENTION
 
 
