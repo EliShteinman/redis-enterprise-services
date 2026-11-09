@@ -38,7 +38,7 @@
 
 ## 3. Active-Active
 
-**חוזה:** `active_active: true` עם כמה `sites`. `db_id` הוא ה-UUID של ה-CRDB, ו-`clusters[]` כולל קלאסטר לכל אתר.
+**חוזה:** `active_active: true` עם כמה `sites`. `crdb_guid` הוא ה-UUID של ה-CRDB, ו-`clusters[]` כולל ענף לכל קלאסטר.
 
 **יצירה:**
 
@@ -70,7 +70,7 @@
 
 ## 4. עריכה ומחיקה: היעד וגילוי
 
-**היעד:** `target: {active_active, db_id, clusters}`, מהתוצאה של היצירה. `db_id` int באתר בודד ו-UUID ב-AA. כתובת
+**היעד:** `target: {active_active, crdb_guid, clusters}`, מהתוצאה של היצירה: `db_uid` לכל ענף, ו-`crdb_guid` ב-AA. כתובת
 קלאסטר שלא בקונפיג ⇐ `no_matching_cluster` מיד. בעריכת יוזרים, סיסמה חסרה או מיותרת לפי הטבלה בסעיף 6 ⇐
 `password_rules` מיד (`422`).
 
@@ -79,7 +79,7 @@
 
 | קוד | מתי |
 |---|---|
-| `database_not_found` | `db_id` לא נמצא |
+| `database_not_found` | `db_uid` (או `crdb_guid`) לא נמצא |
 | `clusters_mismatch` | `clusters` לא תואם לאתרים של ה-DB |
 | `sites_diverged` | ב-AA, אתר שונה מהאחרים בשדה שבעריכה |
 
