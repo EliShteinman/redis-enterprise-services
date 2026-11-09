@@ -62,11 +62,14 @@ class StepRunner:
 
     def run_to_outcome(self, *, step: PreparedStep, recorder: StepRecorder) -> StepOutcome:
         attempts_outcome: StepOutcome = self._run_with_retries(step=step, recorder=recorder)
-        outcome: StepOutcome = escalate_uncompensatable_failure(
+        outcome: StepOutcome = escalated_outcome(
             outcome=attempts_outcome, has_result=step.has_result, kind=step.kind
         )
         if outcome is not attempts_outcome:
-            logger.error(msg=f"step {step.key} kept a result that cannot be compensated")
+            logger.error(
+                msg=f"step {step.key} ended {attempts_outcome.value} in a way the saga cannot compensate, "
+                f"it needs manual intervention"
+            )
         mark_outcome(recorder=recorder, outcome=outcome)
         logger.info(msg=f"step {step.key} ended {outcome.value}")
         return outcome
@@ -209,9 +212,19 @@ def outcome_when_attempts_run_out(*, had_unknown_outcome: bool) -> StepOutcome:
     return StepOutcome.REQUIRES_MANUAL_INTERVENTION if had_unknown_outcome else StepOutcome.FAILED
 
 
-def escalate_uncompensatable_failure(
-    *, outcome: StepOutcome, has_result: bool, kind: StepKind
-) -> StepOutcome:
-    if outcome is StepOutcome.FAILED and has_result and kind is not StepKind.COMPENSATABLE:
+def escalated_outcome(*, outcome: StepOutcome, has_result: bool, kind: StepKind) -> StepOutcome:
+    if is_uncompensatable_failure(outcome=outcome, has_result=has_result, kind=kind):
+        return StepOutcome.REQUIRES_MANUAL_INTERVENTION
+    if is_compensatable_success_without_result(outcome=outcome, has_result=has_result, kind=kind):
         return StepOutcome.REQUIRES_MANUAL_INTERVENTION
     return outcome
+
+
+def is_uncompensatable_failure(*, outcome: StepOutcome, has_result: bool, kind: StepKind) -> bool:
+    return outcome is StepOutcome.FAILED and has_result and kind is not StepKind.COMPENSATABLE
+
+
+def is_compensatable_success_without_result(
+    *, outcome: StepOutcome, has_result: bool, kind: StepKind
+) -> bool:
+    return outcome is StepOutcome.DONE and not has_result and kind is StepKind.COMPENSATABLE

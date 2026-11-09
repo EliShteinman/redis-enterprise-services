@@ -44,4 +44,4 @@ def reject_repeated_keys(*, steps: list[PreparableStep]) -> None:
 
 def reject_empty_lock_keys(*, lock_keys: list[str]) -> None:
     if not lock_keys:
-        raise InvalidPlanError(message="a plan locks at least one database")
+        raise InvalidPlanError(message="a plan has at least one lock key")
