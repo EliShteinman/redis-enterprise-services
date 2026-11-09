@@ -1,8 +1,12 @@
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from redis_enterprise_services.resources.named_spec import NamedSpec
+
+type DataPersistence = Literal["disabled", "snapshot", "aof"]
+
+PERSISTENCE_MODE_BY_FIELD: dict[str, DataPersistence] = {"aof_policy": "aof", "snapshot_policy": "snapshot"}
 
 UNSET_MEANS_DEFAULT_DESCRIPTION: str = (
     " When omitted or null, the service's configured default for the target applies,"
@@ -71,7 +75,7 @@ class DatabaseOptions(BaseModel):
         + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]],
     )
-    data_persistence: Literal["disabled", "snapshot", "aof"] | None = Field(
+    data_persistence: DataPersistence | None = Field(
         default=None,
         description="How the data survives a restart: not at all, periodic snapshots, "
         "or an append-only file of every write." + UNSET_MEANS_DEFAULT_DESCRIPTION,
@@ -79,14 +83,14 @@ class DatabaseOptions(BaseModel):
     )
     aof_policy: Literal["appendfsync-every-sec", "appendfsync-always"] | None = Field(
         default=None,
-        description="Only with aof: write to disk every second, or on every write."
-        + UNSET_MEANS_DEFAULT_DESCRIPTION,
+        description="Only with aof, sent together with data_persistence aof: write to disk every second, "
+        "or on every write." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=["appendfsync-every-sec"],
     )
     snapshot_policy: list[SnapshotRule] | None = Field(
         default=None,
-        description="Only with snapshot: take a snapshot when any rule matches."
-        + UNSET_MEANS_DEFAULT_DESCRIPTION,
+        description="Only with snapshot, sent together with data_persistence snapshot: take a snapshot "
+        "when any rule matches." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[[{"secs": 3600, "writes": 1}]],
     )
     eviction_policy: EvictionPolicy | None = Field(
@@ -111,6 +115,13 @@ class DatabaseOptions(BaseModel):
         description="Move a replica to a healthy node when its node fails." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[True],
     )
+
+    @model_validator(mode="after")
+    def reject_persistence_settings_of_another_mode(self) -> Self:
+        for field, mode in PERSISTENCE_MODE_BY_FIELD.items():
+            if getattr(self, field) is not None and self.data_persistence != mode:
+                raise ValueError(f"{field} is sent only together with data_persistence {mode}")
+        return self
 
 
 class NewDatabase(NamedSpec, DatabaseOptions):
