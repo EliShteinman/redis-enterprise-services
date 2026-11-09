@@ -11,9 +11,7 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
-from redis_enterprise_services.planning.availability.name_availability import NameAvailability
-from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
+from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
@@ -26,9 +24,7 @@ class CreationExecution:
     def __init__(
         self,
         *,
-        name_check_scope: NameCheckScope,
-        name_availability: NameAvailability,
-        creation_naming: CreationNaming,
+        names_check: CreationNamesCheck,
         planner: SingleSiteCreationPlanner,
         saga_executor: SagaExecutor,
         outcome_translator: CreationOutcomeTranslator,
@@ -36,9 +32,7 @@ class CreationExecution:
         saga_record_reader: SagaRecordReader,
         operation_store: OperationStore,
     ) -> None:
-        self._name_check_scope: NameCheckScope = name_check_scope
-        self._name_availability: NameAvailability = name_availability
-        self._creation_naming: CreationNaming = creation_naming
+        self._names_check: CreationNamesCheck = names_check
         self._planner: SingleSiteCreationPlanner = planner
         self._saga_executor: SagaExecutor = saga_executor
         self._outcome_translator: CreationOutcomeTranslator = outcome_translator
@@ -78,19 +72,12 @@ class CreationExecution:
     def _run_saga(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaRecord:
         return self._saga_executor.run(
             saga_id=trace_id,
-            plan=self._planner.plan(
-                cluster=prepared_creation.cluster,
-                database=prepared_creation.spec.database,
-                users=prepared_creation.spec.users,
-            ),
+            plan=self._planner.plan(cluster=prepared_creation.cluster, spec=prepared_creation.spec),
             check_before_start=partial(self._ensure_names_free, prepared_creation=prepared_creation),
         )
 
     def _ensure_names_free(self, *, prepared_creation: PreparedCreation) -> None:
-        self._name_availability.ensure_free(
-            clusters=self._name_check_scope.clusters_to_check(chosen=prepared_creation.cluster),
-            requested_names=self._creation_naming.requested_names(spec=prepared_creation.spec),
-        )
+        self._names_check.ensure_free(cluster=prepared_creation.cluster, spec=prepared_creation.spec)
 
     def _operation_after_saga_error(
         self,

@@ -18,6 +18,7 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
+from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.database_spec import (
@@ -86,9 +87,11 @@ class ExecutionHarness:
         self.saga_record_reader: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.saga_record_reader.find.return_value = None
         self.execution: CreationExecution = CreationExecution(
-            name_check_scope=ChosenClusterScope(),
-            name_availability=self.name_availability,
-            creation_naming=create_autospec(spec=CreationNaming, instance=True),
+            names_check=CreationNamesCheck(
+                name_check_scope=ChosenClusterScope(),
+                name_availability=self.name_availability,
+                creation_naming=create_autospec(spec=CreationNaming, instance=True),
+            ),
             planner=self.planner,
             saga_executor=self.saga_executor,
             outcome_translator=CreationOutcomeTranslator(
