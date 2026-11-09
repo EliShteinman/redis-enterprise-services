@@ -1,11 +1,15 @@
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.operation_status import CLEANLY_ENDED_STATUSES, OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+
+STATUSES_WITHOUT_ERROR: frozenset[OperationStatus] = frozenset(
+    {OperationStatus.RUNNING, OperationStatus.SUCCEEDED}
+)
 
 
 class Operation(BaseModel):
@@ -38,6 +42,12 @@ class Operation(BaseModel):
         exclude_if=lambda not_rolled_back: not_rolled_back is None,
         description="What stayed on the clusters after a failure. Empty when everything was undone.",
     )
+
+    @model_validator(mode="after")
+    def reject_an_error_that_does_not_fit_the_status(self) -> Self:
+        if (self.error is None) != (self.status in STATUSES_WITHOUT_ERROR):
+            raise ValueError(f"an operation {self.status.value} has an error exactly when it did not succeed")
+        return self
 
     def has_ended_cleanly(self) -> bool:
         return self.status in CLEANLY_ENDED_STATUSES
