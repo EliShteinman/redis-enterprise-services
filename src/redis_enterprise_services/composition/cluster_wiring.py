@@ -210,4 +210,5 @@ def rest_repository[TSpec: NamedSpec](
         ),
         body_builder=body_builder,
         unreturned_fields=frozenset(resource.unreturned_fields),
+        secret_fields=frozenset(resource.secret_fields),
     )

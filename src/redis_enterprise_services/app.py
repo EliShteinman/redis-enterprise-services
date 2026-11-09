@@ -84,5 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         wiring.start()
         yield
     finally:
-        await asyncio.to_thread(wiring.stop)
-        telemetry.shutdown()
+        try:
+            await asyncio.to_thread(wiring.stop)
+        finally:
+            telemetry.shutdown()
