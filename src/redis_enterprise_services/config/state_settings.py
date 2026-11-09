@@ -15,7 +15,7 @@ class StateSettings(ConfigModel):
     username: str = Field(min_length=1)
     password: SecretStr = Field(min_length=1)
     key_prefix: str = Field(min_length=1)
-    hash_tag: str = Field(min_length=1)
+    hash_tag: str = Field(pattern=r"^[^{}]+$")
     socket_timeout_seconds: PositiveFloat
     finished_ttl_seconds: PositiveInt
     lock: LockSettings

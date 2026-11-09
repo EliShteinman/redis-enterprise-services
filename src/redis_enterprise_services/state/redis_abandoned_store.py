@@ -22,43 +22,43 @@ NO_INTERRUPTED_SAGA: str = ""
 NO_EXPECTED_SAGA: str = ""
 RELEASE_LOCKS: str = "1"
 KEEP_LOCKS: str = "0"
-FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
-    0: FinalizeAbandonedResult.NOT_ABANDONED,
-    1: FinalizeAbandonedResult.FINALIZED,
-    2: FinalizeAbandonedResult.SAGA_CHANGED,
-    3: FinalizeAbandonedResult.NOT_ABANDONED,
-}
+NOT_ABANDONED_CODE: int = 0
+FINALIZED_CODE: int = 1
+SAGA_CHANGED_CODE: int = 2
 OPERATION_MISSING_CODE: int = 3
+FINALIZE_ABANDONED_RESULT_BY_CODE: dict[int, FinalizeAbandonedResult] = {
+    NOT_ABANDONED_CODE: FinalizeAbandonedResult.NOT_ABANDONED,
+    FINALIZED_CODE: FinalizeAbandonedResult.FINALIZED,
+    SAGA_CHANGED_CODE: FinalizeAbandonedResult.SAGA_CHANGED,
+    OPERATION_MISSING_CODE: FinalizeAbandonedResult.NOT_ABANDONED,
+}
 
-FINALIZE_IF_STILL_ABANDONED: str = (
-    """
+FINALIZE_IF_STILL_ABANDONED: str = f"""
 if redis.call('EXISTS', KEYS[3]) == 1 then
-    return 0
+    return {NOT_ABANDONED_CODE}
 end
 local stored = redis.call('GET', KEYS[1])
 if not stored then
     redis.call('SREM', KEYS[2], ARGV[2])
-    return 3
+    return {OPERATION_MISSING_CODE}
 end
-if cjson.decode(stored)['status'] ~= ARGV[5] then
-    return 0
+if cjson.decode(stored)['{STATUS_FIELD}'] ~= ARGV[5] then
+    return {NOT_ABANDONED_CODE}
 end
 local saga = redis.call('GET', KEYS[4])
 if (saga or '') ~= ARGV[6] then
-    return 2
+    return {SAGA_CHANGED_CODE}
 end
-if ARGV[3] == '"""
-    + str(KEEP_OPEN_WITHOUT_EXPIRY)
-    + """' then
+if ARGV[3] == '{KEEP_OPEN_WITHOUT_EXPIRY}' then
     redis.call('SET', KEYS[1], ARGV[1])
 else
     redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
     redis.call('SREM', KEYS[2], ARGV[2])
 end
-if ARGV[4] ~= '' then
+if ARGV[4] ~= '{NO_INTERRUPTED_SAGA}' then
     redis.call('SET', KEYS[4], ARGV[4])
 end
-if ARGV[7] == '1' then
+if ARGV[7] == '{RELEASE_LOCKS}' then
     for i = 6, #KEYS do
         if redis.call('GET', KEYS[i]) == ARGV[2] then
             redis.call('DEL', KEYS[i])
@@ -66,9 +66,8 @@ if ARGV[7] == '1' then
         redis.call('SREM', KEYS[5], KEYS[i])
     end
 end
-return 1
+return {FINALIZED_CODE}
 """
-)
 
 
 class RedisAbandonedStore(AbandonedStore):
@@ -102,7 +101,9 @@ class RedisAbandonedStore(AbandonedStore):
         trace_id: str = operation.trace_id
         result_code: int = self._finalize_if_still_abandoned_script(
             keys=finalize_script_keys(
-                keys=self._keys, trace_id=trace_id, held_lock_keys=self._held_lock_keys(trace_id=trace_id)
+                keys=self._keys,
+                trace_id=trace_id,
+                held_lock_keys=self._held_lock_keys(trace_id=trace_id) if release_locks else [],
             ),
             args=finalize_script_args(
                 operation=operation,

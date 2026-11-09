@@ -83,13 +83,13 @@ class DatabaseOptions(BaseModel):
     )
     aof_policy: Literal["appendfsync-every-sec", "appendfsync-always"] | None = Field(
         default=None,
-        description="Only with aof, sent together with data_persistence aof: write to disk every second, "
+        description="Sent only together with data_persistence aof: write to disk every second, "
         "or on every write." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=["appendfsync-every-sec"],
     )
     snapshot_policy: list[SnapshotRule] | None = Field(
         default=None,
-        description="Only with snapshot, sent together with data_persistence snapshot: take a snapshot "
+        description="Sent only together with data_persistence snapshot: take a snapshot "
         "when any rule matches." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[[{"secs": 3600, "writes": 1}]],
     )
