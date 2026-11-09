@@ -186,30 +186,32 @@ def test_the_final_operation_is_stored(executor_result: SagaRecord | RedisEnterp
     harness.operation_store.save.assert_called_once_with(operation=operation)
 
 
-@pytest.mark.parametrize(
-    argnames=("failing_collaborator", "status"),
-    argvalues=[
-        ("planner", OperationStatus.REJECTED),
-        ("executor", OperationStatus.REQUIRES_MANUAL_INTERVENTION),
-    ],
-)
-def test_an_unexpected_error_still_ends_the_operation(
-    failing_collaborator: str, status: OperationStatus
-) -> None:
+def test_an_unexpected_error_before_the_saga_starts_rejects_the_operation() -> None:
     harness: ExecutionHarness = ExecutionHarness()
-    harness.planner.plan.side_effect = RuntimeError("bug") if failing_collaborator == "planner" else None
-    harness.saga_executor.run.side_effect = (
-        RuntimeError("bug") if failing_collaborator == "executor" else None
+    harness.planner.plan.side_effect = RuntimeError("bug")
+
+    operation: Operation = harness.run_and_save()
+
+    assert (operation.status, operation.error and operation.error.code) == (
+        OperationStatus.REJECTED,
+        "internal_error",
     )
-    harness.saga_record_reader.find.return_value = (
-        saga_record_with_every_step_done(status=SagaStatus.REQUIRES_MANUAL_INTERVENTION)
-        if failing_collaborator == "executor"
-        else None
+
+
+def test_a_result_that_cannot_be_translated_needs_manual_intervention() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    record: SagaRecord = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
+    harness.saga_executor.run.return_value = record.model_copy(
+        update={"steps": [step for step in record.steps if step.key != "user/app"]}
     )
 
     operation: Operation = harness.run_and_save()
 
-    assert (operation.status, operation.error and operation.error.code) == (status, "internal_error")
+    assert (operation.status, operation.error and operation.error.code, operation.not_rolled_back) == (
+        OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+        "internal_error",
+        None,
+    )
 
 
 def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() -> None:

@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from functools import partial
 
 from pydantic import ValidationError
@@ -58,8 +59,8 @@ class CreationExecution:
                 trace_id=trace_id,
                 prepared_creation=prepared_creation,
                 saga_error=error,
-                error_if_not_started=self._public_errors.from_error(
-                    error=error, cluster_url=prepared_creation.cluster.api_url
+                error_if_not_started=partial(
+                    self._public_errors.from_error, error=error, cluster_url=prepared_creation.cluster.api_url
                 ),
             )
         except Exception as error:
@@ -68,7 +69,7 @@ class CreationExecution:
                 trace_id=trace_id,
                 prepared_creation=prepared_creation,
                 saga_error=error,
-                error_if_not_started=self._public_errors.internal_error(),
+                error_if_not_started=self._public_errors.internal_error,
             )
         return self._translated_or_manual_intervention_operation(
             trace_id=trace_id, prepared_creation=prepared_creation, record=record
@@ -97,7 +98,7 @@ class CreationExecution:
         trace_id: str,
         prepared_creation: PreparedCreation,
         saga_error: Exception,
-        error_if_not_started: PublicError,
+        error_if_not_started: Callable[[], PublicError],
     ) -> Operation:
         try:
             stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
@@ -107,7 +108,7 @@ class CreationExecution:
                 trace_id=trace_id, error=self._public_errors.internal_error()
             )
         if stored_record is None:
-            return rejected_operation(trace_id=trace_id, error=error_if_not_started)
+            return rejected_operation(trace_id=trace_id, error=error_if_not_started())
         logger.critical(
             msg=f"saga {trace_id} stopped after it started, its outcome comes from its record",
             exc_info=saga_error,
