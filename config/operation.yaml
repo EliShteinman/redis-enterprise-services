@@ -21,6 +21,7 @@ operation:
     configuration_error: configuration_error
     invalid_plan: internal_error
     missing_step_result: internal_error
+    step_needs_manual_intervention: internal_error
     missing_step_record: internal_error
   public_codes_with_cluster_details:
     - cluster_request_failed

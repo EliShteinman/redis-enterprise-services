@@ -2,4 +2,5 @@ acl:
   collection_path: /v1/redis_acls
   item_path: /v1/redis_acls/{uid}
   unreturned_fields: []
+  secret_fields: []
   list_fields: []
