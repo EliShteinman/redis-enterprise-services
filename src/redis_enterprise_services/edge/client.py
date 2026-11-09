@@ -31,8 +31,10 @@ class EdgeClient:
         logger.debug(msg=request_line)
         relay_response: requests.Response = self._post_to_relay(
             network=network,
-            relay_url=network_settings.url,
-            headers=self._header_builder.build(request=request, network_settings=network_settings),
+            relay_url=self._settings.url,
+            headers=self._header_builder.build(
+                request=request, network=network, network_settings=network_settings
+            ),
             data=encoded_json_body(body=request.body),
             request_line=request_line,
         )

@@ -180,3 +180,22 @@ def test_a_transport_failure_maps_to_not_sent_connection_failed_or_outcome_unkno
 ) -> None:
     with pytest.raises(expected_exception=expected):
         send_through_relay_answering(settings=settings, relay_outcome=error, monkeypatch=monkeypatch)
+
+
+def test_every_call_goes_to_the_one_nginx_address_with_the_network_in_a_header(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
+) -> None:
+    sent: list[tuple[object, object]] = []
+
+    def fake_post(*, url: object, headers: dict[str, str], **_: object) -> requests.Response:
+        sent.append((url, headers.get(settings.headers.network)))
+        return relay_response(status_code=200, headers={})
+
+    monkeypatch.setattr(target=requests, name="post", value=fake_post)
+    EdgeClient(
+        settings=settings,
+        header_builder=EdgeHeaderBuilder(settings=settings),
+        response_reader=EdgeResponseReader(settings=settings),
+    ).send(network=NETWORK, request=REQUEST)
+
+    assert sent == [(settings.url, NETWORK)]
