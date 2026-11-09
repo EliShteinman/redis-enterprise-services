@@ -288,8 +288,9 @@
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 
-אלה הקודים היחידים שחוזרים, והם מופיעים כרשימה סגורה (`enum`) בסכמה: ב-`error` של הסטטוס רק הקודים שמסומנים "בסטטוס",
-ובתשובה המיידית כולם. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
+אלה הקודים היחידים שחוזרים, והם מופיעים כרשימה סגורה (`enum`) בסכמה. ב-`error` של הסטטוס: הקודים שלא שייכים ל-API
+עצמו (`PublicErrorCode`), כלומר כולם חוץ מ-`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed` ו-
+`http_error`. בפועל `invalid_name` ו-`no_matching_cluster` חוזרים רק מיד. בתשובה המיידית כולם. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
 
 ---
 
