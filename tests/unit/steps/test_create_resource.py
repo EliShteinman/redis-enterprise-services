@@ -11,6 +11,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
     DuplicateResourceNameError,
+    IncompleteClusterObjectError,
 )
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput, NamedResource
 from redis_enterprise_services.resources.repository import ResourceRepository
@@ -25,7 +26,10 @@ TARGET: ClusterTarget = ClusterTarget(
 )
 SPEC: NewUser = NewUser(name="app-user", password="Aa1!password", role_uids=[5])
 STEP_INPUT: CreateResourceInput[NewUser] = CreateResourceInput(cluster=ADDRESS, spec=SPEC)
-CREATED: CreatedResource = CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf")
+CREATED: CreatedResource = CreatedResource(
+    uid=6, name="app-user", action_uid="c7d4bccf", fields={"uid": 6, "name": "app-user", "role_uids": [5]}
+)
+READ_BACK: CreatedResource = CreatedResource(uid=6, name="app-user", action_uid=None, fields={"uid": 6})
 DELETE_ACTION_UID: str = "e85d7b88"
 
 
@@ -37,6 +41,8 @@ def ignore_found(*, result: CreatedResource) -> None:
 def repository() -> MagicMock:
     repository: MagicMock = create_autospec(spec=ResourceRepository, instance=True)
     repository.start_creation.return_value = CREATED
+    repository.read_created.return_value = READ_BACK
+    repository.missing_fields.return_value = []
     repository.start_deletion.return_value = DELETE_ACTION_UID
     return repository
 
@@ -135,7 +141,7 @@ def test_find_outcome_finds_the_resource_by_the_spec_name(
         step_input=STEP_INPUT, kept_result=None, keep_result_if_none_kept=ignore_found
     )
 
-    assert found == CreatedResource(uid=6, name="app-user", action_uid=None)
+    assert found == READ_BACK
 
 
 def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_failed(
@@ -154,7 +160,7 @@ def test_find_outcome_keeps_the_resource_found_by_name_even_when_its_creation_fa
             keep_result_if_none_kept=lambda result: kept.append(result),
         )
 
-    assert kept == [CreatedResource(uid=6, name="app-user", action_uid=None)]
+    assert kept == [READ_BACK]
 
 
 def test_find_outcome_returns_none_when_the_resource_does_not_exist(
@@ -197,3 +203,24 @@ def test_find_outcome_waits_until_the_kept_resource_is_created(
     step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
 
     completion_waiter.wait_for_pending_creation.assert_called_once_with(target=TARGET, resource=CREATED)
+
+
+def test_an_incomplete_created_object_fails_after_the_saga_has_its_uid(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.missing_fields.return_value = ["role_uids"]
+    kept: list[CreatedResource] = []
+
+    with pytest.raises(expected_exception=IncompleteClusterObjectError):
+        step.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
+
+    assert kept == [CREATED]
+
+
+def test_find_outcome_also_rejects_an_incomplete_kept_object(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.missing_fields.return_value = ["role_uids"]
+
+    with pytest.raises(expected_exception=IncompleteClusterObjectError):
+        step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)

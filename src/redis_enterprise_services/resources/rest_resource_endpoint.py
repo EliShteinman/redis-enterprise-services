@@ -53,6 +53,11 @@ class RestResourceEndpoint(ResourceEndpoint):
         ).body
         return self._action_uid(response_body=response_body)
 
+    def read_item(self, *, target: ClusterTarget, uid: int) -> CreatedResource:
+        path: str = self._settings.item_path.format(uid=uid)
+        response_body: JsonValue = self._cluster_api_caller.send(target=target, method="GET", path=path).body
+        return created_resource(response_body=response_body, requested_name=path, action_uid=None)
+
     def list_uids_and_names(self, *, target: ClusterTarget) -> list[NamedResource]:
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target,
@@ -85,4 +90,5 @@ def created_resource(
         adapter=NAMED_RESOURCE_ADAPTER,
         message_prefix=f"created {requested_name}, unreadable response fields",
     )
-    return CreatedResource(uid=resource.uid, name=resource.name, action_uid=action_uid)
+    fields: dict[str, JsonValue] = response_body if isinstance(response_body, dict) else {}
+    return CreatedResource(uid=resource.uid, name=resource.name, action_uid=action_uid, fields=fields)
