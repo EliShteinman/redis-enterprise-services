@@ -3,17 +3,7 @@ set -eu
 
 bootstrap_url="https://${NODE_HOST}:${API_PORT}/v1/bootstrap"
 
-read_state() {
-    curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" \
-        | sed -n 's/.*"state": *"\([a-z_]*\)".*/\1/p'
-}
-
-wait_for_first_state() {
-    until state="$(read_state)" && [ -n "${state}" ]; do
-        sleep "${POLL_INTERVAL_SECONDS}"
-    done
-    echo "${state}"
-}
+. "$(dirname "$0")/bootstrap-state.sh"
 
 create_cluster() {
     curl --silent --insecure --fail-with-body \
@@ -38,18 +28,6 @@ install_license() {
             --data @-
 }
 
-wait_for_bootstrap() {
-    state="$(read_state)"
-    while [ "${state}" != "completed" ]; do
-        if [ "${state}" = "error" ]; then
-            echo "Bootstrap of ${CLUSTER_NAME} failed" >&2
-            curl --silent --insecure --user "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" "${bootstrap_url}" >&2
-            exit 1
-        fi
-        sleep "${POLL_INTERVAL_SECONDS}"
-        state="$(read_state)"
-    done
-}
 
 echo "Waiting for ${NODE_HOST} to accept bootstrap requests"
 state="$(wait_for_first_state)"
@@ -59,7 +37,7 @@ if [ "${state}" = "completed" ]; then
 else
     echo "Creating cluster ${CLUSTER_NAME}"
     create_cluster
-    wait_for_bootstrap
+    wait_until_completed "Bootstrap of ${CLUSTER_NAME} failed"
 fi
 
 if [ -f "${LICENSE_FILE}" ]; then

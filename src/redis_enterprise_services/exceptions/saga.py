@@ -1,4 +1,3 @@
-from http import HTTPStatus
 from typing import ClassVar
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -6,7 +5,6 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 class ResourcesLockedError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "resources_locked"
-    status_code: ClassVar[int] = HTTPStatus.CONFLICT
 
 
 class InvalidPlanError(RedisEnterpriseServicesError):
