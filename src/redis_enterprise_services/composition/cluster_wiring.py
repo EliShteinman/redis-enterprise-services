@@ -38,31 +38,8 @@ class ClusterWiring:
             transient_error_codes=settings.cluster_api.transient_error_codes,
         )
         self.target_resolver: ClusterTargetResolver = build_target_resolver(settings=settings)
-        self.repositories: ClusterRepositories = ClusterRepositories(
-            database=build_database_repository(settings=settings, cluster_api_caller=cluster_api_caller),
-            acl=rest_repository(
-                cluster_api_caller=cluster_api_caller,
-                cluster_api_settings=settings.cluster_api,
-                resource=settings.acl,
-                body_builder=SpecCreationBody[NewAcl](),
-            ),
-            role=rest_repository(
-                cluster_api_caller=cluster_api_caller,
-                cluster_api_settings=settings.cluster_api,
-                resource=settings.role,
-                body_builder=RoleCreationBodyBuilder(settings=settings.role),
-            ),
-            user=rest_repository(
-                cluster_api_caller=cluster_api_caller,
-                cluster_api_settings=settings.cluster_api,
-                resource=settings.user,
-                body_builder=SpecCreationBody[NewUser](),
-            ),
-            database_fields=RestDatabaseFieldsRepository(
-                cluster_api_caller=cluster_api_caller,
-                settings=settings.database,
-                cluster_api_settings=settings.cluster_api,
-            ),
+        self.repositories: ClusterRepositories = build_cluster_repositories(
+            settings=settings, cluster_api_caller=cluster_api_caller
         )
         self.steps: ClusterSteps = ClusterSteps(
             settings=settings,
@@ -135,6 +112,37 @@ class ClusterSteps:
             target_resolver=target_resolver,
             order_insensitive_fields=settings.database.order_insensitive_fields,
         )
+
+
+def build_cluster_repositories(
+    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
+) -> ClusterRepositories:
+    return ClusterRepositories(
+        database=build_database_repository(settings=settings, cluster_api_caller=cluster_api_caller),
+        acl=rest_repository(
+            cluster_api_caller=cluster_api_caller,
+            cluster_api_settings=settings.cluster_api,
+            resource=settings.acl,
+            body_builder=SpecCreationBody[NewAcl](),
+        ),
+        role=rest_repository(
+            cluster_api_caller=cluster_api_caller,
+            cluster_api_settings=settings.cluster_api,
+            resource=settings.role,
+            body_builder=RoleCreationBodyBuilder(settings=settings.role),
+        ),
+        user=rest_repository(
+            cluster_api_caller=cluster_api_caller,
+            cluster_api_settings=settings.cluster_api,
+            resource=settings.user,
+            body_builder=SpecCreationBody[NewUser](),
+        ),
+        database_fields=RestDatabaseFieldsRepository(
+            cluster_api_caller=cluster_api_caller,
+            settings=settings.database,
+            cluster_api_settings=settings.cluster_api,
+        ),
+    )
 
 
 def build_cluster_api_caller(*, settings: Settings) -> EdgeClusterApiCaller:

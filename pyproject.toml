@@ -141,8 +141,6 @@ source_modules = [
     "redis_enterprise_services.creation",
     "redis_enterprise_services.planning",
     "redis_enterprise_services.recovery",
-    "redis_enterprise_services.liveness",
-    "redis_enterprise_services.operations",
 ]
 forbidden_modules = ["redis_enterprise_services.edge"]
 allow_indirect_imports = true

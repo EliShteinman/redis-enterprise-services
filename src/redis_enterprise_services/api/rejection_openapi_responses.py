@@ -22,7 +22,8 @@ CREATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_
         HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, the traceparent header "
         "is missing or malformed, a name breaks the naming rules, or the target has no configured cluster.",
         HTTPStatus.INTERNAL_SERVER_ERROR: "configuration_error (the service configuration cannot serve the "
-        "request) or internal_error (a bug). The details are in the service log, by trace_id.",
+        "request; the message says what is missing) or internal_error (a fixed message; the details are in "
+        "the service log, by trace_id).",
     },
 )
 OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
@@ -31,7 +32,7 @@ OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection
         HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired.",
         HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed, or the trace_id "
         "is not 32 lowercase hex characters, or it is all zeros.",
-        HTTPStatus.INTERNAL_SERVER_ERROR: "internal_error (a bug). The details are in the service log, by "
-        "trace_id.",
+        HTTPStatus.INTERNAL_SERVER_ERROR: "internal_error (a fixed message; the details are in the service "
+        "log, by trace_id).",
     },
 )
