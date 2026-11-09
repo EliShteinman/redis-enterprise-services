@@ -35,9 +35,9 @@ class UpdateDatabaseStep(SagaStep[UpdateDatabaseInput, DatabaseFieldsSnapshot]):
         order_insensitive_fields: frozenset[str],
     ) -> None:
         self._repository: DatabaseFieldsRepository = repository
-        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
         self._activation_waiter: DatabaseActivationWaiter = activation_waiter
         self._target_resolver: ClusterTargetResolver = target_resolver
+        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
 
     @property
     def kind(self) -> StepKind:

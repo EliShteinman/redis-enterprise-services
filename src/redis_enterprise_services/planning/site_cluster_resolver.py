@@ -1,9 +1,9 @@
 import logging
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.exceptions.planning import NoMatchingClusterError
 from redis_enterprise_services.planning.cluster_chooser import ClusterChooser
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
+from redis_enterprise_services.planning.no_matching_cluster import raise_if_no_candidates
 from redis_enterprise_services.planning.site_placement import SitePlacement
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -20,11 +20,3 @@ class SiteClusterResolver:
         chosen: ConfiguredCluster = self._chooser.choose(placement=placement, candidates=candidates)
         logger.info(msg=f"{placement.describe()} resolves to cluster {chosen.name}")
         return chosen
-
-
-def raise_if_no_candidates(*, placement: SitePlacement, candidates: list[ConfiguredCluster]) -> None:
-    if candidates:
-        return
-    message: str = f"no cluster is configured for {placement.describe()}"
-    logger.warning(msg=message)
-    raise NoMatchingClusterError(message=message)

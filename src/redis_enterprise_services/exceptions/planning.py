@@ -6,12 +6,12 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 class NoMatchingClusterError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "no_matching_cluster"
-    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_ENTITY
+    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_CONTENT
 
 
 class InvalidNameError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "invalid_name"
-    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_ENTITY
+    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_CONTENT
 
 
 class NameTakenError(RedisEnterpriseServicesError):

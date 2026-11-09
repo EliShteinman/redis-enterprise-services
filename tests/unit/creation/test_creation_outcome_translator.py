@@ -52,7 +52,7 @@ PREPARED_CREATION: PreparedCreation = PreparedCreation(
     ),
 )
 REJECTED_BY_CLUSTER: StepError = StepError(
-    code="cluster_rejected_request", message="user name is taken", remote_code="name_already_exists"
+    code="cluster_rejected_request", message="cluster answered 400", remote_code="invalid_param"
 )
 COMPENSATION_ERROR: StepError = StepError(code="unreadable_cluster_response", message="relay is down")
 
@@ -97,9 +97,9 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
     assert (operation.error, operation.not_rolled_back) == (
         PublicError(
             code="cluster_request_failed",
-            message="user name is taken",
+            message="cluster answered 400",
             cluster_url="https://c1:9443",
-            cluster_error_code="name_already_exists",
+            cluster_error_code="invalid_param",
         ),
         [],
     )
@@ -151,3 +151,14 @@ def test_the_permissions_left_behind_report_the_database_uid() -> None:
     )
 
     assert operation.not_rolled_back is not None and operation.not_rolled_back[-1].uid == 7
+
+
+def test_an_interrupted_creation_reports_an_internal_error() -> None:
+    operation: Operation = translated_operation(
+        status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        steps=[step_record(key="database", status=StepStatus.UNRESOLVED)],
+        stopped_at="database",
+    )
+
+    assert operation.error is not None
+    assert operation.error.code == "internal_error"
