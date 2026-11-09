@@ -15,7 +15,7 @@
 | מזהה בקשה | header `traceparent` בפורמט W3C, חובה ב-routes של `/v1/`. חסר או לא תקין ⇐ `422 validation_error` על `header.traceparent`. ה-`trace_id` של הפעולה הוא ה-trace id שבו (32 תווי hex) |
 | אסינכרוני | פקודה מחזירה מיד `202` עם `trace_id` ו-`status: running`. התוצאה בשאילתת הסטטוס (סעיף 5) |
 | IDs | ביצירה לא שולחים IDs. הם חוזרים בתוצאה |
-| סיסמאות | נשלחות בבקשה, ולא חוזרות אף פעם |
+| סיסמאות | סיסמה של יוזר נשלחת בבקשה וחוזרת בתוצאה (הקלאסטר לא מחזיר סיסמאות, ולכן חוזרת זו שהוא קיבל). סיסמאות פנימיות של ה-DB ושל הקלאסטר לא חוזרות ולא נשמרות |
 | הזדהות | אין עדיין (סעיף 7) |
 
 | route | |
@@ -172,7 +172,7 @@
     "crdb_guid": null,
     "clusters": [
       {
-        "cluster_url": "https://cluster-a.net-a:9443",
+        "cluster": "cluster-a", "cluster_url": "https://cluster-a.net-a:9443",
         "network": "net-a", "site": "dc1", "environment": "PROD",
         "access": {
           "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
@@ -192,22 +192,25 @@
 }
 ```
 
-כל ערך בתוצאה נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה, ולכן חוזרת
-הסיסמה שהקלאסטר קיבל כשיצר את היוזר.
+כל ערך של ה-DB, של היוזר ושל ה-ACL נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
+ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster`, `cluster_url`, `network`, `site` ו-`environment` מגיעים
+מהקונפיג. `active_active: false` ו-`crdb_guid: null` קבועים עד Active-Active.
 
 | שדה | הערה |
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-id של Active-Active. `null` ל-DB באתר אחד |
 | `database.clusters[]` | ענף לכל קלאסטר. היום קלאסטר אחד |
-| `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד |
+| `clusters[].cluster` | שם הקלאסטר מהקונפיג |
+| `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
 | `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
 | `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
-| `clusters[].db.permissions[]` | לכל יוזר: היוזר וה-ACL שלו, שנוצרים ונמחקים יחד. ה-role פנימי ולא מוחזר |
+| `clusters[].db.permissions[]` | לכל יוזר: היוזר וה-ACL שלו, שנוצרים ונמחקים יחד. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף. ה-role פנימי ולא מוחזר |
 
 **מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
 פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB
-המלא, ובודק שיש ערך לכל שדות מודל היצירה, ל-`uid`, ל-`status` ול-`endpoints`. אובייקט לא מלא, שדה בלי ערך, או DB בלי endpoint עם `dns_name`,
+המלא, ובודק שיש ערך לכל שדות מודל היצירה, ל-`uid`, ל-`status` ול-`endpoints`, שכל endpoint מלא, ושההרשאות שנקבעו
+נמצאות ב-`roles_permissions`. אובייקט לא מלא, שדה בלי ערך, או DB בלי endpoint עם `dns_name`,
 `port` ו-`addr`, הם כישלון ודאי (`incomplete_cluster_object`, בציבורי `cluster_request_failed`): הכל מתבטל.
 
 ### כישלון
@@ -306,7 +309,7 @@
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. מיד: `message` קבוע (`internal error`). בסטטוס: כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרת (קריסה, record שלא נקרא, תוצאה שלא נבנתה) ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, או פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted` |
+| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט חזר בלי ערך לשדה שנשלח (`incomplete_cluster_object`) |
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 
