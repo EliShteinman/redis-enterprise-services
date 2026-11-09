@@ -15,6 +15,7 @@ from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.edge.response_reader import EdgeResponseReader
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.edge import (
     EdgeConnectionFailedError,
     EdgeError,
@@ -168,13 +169,14 @@ def test_a_relay_rejected_response_keeps_the_cluster_status(
         ),
         (requests.ConnectionError(ProtocolError("connection aborted")), EdgeOutcomeUnknownError),
         (requests.ReadTimeout("read timed out"), EdgeOutcomeUnknownError),
+        (requests.exceptions.InvalidHeader("bad header value"), EdgeRejectedRequestError),
     ],
 )
-def test_a_transport_failure_maps_to_connection_failed_or_outcome_unknown(
+def test_a_transport_failure_maps_to_not_sent_connection_failed_or_outcome_unknown(
     monkeypatch: pytest.MonkeyPatch,
     settings: EdgeSettings,
     error: requests.RequestException,
-    expected: type[EdgeError],
+    expected: type[RedisEnterpriseServicesError],
 ) -> None:
     with pytest.raises(expected_exception=expected):
         send_through_relay_answering(settings=settings, relay_outcome=error, monkeypatch=monkeypatch)
