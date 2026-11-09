@@ -104,29 +104,5 @@ Redis מאפשר הבדלים, אבל השירות לא ישתמש בזה.
 | user | `role_uids` | ה-Saga | |
 
 - **יוזר חייב role אחד לפחות.** בלי role הקלאסטר מחזיר `400`. לכן ה-role נוצר לפני היוזר.
-- **`email_alerts` של יוזר חדש דלוק כברירת מחדל**. ראו סעיף 6.
+- **`email_alerts` של יוזר חדש דלוק כברירת מחדל**. מה לעשות איתו פתוח: `planned.md`.
 - **יוזר עם `management: none`** מקבל `403` מה-REST API.
-
----
-
-## 6. פתוח
-
-| שדה | מה פתוח |
-|---|---|
-| `tags` | ניהול tags מה-UI (היום נשלחים רק ה-tags מהקונפיג) |
-| שינוי `name` | לא הוחלט. אם יתאפשר, גם שמות ה-ACL וה-role שנגזרים ממנו ישתנו |
-| התראות | `email_alerts` של ה-DB, ו-`email_alerts` / `bdbs_email_alerts` של היוזר (דלוק כברירת מחדל ביוזר חדש) |
-
-### שדות לבדיקה עתידית
-
-| שדה | מה הוא עושה |
-|---|---|
-| `auto_upgrade` | מעדכן את גרסת ה-DB אוטומטית אחרי שהקלאסטר מתעדכן |
-| `master_persistence` | כותב AOF גם ב-master. כרגע ה-master לא כותב. |
-| `crdt_causal_consistency` | ב-AA, מבטיח שעדכונים מגיעים לכל האתרים לפי סדר התלות ביניהם |
-| `replication_oom_threshold_percent` | ב-AA, מ-8.4: חוסם כתיבות של לקוחות לפני OOM, כדי שהסנכרון בין האתרים ימשיך |
-| `instances[].compression` | ב-AA: רמת הדחיסה של הסנכרון בין האתרים (0–6, ברירת מחדל 3) |
-| `mkms` | פקודות multi-key על פני כמה shards. ב-AA לא נתמך. |
-| `slave_ha_priority` | הסדר שבו DBs מקבלים replica חדשה אחרי נפילת node |
-| `metrics_export_all` | מוציא את כל המטריקות של ה-shards ל-Prometheus |
-| `query_performance_factor` | מקצה יותר CPU ל-Search בכל shard. ב-8.x משתנה בלי restart. |
