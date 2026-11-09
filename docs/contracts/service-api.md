@@ -211,6 +211,9 @@
 | `rolled_back` | נכשל, והכל בוטל. שום דבר לא השתנה |
 | `requires_manual_intervention` | נכשל, ולא הכל בוטל, או שלא ידוע מה נשאר. דורש טיפול ידני |
 
+**שדות שתמיד קיימים** (חובה בסכמה): `trace_id`, `status` ו-`database`, שהוא `null` כל עוד אין הצלחה. `error` ו-`not_rolled_back`
+מופיעים רק כשיש להם ערך.
+
 **`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster_url` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
 
