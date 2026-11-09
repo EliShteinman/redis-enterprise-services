@@ -10,5 +10,12 @@ class NameRulesSettings(ConfigModel):
     max_length: PositiveInt
 
 
+class RedisNameRulesSettings(ConfigModel):
+    database: NameRulesSettings
+    user: NameRulesSettings
+    acl_and_role: NameRulesSettings
+
+
 class NamingSettings(ConfigModel):
     database: NameRulesSettings
+    redis: RedisNameRulesSettings
