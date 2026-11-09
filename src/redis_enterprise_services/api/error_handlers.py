@@ -11,12 +11,13 @@ from redis_enterprise_services.api.rejection_error import FieldError, RejectionE
 from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.operation import OperationNotFoundError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 
 VALIDATION_ERROR_CODE: str = "validation_error"
 LOCATION_SEPARATOR: str = "."
 UNKNOWN_HTTP_ERROR_CODE: str = "http_error"
-API_ONLY_ERROR_CODES: frozenset[str] = frozenset({"operation_not_found"})
+API_ONLY_ERROR_CODES: frozenset[str] = frozenset({OperationNotFoundError.code})
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -34,10 +35,14 @@ class ServiceErrorHandler:
             level=log_level_for_status(status_code=error.status_code), msg=f"{error.code}: {error.message}"
         )
         return rejection_response(
-            request=request,
-            status_code=error.status_code,
-            error=RejectionError(code=self._public_code(internal_code=error.code), message=error.message),
+            request=request, status_code=error.status_code, error=self._rejection_error(error=error)
         )
+
+    def _rejection_error(self, *, error: RedisEnterpriseServicesError) -> RejectionError:
+        public_code: str = self._public_code(internal_code=error.code)
+        if public_code == RedisEnterpriseServicesError.code:
+            return RejectionError(code=public_code, message=self._public_errors.internal_error().message)
+        return RejectionError(code=public_code, message=error.message)
 
     def _public_code(self, *, internal_code: str) -> str:
         if internal_code in API_ONLY_ERROR_CODES:

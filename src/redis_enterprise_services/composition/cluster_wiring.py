@@ -21,7 +21,6 @@ from redis_enterprise_services.resources.action_completion_waiter import ActionC
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder, SpecCreationBody
 from redis_enterprise_services.resources.endpoint_resource_repository import EndpointResourceRepository
 from redis_enterprise_services.resources.named_spec import NamedSpec
-from redis_enterprise_services.resources.resource_completion_waiter import ResourceCompletionWaiter
 from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.roles.role_creation_body_builder import RoleCreationBodyBuilder
@@ -39,14 +38,8 @@ class ClusterWiring:
             transient_error_codes=settings.cluster_api.transient_error_codes,
         )
         self.target_resolver: ClusterTargetResolver = build_target_resolver(settings=settings)
-        self.database_repository: EndpointResourceRepository[NewDatabase] = rest_repository(
-            cluster_api_caller=cluster_api_caller,
-            cluster_api_settings=settings.cluster_api,
-            resource=settings.database,
-            body_builder=DatabaseCreationBodyBuilder(
-                default_user_password=settings.database.default_user_password,
-                default_tags=settings.database.default_tags,
-            ),
+        self.database_repository: EndpointResourceRepository[NewDatabase] = build_database_repository(
+            settings=settings, cluster_api_caller=cluster_api_caller
         )
         self.acl_repository: EndpointResourceRepository[NewAcl] = rest_repository(
             cluster_api_caller=cluster_api_caller,
@@ -66,6 +59,17 @@ class ClusterWiring:
             resource=settings.user,
             body_builder=SpecCreationBody[NewUser](),
         )
+        self._build_steps(
+            settings=settings, cluster_api_caller=cluster_api_caller, read_again_polling=read_again_polling
+        )
+
+    def _build_steps(
+        self,
+        *,
+        settings: Settings,
+        cluster_api_caller: EdgeClusterApiCaller,
+        read_again_polling: ReadAgainPolling,
+    ) -> None:
         database_fields_repository: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
             cluster_api_caller=cluster_api_caller,
             settings=settings.database,
@@ -80,22 +84,22 @@ class ClusterWiring:
         action_completion_waiter: ActionCompletionWaiter = build_action_completion_waiter(
             settings=settings, cluster_api_caller=cluster_api_caller, read_again_polling=read_again_polling
         )
-        self.create_database_step: CreateResourceStep[NewDatabase] = create_resource_step(
+        self.create_database_step: CreateResourceStep[NewDatabase] = CreateResourceStep(
             repository=self.database_repository,
             completion_waiter=database_waiter,
             target_resolver=self.target_resolver,
         )
-        self.create_acl_step: CreateResourceStep[NewAcl] = create_resource_step(
+        self.create_acl_step: CreateResourceStep[NewAcl] = CreateResourceStep(
             repository=self.acl_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
         )
-        self.create_role_step: CreateResourceStep[NewRole] = create_resource_step(
+        self.create_role_step: CreateResourceStep[NewRole] = CreateResourceStep(
             repository=self.role_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
         )
-        self.create_user_step: CreateResourceStep[NewUser] = create_resource_step(
+        self.create_user_step: CreateResourceStep[NewUser] = CreateResourceStep(
             repository=self.user_repository,
             completion_waiter=action_completion_waiter,
             target_resolver=self.target_resolver,
@@ -138,14 +142,17 @@ def build_action_completion_waiter(
     )
 
 
-def create_resource_step[TSpec: NamedSpec](
-    *,
-    repository: EndpointResourceRepository[TSpec],
-    completion_waiter: ResourceCompletionWaiter,
-    target_resolver: ClusterTargetResolver,
-) -> CreateResourceStep[TSpec]:
-    return CreateResourceStep(
-        repository=repository, completion_waiter=completion_waiter, target_resolver=target_resolver
+def build_database_repository(
+    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
+) -> EndpointResourceRepository[NewDatabase]:
+    return rest_repository(
+        cluster_api_caller=cluster_api_caller,
+        cluster_api_settings=settings.cluster_api,
+        resource=settings.database,
+        body_builder=DatabaseCreationBodyBuilder(
+            default_user_password=settings.database.default_user_password,
+            default_tags=settings.database.default_tags,
+        ),
     )
 
 
