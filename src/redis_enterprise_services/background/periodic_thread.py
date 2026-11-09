@@ -18,6 +18,9 @@ class PeriodicThread:
         logger.info(msg=f"{self._name} runs every {self._interval_seconds} seconds")
 
     def stop(self) -> None:
+        if self._thread.ident is None:
+            logger.info(msg=f"{self._name} never started")
+            return
         self._stop_requested.set()
         if self._thread.ident is None:
             logger.info(msg=f"{self._name} never started")
