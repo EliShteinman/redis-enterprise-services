@@ -20,6 +20,7 @@ from redis_enterprise_services.planning.database_spec import DatabaseSpec, Datab
 from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
+from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
@@ -94,7 +95,7 @@ class SingleSiteCreationPlanner:
         return PlannedStep(
             key=DATABASE_STEP_KEY,
             step=self._create_database_step,
-            build_input=lambda step_results: CreateResourceInput(cluster=address, spec=database),
+            build_input=partial(fixed_resource_input, address=address, spec=database),
         )
 
     def _steps_for_user(
@@ -114,7 +115,7 @@ class SingleSiteCreationPlanner:
         return PlannedStep(
             key=acl_step_key(user=user),
             step=self._create_acl_step,
-            build_input=lambda step_results: CreateResourceInput(cluster=address, spec=acl),
+            build_input=partial(fixed_resource_input, address=address, spec=acl),
         )
 
     def _role_step(
@@ -172,6 +173,12 @@ class SingleSiteCreationPlanner:
                 ]
             },
         )
+
+
+def fixed_resource_input[TSpec: NamedSpec](
+    *, step_results: StepResults, address: ClusterAddress, spec: TSpec
+) -> CreateResourceInput[TSpec]:
+    return CreateResourceInput(cluster=address, spec=spec)
 
 
 def user_input(
