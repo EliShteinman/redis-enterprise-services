@@ -23,6 +23,7 @@ operation:
     missing_step_result: internal_error
     missing_step_record: internal_error
     unreadable_saga_record: internal_error
+    unreadable_operation_record: internal_error
   public_codes_with_cluster_details:
     - cluster_request_failed
     - cluster_unavailable
