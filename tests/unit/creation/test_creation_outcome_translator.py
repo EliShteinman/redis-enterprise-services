@@ -57,7 +57,7 @@ PREPARED_CREATION: PreparedCreation = PreparedCreation(
     ),
     spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
-        users=[DatabaseUserSpec(name="app", password="p1", acl_rule="+@all ~orders:*")],
+        users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
     ),
 )
 REJECTED_BY_CLUSTER: StepError = StepError(
