@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from functools import partial
 
 from pydantic import ValidationError
@@ -10,9 +11,7 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
-from redis_enterprise_services.planning.availability.name_availability import NameAvailability
-from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
+from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
@@ -25,9 +24,7 @@ class CreationExecution:
     def __init__(
         self,
         *,
-        name_check_scope: NameCheckScope,
-        name_availability: NameAvailability,
-        creation_naming: CreationNaming,
+        names_check: CreationNamesCheck,
         planner: SingleSiteCreationPlanner,
         saga_executor: SagaExecutor,
         outcome_translator: CreationOutcomeTranslator,
@@ -35,9 +32,7 @@ class CreationExecution:
         saga_record_reader: SagaRecordReader,
         operation_store: OperationStore,
     ) -> None:
-        self._name_check_scope: NameCheckScope = name_check_scope
-        self._name_availability: NameAvailability = name_availability
-        self._creation_naming: CreationNaming = creation_naming
+        self._names_check: CreationNamesCheck = names_check
         self._planner: SingleSiteCreationPlanner = planner
         self._saga_executor: SagaExecutor = saga_executor
         self._outcome_translator: CreationOutcomeTranslator = outcome_translator
@@ -62,8 +57,8 @@ class CreationExecution:
                 trace_id=trace_id,
                 prepared_creation=prepared_creation,
                 saga_error=error,
-                error_if_not_started=self._public_errors.from_error(
-                    error=error, cluster_url=prepared_creation.cluster.api_url
+                error_if_not_started=partial(
+                    self._public_errors.from_error, error=error, cluster_url=prepared_creation.cluster.api_url
                 ),
             )
         except Exception as error:
@@ -72,7 +67,7 @@ class CreationExecution:
                 trace_id=trace_id,
                 prepared_creation=prepared_creation,
                 saga_error=error,
-                error_if_not_started=self._public_errors.internal_error(),
+                error_if_not_started=self._public_errors.internal_error,
             )
         return self._translated_or_manual_intervention_operation(
             trace_id=trace_id, prepared_creation=prepared_creation, record=record
@@ -81,19 +76,12 @@ class CreationExecution:
     def _run_saga(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaRecord:
         return self._saga_executor.run(
             saga_id=trace_id,
-            plan=self._planner.plan(
-                cluster=prepared_creation.cluster,
-                database=prepared_creation.spec.database,
-                users=prepared_creation.spec.users,
-            ),
+            plan=self._planner.plan(cluster=prepared_creation.cluster, spec=prepared_creation.spec),
             check_before_start=partial(self._ensure_names_free, prepared_creation=prepared_creation),
         )
 
     def _ensure_names_free(self, *, prepared_creation: PreparedCreation) -> None:
-        self._name_availability.ensure_free(
-            clusters=self._name_check_scope.clusters_to_check(chosen=prepared_creation.cluster),
-            requested_names=self._creation_naming.requested_names(spec=prepared_creation.spec),
-        )
+        self._names_check.ensure_free(cluster=prepared_creation.cluster, spec=prepared_creation.spec)
 
     def _operation_after_saga_error(
         self,
@@ -101,7 +89,7 @@ class CreationExecution:
         trace_id: str,
         prepared_creation: PreparedCreation,
         saga_error: Exception,
-        error_if_not_started: PublicError,
+        error_if_not_started: Callable[[], PublicError],
     ) -> Operation:
         try:
             stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
@@ -111,7 +99,7 @@ class CreationExecution:
                 trace_id=trace_id, error=self._public_errors.internal_error()
             )
         if stored_record is None:
-            return rejected_operation(trace_id=trace_id, error=error_if_not_started)
+            return rejected_operation(trace_id=trace_id, error=error_if_not_started())
         logger.critical(
             msg=f"saga {trace_id} stopped after it started, its outcome comes from its record",
             exc_info=saga_error,

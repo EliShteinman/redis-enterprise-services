@@ -43,7 +43,8 @@ class RedisOperationStore(OperationStore):
     def create_if_absent(self, *, operation: Operation) -> Operation | None:
         existing: str | None = self._create_if_absent_script(
             keys=[
-                *self._record_and_open_set_keys(trace_id=operation.trace_id),
+                self._keys.operation(trace_id=operation.trace_id),
+                self._keys.open_trace_ids(),
                 self._keys.heartbeat(trace_id=operation.trace_id),
             ],
             args=[operation.model_dump_json(), operation.trace_id, self._heartbeat_ttl_seconds],
@@ -73,6 +74,3 @@ class RedisOperationStore(OperationStore):
             logger.info(msg=f"operation {trace_id} is not known")
             return None
         return Operation.model_validate_json(json_data=stored)
-
-    def _record_and_open_set_keys(self, *, trace_id: str) -> list[str]:
-        return [self._keys.operation(trace_id=trace_id), self._keys.open_trace_ids()]

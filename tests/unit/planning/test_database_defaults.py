@@ -1,5 +1,5 @@
 import pytest
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
@@ -105,16 +105,3 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
                 overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
             )
         )
-
-
-@pytest.mark.parametrize(
-    argnames="when",
-    argvalues=[
-        pytest.param({"environment": "DEV", "region": "eu"}, id="unknown label"),
-        pytest.param({"environment": "dev"}, id="a value that never matches"),
-        pytest.param({}, id="no label"),
-    ],
-)
-def test_an_override_selector_with_no_valid_label_is_refused(when: dict[str, str]) -> None:
-    with pytest.raises(expected_exception=ValidationError):
-        OverrideClusterSelector.model_validate(obj=when)

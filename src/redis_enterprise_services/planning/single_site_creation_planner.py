@@ -9,7 +9,14 @@ from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.cluster_address import address_of
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.planning.creation_step_keys import (
+    DATABASE_STEP_KEY,
+    PERMISSIONS_STEP_KEY,
+    acl_step_key,
+    role_step_key,
+    user_step_key,
+)
+from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
@@ -24,8 +31,6 @@ from redis_enterprise_services.users.models import NewUser
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
-DATABASE_STEP_KEY: str = "database"
-PERMISSIONS_STEP_KEY: str = "permissions"
 USER_LOCK_SEGMENT: str = "user"
 
 
@@ -55,9 +60,9 @@ class SingleSiteCreationPlanner:
             update_database_step
         )
 
-    def plan(
-        self, *, cluster: ConfiguredCluster, database: NewDatabase, users: list[DatabaseUserSpec]
-    ) -> SagaPlan:
+    def plan(self, *, cluster: ConfiguredCluster, spec: DatabaseSpec) -> SagaPlan:
+        database: NewDatabase = spec.database
+        users: list[DatabaseUserSpec] = spec.users
         steps: list[PreparableStep] = self._steps(
             address=address_of(cluster=cluster), database=database, users=users
         )
@@ -193,15 +198,3 @@ def role_permissions(*, step_results: StepResults, users: list[DatabaseUserSpec]
 
 def uid_created_by_step(*, step_results: StepResults, step_key: str) -> int:
     return step_results.result_of(key=step_key, result_type=CreatedResource).uid
-
-
-def acl_step_key(*, user: DatabaseUserSpec) -> str:
-    return f"acl/{user.name}"
-
-
-def role_step_key(*, user: DatabaseUserSpec) -> str:
-    return f"role/{user.name}"
-
-
-def user_step_key(*, user: DatabaseUserSpec) -> str:
-    return f"user/{user.name}"
