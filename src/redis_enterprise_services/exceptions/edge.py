@@ -1,4 +1,3 @@
-from http import HTTPStatus
 from typing import ClassVar
 
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
@@ -6,12 +5,10 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 
 class EdgeError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "cluster_unavailable"
-    status_code: ClassVar[int] = HTTPStatus.BAD_GATEWAY
 
 
 class EdgeRejectedRequestError(EdgeError):
     code: ClassVar[str] = "internal_error"
-    status_code: ClassVar[int] = HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 class EdgeConnectionFailedError(EdgeError):
