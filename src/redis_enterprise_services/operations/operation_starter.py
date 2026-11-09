@@ -4,7 +4,6 @@ from collections.abc import Callable
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.prepared_run import PreparedRun
 from redis_enterprise_services.operations.public_errors import PublicErrors
@@ -61,9 +60,7 @@ class OperationStarter:
         logger.critical(msg=f"{task_name} cannot run in the background", exc_info=submit_error)
         self._operation_heartbeats.stop_heartbeat(trace_id=trace_id)
         self._store.save(
-            operation=Operation(
-                trace_id=trace_id, status=OperationStatus.REJECTED, error=self._public_errors.internal_error()
-            )
+            operation=Operation.rejected(trace_id=trace_id, error=self._public_errors.internal_error())
         )
 
 

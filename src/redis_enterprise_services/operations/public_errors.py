@@ -25,6 +25,12 @@ class PublicErrors:
             cluster_error_code=error.cluster_error_code,
         )
 
+    def from_exception(self, *, error: Exception, cluster_url: str | None = None) -> PublicError:
+        if isinstance(error, RedisEnterpriseServicesError):
+            return self.from_error(error=error, cluster_url=cluster_url)
+        logger.critical(msg=f"unexpected error: {error!r}", exc_info=error)
+        return self.internal_error()
+
     def from_code(
         self,
         *,
