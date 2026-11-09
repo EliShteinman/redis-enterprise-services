@@ -68,7 +68,22 @@ def test_a_step_error_gets_its_failure_category(
         (UpdateOutcomeUnclearError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (ClusterActionFailedError(message="m"), FailureCategory.FAILED),
         (DatabaseCreationFailedError(message="m"), FailureCategory.FAILED),
-        (EdgeOutcomeUnknownError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
+        (EdgeOutcomeUnknownError(message="m"), FailureCategory.TRANSIENT),
+        (EdgeConnectionFailedError(message="m"), FailureCategory.TRANSIENT),
+        (EdgeRejectedResponseError(message="m", cluster_status_code=200), FailureCategory.OUTCOME_UNKNOWN),
+        (
+            ClusterRejectedRequestError(message="m", cluster_status_code=409, cluster_error_code="busy"),
+            FailureCategory.TRANSIENT,
+        ),
+        (
+            ClusterRejectedRequestError(message="m", cluster_status_code=503, cluster_error_code=None),
+            FailureCategory.TRANSIENT,
+        ),
+        (
+            ClusterRejectedRequestError(message="m", cluster_status_code=403, cluster_error_code=None),
+            FailureCategory.OUTCOME_UNKNOWN,
+        ),
+        (ClusterActionTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
     ],
 )
 def test_a_find_outcome_error_gets_its_failure_category(

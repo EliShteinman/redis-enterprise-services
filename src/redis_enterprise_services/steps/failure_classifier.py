@@ -11,7 +11,12 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
     UpdateOutcomeUnclearError,
 )
-from redis_enterprise_services.exceptions.edge import EdgeError, EdgeRejectedRequestError
+from redis_enterprise_services.exceptions.edge import (
+    EdgeConnectionFailedError,
+    EdgeError,
+    EdgeOutcomeUnknownError,
+    EdgeRejectedRequestError,
+)
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
 REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
@@ -27,6 +32,11 @@ CLUSTER_REPORTED_FAILURE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] 
 FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     EdgeRejectedRequestError,
     *CLUSTER_REPORTED_FAILURE_ERRORS,
+)
+
+TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    EdgeConnectionFailedError,
+    EdgeOutcomeUnknownError,
 )
 
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
@@ -58,7 +68,14 @@ class ClusterFailureClassifier(FailureClassifier):
             return FailureCategory.REQUIRES_MANUAL_INTERVENTION
         if isinstance(error, CLUSTER_REPORTED_FAILURE_ERRORS):
             return FailureCategory.FAILED
+        if self._is_transient_lookup_error(error=error):
+            return FailureCategory.TRANSIENT
         return FailureCategory.OUTCOME_UNKNOWN
+
+    def _is_transient_lookup_error(self, *, error: RedisEnterpriseServicesError) -> bool:
+        if isinstance(error, ClusterRejectedRequestError):
+            return self._classify_rejection(error=error) is not FailureCategory.FAILED
+        return isinstance(error, TRANSIENT_LOOKUP_EDGE_ERRORS)
 
     def _classify_rejection(self, *, error: ClusterRejectedRequestError) -> FailureCategory:
         if has_transient_error_code(error=error, transient_error_codes=self._transient_error_codes):
