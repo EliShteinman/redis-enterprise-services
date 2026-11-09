@@ -1,19 +1,12 @@
-from unittest.mock import MagicMock, create_autospec
-
 import pytest
 
-from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.abandoned_sweep import (
-    AbandonedSweep,
     interrupted_running_saga,
     operation_after_crash,
 )
-from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -76,28 +69,9 @@ def test_only_a_running_saga_is_interrupted(saga_status: SagaStatus, interrupted
     assert (interrupted_running_saga(saga=stored_saga(status=saga_status)) is not None) is interrupted
 
 
-def test_an_unreadable_saga_does_not_stop_the_sweep() -> None:
-    store: MagicMock = create_autospec(spec=AbandonedStore, instance=True)
-    store.abandoned_candidate_trace_ids.return_value = ["trace-bad", "trace-good"]
+def test_an_unreadable_saga_needs_manual_intervention() -> None:
+    operation: Operation = operation_after_crash(
+        trace_id="trace-1", saga=StoredSaga(raw_json="{}", record=None), error=INTERNAL_ERROR
+    )
 
-    def find_saga(*, trace_id: str) -> StoredSaga | None:
-        if trace_id == "trace-bad":
-            SagaRecord.model_validate_json(json_data="{}")
-        return None
-
-    store.find_saga.side_effect = find_saga
-    store.finalize_if_still_abandoned.return_value = FinalizeAbandonedResult.FINALIZED
-
-    AbandonedSweep(
-        store=store,
-        public_errors=PublicErrors(
-            settings=OperationSettings(
-                public_code_by_internal_code={}, public_codes_with_cluster_details=frozenset()
-            ),
-            internal_error_message="internal error",
-        ),
-    ).sweep()
-
-    assert [
-        call.kwargs["operation"].trace_id for call in store.finalize_if_still_abandoned.call_args_list
-    ] == ["trace-good"]
+    assert operation.status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
