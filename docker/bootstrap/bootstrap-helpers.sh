@@ -19,7 +19,7 @@ fetch_bootstrap() {
 REFUSED_STATE="refused"
 
 read_state() {
-    answer="$(fetch_bootstrap --include)"
+    answer="$(fetch_bootstrap --include)" || answer=""
     if printf '%s\n' "${answer}" | grep -qiE '^x-edge-error: *invalid_request|^HTTP/[0-9.]+ (401|403)'; then
         echo "the bootstrap request is refused, and waiting will not change that:" >&2
         printf '%s\n' "${answer}" >&2
