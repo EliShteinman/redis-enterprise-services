@@ -77,7 +77,7 @@ cluster-state-id: 155          (אופציונלי)
 
 | `x-edge-error` | מתי | הגיע לקלאסטר? | אצלנו | קוד ציבורי |
 |---|---|---|---|---|
-| `invalid_request` | חסר header או header לא תקין | לא | שגיאה שלנו. לא מנסים שוב | `internal_error` |
+| `invalid_request` | חסר header או header לא תקין | לא | שגיאה שלנו (`edge_rejected_request`). לא מנסים שוב | `internal_error` |
 | `connection_failed` | לא נפתח חיבור לקלאסטר | לא (לא סומכים על זה) | תוצאה לא ידועה (`edge_connection_failed`) | `cluster_unavailable` |
 | `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | כן | תוצאה לא ידועה (`edge_rejected_response`) | `cluster_unavailable` |
 | כל קוד אחר (למשל `timeout`) | | לא ידוע | תוצאה לא ידועה (`edge_outcome_unknown`) | `cluster_unavailable` |
