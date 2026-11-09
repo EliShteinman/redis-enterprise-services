@@ -44,33 +44,34 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         sleeper: SystemSleeper = SystemSleeper()
         deadline_polling: DeadlinePolling = DeadlinePolling(clock=MonotonicClock(), sleeper=sleeper)
-        self._state_wiring: StateWiring = StateWiring(settings=settings, deadline_polling=deadline_polling)
-        self._task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
+        state_wiring: StateWiring = StateWiring(settings=settings, deadline_polling=deadline_polling)
+        task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
         operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
-            heartbeat_store=self._state_wiring.heartbeat_store
+            heartbeat_store=state_wiring.heartbeat_store
         )
         public_errors: PublicErrors = build_public_errors(settings=settings)
+        self.public_errors: PublicErrors = public_errors
+        self.operation_store: OperationStore = state_wiring.operation_store
+        self.database_creation: DatabaseCreation = build_database_creation(
+            settings=settings,
+            state_wiring=state_wiring,
+            cluster_wiring=ClusterWiring(settings=settings, deadline_polling=deadline_polling),
+            operation_starter=build_operation_starter(
+                state_wiring=state_wiring,
+                task_runner=task_runner,
+                operation_heartbeats=operation_heartbeats,
+                public_errors=public_errors,
+            ),
+            public_errors=public_errors,
+            sleeper=sleeper,
+        )
+        self._state_wiring: StateWiring = state_wiring
+        self._task_runner: ThreadPoolTaskRunner = task_runner
         self._operation_heartbeat_thread: PeriodicThread = build_operation_heartbeat_thread(
             settings=settings, operation_heartbeats=operation_heartbeats
         )
         self._abandoned_sweep_thread: PeriodicThread = build_abandoned_sweep_thread(
-            settings=settings, state_wiring=self._state_wiring, public_errors=public_errors
-        )
-        self.operation_store: OperationStore = self._state_wiring.operation_store
-        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings, deadline_polling=deadline_polling)
-        operation_starter: OperationStarter = OperationStarter(
-            store=self.operation_store,
-            task_runner=self._task_runner,
-            operation_heartbeats=operation_heartbeats,
-            public_errors=public_errors,
-        )
-        self.database_creation: DatabaseCreation = build_database_creation(
-            settings=settings,
-            state_wiring=self._state_wiring,
-            cluster_wiring=cluster_wiring,
-            operation_starter=operation_starter,
-            public_errors=public_errors,
-            sleeper=sleeper,
+            settings=settings, state_wiring=state_wiring, public_errors=public_errors
         )
 
     def start(self) -> None:
@@ -87,6 +88,21 @@ class AppWiring:
 def build_public_errors(*, settings: Settings) -> PublicErrors:
     return PublicErrors(
         settings=settings.operation, internal_error_message=settings.api.internal_error_message
+    )
+
+
+def build_operation_starter(
+    *,
+    state_wiring: StateWiring,
+    task_runner: ThreadPoolTaskRunner,
+    operation_heartbeats: InProcessOperationHeartbeats,
+    public_errors: PublicErrors,
+) -> OperationStarter:
+    return OperationStarter(
+        store=state_wiring.operation_store,
+        task_runner=task_runner,
+        operation_heartbeats=operation_heartbeats,
+        public_errors=public_errors,
     )
 
 

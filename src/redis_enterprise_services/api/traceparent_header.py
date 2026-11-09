@@ -10,7 +10,7 @@ TRACEPARENT_LOCATION: tuple[str, str] = ("header", "traceparent")
 
 
 def require_traceparent(
-    api_settings: Annotated[ApiSettings, Depends(api_settings_from_app_state)],
+    api_settings: Annotated[ApiSettings, Depends(dependency=api_settings_from_app_state)],
     traceparent: Annotated[str | None, Header()] = None,
 ) -> None:
     if traceparent is None or api_settings.traceparent_pattern.fullmatch(traceparent) is None:

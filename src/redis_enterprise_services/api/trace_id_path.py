@@ -10,7 +10,7 @@ TRACE_ID_LOCATION: tuple[str, str] = ("path", "trace_id")
 
 
 def checked_trace_id(
-    trace_id: str, api_settings: Annotated[ApiSettings, Depends(api_settings_from_app_state)]
+    trace_id: str, api_settings: Annotated[ApiSettings, Depends(dependency=api_settings_from_app_state)]
 ) -> str:
     if api_settings.trace_id_pattern.fullmatch(trace_id) is None:
         raise RequestValidationError(
