@@ -41,11 +41,15 @@ class CreationExecution:
         self._operation_store: OperationStore = operation_store
 
     def run_and_save(self, *, trace_id: str, prepared_creation: PreparedCreation) -> Operation:
-        operation: Operation = self._final_operation(trace_id=trace_id, prepared_creation=prepared_creation)
+        operation: Operation = self._run_saga_and_translate_outcome(
+            trace_id=trace_id, prepared_creation=prepared_creation
+        )
         self._operation_store.save(operation=operation)
         return operation
 
-    def _final_operation(self, *, trace_id: str, prepared_creation: PreparedCreation) -> Operation:
+    def _run_saga_and_translate_outcome(
+        self, *, trace_id: str, prepared_creation: PreparedCreation
+    ) -> Operation:
         try:
             record: SagaRecord = self._run_saga(trace_id=trace_id, prepared_creation=prepared_creation)
         except RedisEnterpriseServicesError as error:
@@ -97,8 +101,8 @@ class CreationExecution:
         if stored_record is None:
             return rejected_operation(trace_id=trace_id, error=error_if_not_started())
         logger.critical(
-            msg=f"saga {trace_id} stopped after it started, its outcome comes from its record",
-            exc_info=saga_error,
+            msg=f"saga {trace_id} stopped after it started ({type(saga_error).__name__}), "
+            "its outcome comes from its record"
         )
         return self._translated_or_manual_intervention_operation(
             trace_id=trace_id,
