@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import AfterValidator
+from pydantic import AfterValidator, Field
 
 from redis_enterprise_services.config.template_placeholders import template_placeholders
 
@@ -14,4 +14,5 @@ def reject_item_path_not_exactly_uid_placeholder(path: str) -> str:
     return path
 
 
-type ItemPath = Annotated[str, AfterValidator(reject_item_path_not_exactly_uid_placeholder)]
+type ApiPath = Annotated[str, Field(pattern=r"^/")]
+type ItemPath = Annotated[ApiPath, AfterValidator(reject_item_path_not_exactly_uid_placeholder)]
