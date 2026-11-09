@@ -1,8 +1,7 @@
-from collections.abc import Mapping
-
 from pydantic import BaseModel, Field
 
 from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.operations.code_meanings import code_meanings_description
 
 PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
     "name_taken": "a name is taken on the cluster",
@@ -15,10 +14,6 @@ PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
     "configuration_error": "the service configuration cannot serve the request",
     "internal_error": "an unexpected failure inside the service, such as a bug or the service stopping",
 }
-
-
-def code_meanings_description[TCode: str](*, meanings: Mapping[TCode, str]) -> str:
-    return ", ".join(f"{code} ({meaning})" for code, meaning in meanings.items())
 
 
 PUBLIC_ERROR_CODE_DESCRIPTION: str = code_meanings_description(meanings=PUBLIC_ERROR_CODE_MEANINGS)
