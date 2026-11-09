@@ -135,3 +135,22 @@ def test_an_action_answer_without_a_status_is_unreadable() -> None:
         waiter_answering(action_body={"progress": "100"}).wait_until_completed(
             target=TARGET, action_uid=ACTION_UID
         )
+
+
+def test_a_wait_in_which_no_read_succeeded_reports_the_last_read_error() -> None:
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    api.send.side_effect = EdgeOutcomeUnknownError(message="relay timed out")
+
+    with pytest.raises(expected_exception=EdgeOutcomeUnknownError):
+        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+
+
+def test_a_wait_with_a_read_that_succeeded_still_times_out() -> None:
+    api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
+    running: SuccessfulClusterResponse = SuccessfulClusterResponse(
+        body={"status": "running"}, cluster_state_id=None
+    )
+    api.send.side_effect = [running, *([EdgeOutcomeUnknownError(message="relay timed out")] * 1000)]
+
+    with pytest.raises(expected_exception=ClusterActionTimeoutError):
+        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
