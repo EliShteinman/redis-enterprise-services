@@ -7,7 +7,7 @@ from redis_enterprise_services.config.config_model import ConfigModel
 
 
 class OverrideClusterSelector(ConfigModel):
-    network: str | None = None
+    network: str | None = Field(default=None, min_length=1)
     environment: Environment | None = None
     site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None
