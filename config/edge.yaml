@@ -1,4 +1,5 @@
 edge:
+  url: http://127.0.0.1:8000/
   connect_timeout_seconds: 5
   request_timeout_seconds: 35
   headers:
@@ -11,6 +12,7 @@ edge:
     cluster_state_id: cluster-state-id
     crdb_task_id: x-task-id
     result_ttl_seconds: x-result-ttl
+    network: x-network
   request_content_type: application/json
   error_codes:
     invalid_request: invalid_request
@@ -18,5 +20,4 @@ edge:
     response_rejected: response_rejected
   networks:
     local:
-      url: http://127.0.0.1:8000/
       firewall: null
