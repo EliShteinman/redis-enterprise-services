@@ -97,7 +97,8 @@ POST /v1/databases/create
   `action.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
   או לא ענה, 5xx של הקלאסטר, או קוד מ-`cluster_api.transient_error_codes`) נרשמת כ-WARNING, והקריאה חוזרת. כל שגיאה
   אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout` או
-  `database_deletion_timeout` (בחוזה: `cluster_timeout`).
+  `database_deletion_timeout` (בחוזה: `cluster_timeout`). אם אף קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה
+  האחרונה במקום ה-timeout, למשל `cluster_unavailable`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
 
