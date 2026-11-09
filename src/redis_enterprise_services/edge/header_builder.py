@@ -19,9 +19,12 @@ class EdgeHeaderBuilder:
         self._settings: EdgeSettings = settings
         self._header_names: EdgeHeaderSettings = settings.headers
 
-    def build(self, *, request: ClusterRequest, network_settings: EdgeNetworkSettings) -> dict[str, str]:
+    def build(
+        self, *, request: ClusterRequest, network: str, network_settings: EdgeNetworkSettings
+    ) -> dict[str, str]:
         return (
-            self._required_headers(request=request)
+            {self._header_names.network: network}
+            | self._required_headers(request=request)
             | self._optional_headers(request=request)
             | self._firewall_headers(network_settings=network_settings)
         )
