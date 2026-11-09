@@ -99,17 +99,25 @@ class ClusterWiring:
                 cluster_api_settings=settings.cluster_api,
             )
         )
-        self.create_database_step: CreateResourceStep[NewDatabase] = self._create_step(
-            repository=self.database_repository, completion_waiter=polling_database_waiter
+        self.create_database_step: CreateResourceStep[NewDatabase] = create_resource_step(
+            repository=self.database_repository,
+            completion_waiter=polling_database_waiter,
+            target_resolver=self.target_resolver,
         )
-        self.create_acl_step: CreateResourceStep[NewAcl] = self._create_step(
-            repository=self.acl_repository, completion_waiter=action_completion_waiter
+        self.create_acl_step: CreateResourceStep[NewAcl] = create_resource_step(
+            repository=self.acl_repository,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
-        self.create_role_step: CreateResourceStep[NewRole] = self._create_step(
-            repository=self.role_repository, completion_waiter=action_completion_waiter
+        self.create_role_step: CreateResourceStep[NewRole] = create_resource_step(
+            repository=self.role_repository,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
-        self.create_user_step: CreateResourceStep[NewUser] = self._create_step(
-            repository=self.user_repository, completion_waiter=action_completion_waiter
+        self.create_user_step: CreateResourceStep[NewUser] = create_resource_step(
+            repository=self.user_repository,
+            completion_waiter=action_completion_waiter,
+            target_resolver=self.target_resolver,
         )
         self.update_database_step: UpdateDatabaseStep = UpdateDatabaseStep(
             repository=database_fields_repository,
@@ -118,12 +126,16 @@ class ClusterWiring:
             order_insensitive_fields=settings.database.order_insensitive_fields,
         )
 
-    def _create_step[TSpec: NamedSpec](
-        self, *, repository: EndpointResourceRepository[TSpec], completion_waiter: ResourceCompletionWaiter
-    ) -> CreateResourceStep[TSpec]:
-        return CreateResourceStep(
-            repository=repository, completion_waiter=completion_waiter, target_resolver=self.target_resolver
-        )
+
+def create_resource_step[TSpec: NamedSpec](
+    *,
+    repository: EndpointResourceRepository[TSpec],
+    completion_waiter: ResourceCompletionWaiter,
+    target_resolver: ClusterTargetResolver,
+) -> CreateResourceStep[TSpec]:
+    return CreateResourceStep(
+        repository=repository, completion_waiter=completion_waiter, target_resolver=target_resolver
+    )
 
 
 def rest_repository[TSpec: NamedSpec](

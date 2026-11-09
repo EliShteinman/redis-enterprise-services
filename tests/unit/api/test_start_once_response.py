@@ -1,3 +1,5 @@
+import json
+
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.accepted_operation import AcceptedOperation
@@ -13,7 +15,9 @@ def test_an_operation_that_already_existed_is_answered_as_it_is_stored() -> None
         start_once_result=StartOnceResult(operation=OPERATION, already_existed=True)
     )
 
-    assert isinstance(response, JSONResponse) and response.status_code == 200
+    assert isinstance(response, JSONResponse) and json.loads(bytes(response.body)) == OPERATION.model_dump(
+        mode="json"
+    )
 
 
 def test_a_new_operation_is_answered_as_accepted() -> None:

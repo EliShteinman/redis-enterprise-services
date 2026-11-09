@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -23,7 +25,7 @@ class RejectionError(PublicError):
 
 
 def rejection_response(
-    *, status_code: int, error: RejectionError, headers: dict[str, str] | None = None
+    *, status_code: int, error: RejectionError, headers: Mapping[str, str] | None = None
 ) -> JSONResponse:
     return operation_json_response(
         operation=Operation.rejected(trace_id=current_trace_id_or_zeros(), error=error),

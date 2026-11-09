@@ -1,8 +1,7 @@
-from redis import Redis
-
 from redis_enterprise_services.background.periodic_thread import PeriodicThread
 from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
 from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
+from redis_enterprise_services.composition.state_wiring import StateWiring
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
@@ -29,14 +28,8 @@ from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
 from redis_enterprise_services.saga.engine.compensator import Compensator
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 from redis_enterprise_services.saga.engine.step_runner import StepRunner
-from redis_enterprise_services.state.redis_abandoned_store import RedisAbandonedStore
-from redis_enterprise_services.state.redis_client import build_redis_client
-from redis_enterprise_services.state.redis_heartbeat_store import RedisHeartbeatStore
-from redis_enterprise_services.state.redis_keys import RedisKeys
-from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.redis_saga_lock import RedisSagaLock
 from redis_enterprise_services.state.redis_saga_record_store import RedisSagaRecordStore
-from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 from redis_enterprise_services.timing.clock import MonotonicClock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
@@ -47,25 +40,11 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         sleeper: SystemSleeper = SystemSleeper()
         deadline_polling: DeadlinePolling = DeadlinePolling(clock=MonotonicClock(), sleeper=sleeper)
-        redis_client: Redis = build_redis_client(settings=settings.state)
-        redis_keys: RedisKeys = RedisKeys(
-            key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
-        )
-        record_writer: TrackedRecordWriter = TrackedRecordWriter(client=redis_client)
-        self.operation_store: OperationStore = RedisOperationStore(
-            client=redis_client,
-            keys=redis_keys,
-            record_writer=record_writer,
-            finished_ttl_seconds=settings.state.finished_ttl_seconds,
-            heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
-        )
+        state_wiring: StateWiring = StateWiring(settings=settings, deadline_polling=deadline_polling)
+        self.operation_store: OperationStore = state_wiring.operation_store
         self.task_runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=settings.background)
         operation_heartbeats: InProcessOperationHeartbeats = InProcessOperationHeartbeats(
-            heartbeat_store=RedisHeartbeatStore(
-                client=redis_client,
-                keys=redis_keys,
-                heartbeat_ttl_seconds=settings.liveness.heartbeat_ttl_seconds,
-            )
+            heartbeat_store=state_wiring.heartbeat_store
         )
         self.operation_heartbeat_thread: PeriodicThread = PeriodicThread(
             name="operation heartbeat",
@@ -77,27 +56,11 @@ class AppWiring:
         public_errors: PublicErrors = PublicErrors(
             settings=settings.operation, internal_error_message=settings.api.internal_error_message
         )
-        saga_lock: RedisSagaLock = RedisSagaLock(
-            client=redis_client,
-            keys=redis_keys,
-            settings=settings.state.lock,
-            deadline_polling=deadline_polling,
-        )
-        saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
-            client=redis_client,
-            keys=redis_keys,
-            record_writer=record_writer,
-            finished_ttl_seconds=settings.state.finished_ttl_seconds,
-        )
         self.abandoned_sweep_thread: PeriodicThread = PeriodicThread(
             name="abandoned operations sweep",
             interval_seconds=settings.liveness.abandoned_sweep_interval_seconds,
             task=AbandonedSweep(
-                store=RedisAbandonedStore(
-                    client=redis_client,
-                    keys=redis_keys,
-                    finished_ttl_seconds=settings.state.finished_ttl_seconds,
-                ),
+                store=state_wiring.abandoned_store,
                 public_errors=public_errors,
             ).sweep,
         )
@@ -133,15 +96,15 @@ class AppWiring:
                 ),
                 saga_executor=build_saga_executor(
                     settings=settings,
-                    saga_lock=saga_lock,
-                    saga_record_store=saga_record_store,
+                    saga_lock=state_wiring.saga_lock,
+                    saga_record_store=state_wiring.saga_record_store,
                     sleeper=sleeper,
                 ),
                 outcome_translator=CreationOutcomeTranslator(
                     resource_naming=user_resource_naming, public_errors=public_errors
                 ),
                 public_errors=public_errors,
-                saga_record_reader=saga_record_store,
+                saga_record_reader=state_wiring.saga_record_store,
                 operation_store=self.operation_store,
             ),
             operation_starter=OperationStarter(

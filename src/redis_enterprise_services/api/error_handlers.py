@@ -58,7 +58,7 @@ async def http_exception_handler(request: Request, error: HTTPException) -> Resp
     return rejection_response(
         status_code=error.status_code,
         error=RejectionError(code=code, message=str(error.detail)),
-        headers=dict(error.headers or {}),
+        headers=error.headers,
     )
 
 
