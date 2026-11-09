@@ -18,6 +18,7 @@ class StateWiring:
         redis_keys: RedisKeys = RedisKeys(
             key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
         )
+        self._redis_client: Redis = redis_client
         record_writer: TrackedRecordWriter = TrackedRecordWriter(client=redis_client)
         self.operation_store: RedisOperationStore = RedisOperationStore(
             client=redis_client,
@@ -43,7 +44,6 @@ class StateWiring:
             record_writer=record_writer,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
         )
-        self._redis_client: Redis = redis_client
         self.abandoned_store: RedisAbandonedStore = RedisAbandonedStore(
             client=redis_client, keys=redis_keys, finished_ttl_seconds=settings.state.finished_ttl_seconds
         )

@@ -1,17 +1,18 @@
 from typing import Annotated
 
-from fastapi import Header, Request
+from fastapi import Depends, Header
 from fastapi.exceptions import RequestValidationError
 
+from redis_enterprise_services.api.app_state_dependencies import api_settings_from_app_state
 from redis_enterprise_services.config.api_settings import ApiSettings
-from redis_enterprise_services.config.settings import Settings
 
 TRACEPARENT_LOCATION: tuple[str, str] = ("header", "traceparent")
 
 
-def require_traceparent(request: Request, traceparent: Annotated[str | None, Header()] = None) -> None:
-    settings: Settings = request.app.state.settings
-    api_settings: ApiSettings = settings.api
+def require_traceparent(
+    api_settings: Annotated[ApiSettings, Depends(api_settings_from_app_state)],
+    traceparent: Annotated[str | None, Header()] = None,
+) -> None:
     if traceparent is None or api_settings.traceparent_pattern.fullmatch(traceparent) is None:
         raise RequestValidationError(
             errors=[

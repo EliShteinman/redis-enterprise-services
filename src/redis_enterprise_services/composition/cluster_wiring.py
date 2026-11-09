@@ -1,5 +1,3 @@
-from pydantic import SecretStr
-
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
@@ -35,20 +33,12 @@ from redis_enterprise_services.users.models import NewUser
 
 class ClusterWiring:
     def __init__(self, *, settings: Settings, deadline_polling: DeadlinePolling) -> None:
-        edge_transport: EdgeClient = EdgeClient(
-            settings=settings.edge,
-            header_builder=EdgeHeaderBuilder(settings=settings.edge),
-            response_reader=EdgeResponseReader(settings=settings.edge),
+        cluster_api_caller: EdgeClusterApiCaller = build_cluster_api_caller(settings=settings)
+        read_again_polling: ReadAgainPolling = ReadAgainPolling(
+            deadline_polling=deadline_polling,
+            transient_error_codes=settings.cluster_api.transient_error_codes,
         )
-        cluster_api_caller: EdgeClusterApiCaller = EdgeClusterApiCaller(
-            edge_transport=edge_transport, settings=settings.cluster_api
-        )
-        cluster_password: SecretStr = settings.cluster_credentials.password
-        self.target_resolver: ClusterTargetResolver = SharedCredentialsTargetResolver(
-            credentials=ClusterCredentials(
-                username=settings.cluster_credentials.username, password=cluster_password
-            )
-        )
+        self.target_resolver: ClusterTargetResolver = build_target_resolver(settings=settings)
         self.database_repository: EndpointResourceRepository[NewDatabase] = rest_repository(
             cluster_api_caller=cluster_api_caller,
             cluster_api_settings=settings.cluster_api,
@@ -76,32 +66,23 @@ class ClusterWiring:
             resource=settings.user,
             body_builder=SpecCreationBody[NewUser](),
         )
-        read_again_polling: ReadAgainPolling = ReadAgainPolling(
-            deadline_polling=deadline_polling,
-            transient_error_codes=settings.cluster_api.transient_error_codes,
-        )
         database_fields_repository: RestDatabaseFieldsRepository = RestDatabaseFieldsRepository(
             cluster_api_caller=cluster_api_caller,
             settings=settings.database,
             cluster_api_settings=settings.cluster_api,
         )
-        polling_database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
+        database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
             fields_reader=database_fields_repository,
             read_again_polling=read_again_polling,
             settings=settings.database,
             cluster_api_settings=settings.cluster_api,
         )
-        action_completion_waiter: ActionCompletionWaiter = ActionCompletionWaiter(
-            action_waiter=PollingActionWaiter(
-                cluster_api_caller=cluster_api_caller,
-                read_again_polling=read_again_polling,
-                settings=settings.action,
-                cluster_api_settings=settings.cluster_api,
-            )
+        action_completion_waiter: ActionCompletionWaiter = build_action_completion_waiter(
+            settings=settings, cluster_api_caller=cluster_api_caller, read_again_polling=read_again_polling
         )
         self.create_database_step: CreateResourceStep[NewDatabase] = create_resource_step(
             repository=self.database_repository,
-            completion_waiter=polling_database_waiter,
+            completion_waiter=database_waiter,
             target_resolver=self.target_resolver,
         )
         self.create_acl_step: CreateResourceStep[NewAcl] = create_resource_step(
@@ -121,10 +102,40 @@ class ClusterWiring:
         )
         self.update_database_step: UpdateDatabaseStep = UpdateDatabaseStep(
             repository=database_fields_repository,
-            activation_waiter=polling_database_waiter,
+            activation_waiter=database_waiter,
             target_resolver=self.target_resolver,
             order_insensitive_fields=settings.database.order_insensitive_fields,
         )
+
+
+def build_cluster_api_caller(*, settings: Settings) -> EdgeClusterApiCaller:
+    edge_transport: EdgeClient = EdgeClient(
+        settings=settings.edge,
+        header_builder=EdgeHeaderBuilder(settings=settings.edge),
+        response_reader=EdgeResponseReader(settings=settings.edge),
+    )
+    return EdgeClusterApiCaller(edge_transport=edge_transport, settings=settings.cluster_api)
+
+
+def build_target_resolver(*, settings: Settings) -> ClusterTargetResolver:
+    return SharedCredentialsTargetResolver(
+        credentials=ClusterCredentials(
+            username=settings.cluster_credentials.username, password=settings.cluster_credentials.password
+        )
+    )
+
+
+def build_action_completion_waiter(
+    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller, read_again_polling: ReadAgainPolling
+) -> ActionCompletionWaiter:
+    return ActionCompletionWaiter(
+        action_waiter=PollingActionWaiter(
+            cluster_api_caller=cluster_api_caller,
+            read_again_polling=read_again_polling,
+            settings=settings.action,
+            cluster_api_settings=settings.cluster_api,
+        )
+    )
 
 
 def create_resource_step[TSpec: NamedSpec](

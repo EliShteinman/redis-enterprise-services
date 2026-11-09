@@ -36,6 +36,9 @@ from redis_enterprise_services.timing.clock import MonotonicClock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 from redis_enterprise_services.timing.sleeper import Sleeper, SystemSleeper
 
+OPERATION_HEARTBEAT_THREAD_NAME: str = "operation heartbeat"
+ABANDONED_SWEEP_THREAD_NAME: str = "abandoned operations sweep"
+
 
 class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
@@ -54,16 +57,18 @@ class AppWiring:
             settings=settings, state_wiring=self._state_wiring, public_errors=public_errors
         )
         self.operation_store: OperationStore = self._state_wiring.operation_store
+        cluster_wiring: ClusterWiring = ClusterWiring(settings=settings, deadline_polling=deadline_polling)
+        operation_starter: OperationStarter = OperationStarter(
+            store=self.operation_store,
+            task_runner=self._task_runner,
+            operation_heartbeats=operation_heartbeats,
+            public_errors=public_errors,
+        )
         self.database_creation: DatabaseCreation = build_database_creation(
             settings=settings,
             state_wiring=self._state_wiring,
-            cluster_wiring=ClusterWiring(settings=settings, deadline_polling=deadline_polling),
-            operation_starter=OperationStarter(
-                store=self.operation_store,
-                task_runner=self._task_runner,
-                operation_heartbeats=operation_heartbeats,
-                public_errors=public_errors,
-            ),
+            cluster_wiring=cluster_wiring,
+            operation_starter=operation_starter,
             public_errors=public_errors,
             sleeper=sleeper,
         )
@@ -89,7 +94,7 @@ def build_operation_heartbeat_thread(
     *, settings: Settings, operation_heartbeats: InProcessOperationHeartbeats
 ) -> PeriodicThread:
     return PeriodicThread(
-        name="operation heartbeat",
+        name=OPERATION_HEARTBEAT_THREAD_NAME,
         interval_seconds=settings.liveness.heartbeat_interval_seconds,
         task=operation_heartbeats.mark_tracked_alive,
     )
@@ -99,7 +104,7 @@ def build_abandoned_sweep_thread(
     *, settings: Settings, state_wiring: StateWiring, public_errors: PublicErrors
 ) -> PeriodicThread:
     return PeriodicThread(
-        name="abandoned operations sweep",
+        name=ABANDONED_SWEEP_THREAD_NAME,
         interval_seconds=settings.liveness.abandoned_sweep_interval_seconds,
         task=AbandonedSweep(store=state_wiring.abandoned_store, public_errors=public_errors).sweep,
     )

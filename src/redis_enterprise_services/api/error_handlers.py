@@ -19,6 +19,7 @@ VALIDATION_ERROR_CODE: str = "validation_error"
 LOCATION_SEPARATOR: str = "."
 
 logger: logging.Logger = logging.getLogger(name=__name__)
+UNKNOWN_HTTP_ERROR_CODE: str = "http_error"
 
 
 def dotted_location(*, location: tuple[int | str, ...]) -> str:
@@ -67,7 +68,10 @@ def log_level_for_status(*, status_code: int) -> int:
 
 
 def http_error_code(*, status_code: int) -> str:
-    return HTTPStatus(value=status_code).name.lower()
+    try:
+        return HTTPStatus(value=status_code).name.lower()
+    except ValueError:
+        return UNKNOWN_HTTP_ERROR_CODE
 
 
 def field_errors_from(*, error_details: Sequence[Any]) -> list[FieldError]:

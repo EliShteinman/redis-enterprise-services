@@ -1,15 +1,17 @@
-from fastapi import Request
+from typing import Annotated
+
+from fastapi import Depends
 from fastapi.exceptions import RequestValidationError
 
+from redis_enterprise_services.api.app_state_dependencies import api_settings_from_app_state
 from redis_enterprise_services.config.api_settings import ApiSettings
-from redis_enterprise_services.config.settings import Settings
 
 TRACE_ID_LOCATION: tuple[str, str] = ("path", "trace_id")
 
 
-def checked_trace_id(request: Request, trace_id: str) -> str:
-    settings: Settings = request.app.state.settings
-    api_settings: ApiSettings = settings.api
+def checked_trace_id(
+    trace_id: str, api_settings: Annotated[ApiSettings, Depends(api_settings_from_app_state)]
+) -> str:
     if api_settings.trace_id_pattern.fullmatch(trace_id) is None:
         raise RequestValidationError(
             errors=[
