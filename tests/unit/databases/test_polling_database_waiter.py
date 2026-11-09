@@ -117,3 +117,16 @@ def test_a_database_that_stays_pending_times_out(
 
     with pytest.raises(expected_exception=DatabaseActivationTimeoutError):
         waiter.wait_until_active(target=TARGET, uid=11)
+
+
+def test_a_database_that_becomes_active_ends_the_wait(
+    fields_reader: MagicMock, waiter: PollingDatabaseWaiter
+) -> None:
+    fields_reader.read_fields.side_effect = [
+        DatabaseFieldsSnapshot(values={"status": "pending"}, cluster_state_id=1),
+        DatabaseFieldsSnapshot(values={"status": "active"}, cluster_state_id=1),
+    ]
+
+    waiter.wait_until_active(target=TARGET, uid=11)
+
+    assert fields_reader.read_fields.call_count == 2
