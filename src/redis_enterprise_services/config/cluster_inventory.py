@@ -1,3 +1,4 @@
+from collections.abc import Hashable
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, Field
@@ -19,15 +20,18 @@ class ConfiguredCluster(ConfigModel):
 
 
 def reject_repeated_clusters(clusters: list[ConfiguredCluster]) -> list[ConfiguredCluster]:
-    reject_repeated_field(field="name", values=[cluster.name for cluster in clusters])
-    reject_repeated_field(field="api_url", values=[cluster.api_url for cluster in clusters])
+    reject_repeated(
+        what="clusters",
+        values=[(cluster.network, cluster.environment, cluster.site, cluster.name) for cluster in clusters],
+    )
+    reject_repeated(what="cluster api_urls", values=[cluster.api_url for cluster in clusters])
     return clusters
 
 
-def reject_repeated_field(*, field: str, values: list[str]) -> None:
-    repeated: set[str] = repeated_values(values=values)
+def reject_repeated[T: Hashable](*, what: str, values: list[T]) -> None:
+    repeated: set[T] = repeated_values(values=values)
     if repeated:
-        raise ValueError(f"cluster {field} configured more than once: {sorted(repeated)}")
+        raise ValueError(f"{what} configured more than once: {sorted(repeated, key=str)}")
 
 
 type ConfiguredClusters = Annotated[list[ConfiguredCluster], AfterValidator(reject_repeated_clusters)]

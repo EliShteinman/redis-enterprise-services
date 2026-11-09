@@ -19,11 +19,8 @@ def configured_cluster(*, name: str, site: str = "dc1", api_url: str | None = No
     argnames="clusters",
     argvalues=[
         pytest.param(
-            [
-                configured_cluster(name="c1"),
-                configured_cluster(name="c1", site="dc2", api_url="https://other:9443"),
-            ],
-            id="same-name",
+            [configured_cluster(name="c1"), configured_cluster(name="c1", api_url="https://other:9443")],
+            id="same-network-environment-site-and-name",
         ),
         pytest.param(
             [configured_cluster(name="c1"), configured_cluster(name="c2", api_url="https://c1:9443")],
@@ -38,7 +35,10 @@ def test_a_cluster_configured_twice_is_refused_when_the_config_loads(
         TypeAdapter(ConfiguredClusters).validate_python(clusters)
 
 
-def test_clusters_with_different_names_and_urls_load() -> None:
-    clusters: list[ConfiguredCluster] = [configured_cluster(name="c1"), configured_cluster(name="c2")]
+def test_the_same_cluster_name_on_another_site_loads() -> None:
+    clusters: list[ConfiguredCluster] = [
+        configured_cluster(name="c1"),
+        configured_cluster(name="c1", site="dc2", api_url="https://c1-dc2:9443"),
+    ]
 
     assert TypeAdapter(ConfiguredClusters).validate_python(clusters) == clusters
