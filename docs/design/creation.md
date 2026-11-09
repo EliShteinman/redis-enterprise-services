@@ -93,14 +93,18 @@ POST /v1/databases/create
 | 3 | `role/{user}` | `CreateResourceStep` | `POST /v1/roles` `{name: {db}-{user}-role, management: db_viewer, resources: [ה-DB]}` | `DELETE` |
 | 4 | `user/{user}` | `CreateResourceStep` | `POST /v1/users` `{name, password, role_uids: [ה-role]}` | `DELETE` |
 | 5 | `permissions` | `UpdateDatabaseStep` | `PUT /v1/bdbs/{uid}` עם `roles_permissions`: זוג role ↔ ACL לכל יוזר | `PUT` של הרשימה הקודמת |
-| 6 | `read-database` | `ReadDatabaseStep` | `GET /v1/bdbs/{uid}?fields=` כל שדות מודל היצירה, `uid`, `status`, `endpoints` | אין מה לבטל |
+| 6 | `read-database` | `ReadDatabaseStep` | `GET /v1/bdbs/{uid}`: ה-DB המלא | אין מה לבטל |
 
 - צעדים 2–4 חוזרים לכל יוזר, לפי הסדר בבקשה. צעד 5 אחד לכל היוזרים, ורק כשיש יוזרים. צעד 6 תמיד אחרון.
 - **אובייקט מלא:** כל צעד יצירה שומר את כל מה שהקלאסטר החזיר, ורק אז בודק שכל שדה שנשלח חזר עם ערך (חוץ מ-
   `unreturned_fields` בקונפיג, היום סיסמת היוזר). חסר ערך ⇐ `incomplete_cluster_object`, כישלון ודאי: ה-uid כבר שמור,
   ולכן הביטול מוחק גם את האובייקט הזה וגם כל מה שנוצר לפניו. אובייקט שנמצא לפי שם (תוצאה לא ידועה) נקרא מלא לפי ה-uid.
-- **צעד 6** קורא את ה-DB אחרי שההרשאות עליו. שדה בלי ערך, או אין endpoint עם `dns_name`, `port` ו-`addr`
-  (`database.read_fields`, `endpoints_field`, `endpoint_fields`) ⇐ אותו כישלון ודאי, והכל מתבטל.
+- **צעד 6** קורא את ה-DB המלא אחרי שההרשאות עליו. כל שדה של מודל היצירה ו-`database.required_fields` (`uid`, `status`,
+  `endpoints`) חייב ערך, וכל endpoint חייב `endpoint_fields` (`dns_name`, `port`, `addr`). אחרת ⇐ אותו כישלון ודאי,
+  והכל מתבטל.
+- **כל קריאה לקלאסטר מחזירה את האובייקט המלא:** יצירה, קריאה לפי uid, רשימה (בלי `fields`), מחיקה, עדכון DB, קריאת
+  DB, המתנה ל-action (ה-action האחרון) והמתנה ל-DB פעיל (ה-DB האחרון שנקרא). מי שקורא בוחר מה הוא צריך, כך שראוטים
+  אחרים משתמשים באותן קריאות בלי קריאה נוספת. צעד עדכון שומר לביטול רק את השדות שהוא משנה.
 - **התוצאה** (`service-api.md` סעיף 5) נבנית רק מהאובייקטים ששמורים ב-saga record: ה-DB מצעד 6, היוזר וה-ACL מתשובות
   היצירה שלהם. הסיסמה היא זו שהקלאסטר קיבל.
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
