@@ -7,10 +7,16 @@ from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     OverrideClusterSelector,
 )
-from redis_enterprise_services.databases.new_database import DatabaseOptions, NewDatabase
+from redis_enterprise_services.databases.new_database import (
+    PERSISTENCE_MODE_BY_FIELD,
+    DatabaseOptions,
+    NewDatabase,
+)
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
+
+DATA_PERSISTENCE_FIELD: str = "data_persistence"
 
 
 class DatabaseDefaults:
@@ -20,7 +26,11 @@ class DatabaseDefaults:
     def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
         values: dict[str, JsonValue] = merged_default_values(settings=self._settings, cluster=cluster)
         values.update(requested.model_dump(exclude_none=True))
-        return NewDatabase.model_validate(obj=values)
+        return NewDatabase.model_validate(
+            obj=with_persistence_settings_of_its_mode(
+                values=values, persistence_values=self._settings.persistence_values
+            )
+        )
 
 
 def database_defaults_from(*, settings: DatabaseDefaultsSettings) -> DatabaseDefaults:
@@ -53,8 +63,25 @@ def cluster_labels(*, cluster: ConfiguredCluster) -> dict[str, str]:
     }
 
 
+def with_persistence_settings_of_its_mode(
+    *, values: dict[str, JsonValue], persistence_values: dict[str, dict[str, JsonValue]]
+) -> dict[str, JsonValue]:
+    mode: JsonValue = values.get(DATA_PERSISTENCE_FIELD)
+    of_this_mode: dict[str, JsonValue] = {
+        field: value for field, value in values.items() if PERSISTENCE_MODE_BY_FIELD.get(field, mode) == mode
+    }
+    return {**persistence_values.get(str(mode), {}), **of_this_mode}
+
+
 def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None:
-    for values in [settings.values, *(override.values for override in settings.overrides)]:
+    persistence_defaults: list[dict[str, JsonValue]] = [
+        {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in settings.persistence_values.items()
+    ]
+    for values in [
+        settings.values,
+        *persistence_defaults,
+        *(override.values for override in settings.overrides),
+    ]:
         try:
             DatabaseOptions.model_validate(obj=values)
         except ValidationError as error:
