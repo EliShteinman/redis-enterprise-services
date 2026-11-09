@@ -77,7 +77,7 @@ def step_record(
 
 
 def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
-    return TRANSLATOR.operation_from_record(
+    return TRANSLATOR.operation_from_ended_record(
         trace_id="trace-1",
         prepared_creation=PREPARED_CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),

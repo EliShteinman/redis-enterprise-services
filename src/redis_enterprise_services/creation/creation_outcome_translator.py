@@ -1,7 +1,6 @@
 import logging
 
-from pydantic import ValidationError
-
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.creation.created_database_result import created_database_result
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.operations.operation import Operation
@@ -13,25 +12,11 @@ from redis_enterprise_services.planning.planned_resources import (
     PlannedResource,
     planned_resources_by_step_key,
 )
-from redis_enterprise_services.planning.single_site_creation_planner import (
-    DATABASE_STEP_KEY,
-    PERMISSIONS_STEP_KEY,
-)
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.resources.models import CreatedResource
-from redis_enterprise_services.saga.contract.saga_record import (
-    SagaRecord,
-    SagaStatus,
-    StepError,
-    StepRecord,
-    StepStatus,
-)
+from redis_enterprise_services.resources.created_uid import created_uid_or_none
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepError, StepRecord
 
 logger: logging.Logger = logging.getLogger(name=__name__)
-
-NOT_ROLLED_BACK_STEP_STATUSES: frozenset[StepStatus] = frozenset(
-    {StepStatus.DONE, StepStatus.UNRESOLVED, StepStatus.COMPENSATING, StepStatus.COMPENSATION_FAILED}
-)
 
 
 class CreationOutcomeTranslator:
@@ -39,37 +24,34 @@ class CreationOutcomeTranslator:
         self._resource_naming: UserResourceNaming = resource_naming
         self._public_errors: PublicErrors = public_errors
 
-    def operation_from_record(
+    def operation_from_ended_record(
         self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
     ) -> Operation:
-        ended_record: SagaRecord = record_interrupted_if_running(record=record)
-        status: OperationStatus = OperationStatus(ended_record.status.value)
-        if ended_record.status is SagaStatus.SUCCEEDED:
-            return Operation(
-                trace_id=trace_id,
-                status=status,
-                database=created_database_result(prepared_creation=prepared_creation, record=ended_record),
-            )
+        if record.status is SagaStatus.SUCCEEDED:
+            return succeeded_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
+        return self._failed_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
+
+    def _failed_operation(
+        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+    ) -> Operation:
         return Operation(
             trace_id=trace_id,
-            status=status,
-            error=self._stopped_step_error(prepared_creation=prepared_creation, record=ended_record),
+            status=OperationStatus(record.status.value),
+            error=self._stopped_step_error(cluster=prepared_creation.cluster, record=record),
             not_rolled_back=self._not_rolled_back_resources(
-                prepared_creation=prepared_creation, record=ended_record
+                prepared_creation=prepared_creation, record=record
             ),
         )
 
-    def _stopped_step_error(self, *, prepared_creation: PreparedCreation, record: SagaRecord) -> PublicError:
-        stopped_step: StepRecord | None = next(
-            (step for step in record.steps if step.key == record.stopped_at), None
-        )
+    def _stopped_step_error(self, *, cluster: ConfiguredCluster, record: SagaRecord) -> PublicError:
+        stopped_step: StepRecord | None = record.stopped_step()
         if stopped_step is None or stopped_step.error is None:
             logger.error(msg=f"saga {record.saga_id} ended {record.status.value} with no failed step")
             return self._public_errors.internal_error()
         return self._public_errors.from_code(
             internal_code=stopped_step.error.code,
             message=stopped_step.error.message,
-            cluster_url=prepared_creation.cluster.api_url,
+            cluster_url=cluster.api_url,
             cluster_error_code=stopped_step.error.remote_code,
         )
 
@@ -80,41 +62,44 @@ class CreationOutcomeTranslator:
             spec=prepared_creation.spec, resource_naming=self._resource_naming
         )
         return [
-            RemainingResource(
-                cluster_url=prepared_creation.cluster.api_url,
-                resource_type=planned_by_step_key[step.key].resource_type,
-                name=planned_by_step_key[step.key].name,
-                uid=remaining_resource_uid_or_none(record=record, step=step),
-                last_error=self._public_code_and_message(error=step.compensation_error or step.error),
+            self._remaining_resource(
+                cluster=prepared_creation.cluster,
+                planned=planned_by_step_key[step.key],
+                record=record,
+                step=step,
             )
-            for step in record.steps
-            if step.status in NOT_ROLLED_BACK_STEP_STATUSES
+            for step in record.not_rolled_back_steps()
         ]
 
-    def _public_code_and_message(self, *, error: StepError | None) -> str | None:
-        return (
-            None
-            if error is None
-            else f"{self._public_errors.public_code(internal_code=error.code)}: {error.message}"
+    def _remaining_resource(
+        self, *, cluster: ConfiguredCluster, planned: PlannedResource, record: SagaRecord, step: StepRecord
+    ) -> RemainingResource:
+        return RemainingResource(
+            cluster_url=cluster.api_url,
+            resource_type=planned.resource_type,
+            name=planned.name,
+            uid=created_uid_or_none(step_result=record.step(key=planned.uid_step_key).result),
+            last_error=self._public_code_and_message(error=step.last_error()),
         )
 
+    def _public_code_and_message(self, *, error: StepError | None) -> str | None:
+        if error is None:
+            return None
+        return f"{self._public_errors.public_code(internal_code=error.code)}: {error.message}"
 
-def remaining_resource_uid_or_none(*, record: SagaRecord, step: StepRecord) -> int | None:
-    uid_step: StepRecord = (
-        next(found for found in record.steps if found.key == DATABASE_STEP_KEY)
-        if step.key == PERMISSIONS_STEP_KEY
-        else step
+
+def succeeded_operation(
+    *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+) -> Operation:
+    return Operation(
+        trace_id=trace_id,
+        status=OperationStatus.SUCCEEDED,
+        database=created_database_result(prepared_creation=prepared_creation, record=record),
     )
-    try:
-        return CreatedResource.model_validate(obj=uid_step.result).uid
-    except ValidationError:
-        return None
 
 
 def record_interrupted_if_running(*, record: SagaRecord) -> SagaRecord:
     if record.status is not SagaStatus.RUNNING:
         return record
     logger.critical(msg=f"saga {record.saga_id} is stored as running, reported as manual intervention")
-    interrupted: SagaRecord = record.model_copy(deep=True)
-    interrupted.mark_interrupted()
-    return interrupted
+    return record.interrupted_copy()

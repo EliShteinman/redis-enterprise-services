@@ -11,7 +11,7 @@ from redis_enterprise_services.planning.single_site_creation_planner import (
     role_step_key,
     user_step_key,
 )
-from redis_enterprise_services.resources.models import CreatedResource
+from redis_enterprise_services.resources.created_uid import created_uid
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
@@ -43,5 +43,4 @@ def created_user_result(*, record: SagaRecord, user: DatabaseUserSpec) -> Databa
 
 
 def recorded_uid(*, record: SagaRecord, step_key: str) -> int:
-    step_result: object = next(step.result for step in record.steps if step.key == step_key)
-    return CreatedResource.model_validate(obj=step_result).uid
+    return created_uid(step_result=record.step(key=step_key).result)

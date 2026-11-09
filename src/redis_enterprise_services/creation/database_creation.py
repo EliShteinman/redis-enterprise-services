@@ -28,11 +28,7 @@ class DatabaseCreation:
         )
 
     def _prepare_run(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> PreparedRun:
-        prepared_creation: PreparedCreation = (
-            self._preparation.validate_name_resolve_cluster_and_fill_defaults(
-                creation_request=creation_request
-            )
-        )
+        prepared_creation: PreparedCreation = self._preparation.prepare(creation_request=creation_request)
         return PreparedRun(
             task_name=f"creating {prepared_creation.spec.database.name}",
             task=partial(
