@@ -28,6 +28,14 @@ class PublicErrors:
             cluster_error_code=error.cluster_error_code,
         )
 
+    def for_rejection(
+        self, *, error: RedisEnterpriseServicesError, cluster_url: str | None = None
+    ) -> PublicError:
+        published: PublicError = self.from_error(error=error, cluster_url=cluster_url)
+        if published.code == INTERNAL_ERROR_CODE:
+            return self.internal_error()
+        return published
+
     def from_code(
         self,
         *,

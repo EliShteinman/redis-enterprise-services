@@ -1,6 +1,8 @@
 import pytest
 
 from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.exceptions.saga import InvalidPlanError
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 
 PUBLIC_ERRORS: PublicErrors = PublicErrors(
@@ -32,3 +34,9 @@ def test_only_a_code_configured_with_cluster_details_names_the_cluster() -> None
     ]
 
     assert published_cluster_urls == ["https://c1:9443", None]
+
+
+def test_a_rejection_with_no_public_code_shows_only_the_fixed_internal_message() -> None:
+    rejection: PublicError = PUBLIC_ERRORS.for_rejection(error=InvalidPlanError(message="plan details"))
+
+    assert rejection.message == "internal error"
