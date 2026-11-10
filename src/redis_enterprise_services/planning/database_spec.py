@@ -30,8 +30,9 @@ class DatabaseUserSpec(BaseModel):
         description="A Redis ACL rule for this user on this database: which commands and which keys. "
         "Words separated by spaces: +@category, -@category, +command, -command|subcommand, ~keys, "
         "%R~keys, %W~keys, %RW~keys, &channels, allkeys, allcommands, nocommands, resetkeys, allchannels, "
-        "resetchannels, on, off, and selectors in parentheses. The cluster checks that the commands and "
-        "categories exist.",
+        "resetchannels, on, off, and selectors in parentheses. Password settings (>, <, #, nopass, "
+        "resetpass, reset) are refused: the password comes from the password field. The cluster checks "
+        "that the commands and categories exist.",
         examples=["+@all ~orders:*"],
     )
 

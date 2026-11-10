@@ -33,9 +33,30 @@ class DatabaseDefaults:
         )
 
 
-def database_defaults_from(*, settings: DatabaseDefaultsSettings) -> DatabaseDefaults:
+def database_defaults_from(
+    *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
+) -> DatabaseDefaults:
     reject_invalid_default_values(settings=settings)
+    for cluster in clusters:
+        reject_invalid_values_on_cluster(settings=settings, cluster=cluster)
     return DatabaseDefaults(settings=settings)
+
+
+def reject_invalid_values_on_cluster(
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+) -> None:
+    merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
+    try:
+        reject_persistence_settings_of_another_mode(base={}, override=merged)
+        reject_invalid_options(
+            values=with_persistence_settings_of_its_mode(
+                values=merged, persistence_values=settings.persistence_values
+            )
+        )
+    except ConfigurationError as error:
+        raise ConfigurationError(
+            message=f"the database defaults that apply together on cluster {cluster.name}: {error.message}"
+        ) from error
 
 
 def merged_default_values(

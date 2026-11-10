@@ -115,7 +115,8 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
                 values={},
                 persistence_values={},
                 overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
-            )
+            ),
+            clusters=[],
         )
 
 
@@ -166,7 +167,8 @@ def defaults_with_override(*, values: dict[str, JsonValue]) -> DatabaseDefaults:
             values={"data_persistence": "aof"},
             persistence_values=PERSISTENCE_VALUES,
             overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="PROD"), values=values)],
-        )
+        ),
+        clusters=[cluster(environment="PROD")],
     )
 
 
@@ -181,3 +183,21 @@ def test_an_override_may_set_only_the_policy_of_the_default_mode() -> None:
 def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         defaults_with_override(values={"snapshot_policy": [{"secs": 60, "writes": 1}]})
+
+
+def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        database_defaults_from(
+            settings=DatabaseDefaultsSettings(
+                values={},
+                persistence_values={},
+                overrides=[
+                    DefaultsOverride(
+                        when=OverrideClusterSelector(environment="PROD"),
+                        values={"sharding": True, "shard_key_regex": [{"regex": "(?<tag>.*)"}]},
+                    ),
+                    DefaultsOverride(when=OverrideClusterSelector(site="dc1"), values={"sharding": False}),
+                ],
+            ),
+            clusters=[cluster(environment="PROD")],
+        )

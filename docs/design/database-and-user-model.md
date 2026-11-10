@@ -30,7 +30,7 @@
 | `replication` | | `true`, וב-DEV `false` | |
 | `sharding` | | | |
 | `shards_count` | | | |
-| `shard_key_regex` | | | בלי ערך, חלים כללי ברירת המחדל של Redis. רלוונטי רק כש-`sharding` דלוק. השירות לא בודק את זה, והקלאסטר דוחה |
+| `shard_key_regex` | | | חובה כש-`sharding` הוא `true` (התיעוד של Redis: "When true, shard hashing rules must be provided by `shard_key_regex`"), ונשלח רק איתו. כללי ברירת המחדל של Redis הם `[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]`. השירות בודק את זה ודוחה מיד ב-422 |
 | `data_persistence` | | `aof` | |
 | `aof_policy` | | `appendfsync-every-sec` | רק עם `aof`. נשלח רק כש-`data_persistence` הוא `aof` |
 | `snapshot_policy` | | `[{secs: 3600, writes: 1}]` | רק עם `snapshot`. הקלאסטר דוחה `snapshot` בלי מדיניות, ולכן יש ברירת מחדל |
