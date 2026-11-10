@@ -5,9 +5,9 @@ from typing import Any
 
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
-from opentelemetry import trace
 from starlette.exceptions import HTTPException
 
+from redis_enterprise_services.api.internal_error_report import report_internal_error
 from redis_enterprise_services.api.rejection_error import FieldError, RejectionError
 from redis_enterprise_services.api.rejection_error_code import (
     API_ERROR_CODE_BY_HTTP_STATUS,
@@ -83,8 +83,7 @@ def log_service_error(*, error: RedisEnterpriseServicesError, status_code: int) 
     if status_code < HTTPStatus.INTERNAL_SERVER_ERROR:
         logger.info(msg=error.coded_message())
         return
-    logger.error(msg=error.coded_message(), exc_info=error)
-    trace.get_current_span().record_exception(exception=error)
+    report_internal_error(error=error, message=error.coded_message())
 
 
 def http_error_code(*, status_code: int) -> RejectionErrorCode:

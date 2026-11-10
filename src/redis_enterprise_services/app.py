@@ -60,7 +60,7 @@ def include_routers(*, app: FastAPI) -> None:
 
 
 def add_error_handling(*, app: FastAPI, settings: ApiSettings, public_errors: PublicErrors) -> None:
-    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, settings=settings)
+    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, public_errors=public_errors)
     app.add_exception_handler(
         exc_class_or_status_code=RedisEnterpriseServicesError,
         handler=cast(ExceptionHandler, ServiceErrorHandler(public_errors=public_errors)),

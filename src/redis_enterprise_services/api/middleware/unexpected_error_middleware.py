@@ -1,35 +1,29 @@
-import logging
 from http import HTTPStatus
 
 from fastapi import Request, Response
-from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
+from redis_enterprise_services.api.internal_error_report import report_internal_error
 from redis_enterprise_services.api.rejection_error import RejectionError
 from redis_enterprise_services.api.rejection_response import rejection_response
-from redis_enterprise_services.config.api_settings import ApiSettings
-from redis_enterprise_services.operations.public_errors import INTERNAL_ERROR_CODE
-
-logger: logging.Logger = logging.getLogger(name=__name__)
+from redis_enterprise_services.operations.public_error import PublicError
+from redis_enterprise_services.operations.public_errors import PublicErrors
 
 
 class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, *, settings: ApiSettings) -> None:
+    def __init__(self, app: ASGIApp, *, public_errors: PublicErrors) -> None:
         super().__init__(app=app)
-        self._settings: ApiSettings = settings
+        self._public_errors: PublicErrors = public_errors
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         try:
             return await call_next(request)
-        except Exception as error:
-            logger.exception(msg="unexpected error")
-            trace.get_current_span().record_exception(exception=error)
+        except Exception as error:  # noqa: BLE001 - logged with its traceback by report_internal_error
+            report_internal_error(error=error, message="unexpected error")
+            internal_error: PublicError = self._public_errors.internal_error()
             return rejection_response(
                 request=request,
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                error=RejectionError(
-                    code=INTERNAL_ERROR_CODE,
-                    message=self._settings.internal_error_message,
-                ),
+                error=RejectionError(code=internal_error.code, message=internal_error.message),
             )
