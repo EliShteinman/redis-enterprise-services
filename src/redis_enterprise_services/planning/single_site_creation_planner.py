@@ -15,13 +15,11 @@ from redis_enterprise_services.planning.creation_step_keys import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
     READ_DATABASE_STEP_KEY,
-    acl_step_key,
-    role_step_key,
-    user_step_key,
 )
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.user_resources import UserResource, UserResources, user_resources
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.roles.models import NewRole
@@ -87,15 +85,20 @@ class SingleSiteCreationPlanner:
     def _steps(
         self, *, address: ClusterAddress, database: NewDatabase, users: list[DatabaseUserSpec]
     ) -> list[PreparableStep]:
+        planned_users: list[tuple[DatabaseUserSpec, UserResources]] = [
+            (user, user_resources(naming=self._resource_naming, database_name=database.name, user=user))
+            for user in users
+        ]
+        resources_of_users: list[UserResources] = [resources for _, resources in planned_users]
         return [
             self._database_step(address=address, database=database),
             *(
                 step
-                for user in users
-                for step in self._steps_for_user(address=address, database=database, user=user)
+                for user, resources in planned_users
+                for step in self._steps_for_user(address=address, user=user, resources=resources)
             ),
-            *self._permissions_steps(address=address, users=users),
-            self._read_database_planned_step(address=address, users=users),
+            *self._permissions_steps(address=address, resources_of_users=resources_of_users),
+            self._read_database_planned_step(address=address, resources_of_users=resources_of_users),
         ]
 
     def _database_step(self, *, address: ClusterAddress, database: NewDatabase) -> PreparableStep:
@@ -106,33 +109,30 @@ class SingleSiteCreationPlanner:
         )
 
     def _steps_for_user(
-        self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
+        self, *, address: ClusterAddress, user: DatabaseUserSpec, resources: UserResources
     ) -> list[PreparableStep]:
         return [
-            self._acl_step(address=address, database=database, user=user),
-            self._role_step(address=address, database=database, user=user),
-            self._user_step(address=address, user=user),
+            self._acl_step(address=address, user=user, acl=resources.acl),
+            self._role_step(address=address, role=resources.role),
+            self._user_step(address=address, user=user, resources=resources),
         ]
 
     def _acl_step(
-        self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
+        self, *, address: ClusterAddress, user: DatabaseUserSpec, acl: UserResource
     ) -> PreparableStep:
-        acl_name: str = self._resource_naming.acl_name(database_name=database.name, user_name=user.name)
-        acl: NewAcl = NewAcl(name=acl_name, acl=user.acl_rule)
         return PlannedStep(
-            key=acl_step_key(user=user),
+            key=acl.step_key,
             step=self._create_acl_step,
-            build_input=partial(fixed_resource_input, address=address, spec=acl),
+            build_input=partial(
+                fixed_resource_input, address=address, spec=NewAcl(name=acl.name, acl=user.acl_rule)
+            ),
         )
 
-    def _role_step(
-        self, *, address: ClusterAddress, database: NewDatabase, user: DatabaseUserSpec
-    ) -> PreparableStep:
-        role_name: str = self._resource_naming.role_name(database_name=database.name, user_name=user.name)
+    def _role_step(self, *, address: ClusterAddress, role: UserResource) -> PreparableStep:
         return PlannedStep(
-            key=role_step_key(user=user),
+            key=role.step_key,
             step=self._create_role_step,
-            build_input=partial(self._role_input, address=address, role_name=role_name),
+            build_input=partial(self._role_input, address=address, role_name=role.name),
         )
 
     def _role_input(
@@ -147,60 +147,74 @@ class SingleSiteCreationPlanner:
             ),
         )
 
-    def _user_step(self, *, address: ClusterAddress, user: DatabaseUserSpec) -> PreparableStep:
+    def _user_step(
+        self, *, address: ClusterAddress, user: DatabaseUserSpec, resources: UserResources
+    ) -> PreparableStep:
         return PlannedStep(
-            key=user_step_key(user=user),
+            key=resources.user.step_key,
             step=self._create_user_step,
-            build_input=partial(user_input, address=address, user=user),
+            build_input=partial(
+                user_input, address=address, user=user, role_step_key=resources.role.step_key
+            ),
         )
 
     def _permissions_steps(
-        self, *, address: ClusterAddress, users: list[DatabaseUserSpec]
+        self, *, address: ClusterAddress, resources_of_users: list[UserResources]
     ) -> list[PreparableStep]:
-        if not users:
+        if not resources_of_users:
             return []
         return [
             PlannedStep(
                 key=PERMISSIONS_STEP_KEY,
                 step=self._update_database_step,
-                build_input=partial(self._permissions_input, address=address, users=users),
+                build_input=partial(
+                    self._permissions_input, address=address, resources_of_users=resources_of_users
+                ),
             )
         ]
 
     def _read_database_planned_step(
-        self, *, address: ClusterAddress, users: list[DatabaseUserSpec]
+        self, *, address: ClusterAddress, resources_of_users: list[UserResources]
     ) -> PreparableStep:
         return PlannedStep(
             key=READ_DATABASE_STEP_KEY,
             step=self._read_database_step,
-            build_input=partial(self._read_database_input, address=address, users=users),
+            build_input=partial(
+                self._read_database_input, address=address, resources_of_users=resources_of_users
+            ),
         )
 
     def _read_database_input(
-        self, *, step_results: StepResults, address: ClusterAddress, users: list[DatabaseUserSpec]
+        self, *, step_results: StepResults, address: ClusterAddress, resources_of_users: list[UserResources]
     ) -> ReadDatabaseInput:
         return ReadDatabaseInput(
             cluster=address,
             uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY),
-            expected_values=self._permission_values(step_results=step_results, users=users) if users else {},
+            expected_values=self._permission_values(
+                step_results=step_results, resources_of_users=resources_of_users
+            )
+            if resources_of_users
+            else {},
         )
 
     def _permissions_input(
-        self, *, step_results: StepResults, address: ClusterAddress, users: list[DatabaseUserSpec]
+        self, *, step_results: StepResults, address: ClusterAddress, resources_of_users: list[UserResources]
     ) -> UpdateDatabaseInput:
         return UpdateDatabaseInput(
             cluster=address,
             uid=uid_created_by_step(step_results=step_results, step_key=DATABASE_STEP_KEY),
-            values=self._permission_values(step_results=step_results, users=users),
+            values=self._permission_values(step_results=step_results, resources_of_users=resources_of_users),
         )
 
     def _permission_values(
-        self, *, step_results: StepResults, users: list[DatabaseUserSpec]
+        self, *, step_results: StepResults, resources_of_users: list[UserResources]
     ) -> dict[str, JsonValue]:
         return {
             self._cluster_fields.roles_permissions: [
                 permission.model_dump(mode="json")
-                for permission in role_permissions(step_results=step_results, users=users)
+                for permission in role_permissions(
+                    step_results=step_results, resources_of_users=resources_of_users
+                )
             ]
         }
 
@@ -212,14 +226,14 @@ def fixed_resource_input[TSpec: NamedSpec](
 
 
 def user_input(
-    *, step_results: StepResults, address: ClusterAddress, user: DatabaseUserSpec
+    *, step_results: StepResults, address: ClusterAddress, user: DatabaseUserSpec, role_step_key: str
 ) -> CreateResourceInput[NewUser]:
     return CreateResourceInput(
         cluster=address,
         spec=NewUser(
             name=user.name,
             password=user.password,
-            role_uids=[uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user))],
+            role_uids=[uid_created_by_step(step_results=step_results, step_key=role_step_key)],
         ),
     )
 
@@ -231,13 +245,15 @@ def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list
     ]
 
 
-def role_permissions(*, step_results: StepResults, users: list[DatabaseUserSpec]) -> list[RolePermission]:
+def role_permissions(
+    *, step_results: StepResults, resources_of_users: list[UserResources]
+) -> list[RolePermission]:
     return [
         RolePermission(
-            role_uid=uid_created_by_step(step_results=step_results, step_key=role_step_key(user=user)),
-            redis_acl_uid=uid_created_by_step(step_results=step_results, step_key=acl_step_key(user=user)),
+            role_uid=uid_created_by_step(step_results=step_results, step_key=resources.role.step_key),
+            redis_acl_uid=uid_created_by_step(step_results=step_results, step_key=resources.acl.step_key),
         )
-        for user in users
+        for resources in resources_of_users
     ]
 
 
