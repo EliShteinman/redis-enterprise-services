@@ -5,7 +5,6 @@ from pydantic import JsonValue, TypeAdapter
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
-from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsRepository
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
@@ -24,11 +23,9 @@ class RestDatabaseFieldsRepository(DatabaseFieldsRepository):
         *,
         cluster_api_caller: ClusterApiCaller,
         settings: DatabaseSettings,
-        cluster_api_settings: ClusterApiSettings,
     ) -> None:
         self._cluster_api_caller: ClusterApiCaller = cluster_api_caller
         self._settings: DatabaseSettings = settings
-        self._cluster_api_settings: ClusterApiSettings = cluster_api_settings
 
     def read(self, *, target: ClusterTarget, uid: int) -> DatabaseFieldsSnapshot:
         response: SuccessfulClusterResponse = self._cluster_api_caller.send(
