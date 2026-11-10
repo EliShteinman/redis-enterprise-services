@@ -7,6 +7,7 @@ from pydantic import AfterValidator, Field
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 DEFAULT_PORT_BY_SCHEME: dict[str, int] = {"http": 80, "https": 443}
+NO_PORT: int = 0
 
 
 def reject_an_invalid_port(url: str) -> str:
@@ -14,6 +15,8 @@ def reject_an_invalid_port(url: str) -> str:
         port: int | None = urlsplit(url).port
     except ValueError as error:
         raise ValueError(f"{url} has an invalid port: {error}") from error
+    if port == NO_PORT:
+        raise ValueError(f"{url} has port {NO_PORT}, which nothing listens on")
     logger.debug(msg=f"{url} uses port {port or 'the scheme default'}")
     return url
 
@@ -29,5 +32,5 @@ type RelayUrl = Annotated[
 def comparable_url(*, url: str) -> str:
     parts: SplitResult = urlsplit(url)
     scheme: str = parts.scheme.lower()
-    port: int = parts.port or DEFAULT_PORT_BY_SCHEME[scheme]
+    port: int = DEFAULT_PORT_BY_SCHEME[scheme] if parts.port is None else parts.port
     return f"{scheme}://{(parts.hostname or '').lower()}:{port}{parts.path}"

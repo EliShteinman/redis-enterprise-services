@@ -852,6 +852,16 @@ def test_a_pivot_that_kept_a_result_and_failed_needs_manual_intervention(
     assert record.steps[1].status is StepStatus.UNRESOLVED
 
 
+def test_a_pivot_that_kept_a_result_and_failed_keeps_its_own_error(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    step: FakeStep = FakeStep(calls=calls, kind=StepKind.PIVOT, execute_script=["keep then failed"])
+
+    record: SagaRecord = run(steps=[planned(step=step, key="p")], record_writer=record_writer, lock=lock)
+
+    assert record.steps[0].error is not None and record.steps[0].error.code == FAILED.code
+
+
 class StepWithBuggyCompensation(FakeStep):
     def compensate(self, *, step_input: FakeInput, result: FakeResult) -> None:
         raise ValueError("bug in compensate")
