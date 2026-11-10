@@ -188,7 +188,7 @@
                        "data_persistence": "aof", "aof_policy": "appendfsync-every-sec", "…": "…"},
           "permissions": [
             {"user_uid": 12, "user_name": "app", "user_password": "S3cure-Passw0rd",
-             "acl_uid": 9, "acl_rule": "+@all ~orders:*"}
+             "acl_uid": 9, "acl_rule": "+@all ~orders:*", "role_uid": 4, "role_name": "orders-app-role"}
           ]
         }
       }
@@ -197,7 +197,7 @@
 }
 ```
 
-כל ערך של ה-DB, של היוזר ושל ה-ACL נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
+כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
 ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster`, `cluster_url`, `network`, `site` ו-`environment` מגיעים
 מהקונפיג. `active_active: false` ו-`crdb_guid: null` קבועים עד Active-Active.
 
@@ -210,7 +210,7 @@
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
 | `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
 | `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
-| `clusters[].db.permissions[]` | לכל יוזר: היוזר וה-ACL שלו, שנוצרים ונמחקים יחד. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף. ה-role פנימי ולא מוחזר |
+| `clusters[].db.permissions[]` | לכל יוזר: היוזר, ה-ACL וה-role שלו, שנוצרים ונמחקים יחד, כל אחד עם ה-uid שלו. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף |
 
 **מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
 פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB

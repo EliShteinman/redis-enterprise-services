@@ -3,6 +3,7 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from redis_enterprise_services.operations.database_result import DatabaseResult
+from redis_enterprise_services.operations.is_none import is_none
 from redis_enterprise_services.operations.operation_status import (
     CLEANLY_ENDED_STATUSES,
     STATUSES_WITH_REMAINING_RESOURCES,
@@ -36,13 +37,13 @@ class Operation(BaseModel):
     )
     error: PublicError | None = Field(
         default=None,
-        exclude_if=lambda error: error is None,
+        exclude_if=is_none,
         description="Why the operation did not succeed. Present for every status except running and "
         "succeeded.",
     )
     not_rolled_back: list[RemainingResource] | None = Field(
         default=None,
-        exclude_if=lambda not_rolled_back: not_rolled_back is None,
+        exclude_if=is_none,
         description="What stayed on the clusters after a failure. Empty when everything was undone.",
     )
 
