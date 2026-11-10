@@ -135,7 +135,7 @@
 | `users` | list | | ברירת מחדל `[]`. כל שם פעם אחת |
 | `users[].name` | str | ✅ | בלי `-` (המפריד בשמות ה-ACL וה-role). הכלל של Redis: ASCII בלי `" & < >`, עד 255 תווים (`naming.redis.user`). ושמות ה-ACL וה-role שנגזרים ממנו (`{db}-{user}-acl`, `{db}-{user}-role`) חייבים את הכלל של Redis לשמות אלה: אותיות, ספרות, רווח ו-`_ . @ # ; , ( ) [ ] -`, עד 255 תווים (`naming.redis.acl_and_role`). אחרת ⇐ `422 invalid_name` |
 | `users[].password` | str | ✅ | לפחות 8 תווים: ה-`password_min_length` הנמוך ביותר של Redis. קלאסטר שמוגדר עם מינימום גבוה יותר דוחה סיסמה קצרה ממנו |
-| `users[].acl_rule` | str | ✅ | כלל ACL של Redis, למשל `+@all ~orders:*`. התחביר נבדק מיד: מילים מופרדות ברווח, `+@category`, `-@category`, `+command`, `-command\|sub`, `~keys`, `%R~keys`, `%W~keys`, `%RW~keys`, `&channels`, `allkeys`, `allcommands`, `nocommands`, `resetkeys`, `allchannels`, `resetchannels`, `on`, `off`, ו-selectors בסוגריים (נבדק מול קלאסטר אמיתי). שהפקודות והקטגוריות קיימות בודק הקלאסטר |
+| `users[].acl_rule` | str | ✅ | כלל ACL של Redis, למשל `+@all ~orders:*`. התחביר נבדק מיד: מילים מופרדות ברווח, `+@category`, `-@category`, `+command`, `-command\|sub`, `~keys`, `%R~keys`, `%W~keys`, `%RW~keys` (כל סדר וכל רישיות, עם תבנית אחרי `~`), `&channels`, `allkeys`, `allcommands`, `nocommands`, `resetkeys`, `allchannels`, `resetchannels`, `on`, `off`, ו-selectors בסוגריים, בלי `on` ו-`off` בתוכם (נבדק מול קלאסטר אמיתי). הגדרות סיסמה (`>`, `<`, `#`, `nopass`, `resetpass`, `reset`) נדחות: הסיסמה מגיעה מ-`password`. שהפקודות והקטגוריות קיימות בודק הקלאסטר |
 
 ### מה נוצר בקלאסטר
 
