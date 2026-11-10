@@ -96,7 +96,7 @@
 | `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | רק יחד עם `data_persistence: aof` |
 | `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | רק יחד עם `data_persistence: snapshot` |
 | `sharding` | bool | `true` רק יחד עם `shard_key_regex` |
-| `shards_count` | int, 1–1024 | מעל 1 רק יחד עם `sharding: true` |
+| `shards_count` | int, 1–512 (התיעוד של Redis) | מעל 1 רק יחד עם `sharding: true` |
 | `shard_key_regex` | list של `{regex}` | רק יחד עם `sharding: true` |
 | `eviction_policy` | אחד מעשרת הערכים של Redis (`noeviction`, `allkeys-lru`, …) | |
 | `shards_placement` | `dense` / `sparse` | |
