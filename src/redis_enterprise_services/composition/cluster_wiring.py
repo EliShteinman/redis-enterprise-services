@@ -6,6 +6,7 @@ from redis_enterprise_services.cluster.cluster_target_resolver import (
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
@@ -78,14 +79,17 @@ class ClusterSteps:
         target_resolver: ClusterTargetResolver,
         repositories: ClusterRepositories,
     ) -> None:
+        status_polling: StatusPolling = StatusPolling(
+            read_again_polling=read_again_polling, status_field=settings.cluster_api.fields.status
+        )
         database_waiter: PollingDatabaseWaiter = PollingDatabaseWaiter(
             fields_reader=repositories.database_fields,
             read_again_polling=read_again_polling,
+            status_polling=status_polling,
             settings=settings.database,
-            cluster_api_settings=settings.cluster_api,
         )
         action_completion_waiter: ActionCompletionWaiter = build_action_completion_waiter(
-            settings=settings, cluster_api_caller=cluster_api_caller, read_again_polling=read_again_polling
+            settings=settings, cluster_api_caller=cluster_api_caller, status_polling=status_polling
         )
         self.create_database: CreateResourceStep[NewDatabase] = CreateResourceStep(
             repository=repositories.database,
@@ -169,14 +173,11 @@ def build_target_resolver(*, settings: Settings) -> ClusterTargetResolver:
 
 
 def build_action_completion_waiter(
-    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller, read_again_polling: ReadAgainPolling
+    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller, status_polling: StatusPolling
 ) -> ActionCompletionWaiter:
     return ActionCompletionWaiter(
         action_waiter=PollingActionWaiter(
-            cluster_api_caller=cluster_api_caller,
-            read_again_polling=read_again_polling,
-            settings=settings.action,
-            cluster_api_settings=settings.cluster_api,
+            cluster_api_caller=cluster_api_caller, status_polling=status_polling, settings=settings.action
         )
     )
 
