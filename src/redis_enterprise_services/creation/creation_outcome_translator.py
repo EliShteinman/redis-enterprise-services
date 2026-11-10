@@ -3,7 +3,9 @@ import logging
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
+from redis_enterprise_services.creation.created_resources import created_uid_or_none
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
+from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.public_error import PublicError
@@ -14,7 +16,6 @@ from redis_enterprise_services.planning.planned_resources import (
     planned_resources_by_step_key,
 )
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.resources.created_uid import created_uid_or_none
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepError, StepRecord
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -43,9 +44,12 @@ class CreationOutcomeTranslator:
         if record.status is SagaStatus.SUCCEEDED:
             return succeeded_operation(
                 trace_id=trace_id,
-                prepared_creation=prepared_creation,
-                record=record,
-                database_settings=self._database_settings,
+                database=created_database_result(
+                    prepared_creation=prepared_creation,
+                    record=record,
+                    database_settings=self._database_settings,
+                    resource_naming=self._resource_naming,
+                ),
             )
         return self._failed_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
 
@@ -100,7 +104,7 @@ class CreationOutcomeTranslator:
             cluster_url=cluster.api_url,
             resource_type=planned.resource_type,
             name=planned.name,
-            uid=created_uid_or_none(step_result=record.step(key=planned.uid_step_key).result),
+            uid=created_uid_or_none(record=record, step_key=planned.uid_step_key),
             last_error=self._public_code_and_message(error=step.last_error()),
         )
 
@@ -110,17 +114,5 @@ class CreationOutcomeTranslator:
         return f"{self._public_errors.public_code(internal_code=error.code)}: {error.message}"
 
 
-def succeeded_operation(
-    *,
-    trace_id: str,
-    prepared_creation: PreparedCreation,
-    record: SagaRecord,
-    database_settings: DatabaseSettings,
-) -> Operation:
-    return Operation(
-        trace_id=trace_id,
-        status=OperationStatus.SUCCEEDED,
-        database=created_database_result(
-            prepared_creation=prepared_creation, record=record, database_settings=database_settings
-        ),
-    )
+def succeeded_operation(*, trace_id: str, database: DatabaseResult) -> Operation:
+    return Operation(trace_id=trace_id, status=OperationStatus.SUCCEEDED, database=database)
