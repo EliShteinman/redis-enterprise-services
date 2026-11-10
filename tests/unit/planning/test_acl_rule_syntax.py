@@ -23,8 +23,12 @@ ACCEPTED_BY_REDIS: list[str] = [
     "(+get ~a*)",
     "+@all ~* (+set ~b*)",
     "+@all\t~*",
+    "%WR~x",
+    "%r~x",
+    "%rw~x",
 ]
-REFUSED_BY_REDIS: list[str] = ["", "@all ~*", "+@all *", ">secret +@all ~*", "nopass +@all ~*"]
+REFUSED_BY_REDIS: list[str] = ["", "@all ~*", "+@all *", "%~x", "%R~", "(on +get ~a*)"]
+REFUSED_AS_PASSWORD_SETTINGS: list[str] = [">secret +@all ~*", "nopass +@all ~*"]
 
 
 def user(*, acl_rule: str) -> DatabaseUserSpec:
@@ -38,6 +42,12 @@ def test_a_rule_redis_accepts_is_accepted(acl_rule: str) -> None:
 
 @pytest.mark.parametrize(argnames="acl_rule", argvalues=REFUSED_BY_REDIS)
 def test_a_rule_redis_refuses_for_its_syntax_is_refused(acl_rule: str) -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        user(acl_rule=acl_rule)
+
+
+@pytest.mark.parametrize(argnames="acl_rule", argvalues=REFUSED_AS_PASSWORD_SETTINGS)
+def test_a_rule_that_sets_the_password_is_refused_because_the_password_field_owns_it(acl_rule: str) -> None:
     with pytest.raises(expected_exception=ValidationError):
         user(acl_rule=acl_rule)
 

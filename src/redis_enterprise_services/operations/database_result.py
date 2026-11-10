@@ -51,7 +51,8 @@ class ClusterDatabaseResult(BaseModel):
         ],
     )
     permissions: list[DatabasePermissionResult] = Field(
-        description="One entry per user: the user and its ACL, which are created and deleted together."
+        description="One entry per user: the user, its ACL and its role, which are created and deleted "
+        "together."
     )
 
 
