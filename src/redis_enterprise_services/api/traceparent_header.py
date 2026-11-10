@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends, Header
 
 from redis_enterprise_services.api.app_state_dependencies import api_settings_from_app_state
-from redis_enterprise_services.api.field_validation_error import field_validation_error
+from redis_enterprise_services.api.ensure_matches import ensure_matches
 from redis_enterprise_services.config.api_settings import ApiSettings
 
 TRACEPARENT_LOCATION: tuple[str, str] = ("header", "traceparent")
@@ -19,7 +19,9 @@ def require_traceparent(
         ),
     ],
 ) -> None:
-    if api_settings.traceparent_pattern.fullmatch(traceparent) is None:
-        raise field_validation_error(
-            location=TRACEPARENT_LOCATION, message=api_settings.traceparent_error_message
-        )
+    ensure_matches(
+        value=traceparent,
+        pattern=api_settings.traceparent_pattern,
+        location=TRACEPARENT_LOCATION,
+        message=api_settings.traceparent_error_message,
+    )
