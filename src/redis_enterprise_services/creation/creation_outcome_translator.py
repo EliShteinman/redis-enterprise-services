@@ -60,9 +60,7 @@ class CreationOutcomeTranslator:
             trace_id=trace_id,
             status=OPERATION_STATUS_BY_FAILED_SAGA_STATUS[record.status],
             error=self._stopped_step_error(cluster=prepared_creation.cluster, record=record),
-            not_rolled_back=self._not_rolled_back_resources(
-                prepared_creation=prepared_creation, record=record
-            ),
+            not_rolled_back=self.remaining_resources(prepared_creation=prepared_creation, record=record),
         )
 
     def _stopped_step_error(self, *, cluster: ConfiguredCluster, record: SagaRecord) -> PublicError:
@@ -80,7 +78,7 @@ class CreationOutcomeTranslator:
             cluster_error_code=stopped_step.error.remote_code,
         )
 
-    def _not_rolled_back_resources(
+    def remaining_resources(
         self, *, prepared_creation: PreparedCreation, record: SagaRecord
     ) -> list[RemainingResource]:
         planned_by_step_key: dict[str, PlannedResource] = planned_resources_by_step_key(
