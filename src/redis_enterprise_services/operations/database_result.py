@@ -18,6 +18,13 @@ class DatabasePermissionResult(BaseModel):
         description="The user's ACL rule, as the cluster stored it: which commands and which key prefix.",
         examples=["+@all ~orders:*"],
     )
+    role_uid: int = Field(
+        description="The uid of the user's role on this cluster: the role that links the user to its ACL.",
+        examples=[4],
+    )
+    role_name: str = Field(
+        description="The role name, as the cluster stored it.", examples=["orders-app-role"]
+    )
 
 
 class DatabaseEndpointResult(BaseModel):

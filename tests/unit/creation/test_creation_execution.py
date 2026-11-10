@@ -64,6 +64,7 @@ UID_BY_STEP_KEY: dict[str, int] = {
 }
 FIELDS_BY_STEP_KEY: dict[str, dict[str, JsonValue]] = {
     "acl/app": {"uid": 11, "name": "orders-app-acl", "acl": "+@all ~orders:*"},
+    "role/app": {"uid": 12, "name": "orders-app-role"},
     "user/app": {"uid": 13, "name": "app", "role_uids": [12]},
 }
 ENDPOINT: dict[str, JsonValue] = {"dns_name": "redis-12000.c1", "port": 12000, "addr": ["10.0.0.5"]}
@@ -165,10 +166,16 @@ def test_a_created_database_returns_every_creation_field_as_the_cluster_stored_i
     }
 
 
-def test_each_user_comes_back_with_its_acl_as_one_permission(created: DatabaseResult) -> None:
+def test_each_user_comes_back_with_its_acl_and_role_as_one_permission(created: DatabaseResult) -> None:
     assert created.clusters[0].db.permissions == [
         DatabasePermissionResult(
-            user_uid=13, user_name="app", user_password="p1-passw0rd", acl_uid=11, acl_rule="+@all ~orders:*"
+            user_uid=13,
+            user_name="app",
+            user_password="p1-passw0rd",
+            acl_uid=11,
+            acl_rule="+@all ~orders:*",
+            role_uid=12,
+            role_name="orders-app-role",
         )
     ]
 

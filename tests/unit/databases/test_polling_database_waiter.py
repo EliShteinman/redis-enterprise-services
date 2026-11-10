@@ -5,6 +5,7 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
@@ -39,14 +40,17 @@ def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
     settings: Settings = load_settings()
     short_wait: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.05)
     database_settings: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
+    read_again_polling: ReadAgainPolling = ReadAgainPolling(
+        deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
+        transient_error_codes=settings.cluster_api.transient_error_codes,
+    )
     return PollingDatabaseWaiter(
         fields_reader=fields_reader,
-        read_again_polling=ReadAgainPolling(
-            deadline_polling=DeadlinePolling(clock=MonotonicClock(), sleeper=SystemSleeper()),
-            transient_error_codes=settings.cluster_api.transient_error_codes,
+        read_again_polling=read_again_polling,
+        status_polling=StatusPolling(
+            read_again_polling=read_again_polling, status_field=settings.cluster_api.fields.status
         ),
         settings=database_settings,
-        cluster_api_settings=settings.cluster_api,
     )
 
 
