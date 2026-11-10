@@ -59,7 +59,9 @@ class CreationExecution:
                 prepared_creation=prepared_creation,
                 saga_error=error,
                 error_if_not_started=partial(
-                    self._public_errors.from_error, error=error, cluster_url=prepared_creation.cluster.api_url
+                    self._public_errors.for_rejection,
+                    error=error,
+                    cluster_url=prepared_creation.cluster.api_url,
                 ),
             )
         except Exception as error:
