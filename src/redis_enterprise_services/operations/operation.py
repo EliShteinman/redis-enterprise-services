@@ -25,8 +25,9 @@ class Operation(BaseModel):
         default=OperationStatus.RUNNING,
         description="running: still running. succeeded: done. rejected: refused before anything changed. "
         "rolled_back: failed, and everything was undone. requires_manual_intervention: failed, "
-        "and not everything was undone (see not_rolled_back, which is missing after a crash; then the "
-        "saga record is the source), or the pod stopped after the run succeeded and before it saved the "
+        "and not everything was undone (see not_rolled_back, which is missing when the service stopped "
+        "mid-run: then an operator checks what was left), or the pod stopped after the run succeeded "
+        "and before it saved the "
         "operation (the database exists, but database is null).",
         examples=["succeeded"],
     )
