@@ -45,7 +45,8 @@ class Operation(BaseModel):
     not_rolled_back: list[RemainingResource] | None = Field(
         default=None,
         exclude_if=is_none,
-        description="What stayed on the clusters after a failure. Empty when everything was undone.",
+        description="What stayed on the clusters when the operation did not succeed. Empty when everything "
+        "was undone.",
     )
 
     @model_validator(mode="after")
