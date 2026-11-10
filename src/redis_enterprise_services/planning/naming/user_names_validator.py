@@ -2,6 +2,7 @@ from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.user_resources import UserResources, user_resources
 
 
 class UserNamesValidator:
@@ -18,9 +19,9 @@ class UserNamesValidator:
 
     def ensure_valid(self, *, spec: DatabaseSpec, context: NamingContext) -> None:
         for user in spec.users:
-            self._user_name_validator.ensure_valid(name=user.name, context=context)
-            for derived_name in (
-                self._resource_naming.acl_name(database_name=spec.database.name, user_name=user.name),
-                self._resource_naming.role_name(database_name=spec.database.name, user_name=user.name),
-            ):
-                self._acl_and_role_name_validator.ensure_valid(name=derived_name, context=context)
+            resources: UserResources = user_resources(
+                naming=self._resource_naming, database_name=spec.database.name, user=user
+            )
+            self._user_name_validator.ensure_valid(name=resources.user.name, context=context)
+            for derived in (resources.acl, resources.role):
+                self._acl_and_role_name_validator.ensure_valid(name=derived.name, context=context)

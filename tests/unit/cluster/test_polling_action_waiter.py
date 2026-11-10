@@ -7,6 +7,7 @@ from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCalle
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
@@ -54,12 +55,14 @@ def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     simulated_time: SimulatedTime = SimulatedTime()
     return PollingActionWaiter(
         cluster_api_caller=cluster_api_caller,
-        read_again_polling=ReadAgainPolling(
-            deadline_polling=DeadlinePolling(clock=simulated_time, sleeper=simulated_time),
-            transient_error_codes=settings.cluster_api.transient_error_codes,
+        status_polling=StatusPolling(
+            read_again_polling=ReadAgainPolling(
+                deadline_polling=DeadlinePolling(clock=simulated_time, sleeper=simulated_time),
+                transient_error_codes=settings.cluster_api.transient_error_codes,
+            ),
+            status_field=settings.cluster_api.fields.status,
         ),
         settings=action_settings,
-        cluster_api_settings=settings.cluster_api,
     )
 
 

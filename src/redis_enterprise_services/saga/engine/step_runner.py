@@ -81,11 +81,7 @@ class StepRunner:
 
     def _run_with_retries(self, *, step: PreparedStep, recorder: StepRecorder) -> StepOutcome:
         had_unknown_outcome: bool = False
-        for _attempt in paced_attempts(
-            attempts=self._settings.step_retry.attempts,
-            backoff_step_seconds=self._settings.step_retry.backoff_step_seconds,
-            sleeper=self._sleeper,
-        ):
+        for _attempt in paced_attempts(retry=self._settings.step_retry, sleeper=self._sleeper):
             forget_kept_result(step=step, recorder=recorder)
             failure: FailureCategory | None = self._execute_once(step=step, recorder=recorder)
             if failure is None:
@@ -139,11 +135,7 @@ class StepRunner:
         return None
 
     def _find_outcome(self, *, step: PreparedStep, recorder: StepRecorder) -> FindOutcomeVerdict:
-        for _attempt in paced_attempts(
-            attempts=self._settings.step_retry.attempts,
-            backoff_step_seconds=self._settings.step_retry.backoff_step_seconds,
-            sleeper=self._sleeper,
-        ):
+        for _attempt in paced_attempts(retry=self._settings.step_retry, sleeper=self._sleeper):
             verdict: FindOutcomeVerdict | None = self._find_outcome_once(step=step, recorder=recorder)
             if verdict is not None:
                 return verdict
