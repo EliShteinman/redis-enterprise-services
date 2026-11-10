@@ -17,6 +17,7 @@ from redis_enterprise_services.planning.creation_step_keys import (
     READ_DATABASE_STEP_KEY,
 )
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
+from redis_enterprise_services.planning.lock_keys import database_lock_key, user_lock_key
 from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.user_resources import UserResource, UserResources, user_resources
@@ -33,9 +34,6 @@ from redis_enterprise_services.steps.update_database import UpdateDatabaseInput
 from redis_enterprise_services.users.models import NewUser
 
 logger: logging.Logger = logging.getLogger(name=__name__)
-
-DATABASE_LOCK_SEGMENT: str = "database"
-USER_LOCK_SEGMENT: str = "user"
 
 
 class SingleSiteCreationPlanner:
@@ -240,8 +238,8 @@ def user_input(
 
 def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list[str]) -> list[str]:
     return [
-        f"{cluster_url}/{DATABASE_LOCK_SEGMENT}/{database_name}",
-        *(f"{cluster_url}/{USER_LOCK_SEGMENT}/{user_name}" for user_name in user_names),
+        database_lock_key(cluster_url=cluster_url, database_name=database_name),
+        *(user_lock_key(cluster_url=cluster_url, user_name=user_name) for user_name in user_names),
     ]
 
 
