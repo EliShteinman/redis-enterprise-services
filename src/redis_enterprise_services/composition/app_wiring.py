@@ -187,7 +187,9 @@ def build_creation_preparation(
         site_cluster_resolver=SiteClusterResolver(
             directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
         ),
-        database_defaults=database_defaults_from(settings=settings.database_defaults),
+        database_defaults=database_defaults_from(
+            settings=settings.database_defaults, clusters=settings.clusters
+        ),
     )
 
 

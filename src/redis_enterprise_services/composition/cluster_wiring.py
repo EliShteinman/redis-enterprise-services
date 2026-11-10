@@ -148,9 +148,7 @@ def build_cluster_repositories(
             body_builder=SpecCreationBody[NewUser](),
         ),
         database_fields=RestDatabaseFieldsRepository(
-            cluster_api_caller=cluster_api_caller,
-            settings=settings.database,
-            cluster_api_settings=settings.cluster_api,
+            cluster_api_caller=cluster_api_caller, settings=settings.database
         ),
     )
 
