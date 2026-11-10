@@ -65,7 +65,7 @@ class DatabaseOptions(BaseModel):
     shards_count: int | None = Field(
         default=None,
         ge=1,
-        le=1024,
+        le=512,
         description="The number of primary shards." + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[1],
     )
