@@ -264,20 +264,38 @@ def test_an_unexpected_error_before_the_saga_starts_rejects_the_operation() -> N
     )
 
 
+def succeeded_record_with_an_unreadable_read_back() -> SagaRecord:
+    record: SagaRecord = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
+    record.step(key="read-database").result = {"values": {}, "cluster_state_id": 3}
+    return record
+
+
 def test_a_result_that_cannot_be_translated_needs_manual_intervention() -> None:
     harness: ExecutionHarness = ExecutionHarness()
-    record: SagaRecord = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
-    harness.saga_executor.run.return_value = record.model_copy(
-        update={"steps": [step for step in record.steps if step.key != "user/app"]}
-    )
+    harness.saga_executor.run.return_value = succeeded_record_with_an_unreadable_read_back()
 
     operation: Operation = harness.run_and_save()
 
-    assert (operation.status, operation.error and operation.error.code, operation.not_rolled_back) == (
+    assert (operation.status, operation.error and operation.error.code) == (
         OperationStatus.REQUIRES_MANUAL_INTERVENTION,
         "internal_error",
-        None,
     )
+
+
+def test_a_succeeded_saga_whose_result_cannot_be_built_lists_what_it_created() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.return_value = succeeded_record_with_an_unreadable_read_back()
+
+    operation: Operation = harness.run_and_save()
+
+    assert operation.not_rolled_back is not None
+    assert [(remaining.resource_type, remaining.uid) for remaining in operation.not_rolled_back] == [
+        ("database", 7),
+        ("acl", 11),
+        ("role", 12),
+        ("user", 13),
+        ("permissions", 7),
+    ]
 
 
 def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() -> None:

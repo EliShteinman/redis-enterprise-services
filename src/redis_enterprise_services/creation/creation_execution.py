@@ -7,9 +7,11 @@ from redis_enterprise_services.creation.prepared_creation import PreparedCreatio
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.remaining_resource import RemainingResource
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
@@ -121,9 +123,27 @@ class CreationExecution:
                 msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
                 exc_info=True,
             )
-            return Operation.requires_manual_intervention(
-                trace_id=trace_id, error=self._public_errors.internal_error()
+            return Operation(
+                trace_id=trace_id,
+                status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+                error=self._public_errors.internal_error(),
+                not_rolled_back=self._remaining_resources_or_none(
+                    trace_id=trace_id, prepared_creation=prepared_creation, record=record
+                ),
             )
+
+    def _remaining_resources_or_none(
+        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+    ) -> list[RemainingResource] | None:
+        try:
+            return self._outcome_translator.remaining_resources(
+                prepared_creation=prepared_creation, record=record
+            )
+        except Exception:
+            logger.critical(
+                msg=f"what saga {trace_id} left on the cluster cannot be read either", exc_info=True
+            )
+            return None
 
 
 def rejected_operation(*, trace_id: str, error: PublicError) -> Operation:
