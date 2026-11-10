@@ -215,8 +215,8 @@
 **מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
 פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB
 המלא, ובודק שיש ערך לכל שדות מודל היצירה, ל-`uid`, ל-`status` ול-`endpoints`, שכל endpoint מלא, ושההרשאות שנקבעו
-נמצאות ב-`roles_permissions`. אובייקט לא מלא, שדה בלי ערך, או DB בלי endpoint עם `dns_name`,
-`port` ו-`addr`, הם כישלון ודאי (`incomplete_cluster_object`, בציבורי `cluster_request_failed`): הכל מתבטל.
+נמצאות ב-`roles_permissions`. אובייקט לא מלא, שדה בלי ערך, DB בלי endpoint עם `dns_name`,
+`port` ו-`addr`, או הרשאות שלא נמצאות ב-DB, הם כישלון ודאי (`incomplete_cluster_object`, בציבורי `cluster_request_failed`): הכל מתבטל.
 
 ### כישלון
 
@@ -314,7 +314,7 @@
 | `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. מיד: `message` קבוע (`internal error`). בסטטוס: כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרת (קריסה, record שלא נקרא, תוצאה שלא נבנתה) ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט חזר בלי ערך לשדה שנשלח (`incomplete_cluster_object`) |
+| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
 | `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 
