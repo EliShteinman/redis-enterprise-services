@@ -14,7 +14,7 @@ from redis_enterprise_services.resources.cluster_object_body import without_fiel
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
-from redis_enterprise_services.steps.same_values import same_field
+from redis_enterprise_services.steps.same_values import fields_not_holding
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -74,7 +74,7 @@ class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
                 message=f"database {step_input.uid} came back without a value for {missing}"
             )
         differing: list[str] = fields_not_holding(
-            values=snapshot.values,
+            current=snapshot.values,
             expected=step_input.expected_values,
             order_insensitive_fields=self._settings.order_insensitive_fields,
         )
@@ -113,16 +113,3 @@ def missing_database_values(*, values: dict[str, JsonValue], settings: DatabaseS
 
 def is_empty(*, value: JsonValue) -> bool:
     return value is None or value == "" or value == []
-
-
-def fields_not_holding(
-    *, values: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
-) -> list[str]:
-    return [
-        name
-        for name, expected_value in expected.items()
-        if name not in values
-        or not same_field(
-            current=values[name], expected=expected_value, ignore_order=name in order_insensitive_fields
-        )
-    ]

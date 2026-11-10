@@ -6,12 +6,22 @@ from pydantic import JsonValue
 def same_values(
     *, current: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
 ) -> bool:
-    return current.keys() == expected.keys() and all(
-        same_field(
-            current=current[name], expected=expected[name], ignore_order=name in order_insensitive_fields
-        )
-        for name in expected
+    return current.keys() == expected.keys() and not fields_not_holding(
+        current=current, expected=expected, order_insensitive_fields=order_insensitive_fields
     )
+
+
+def fields_not_holding(
+    *, current: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
+) -> list[str]:
+    return [
+        name
+        for name, expected_value in expected.items()
+        if name not in current
+        or not same_field(
+            current=current[name], expected=expected_value, ignore_order=name in order_insensitive_fields
+        )
+    ]
 
 
 def same_field(*, current: JsonValue, expected: JsonValue, ignore_order: bool) -> bool:
