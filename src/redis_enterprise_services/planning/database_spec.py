@@ -6,14 +6,27 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from redis_enterprise_services.config.repeated_values import repeated_values
 from redis_enterprise_services.config.user_resources_settings import NAME_SEPARATOR
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.acl_rule_syntax import ACL_RULE_PATTERN, REDIS_MIN_PASSWORD_LENGTH
+from redis_enterprise_services.planning.acl_rule_syntax import (
+    ACL_RULE_PATTERN,
+    REDIS_MIN_PASSWORD_LENGTH,
+    reject_invalid_acl_rule,
+)
+
+USER_NAME_PATTERN: str = f"^[^{re.escape(NAME_SEPARATOR)}]+$"
+USER_NAME_REGEX: re.Pattern[str] = re.compile(USER_NAME_PATTERN)
+
+
+def reject_user_name_with_separator(name: str) -> str:
+    if USER_NAME_REGEX.fullmatch(name) is None:
+        raise ValueError(f"a user name is not empty and has no '{NAME_SEPARATOR}'")
+    return name
 
 
 class DatabaseUserSpec(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    name: str = Field(
-        pattern=f"^[^{re.escape(NAME_SEPARATOR)}]+$",
+    name: Annotated[str, AfterValidator(reject_user_name_with_separator)] = Field(
+        json_schema_extra={"pattern": USER_NAME_PATTERN},
         description="The user name in the cluster, used to connect to the database. "
         "Without '-', and not taken on the cluster.",
         examples=["app"],
@@ -25,8 +38,8 @@ class DatabaseUserSpec(BaseModel):
         "cluster never returns a password, so it is the one the cluster accepted when it created the user.",
         examples=["S3cure-Passw0rd"],
     )
-    acl_rule: str = Field(
-        pattern=ACL_RULE_PATTERN,
+    acl_rule: Annotated[str, AfterValidator(reject_invalid_acl_rule)] = Field(
+        json_schema_extra={"pattern": ACL_RULE_PATTERN},
         description="A Redis ACL rule for this user on this database: which commands and which keys. "
         "Words separated by spaces: +@category, -@category, +command, -command|subcommand, ~keys, "
         "%R~keys, %W~keys, %RW~keys, &channels, allkeys, allcommands, nocommands, resetkeys, allchannels, "

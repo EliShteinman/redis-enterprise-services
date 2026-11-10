@@ -13,7 +13,11 @@ from redis_enterprise_services.creation.prepared_creation import PreparedCreatio
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
-from redis_enterprise_services.exceptions.saga import ResourcesLockedError, UnreadableSagaRecordError
+from redis_enterprise_services.exceptions.saga import (
+    InvalidPlanError,
+    ResourcesLockedError,
+    UnreadableSagaRecordError,
+)
 from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -208,6 +212,15 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
         OperationStatus.REJECTED,
         "name_taken",
     )
+
+
+def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_message() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.side_effect = InvalidPlanError(message="details of the plan")
+
+    operation: Operation = harness.run_and_save()
+
+    assert operation.error is not None and operation.error.message == "internal error"
 
 
 def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() -> None:
