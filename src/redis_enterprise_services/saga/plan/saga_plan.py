@@ -1,3 +1,4 @@
+from redis_enterprise_services.config.repeated_values import repeated_values
 from redis_enterprise_services.exceptions.saga import InvalidPlanError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
@@ -37,9 +38,9 @@ def reject_second_pivot(*, steps: list[PreparableStep]) -> None:
 
 
 def reject_repeated_keys(*, steps: list[PreparableStep]) -> None:
-    keys: list[str] = [step.key for step in steps]
-    if len(set(keys)) != len(keys):
-        raise InvalidPlanError(message=f"step keys repeat: {keys}")
+    repeated: set[str] = repeated_values(values=[step.key for step in steps])
+    if repeated:
+        raise InvalidPlanError(message=f"step keys repeat: {sorted(repeated)}")
 
 
 def reject_empty_lock_keys(*, lock_keys: list[str]) -> None:

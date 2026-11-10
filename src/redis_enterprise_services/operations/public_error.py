@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 from redis_enterprise_services.config.public_error_code import PublicErrorCode
 from redis_enterprise_services.operations.code_meanings import code_meanings_description
+from redis_enterprise_services.operations.is_none import is_none
 
 PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
     "name_taken": "a name is taken on the cluster",
@@ -30,13 +31,13 @@ class PublicError(BaseModel):
     )
     cluster_url: str | None = Field(
         default=None,
-        exclude_if=lambda cluster_url: cluster_url is None,
+        exclude_if=is_none,
         description="The cluster the error came from. Only for errors from a cluster.",
         examples=["https://cluster-a.net-a:9443"],
     )
     cluster_error_code: str | None = Field(
         default=None,
-        exclude_if=lambda cluster_error_code: cluster_error_code is None,
+        exclude_if=is_none,
         description="The cluster's own error code. Only for errors from a cluster.",
         examples=["insufficient_resources"],
     )
