@@ -67,14 +67,7 @@ class StepRunner:
             outcome=attempts_outcome, has_result=step.has_result, kind=step.kind
         )
         if outcome is not attempts_outcome:
-            reason: str = (
-                f"step {step.key} ended {attempts_outcome.value} without a kept result, "
-                "so the saga cannot compensate it: it needs manual intervention"
-            )
-            logger.error(msg=reason)
-            recorder.save_error(
-                error=StepError.from_exception(error=StepNeedsManualInterventionError(message=reason))
-            )
+            record_escalation(step=step, recorder=recorder, attempts_outcome=attempts_outcome)
         mark_outcome(recorder=recorder, outcome=outcome)
         logger.info(msg=f"step {step.key} ended {outcome.value}")
         return outcome
@@ -158,6 +151,23 @@ class StepRunner:
                 f"error stays: {error.coded_message()}",
             )
             return verdict
+
+
+def record_escalation(*, step: PreparedStep, recorder: StepRecorder, attempts_outcome: StepOutcome) -> None:
+    if attempts_outcome is StepOutcome.FAILED:
+        logger.error(
+            msg=f"step {step.key} is a {step.kind.value} step that kept a result and then failed, "
+            "so the saga cannot compensate it: it needs manual intervention; its own error stays"
+        )
+        return
+    reason: str = (
+        f"step {step.key} ended {attempts_outcome.value} without a kept result, "
+        "so the saga cannot compensate it: it needs manual intervention"
+    )
+    logger.error(msg=reason)
+    recorder.save_error(
+        error=StepError.from_exception(error=StepNeedsManualInterventionError(message=reason))
+    )
 
 
 def verdict_after_find_outcome_error(*, category: FailureCategory) -> FindOutcomeVerdict | None:

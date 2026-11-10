@@ -16,7 +16,7 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 | ACL | כן. שם קיים ⇐ `409 name_already_exists`, תלוי רישיות | `GET /v1/redis_acls` |
 | role | כן, כמו ACL | `GET /v1/roles` |
 | user | כן, כמו ACL. גם בלי `email` | `GET /v1/users`. `fields` לא מצמצם, וחוזר הכל |
-| DB | **לא.** ה-API מקבל שני DBs עם אותו שם (ה-UI לא) | `GET /v1/bdbs?fields=uid,name` |
+| DB | **לא.** ה-API מקבל שני DBs עם אותו שם (ה-UI לא) | `GET /v1/bdbs` (ה-API תומך ב-`?fields=uid,name`, אבל השירות קורא את הרשימה המלאה) |
 | CRDB | לפי `X-Task-ID` שאנחנו קובעים | `GET /v1/crdb_tasks/{id}` מחזיר את `crdb_guid` |
 
 ## 2. פעולות אסינכרוניות
@@ -93,6 +93,9 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 | `shards_count` 2 ⇐ 1 | `406` ("requires asm_scaling") | - |
 | כיבוי `sharding` עם 2 shards | `406 invalid_sharding` | - |
 | `replication` עם node אחד | `406` | - |
+
+ביצירה עם `sharding: true`, התיעוד של אובייקט ה-bdb (`docs/reference/redis-rest-api/objects/bdb.json`) קובע ש-`shard_key_regex`
+חובה. זה לא נבדק מול קלאסטר.
 
 ### הרשאות (`roles_permissions`)
 
