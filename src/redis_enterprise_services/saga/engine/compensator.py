@@ -40,11 +40,7 @@ class Compensator:
 
     def _compensate_with_retries(self, *, step: PreparedStep) -> StepError | None:
         last_error: RedisEnterpriseServicesError | None = None
-        for _attempt in paced_attempts(
-            attempts=self._settings.compensation_retry.attempts,
-            backoff_step_seconds=self._settings.compensation_retry.backoff_step_seconds,
-            sleeper=self._sleeper,
-        ):
+        for _attempt in paced_attempts(retry=self._settings.compensation_retry, sleeper=self._sleeper):
             last_error = self._compensate_once(step=step)
             if last_error is None or not self._is_retried(error=last_error):
                 break
