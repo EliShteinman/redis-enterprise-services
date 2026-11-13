@@ -183,19 +183,20 @@ PlannedStep(
 
 ה-Redis של המצב הוא Redis Enterprise של צוות אחר, ונחשב זמין. אין טיפול בנפילה שלו.
 
-**מפתחות.** כולם נבנים במקום אחד (`RedisKeys`) עם prefix ו-hash tag מהקונפיג (`res:` ו-`{state}`). ה-prefix נדרש כי
-ה-ACL של המשתמש מתיר רק אותו. ה-hash tag שם את כל המפתחות באותו slot, כדי שהסקריפטים יעבדו גם ב-DB עם כמה shards.
+**מפתחות.** כולם נבנים במקום אחד (`RedisKeys`) עם prefix מהקונפיג (`res:`). ה-prefix נדרש כי ה-ACL של המשתמש מתיר
+רק אותו. אין hash tag: ה-DB של המצב הוא shard אחד בלי sharding, ולכן סקריפט Lua יכול לגעת בכל מפתח. hash tag אחד היה
+שם את כל המפתחות ב-slot אחד, בלי שום פיזור.
 
 | מפתח | סוג | תוכן | TTL |
 |---|---|---|---|
-| `res:{state}saga:{saga_id}` | JSON | ה-saga record | 7 ימים אחרי `succeeded` או `rolled_back`. אחרת בלי |
-| `res:{state}sagas:unfinished` | set | Sagas שעוד רצים או מחכים לטיפול ידני. אינדקס לטיפול ידני | |
-| `res:{state}lock:{api_url}/database/{db}` | string | ה-`saga_id` שמחזיק בנעילה | בלי |
-| `res:{state}lock:{api_url}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת | בלי |
-| `res:{state}locks:{saga_id}` | set | מפתחות הנעילה שה-Saga מחזיק. מתמלא בנעילה ומתרוקן בשחרור | בלי |
-| `res:{state}operation:{trace_id}` | JSON | הפעולה, כפי ששאילתת הסטטוס מחזירה אותה | 7 ימים ב-`succeeded`, `rejected`, `rolled_back`. אחרת בלי |
-| `res:{state}operations:open` | set | פעולות שעוד לא הסתיימו, לזיהוי קריסה | |
-| `res:{state}heartbeat:{trace_id}` | string | קיים כל עוד ה-pod שמריץ את הפעולה חי | 60 שניות, מתחדש כל 10 |
+| `res:saga:{saga_id}` | JSON | ה-saga record | 7 ימים אחרי `succeeded` או `rolled_back`. אחרת בלי |
+| `res:sagas:unfinished` | set | Sagas שעוד רצים או מחכים לטיפול ידני. אינדקס לטיפול ידני | |
+| `res:lock:{api_url}/database/{db}` | string | ה-`saga_id` שמחזיק בנעילה | בלי |
+| `res:lock:{api_url}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת | בלי |
+| `res:locks:{saga_id}` | set | מפתחות הנעילה שה-Saga מחזיק. מתמלא בנעילה ומתרוקן בשחרור | בלי |
+| `res:operation:{trace_id}` | JSON | הפעולה, כפי ששאילתת הסטטוס מחזירה אותה | 7 ימים ב-`succeeded`, `rejected`, `rolled_back`. אחרת בלי |
+| `res:operations:open` | set | פעולות שעוד לא הסתיימו, לזיהוי קריסה | |
+| `res:heartbeat:{trace_id}` | string | קיים כל עוד ה-pod שמריץ את הפעולה חי | 60 שניות, מתחדש כל 10 |
 
 **סקריפטי Lua.** כל שינוי שנוגע ביותר ממפתח אחד הוא סקריפט אחד:
 
@@ -209,7 +210,8 @@ PlannedStep(
 | heartbeat | מחדש את המפתחות של כל הפעולות של ה-pod |
 | סימון נטושה | סעיף 9 |
 
-**חיבור:** `redis-py` סינכרוני, עם שם משתמש וסיסמה. קונפיג ב-`config/state.yaml`, והסיסמה רק מ-`RES_STATE__PASSWORD`.
+**חיבור:** `redis-py` סינכרוני, מ-connection string אחד (`redis://` או `rediss://`, עם המשתמש והסיסמה) שמגיע רק
+מ-`RES_STATE__URL`, כי יש בו סיסמה. ה-prefix נשאר נפרד ב-`config/state.yaml`, והוא חייב להתאים ל-ACL שצוות ה-Redis נותן:
 המשתמש צריך `+@all -@dangerous +info ~res:*`.
 
 ---
@@ -289,7 +291,7 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 
 ## 10. טיפול ידני
 
-1. קוראים את `res:{state}saga:{saga_id}`: אילו צעדים `done`, איזה `unresolved` או `compensation_failed`, ומה הקלט
+1. קוראים את `res:saga:{saga_id}`: אילו צעדים `done`, איזה `unresolved` או `compensation_failed`, ומה הקלט
    והתוצאה שלהם. את הפעולות שמחכות מוצאים ב-`operations:open`. כשה-Saga עצמו הסתיים (`succeeded` או `rolled_back`)
    ורק הפעולה סומנה ידנית, ה-record לא ב-`sagas:unfinished` ונמחק אחרי 7 ימים (`state.finished_ttl_seconds`), ואחר כך
    נשארת רק רשומת הפעולה.
