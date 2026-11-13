@@ -62,6 +62,7 @@ class Settings(BaseSettings):
         env_prefix="RES_",
         env_nested_delimiter="__",
         extra="forbid",
+        hide_input_in_errors=True,
     )
 
     log: LogSettings
