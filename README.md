@@ -7,8 +7,8 @@ missing: `docs/overview.md`.
 ## Requirements
 
 - Python 3.14 and [uv](https://docs.astral.sh/uv/).
-- A Redis for the saga state, reachable at `state.host:state.port` (`config/state.yaml`), with a user that has
-  `+@all -@dangerous +info ~res:*` (`res:` is `state.key_prefix`).
+- A Redis for the saga state, on one shard without sharding, with a user that has `+@all -@dangerous +info ~res:*`
+  (`res:` is `state.key_prefix` in `config/state.yaml`).
 - cluster-relay running for each network in `config/edge.yaml` (locally: `http://127.0.0.1:8000/`).
 - Redis Enterprise clusters listed in `config/clusters.yaml`.
 
@@ -58,7 +58,8 @@ RES_LOG__LEVEL=DEBUG
 
 Secrets are passed only through environment variables. Required:
 
-- `RES_STATE__PASSWORD`: the password of the Redis that keeps the saga state.
+- `RES_STATE__URL`: the connection string of the Redis that keeps the saga state, with its user and password
+  (`redis://user:password@host:port` or `rediss://...`).
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
 - `RES_CLUSTER_CREDENTIALS__USERNAME`, `RES_CLUSTER_CREDENTIALS__PASSWORD`: the admin user of the clusters.
 - `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
@@ -109,6 +110,7 @@ To use another subnet, change `NETWORK_SUBNET`, `NETWORK_DYNAMIC_IP_RANGE` and t
 The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
 12000-12010):
 
-- a database listening on port `12005` (`state.port`);
+- a database listening on port `12005`, without sharding;
 - an ACL `+@all -@dangerous +info ~res:*` (`res:` is `state.key_prefix`), a role with that ACL on the database, and a
-  user `saga-service` (`state.username`) with that role and the password in `RES_STATE__PASSWORD`.
+  user `saga-service` with that role;
+- `RES_STATE__URL=redis://saga-service:<password>@localhost:12005`.
