@@ -1,9 +1,5 @@
 state:
-  host: localhost
-  port: 12005
-  username: saga-service
   key_prefix: "res:"
-  hash_tag: state
   socket_timeout_seconds: 5
   finished_ttl_seconds: 604800
   lock:
