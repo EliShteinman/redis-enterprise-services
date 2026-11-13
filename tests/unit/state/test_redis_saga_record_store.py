@@ -23,7 +23,7 @@ def test_only_a_cleanly_ended_saga_is_stored_with_the_expiry(status: SagaStatus,
     record_writer: MagicMock = create_autospec(spec=TrackedRecordWriter, instance=True)
     store: RedisSagaRecordStore = RedisSagaRecordStore(
         client=create_autospec(spec=Redis, instance=True),
-        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:"),
         record_writer=record_writer,
         finished_ttl_seconds=600,
     )
@@ -38,7 +38,7 @@ def test_an_unreadable_saga_record_raises_a_project_error() -> None:
     client.get.return_value = '{"saga_id": "trace-1"}'
     store: RedisSagaRecordStore = RedisSagaRecordStore(
         client=client,
-        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:"),
         record_writer=create_autospec(spec=TrackedRecordWriter, instance=True),
         finished_ttl_seconds=600,
     )

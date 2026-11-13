@@ -40,9 +40,7 @@ def client(settings: Settings) -> Iterator[Redis]:
 
 @pytest.fixture(scope="session")
 def keys(settings: Settings) -> RedisKeys:
-    return RedisKeys(
-        key_prefix=settings.state.key_prefix + ITEST_KEY_PREFIX, hash_tag=settings.state.hash_tag
-    )
+    return RedisKeys(key_prefix=settings.state.key_prefix + ITEST_KEY_PREFIX)
 
 
 @pytest.fixture
