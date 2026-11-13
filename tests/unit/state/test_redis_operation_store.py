@@ -30,7 +30,7 @@ def test_only_an_operation_in_an_expiring_status_is_stored_with_the_expiry(
     record_writer: MagicMock = create_autospec(spec=TrackedRecordWriter, instance=True)
     store: RedisOperationStore = RedisOperationStore(
         client=create_autospec(spec=Redis, instance=True),
-        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:"),
         record_writer=record_writer,
         finished_ttl_seconds=600,
         heartbeat_ttl_seconds=60,
@@ -47,7 +47,7 @@ def test_an_unreadable_operation_record_raises_a_project_error() -> None:
     client.get.return_value = '{"status": "unknown"}'
     store: RedisOperationStore = RedisOperationStore(
         client=client,
-        keys=RedisKeys(key_prefix="res:", hash_tag="state"),
+        keys=RedisKeys(key_prefix="res:"),
         record_writer=create_autospec(spec=TrackedRecordWriter, instance=True),
         finished_ttl_seconds=600,
         heartbeat_ttl_seconds=60,
