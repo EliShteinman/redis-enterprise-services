@@ -15,9 +15,7 @@ from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 class StateWiring:
     def __init__(self, *, settings: Settings, deadline_polling: DeadlinePolling) -> None:
         redis_client: Redis = build_redis_client(settings=settings.state)
-        redis_keys: RedisKeys = RedisKeys(
-            key_prefix=settings.state.key_prefix, hash_tag=settings.state.hash_tag
-        )
+        redis_keys: RedisKeys = RedisKeys(key_prefix=settings.state.key_prefix)
         self._redis_client: Redis = redis_client
         record_writer: TrackedRecordWriter = TrackedRecordWriter(client=redis_client)
         self.operation_store: RedisOperationStore = RedisOperationStore(
