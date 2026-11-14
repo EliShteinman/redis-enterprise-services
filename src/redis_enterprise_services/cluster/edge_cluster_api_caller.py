@@ -31,6 +31,8 @@ class EdgeClusterApiCaller(ClusterApiCaller):
         query_string: str | None = None,
         body: JsonValue | None = None,
         cluster_state_id: int | None = None,
+        crdb_task_id: str | None = None,
+        result_ttl_seconds: int | None = None,
     ) -> SuccessfulClusterResponse:
         request: ClusterRequest = ClusterRequest(
             method=method,
@@ -38,6 +40,8 @@ class EdgeClusterApiCaller(ClusterApiCaller):
             credentials=target.credentials,
             body=body,
             cluster_state_id=cluster_state_id,
+            crdb_task_id=crdb_task_id,
+            result_ttl_seconds=result_ttl_seconds,
         )
         response: ClusterResponse = self._edge_transport.send(network=target.network, request=request)
         if is_cluster_rejection(status_code=response.status_code):
