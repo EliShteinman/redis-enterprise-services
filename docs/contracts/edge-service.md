@@ -1,135 +1,142 @@
 # חוזה: השירות שלנו ⇐ שירות הקצה
 
-**סטטוס:** טיוטה
-**תאריך:** 2026-10-20
+מה redis-enterprise-services מצפה לקבל משירות הקצה (cluster-relay): שירות שיושב ברשת של הקלאסטרים, מקבל מאיתנו
+בקשה אחת לכל קריאה ל-REST API של קלאסטר, ומעביר אותה. ההתאמה של שירות הקצה לחוזה באחריות הבעלים שלו.
 
-המסמך מגדיר מה redis-enterprise-services מצפה לקבל משירות הקצה (cluster-relay, או ה-proxy הזמני). השירות שלנו
-נבנה לפי החוזה הזה. ההתאמה של שירות הקצה אליו נעשית בנפרד, באחריות הבעלים שלו.
-
-שמות ה-headers וקודי השגיאה שמופיעים כאן הם הצעה. בשירות שלנו הם נטענים מהקונפיגורציה, ולכן אפשר להחליף
-אותם בלי שינוי קוד.
+שמות ה-headers וקודי השגיאה נטענים מ-`config/edge.yaml`, ואפשר להחליף אותם בלי שינוי קוד.
 
 ---
 
-## 1. הבקשה
+## 1. רשת וחומת אש
 
-### יעד ואימות מול חומת האש
-
-שירות הקצה נמצא ברשת היעד, מאחורי חומת האש של החברה. חומת האש דורשת אימות בכל בקשה לפני שהיא מעבירה אותה.
+כל קריאה של השירות יוצאת לכתובת אחת קבועה: NGINX (`edge.url`). ה-NGINX בוחר לפי header הרשת את ה-IP והפורט, מוסיף
+header של סיסמת ה-DataPower של אותה רשת, ו-header של Host עם כתובת ה-OpenShift בצד השני. ברשתות האחרות הקריאה עוברת
+דרך ה-DataPower ל-cluster-relay; ברשת של השירות ה-NGINX פונה ישירות ל-cluster-relay.
 
 | # | דרישה |
 |---|---|
-| C0a | לכל רשת יש כתובת משלה לשירות הקצה (IP, פורט, route), מקובץ הקונפיגורציה |
-| C0b | כל בקשה נושאת את פרטי האימות של חומת האש של אותה רשת: שם משתמש וסיסמה קבועים לכל רשת, מ-Secret |
-| C0c | אימות חומת האש נפרד מ-`x-cluster-authorization`, ולא מתנגש בו. שם ה-header והפורמט מהקונפיגורציה. |
+| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`). רשת של קלאסטר מ-`config/clusters.yaml` שחסרה ב-`edge.networks` נדחית בעליית השירות |
+| C0b | את סיסמת ה-DataPower מוסיף ה-NGINX. אם היא צריכה להגיע מהשירות, כל בקשה נושאת שם משתמש וסיסמה (`Basic`) של אותה רשת, ב-header מהקונפיג (`edge.networks.<רשת>.firewall`). הסיסמה מגיעה ממשתנה סביבה. `firewall: null` ⇐ השירות לא שולח header |
+| C0c | אימות חומת האש נפרד מ-`x-cluster-authorization` ולא מתנגש בו |
+| C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
+| C0e | אם הכתובת ב-HTTPS, התעודה לא נבדקת. שגיאת TLS יכולה לקרות גם אחרי שהבקשה נשלחה (חומת האש מפענחת ומצפינה מחדש) |
+| C0f | כש-DataPower או cluster-relay נכשלים או לא עונים בזמן, ה-NGINX עונה בעצמו (`502` או `504`, גוף שאינו JSON, בלי `x-edge-error`). זה צפוי: השירות מתייחס לתשובה כזו כתוצאה לא ידועה, ובודק לפני שהוא ממשיך |
 
-### הבקשה עצמה
+**כישלון תקשורת:** השירות שלנו מבחין בין "לא נשלח" (חיבור שנדחה, DNS, timeout בהתחברות, `edge_connection_failed`) לבין
+"נשלח ולא ענה" (שגיאת TLS, timeout בקריאה, חיבור שנסגר, `edge_outcome_unknown`). הקוד נשמר בשגיאה של הצעד ובלוג. בהחלטה
+שניהם תוצאה לא ידועה, כי "לא נשלח" לא אמין.
+בקשה שהספרייה דוחה עוד לפני השליחה (כתובת או header לא תקינים) היא באג אצלנו, ומטופלת כמו `invalid_request`: כישלון מיד,
+בלי ניסיון חוזר.
 
-השירות שלנו שולח בקשה אחת לכל קריאה ל-REST API של קלאסטר:
+---
+
+## 2. הבקשה
+
+![cluster, edge, connection](../diagrams/08-layer-transport.drawio.svg)
 
 ```
-POST /<route>
-<header האימות של חומת האש>: <פרטי הרשת>
+POST <edge.url>                                     (ה-NGINX)
+x-network: <רשת>
+<header האימות של חומת האש>: Basic <פרטי הרשת>     (אם מוגדר)
 x-cluster-method: PUT
-x-cluster-url: https://<cluster>:9443/v1/bdbs/7?dry_run=1
+x-cluster-url: https://<cluster>:9443/v1/bdbs/7
 x-cluster-authorization: Basic <credentials>
-traceparent: 00-<trace-id>-<span-id>-01
+traceparent: 00-<trace-id>-<span-id>-<flags>
 content-type: application/json
 cluster-state-id: 155          (אופציונלי)
-x-task-id: <uuid>              (אופציונלי)
-x-result-ttl: 3600             (אופציונלי)
 
 <body, כמו שהוא>
 ```
 
 | # | דרישה | למה |
 |---|---|---|
-| C1 | ה-URL, כולל query string (`dry_run`, `fields`, `extended`), מועבר לקלאסטר כמו שהוא | בדיקה מוקדמת ושליפות |
+| C1 | ה-URL, כולל query string, מועבר לקלאסטר כמו שהוא | שליפות עם `fields` |
 | C2 | ה-body מועבר כמו שהוא | |
-| C3 | `traceparent` ממשיך לקלאסטר ומוחזר בתשובה | מעקב. גם מזהה הבקשה אצלנו |
-| C4 | **`cluster-state-id` מועבר לקלאסטר** כ-request header, אם נשלח | עדכון מותנה של DB. בלעדיו עדכון במקביל דורס שינויים (design סעיף 10) |
-| C5 | **`x-task-id` ו-`x-result-ttl` מועברים לקלאסטר**, אם נשלחו | מזהה task של CRDB שאנחנו קובעים, כדי לברר מה קרה אחרי timeout (design סעיף 3) |
-
-**מצב נוכחי ב-cluster-relay:** `outgoing_headers` מעביר רק `authorization`, `content-type` ו-`traceparent`. C4 ו-C5 חסרים.
+| C3 | `traceparent` ממשיך לקלאסטר | מעקב מקצה לקצה. ה-trace הוא של הבקשה שהגיעה אלינו |
+| C4 | `cluster-state-id` מועבר לקלאסטר כ-request header, אם נשלח | עדכון מותנה של DB. היום: עדכון ההרשאות על ה-DB |
+| C5 | `x-task-id` ו-`x-result-ttl` מועברים לקלאסטר, אם נשלחו | מתוכנן ל-Active-Active: מזהה task של CRDB שאנחנו קובעים. השירות שלנו עוד לא שולח אותם |
+| C15 | ה-timeout של cluster-relay מול הקלאסטר קצר מה-timeout של ה-NGINX וה-DataPower, וזה קצר מה-timeout שלנו מולם (שלנו: 35 שניות לקריאה, `edge.request_timeout_seconds`, ו-5 שניות להתחברות, `edge.connect_timeout_seconds`) | שירות הקצה עונה ראשון, עם קוד משלו. אחרת ה-`504` של ה-NGINX מסתיר את הקוד של ה-relay, וכל קריאה איטית הופכת לתוצאה לא ידועה. התחברות שלא מצליחה (חומת אש שזורקת בשקט) נכשלת מהר |
+| C16 | תשובה של הקלאסטר שאינה JSON מוחזרת כ-`response_rejected` | השירות שלנו מתייחס לגוף שאינו JSON בלי `x-edge-error` כתוצאה לא ידועה |
 
 ---
 
-## 2. תשובה מהקלאסטר
+## 3. תשובה מהקלאסטר
 
 | # | דרישה | למה |
 |---|---|---|
-| C6 | ה-status, ה-headers וה-body של הקלאסטר מוחזרים בלי שינוי, **גם בשגיאה** (4xx/5xx) | ה-Saga מחליט לפי ה-status ולפי `error_code` של הקלאסטר |
-| C7 | **`cluster-state-id`** מוחזר כ-response header | נדרש לעדכון המותנה הבא |
-| C8 | ה-schema וה-ignored fields מאפשרים את כל התשובות שהשירות שלנו צריך | אחרת תשובה תקינה נחסמת. הרשימה בסעיף 4 |
-
-**מצב נוכחי ב-cluster-relay:** C6 ו-C7 מתקיימים, כי כל ה-headers חוזרים חוץ מ-content-length ודומיו. C8 תלוי בקובץ
-ה-schema שיוגדר.
+| C6 | ה-status, ה-headers וה-body של הקלאסטר מוחזרים בלי שינוי, גם בשגיאה (4xx/5xx) | ההחלטה אצלנו לפי ה-status ולפי `error_code` של הקלאסטר |
+| C7 | `cluster-state-id` מוחזר כ-response header | נדרש לעדכון המותנה הבא |
+| C8 | ה-schema של שירות הקצה מאפשר את כל התשובות שהשירות שלנו צריך | אחרת תשובה תקינה נחסמת. הרשימה בסעיף 5 |
 
 ---
 
-## 3. שגיאה ששירות הקצה עצמו יצר
+## 4. שגיאה ששירות הקצה עצמו יצר
 
-השירות שלנו צריך להבחין בין שגיאה של הקלאסטר לבין שגיאה של שירות הקצה. לדוגמה, 502 יכול להגיע משניהם.
+השירות שלנו צריך להבחין בין שגיאה של הקלאסטר לבין שגיאה של שירות הקצה. למשל, 502 יכול להגיע משניהם.
 
 | # | דרישה |
 |---|---|
-| C9 | **כל** תשובה ששירות הקצה יצר בעצמו (ולא העביר מהקלאסטר) כוללת את ה-header `x-edge-error` עם קוד השגיאה. תשובה שהגיעה מהקלאסטר **לעולם** לא כוללת אותו. |
-| C10 | הקודים מבחינים בין מה שבוודאות לא הגיע לקלאסטר לבין מה שאולי בוצע בו (טבלה למטה) |
-| C11 | ב-`response_rejected` מוחזר גם ה-status המקורי של הקלאסטר, ב-header `x-edge-cluster-status` |
+| C9 | כל תשובה ששירות הקצה יצר בעצמו כוללת `x-edge-error` עם קוד. תשובה מהקלאסטר לעולם לא כוללת אותו |
+| C10 | הקודים מבחינים בין מה שבוודאות לא הגיע לקלאסטר לבין מה שאולי בוצע בו |
+| C11 | ב-`response_rejected` מוחזר גם ה-status המקורי של הקלאסטר, ב-`x-edge-cluster-status` |
 
-| `x-edge-error` | מתי | הבקשה הגיעה לקלאסטר? | מה השירות שלנו עושה |
-|---|---|---|---|
-| `invalid_request` | חסר header או header לא תקין | **לא** | שגיאה אצלנו, לא מנסים שוב |
-| `connection_failed` | לא נפתח חיבור לקלאסטר (DNS, connection refused) | **לא** | הצעד נכשל. אפשר לנסות שוב בבטחה |
-| `timeout` | הבקשה נשלחה, ולא חזרה תשובה בזמן | **לא ידוע** | `find_by_key` (design סעיף 3) |
-| `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | **כן**. ה-status המקורי ב-`x-edge-cluster-status` | 2xx מקורי על כתיבה ⇐ הפעולה בוצעה, `find_by_key` מביא את ה-uid |
+| `x-edge-error` | מתי | הגיע לקלאסטר? | אצלנו | קוד ציבורי |
+|---|---|---|---|---|
+| `invalid_request` | חסר header או header לא תקין | לא | שגיאה שלנו (`edge_rejected_request`). לא מנסים שוב | `internal_error` |
+| `connection_failed` | לא נפתח חיבור לקלאסטר | לא (לא סומכים על זה) | תוצאה לא ידועה (`edge_connection_failed`) | `cluster_unavailable` |
+| `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | כן | תוצאה לא ידועה (`edge_rejected_response`) | `cluster_unavailable` |
+| כל קוד אחר (למשל `timeout`) | | לא ידוע | תוצאה לא ידועה (`edge_outcome_unknown`) | `cluster_unavailable` |
 
-**מצב נוכחי ב-cluster-relay:**
-- **C9:** אין header שמסמן שגיאה של שירות הקצה.
-- **C10:** `cluster_unreachable` מאחד את `connection_failed` ואת `timeout`.
-- **C11:** ה-status המקורי לא מוחזר ב-`response_rejected`.
+**הגוף של תשובת שגיאה:** השירות לא קורא אותו להחלטה ולא מעתיק אותו להודעה. ההודעה היא ה-status והקוד, למשל
+`the relay answered 502 response_rejected (cluster status 200)`, והגוף המלא נרשם בלוג (WARNING) תחת ה-trace. כך
+גם בתשובת שגיאה של הקלאסטר: ההודעה היא הבקשה, ה-status וה-`error_code`, והגוף בלוג (INFO).
+
+**תוצאה לא ידועה:** הצעד בודק בקלאסטר אם הפעולה בוצעה.
+- **יצירה:** אם ה-uid כבר נשמר מהתשובה, המשאב נחשב קיים, והצעד רק מחכה לסיום הפעולה בקלאסטר. אחרת מחפשים לפי השם.
+- **עדכון (ההרשאות על ה-DB):** משווים את הערכים הנוכחיים לחדשים. לא שווים אחרי שה-snapshot כבר נשמר ⇐
+  `requires_manual_intervention`.
+
+נמצא ⇐ ממשיכים. לא נמצא ⇐ ניסיון חוזר אחד, כשהצעד לא שמר תוצאה. כשהצעד כבר שמר תוצאה (uid) והמשאב לא נמצא ⇐
+`requires_manual_intervention`. הבדיקה מסתיימת בכישלון ודאי (DB ב-`creation-failed`, action שנכשל) ⇐
+ביטול, כמו בכל כישלון ודאי. הבדיקה נכשלה בשגיאה זמנית (`busy`, 5xx, שירות קצה שלא התחבר או לא ענה) ⇐ היא רצה שוב,
+עד `saga.step_retry.attempts` פעמים. כל מקרה אחר (בדיקה שנכשלה בכל הניסיונות, או כל כישלון אחרי הניסיון החוזר של
+הצעד) ⇐ `requires_manual_intervention`, בלי ביטול.
+`x-edge-cluster-status` לא משמש להחלטה.
 
 ---
 
-## 4. תשובות שה-schema חייב לאפשר (C8)
+## 5. תשובות שה-schema חייב לאפשר (C8)
+
+**בשימוש היום:**
 
 | endpoint | שיטה | תשובה |
 |---|---|---|
-| `/v1/bdbs`, `/v1/bdbs/{uid}` | GET, POST, PUT, DELETE (כולל `dry_run`) | אובייקט bdb או רשימה |
-| `/v1/redis_acls[/{uid}]` | GET, POST, PUT, DELETE | ACL או רשימה. ב-DELETE: `{action_uid}` |
-| `/v1/roles[/{uid}]` | GET, POST, PUT, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
-| `/v1/users[/{uid}]` | GET, POST, PUT, DELETE | user או רשימה |
-| `/v1/users/password` | POST, PUT, DELETE | גוף ריק או הודעה |
-| `/v1/crdbs[/{guid}]` | GET, POST (כולל `dry_run`), PATCH, DELETE | crdb, `{"crdbs": [...]}` ברשימה, או crdb task |
-| `/v1/crdb_tasks/{id}` | GET, POST `actions/cancel` | crdb task |
+| `/v1/bdbs`, `/v1/bdbs/{uid}` | GET (מלא; `fields` נתמך אבל השירות לא שולח אותו), POST, PUT, DELETE | bdb מלא או רשימה של bdbs מלאים |
+| `/v1/redis_acls[/{uid}]` | GET, POST, DELETE | ACL או רשימה. ב-DELETE: `{action_uid}` |
+| `/v1/roles[/{uid}]` | GET, POST, DELETE | role או רשימה. ב-DELETE: `{action_uid}` |
+| `/v1/users[/{uid}]` | GET, POST, DELETE | user או רשימה. ב-DELETE: `{action_uid}` |
 | `/v1/actions/{uid}` | GET | action |
-| `/v1/cluster` | GET | אובייקט cluster (FQDN) |
-| `/v1/cluster/stats/last` | GET | סטטיסטיקות (`provisional_memory`) |
+| `/v1/bootstrap`, `/v1/bootstrap/create_cluster`, `/v1/bootstrap/join_cluster`, `PUT /v1/license` | GET, POST, PUT | רק ה-bootstrap של הדוקר המקומי |
 | כל endpoint | כל שיטה | גוף שגיאה של הקלאסטר: `{error_code, description}` |
-| כל endpoint | כל שיטה | **קריאה ישירה:** כל תשובה, כי היא לא מוגבלת |
+
+**נדרש לתכונות המתוכננות:**
+
+| endpoint | לשם מה |
+|---|---|
+| `/v1/bdbs` עם `dry_run`, `/v1/cluster/stats/last` | בחירת קלאסטר לפי מקום |
+| `/v1/crdbs[/{guid}]`, `/v1/crdb_tasks/{id}` | Active-Active |
+| PUT על `/v1/redis_acls`, `/v1/roles`, `/v1/users`, ו-`/v1/users/password` | עריכה |
+| `/v1/cluster` | Active-Active (FQDN של הקלאסטר) |
+| כל endpoint, כל תשובה | קריאה ישירה לקלאסטר |
 
 ---
 
-## 5. סודות
+## 6. סודות
 
 | # | דרישה | למה |
 |---|---|---|
 | C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
-| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, ובכלל זה ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי (נבדק) |
-| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/crdbs`, `POST/PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות של קלאסטרים ושל יוזרים |
+| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, גם ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי |
+| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs` ו-`POST /v1/users`, ובהמשך גם `POST /v1/crdbs`, `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`) |
 
-**מצב נוכחי ב-cluster-relay:** ה-failure log כותב את התשובה המלאה של הקלאסטר. C13 לא מתקיים.
-
----
-
-## 6. סיכום: מה חסר ב-cluster-relay
-
-| # | מה | חומרה |
-|---|---|---|
-| C4 | העברת `cluster-state-id` לקלאסטר | גבוהה: בלי זה אין עדכון מותנה |
-| C5 | העברת `x-task-id` ו-`x-result-ttl` | גבוהה ל-AA |
-| C9 | header שמסמן שגיאה של שירות הקצה | גבוהה |
-| C10 | פיצול `cluster_unreachable` ל-`connection_failed` ו-`timeout` | גבוהה |
-| C11 | ה-status המקורי ב-`response_rejected` | בינונית |
-| C13 | הסתרת סודות ב-failure log | גבוהה (אבטחה) |
-| C8 | schema שמאפשר את כל התשובות בסעיף 4 | תלוי בקובץ ה-schema |
+הדרישות חלות על כל רמות הלוג חוץ מ-DEBUG.
