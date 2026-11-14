@@ -20,6 +20,10 @@ class UnrestorableFieldsError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unrestorable_fields"
 
 
+class UpdateOutcomeUnclearError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "update_outcome_unclear"
+
+
 class DatabaseDeletionTimeoutError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "database_deletion_timeout"
 

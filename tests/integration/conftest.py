@@ -1,0 +1,63 @@
+import secrets
+from collections.abc import Iterator
+
+import pytest
+from pydantic import ValidationError
+from redis import Redis
+from redis.exceptions import RedisError
+
+from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.state.redis_client import build_redis_client
+from redis_enterprise_services.state.redis_keys import RedisKeys
+
+TRACE_ID_PREFIX: str = "itest"
+ITEST_KEY_PREFIX: str = "itest:"
+LOCK_KEY_KINDS: tuple[str, ...] = ("database", "user")
+
+
+def itest_lock_keys(*, trace_id: str) -> list[str]:
+    return [f"https://itest:9443/{kind}/{trace_id}" for kind in LOCK_KEY_KINDS]
+
+
+@pytest.fixture(scope="session")
+def settings() -> Settings:
+    try:
+        return load_settings()
+    except ValidationError as error:
+        pytest.skip(reason=f"the settings of the local clusters cannot be loaded: {error}")
+
+
+@pytest.fixture(scope="session")
+def client(settings: Settings) -> Iterator[Redis]:
+    redis_client: Redis = build_redis_client(settings=settings.state)
+    try:
+        redis_client.exists(f"{settings.state.key_prefix}{ITEST_KEY_PREFIX}probe")
+    except RedisError:
+        pytest.skip(reason="the saga-state Redis of the local clusters is not reachable")
+    yield redis_client
+    redis_client.close()
+
+
+@pytest.fixture(scope="session")
+def keys(settings: Settings) -> RedisKeys:
+    return RedisKeys(key_prefix=settings.state.key_prefix + ITEST_KEY_PREFIX)
+
+
+@pytest.fixture
+def trace_id(client: Redis, keys: RedisKeys) -> Iterator[str]:
+    test_trace_id: str = TRACE_ID_PREFIX + secrets.token_hex(nbytes=12)
+    yield test_trace_id
+    client.delete(
+        keys.operation(trace_id=test_trace_id),
+        keys.heartbeat(trace_id=test_trace_id),
+        keys.saga_record(saga_id=test_trace_id),
+        keys.held_locks(owner=test_trace_id),
+        *[keys.lock(lock_key=lock_key) for lock_key in itest_lock_keys(trace_id=test_trace_id)],
+    )
+    client.srem(keys.open_trace_ids(), test_trace_id)
+    client.srem(keys.unfinished_saga_ids(), test_trace_id)
+
+
+@pytest.fixture
+def lock_keys(trace_id: str) -> list[str]:
+    return itest_lock_keys(trace_id=trace_id)

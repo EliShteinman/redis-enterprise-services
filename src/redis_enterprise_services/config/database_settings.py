@@ -21,4 +21,5 @@ class DatabaseSettings(ResourceSettings):
     endpoints_field: str
     endpoint_fields: list[str]
     creation_failed_status: str
+    order_insensitive_fields: frozenset[str]
     wait: WaitSettings
