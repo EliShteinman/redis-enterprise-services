@@ -54,7 +54,7 @@ cluster-state-id: 155          (אופציונלי)
 | C2 | ה-body מועבר כמו שהוא | |
 | C3 | `traceparent` ממשיך לקלאסטר | מעקב מקצה לקצה. ה-trace הוא של הבקשה שהגיעה אלינו |
 | C4 | `cluster-state-id` מועבר לקלאסטר כ-request header, אם נשלח | עדכון מותנה של DB. היום: עדכון ההרשאות על ה-DB |
-| C5 | `x-task-id` ו-`x-result-ttl` מועברים לקלאסטר, אם נשלחו | מתוכנן ל-Active-Active: מזהה task של CRDB שאנחנו קובעים. השירות שלנו עוד לא שולח אותם |
+| C5 | `x-task-id` ו-`x-result-ttl` מועברים לקלאסטר, אם נשלחו | ב-Active-Active: מזהה task של CRDB שאנחנו קובעים, וזמן שמירת התוצאה. השירות שולח אותם בכל שינוי של CRDB |
 | C15 | ה-timeout של cluster-relay מול הקלאסטר קצר מה-timeout של ה-NGINX וה-DataPower, וזה קצר מה-timeout שלנו מולם (שלנו: 35 שניות לקריאה, `edge.request_timeout_seconds`, ו-5 שניות להתחברות, `edge.connect_timeout_seconds`) | שירות הקצה עונה ראשון, עם קוד משלו. אחרת ה-`504` של ה-NGINX מסתיר את הקוד של ה-relay, וכל קריאה איטית הופכת לתוצאה לא ידועה. התחברות שלא מצליחה (חומת אש שזורקת בשקט) נכשלת מהר |
 | C16 | תשובה של הקלאסטר שאינה JSON מוחזרת כ-`response_rejected` | השירות שלנו מתייחס לגוף שאינו JSON בלי `x-edge-error` כתוצאה לא ידועה |
 
@@ -138,6 +138,6 @@ cluster-state-id: 155          (אופציונלי)
 |---|---|---|
 | C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
 | C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, גם ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי |
-| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs` ו-`POST /v1/users`, ובהמשך גם `POST /v1/crdbs`, `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`) |
+| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs` ו-`POST /v1/users`, `POST /v1/crdbs`, ובהמשך גם `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`). ב-`POST /v1/crdbs`: אותה סיסמה, ופרטי הגישה של admin לכל קלאסטר |
 
 הדרישות חלות על כל רמות הלוג חוץ מ-DEBUG.

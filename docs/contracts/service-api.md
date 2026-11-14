@@ -3,7 +3,7 @@
 ה-API ש-redis-enterprise-services חושף לשירות הביניים: מה נשלח לכל route ומה חוזר. אותו חוזה מתואר גם ב-OpenAPI של
 השירות (`/docs`), עם תיאור ודוגמה לכל שדה.
 
-**בנוי היום:** יצירת DB באתר אחד ושאילתת סטטוס. **מתוכנן:** סעיף 7.
+**בנוי היום:** יצירת DB, באתר אחד או Active-Active, ושאילתת סטטוס. **מתוכנן:** סעיף 7.
 
 ---
 
@@ -20,7 +20,7 @@
 
 | route | |
 |---|---|
-| `POST /v1/databases/create` | יצירת DB באתר אחד |
+| `POST /v1/databases/create` | יצירת DB, באתר אחד או Active-Active |
 | `GET /v1/operations/{trace_id}` | סטטוס ותוצאה של פעולה |
 | `GET /health` | `200 {"status": "ok"}`. בלי `traceparent` |
 
@@ -71,7 +71,7 @@
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
 | `active_active` | bool | ✅ | `true`: DB אחד על כל האתרים (Active-Active) |
-| `sites` | list | ✅ | ב-`false` איבר אחד בדיוק. ב-`true` כמה שרוצים, כולם באותה `network`. האתר הראשון מתאם את היצירה |
+| `sites` | list | ✅ | ב-`false` איבר אחד בדיוק. ב-`true` כמה שרוצים, גם אחד, כולם באותה `network` ועל קלאסטרים שונים. האתר הראשון מתאם את היצירה |
 | `sites[].network` | str | ✅ | |
 | `sites[].site` | str | ✅ | |
 | `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
@@ -154,6 +154,9 @@
 2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl_rule` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
 3. קישור כל role ל-ACL שלו על ה-DB.
 
+ב-Active-Active: CRDB אחד עם DB מקומי בכל אתר, היוזרים, ה-ACLs וה-roles בכל אתר (כל role מוגבל ל-DB המקומי של האתר
+שלו), ו-PATCH אחד ל-CRDB שקושר בכל אתר כל role ל-ACL שלו. שמות ה-DB נבדקים גם מול שמות ה-CRDBs.
+
 לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
 עם `name_taken`.
 
@@ -204,6 +207,36 @@
           ]
         }
       }
+    ]
+  }
+}
+```
+
+ב-Active-Active (מקוצר: שדות של כל ענף כמו למעלה):
+
+```json
+{
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "status": "succeeded",
+  "database": {
+    "name": "orders",
+    "memory_size": 1073741824,
+    "active_active": true,
+    "crdb_guid": "d71cefce-4e31-41fd-b654-37cbb2f39a01",
+    "crdb": {
+      "default_db_config": {"name": "orders", "memory_size": 1073741824, "replication": true, "eviction_policy": "noeviction", "port": 12000},
+      "causal_consistency": false,
+      "encryption": false,
+      "featureset_version": 12,
+      "protocol_version": 1,
+      "instances": [
+        {"cluster_url": "https://cluster-a.net-a:9443", "instance_id": 1, "compression": 3},
+        {"cluster_url": "https://cluster-b.net-a:9443", "instance_id": 2, "compression": 3}
+      ]
+    },
+    "clusters": [
+      {"cluster": "cluster-a", "site": "dc1", "access": {"endpoints": ["…"]}, "db": {"db_uid": 7, "settings": {"…": "…"}, "permissions": ["…"]}},
+      {"cluster": "cluster-b", "site": "dc2", "access": {"endpoints": ["…"]}, "db": {"db_uid": 4, "settings": {"…": "…"}, "permissions": ["…"]}}
     ]
   }
 }
@@ -293,7 +326,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
 | `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
-| `crdb_guid` | רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb` מדווח על הקלאסטר המתאם (האתר הראשון) |
+| `crdb_guid` | חסר כשהוא ריק (ב-`database` לעומת זאת `crdb_guid` מופיע תמיד, גם כ-`null`). רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb` מדווח על הקלאסטר המתאם (האתר הראשון) |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB. ב-`crdb` וב-`permissions` של Active-Active תמיד `null`: מה שמזהה אותם הוא `crdb_guid` |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
@@ -358,7 +391,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
-`http_error`); בפועל `invalid_name`, `no_matching_cluster` ו-`mixed_networks` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
+`http_error`); בפועל `invalid_name`, `no_matching_cluster`, `mixed_networks` ו-`duplicate_sites` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
 את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
 
 ---

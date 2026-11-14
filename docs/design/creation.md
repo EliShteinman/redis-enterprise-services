@@ -3,7 +3,7 @@
 מה קורה מרגע ש-`POST /v1/databases/create` מגיע ועד שהתוצאה נשמרת. החוזה עצמו (שדות, קודים): `contracts/service-api.md`.
 המנוע, ה-Redis וההתאוששות: `saga-engine-and-state.md`.
 
-**בנוי:** יצירה באתר אחד. **לא בנוי:** `planned.md`.
+**בנוי:** יצירה באתר אחד ויצירת Active-Active (סעיף 6). **לא בנוי:** `planned.md`.
 
 ---
 
@@ -20,7 +20,7 @@ POST /v1/databases/create
  │   ├─ התחלה אטומית: running + heartbeat
  │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
  └─ ברקע: CreationExecution
-     ├─ SingleSiteCreationPlanner: תוכנית צעדים
+     ├─ SingleSiteCreationPlanner או ActiveActiveCreationPlanner: תוכנית צעדים
      ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים ⇐ צעדים
      └─ CreationOutcomeTranslator: התוצאה ⇐ OperationStore
 ```
@@ -32,6 +32,7 @@ POST /v1/databases/create
 | `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
+| `ActiveActiveCreationPlanner` | `planning/` | בקשת Active-Active ⇐ תוכנית צעדים לכל האתרים ומפתחות נעילה בכל אתר |
 | `CreationOutcomeTranslator` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
 
 ![שכבת creation](../diagrams/04-layer-creation.drawio.svg)
@@ -204,9 +205,10 @@ POST /v1/databases/create
   ב-CRDB רק מה שנשלח, ולכן רק כך ה-CRDB מחזיק את התמונה המלאה, ובדיקת drift משווה כל bdb מקומי מולו.
   `instances[].db_config` לא נשלח, חוץ מההרשאות. ברירות מחדל שנותנות ערך שונה לאתרים של אותו CRDB ⇐ שגיאת קונפיג לפני
   ששום דבר נוצר.
-- **שדות שחייבים להיות זהים:** `version`, `sharding`, `shard_key_regex`. מומלץ: `memory_size`, `eviction_policy`,
-  `shards_count`, `shards_placement`, `proxy_policy`.
-- **אין dry_run:** יצירה שנכשלת, גם באתר אחד, לא משאירה כלום באף אתר ומחזירה אותה שגיאה, ולכן בדיקה מראש לא מוסיפה.
+- **אותן הגדרות בכל אתר:** כל האתרים מקבלים אותו `default_db_config`, ולכן שדות שחייבים להיות זהים (`version`,
+  `sharding`, `shard_key_regex`) לא יכולים להיות שונים.
+- **אין dry_run:** יצירה שנכשלת בשלב הבדיקה של הקלאסטר (מקום, פורט, פרטי גישה), גם באתר אחד, לא משאירה כלום באף אתר
+  ומחזירה אותה שגיאה שה-dry_run היה מחזיר, ולכן בדיקה מראש לא מוסיפה. אתר שנופל באמצע היצירה הוא מקרה אחר (הסעיף הבא).
 - **אתר שנופל באמצע יצירה** (ה-task נשאר `started`): אחרי זמן ההמתנה מהקונפיג ⇐ `requires_manual_intervention`. לא
   שולחים cancel (החלטת הבעלים): בניסוי ישן cancel של יצירה עבד ומחק את ה-bdb החלקי, אבל cancel של שינוי מבנה אחר
   (הסרת אתר) השאיר CRDB שאי אפשר למחוק, ולכן לא מסתכנים. אדם מחליט לפי ה-task id ששמור ב-record.
@@ -215,10 +217,13 @@ POST /v1/databases/create
   רץ ⇐ תוצאה לא ידועה, וביטול מחכה שה-task יסתיים לפני שהוא משחזר.
 - **תוצאה לא ידועה של היצירה:** מאתרים לפי ה-`X-Task-ID` שלנו, לא לפי השם, כי שמות CRDB כפולים מותרים.
 - **בדיקת שמות:** שם ה-DB, היוזרים, ה-ACLs וה-roles פנויים בכל אתר, ושם ה-DB פנוי גם בין ה-CRDBs.
-- **רשת:** כל האתרים באותה רשת. אחרת ⇐ נדחה. סביבה מעורבת לא נבדקת (באחריות השירות שבונה את הבקשות). מספר האתרים לא
-  מוגבל. הקלאסטר הראשון ברשימה הוא המתאם. ה-FQDN (`name` של instance) נלקח מה-URL של הקלאסטר.
-- **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. ההרשאות ב-AA נשענות על הנעילה בלבד: `PATCH /v1/crdbs` נשלח בלי
-  `cluster-state-id`.
+- **רשת:** כל האתרים באותה רשת. אחרת ⇐ נדחה. סביבה מעורבת לא נבדקת (באחריות השירות שבונה את הבקשות). תוצאה של
+  ההחלטה: אתר DEV ואתר PROD באותה רשת מקבלים ברירות מחדל שונות (`replication`), והבקשה נגמרת ב-`500
+  configuration_error`, למרות שהטעות בבקשה. מספר האתרים לא מוגבל, גם אתר אחד (CRDB עם instance אחד) מותר. שני אתרים
+  עם אותו קלאסטר, אותו שם קלאסטר או אותו host ⇐ `422 duplicate_sites`. הקלאסטר הראשון ברשימה הוא המתאם. ה-FQDN (`name` של instance) נלקח מה-URL של הקלאסטר.
+- **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. `PATCH /v1/crdbs` נשלח בלי `cluster-state-id`, כך שההרשאות
+  ב-AA נשענות על הנעילה בלבד, והנעילה מגינה רק מפני הרצות של השירות הזה, לא מפני שינוי מה-UI או מכלי אחר.
+  **פתוח:** האם `PATCH /v1/crdbs` מכבד `cluster-state-id` (לא נבדק).
 - **תוצאה:** ענף לכל אתר מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role שנוצרו בו. `not_rolled_back` מראה כל משאב באתר שלו,
   ו-CRDB שנשאר עם `crdb_guid`. מפתח של צעד באתר מתחיל בשם הקלאסטר (`c1/acl/app`).
 - **בדיקה מול המעבדה (2026-11-14):** יצירה דרך השירות על שני אתרים עם יוזר עברה תוך כ-21 שניות; ACL שנדחה ביטל הכל,
