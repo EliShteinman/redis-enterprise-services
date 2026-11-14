@@ -11,7 +11,7 @@ from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 
-ERROR: PublicError = PublicError(code="internal_error", message="internal error")
+ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigation", message="internal error")
 
 
 @pytest.mark.parametrize(
