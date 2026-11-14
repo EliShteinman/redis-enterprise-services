@@ -81,19 +81,12 @@ def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:
 
 
 def reject_sites_on_one_cluster(*, clusters: list[ConfiguredCluster]) -> None:
-    repeated: list[str] = sorted(
-        {
-            identity
-            for identities in (
-                [cluster.api_url for cluster in clusters],
-                [cluster.name for cluster in clusters],
-                [cluster_fqdn(api_url=cluster.api_url) for cluster in clusters],
-            )
-            for identity in identities
-            if identities.count(identity) > 1
-        }
-    )
+    reject_repeated(kind="cluster address", values=[cluster.api_url for cluster in clusters])
+    reject_repeated(kind="cluster name", values=[cluster.name for cluster in clusters])
+    reject_repeated(kind="host", values=[cluster_fqdn(api_url=cluster.api_url) for cluster in clusters])
+
+
+def reject_repeated(*, kind: str, values: list[str]) -> None:
+    repeated: list[str] = sorted({value for value in values if values.count(value) > 1})
     if repeated:
-        raise DuplicateSitesError(
-            message=f"more than one site resolves to the same cluster, cluster name or host: {repeated}"
-        )
+        raise DuplicateSitesError(message=f"more than one site resolves to the same {kind}: {repeated}")

@@ -8,6 +8,7 @@ from redis_enterprise_services.config.operation_settings import OperationSetting
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
+from redis_enterprise_services.creation.created_database_result import CreatedSite, created_sites
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
@@ -318,3 +319,28 @@ def test_an_active_active_result_has_the_crdb_and_one_branch_per_site() -> None:
         [cluster.db.db_uid for cluster in operation.database.clusters],
         operation.database.crdb is not None and operation.database.crdb.default_db_config["name"],
     ) == (GUID, [7, 4], "orders")
+
+
+def test_each_site_reads_its_users_from_the_steps_on_that_site() -> None:
+    sites: list[CreatedSite] = created_sites(
+        prepared_creation=PreparedCreation(
+            clusters=[C1, C2],
+            active_active=True,
+            spec=DatabaseSpec(
+                database=DATABASE,
+                users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
+            ),
+        ),
+        resource_naming=UserResourceNaming(
+            settings=UserResourcesSettings(
+                acl_name_template="{database}-{user}-acl",
+                role_name_template="{database}-{user}-role",
+                role_management="db_viewer",
+            )
+        ),
+    )
+
+    assert [
+        [resource.step_key for user in site.users for resource in user.resources.in_creation_order()]
+        for site in sites
+    ] == [["c1/acl/app", "c1/role/app", "c1/user/app"], ["c2/acl/app", "c2/role/app", "c2/user/app"]]
