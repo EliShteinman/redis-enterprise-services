@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.config.error_kind import ErrorKind
+from redis_enterprise_services.config.error_kind import NEEDS_INVESTIGATION, ErrorKind
 from redis_enterprise_services.config.public_error_code import PublicErrorCode
 from redis_enterprise_services.operations.code_meanings import code_meanings_description
 from redis_enterprise_services.operations.is_none import is_none
@@ -22,7 +22,6 @@ PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
 
 PUBLIC_ERROR_CODE_DESCRIPTION: str = code_meanings_description(meanings=PUBLIC_ERROR_CODE_MEANINGS)
 
-NEEDS_INVESTIGATION: ErrorKind = "needs_investigation"
 ERROR_KIND_MEANINGS: dict[ErrorKind, str] = {
     "customer_fixable": "the customer can understand and fix it alone",
     "known_failure": "support knows the cause from the code",
@@ -43,7 +42,9 @@ class PublicError(BaseModel):
     )
     message: str = Field(
         description="What went wrong, for people; not for parsing.",
-        examples=["the request was refused with status 406 (insufficient_resources)"],
+        examples=[
+            "POST https://cluster-a.net-a:9443/v1/bdbs was refused with status 406 (insufficient_resources)"
+        ],
     )
     cluster_url: str | None = Field(
         default=None,

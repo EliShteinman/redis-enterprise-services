@@ -267,6 +267,27 @@ def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -
     assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
+def test_a_project_error_that_interrupted_the_saga_keeps_its_message() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.side_effect = NameTakenError(message="raised after the first step")
+    harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
+
+    operation: Operation = harness.run_and_save()
+
+    assert operation.error is not None and operation.error.message == "raised after the first step"
+
+
+def test_an_unreadable_record_keeps_the_error_that_stopped_the_saga() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
+    harness.saga_record_reader.find.side_effect = UnreadableSagaRecordError(message="unreadable")
+
+    operation: Operation = harness.run_and_save()
+
+    assert operation.error is not None
+    assert operation.error.message == "unexpected RuntimeError: bug while finishing"
+
+
 def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_intervention() -> None:
     harness: ExecutionHarness = ExecutionHarness()
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
