@@ -45,3 +45,20 @@ def test_a_redirect_answer_is_a_cluster_rejection() -> None:
         EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
             target=TARGET, method="POST", path="/v1/users"
         )
+
+
+def test_the_cluster_body_stays_out_of_the_rejection_message() -> None:
+    transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
+    transport.send.return_value = ClusterResponse(
+        status_code=400,
+        headers={},
+        body={"error_code": "invalid_schema", "description": "the-echoed-value"},
+        cluster_state_id=None,
+    )
+
+    with pytest.raises(expected_exception=ClusterRejectedRequestError) as rejection:
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
+            target=TARGET, method="POST", path="/v1/bdbs"
+        )
+
+    assert "the-echoed-value" not in rejection.value.message
