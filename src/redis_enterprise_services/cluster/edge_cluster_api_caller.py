@@ -1,5 +1,6 @@
 import logging
 from http import HTTPStatus
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import JsonValue
 
@@ -54,10 +55,15 @@ def cluster_rejection(
     *, request: ClusterRequest, response: ClusterResponse, error_code_field: str
 ) -> ClusterRejectedRequestError:
     cluster_error_code: str | None = string_field(body=response.body, name=error_code_field)
-    refusal: str = f"{request.method} {request.url} was refused with status {response.status_code}"
-    logger.info(msg=f"{refusal}: {response.body}")
+    refused_with: str = f"was refused with status {response.status_code}"
+    refusal: str = f"{request.method} {url_without_query(url=request.url)} {refused_with}"
+    logger.info(msg=f"{request.method} {request.url} {refused_with}: {response.body}")
     return ClusterRejectedRequestError(
         message=refusal if cluster_error_code is None else f"{refusal} ({cluster_error_code})",
         cluster_status_code=response.status_code,
         cluster_error_code=cluster_error_code,
     )
+
+
+def url_without_query(*, url: str) -> str:
+    return urlunsplit(urlsplit(url)._replace(query="", fragment=""))

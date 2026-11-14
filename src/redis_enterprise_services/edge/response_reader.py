@@ -76,7 +76,7 @@ class EdgeResponseReader:
             message: str = (
                 f"answered {relay_response.status_code} with a body that is not JSON and no edge error code"
             )
-            logger.debug(msg=message)
+            logger.warning(msg=f"{message}: {relay_response.text}")
             raise EdgeOutcomeUnknownError(message=message) from error
 
 
