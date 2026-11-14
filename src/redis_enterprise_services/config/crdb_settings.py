@@ -1,4 +1,4 @@
-from pydantic import PositiveInt
+from pydantic import Field, PositiveInt
 
 from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.item_path import ApiPath, ItemPath
@@ -17,9 +17,16 @@ class CrdbTaskSettings(ConfigModel):
     wait: WaitSettings
 
 
+class CrdbCreationSettings(ConfigModel):
+    causal_consistency: bool
+    encryption: bool
+    compression: int = Field(ge=0, le=6)
+
+
 class CrdbSettings(ConfigModel):
     collection_path: ApiPath
     item_path: ItemPath
     list_field: str
     cluster_added_tag_fields: frozenset[str]
+    creation: CrdbCreationSettings
     task: CrdbTaskSettings
