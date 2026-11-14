@@ -36,6 +36,7 @@ class RestCrdbRepository(CrdbRepository):
                 name=database.name,
                 default_db_config=self._database_body_builder.creation_body(spec=database),
                 members=members,
+                settings=self._settings.creation,
             ).model_dump(mode="json"),
             task_id=task_id,
         )
