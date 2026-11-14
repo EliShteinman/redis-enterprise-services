@@ -1,3 +1,5 @@
+import logging
+
 from pydantic import ConfigDict, JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
@@ -11,6 +13,8 @@ from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
+
+logger: logging.Logger = logging.getLogger(name=__name__)
 
 CRDB: TypeAdapter[Crdb] = TypeAdapter(Crdb)
 NAMED_CRDB_LIST: TypeAdapter[list[NamedCrdb]] = TypeAdapter(
@@ -110,6 +114,7 @@ class RestCrdbRepository(CrdbRepository):
     def _send_task(
         self, *, target: ClusterTarget, method: HttpMethod, path: str, body: JsonValue | None, task_id: str
     ) -> None:
+        logger.info(msg=f"{method} {path} on {target.api_url} as CRDB task {task_id}")
         self._cluster_api_caller.send(
             target=target,
             method=method,

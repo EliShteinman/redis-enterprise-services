@@ -46,11 +46,11 @@ class RemainingResource(BaseModel):
     @model_validator(mode="after")
     def reject_a_guid_on_a_resource_without_a_crdb(self) -> Self:
         if self.crdb_guid is not None and self.resource_type not in CRDB_GUID_RESOURCE_TYPES:
-            raise ValueError(f"a {self.resource_type} resource has no crdb_guid")
+            raise ValueError(f"a {self.resource_type} resource cannot carry a crdb_guid")
         return self
 
     @model_validator(mode="after")
     def reject_a_uid_on_a_resource_the_crdb_identifies(self) -> Self:
         if self.uid is not None and (self.resource_type == "crdb" or self.crdb_guid is not None):
-            raise ValueError(f"a {self.resource_type} resource identified by its CRDB has no uid")
+            raise ValueError(f"a {self.resource_type} resource identified by its CRDB cannot carry a uid")
         return self

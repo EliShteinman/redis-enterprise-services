@@ -2,11 +2,11 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from redis_enterprise_services.config.base_url import comparable_url
+from redis_enterprise_services.config.base_url import BaseUrl, comparable_url
 
 
 class CrdbInstanceCluster(BaseModel):
-    url: str
+    url: BaseUrl
 
 
 class CrdbInstance(BaseModel):
@@ -16,7 +16,7 @@ class CrdbInstance(BaseModel):
     cluster: CrdbInstanceCluster
     db_uid: str | None = None
     compression: int | None = None
-    db_config: dict[str, JsonValue] = Field(default_factory=dict)
+    db_config: dict[str, JsonValue] = Field(default_factory=dict, repr=False)
 
 
 class NamedCrdb(BaseModel):
@@ -28,7 +28,7 @@ class Crdb(BaseModel):
 
     guid: str
     name: str
-    default_db_config: dict[str, JsonValue]
+    default_db_config: dict[str, JsonValue] = Field(repr=False)
     instances: list[CrdbInstance]
     causal_consistency: bool | None = None
     encryption: bool | None = None
