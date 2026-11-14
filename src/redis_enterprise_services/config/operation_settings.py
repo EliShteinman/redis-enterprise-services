@@ -1,4 +1,4 @@
-from typing import Self, get_args
+from typing import Self
 
 from pydantic import model_validator
 
@@ -20,11 +20,4 @@ class OperationSettings(ConfigModel):
             raise ValueError(
                 f"public_codes_with_cluster_details not among the public codes: {sorted(unknown)}"
             )
-        return self
-
-    @model_validator(mode="after")
-    def reject_public_codes_without_kind(self) -> Self:
-        without_kind: set[str] = set(get_args(PublicErrorCode.__value__)) - set(self.error_kind_by_code)
-        if without_kind:
-            raise ValueError(f"error_kind_by_code has no kind for the public codes {sorted(without_kind)}")
         return self
