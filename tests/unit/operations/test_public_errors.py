@@ -12,8 +12,10 @@ PUBLIC_ERRORS: PublicErrors = PublicErrors(
             "name_taken": "name_taken",
         },
         public_codes_with_cluster_details=frozenset({"cluster_request_failed"}),
+        error_kind_by_code={"cluster_request_failed": "known_failure", "name_taken": "customer_fixable"},
     ),
     internal_error_message="internal error",
+    unexpected_error_message="unexpected {error_type}: {error}",
 )
 
 
@@ -40,3 +42,21 @@ def test_a_rejection_with_no_public_code_shows_only_the_fixed_internal_message()
     rejection: PublicError = PUBLIC_ERRORS.for_rejection(error=InvalidPlanError(message="plan details"))
 
     assert rejection.message == "internal error"
+
+
+@pytest.mark.parametrize(
+    argnames=("internal_code", "kind"),
+    argvalues=[
+        ("name_taken", "customer_fixable"),
+        ("cluster_rejected_request", "known_failure"),
+        ("invalid_plan", "needs_investigation"),
+    ],
+)
+def test_an_error_is_published_with_the_kind_of_its_public_code(internal_code: str, kind: str) -> None:
+    assert PUBLIC_ERRORS.from_code(internal_code=internal_code, message="m").kind == kind
+
+
+def test_an_unexpected_error_shows_its_type_and_text() -> None:
+    published: PublicError = PUBLIC_ERRORS.unexpected_error(error=KeyError("missing-key"))
+
+    assert published.message == "unexpected KeyError: 'missing-key'"
