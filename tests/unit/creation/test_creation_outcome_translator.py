@@ -45,8 +45,10 @@ def translator() -> CreationOutcomeTranslator:
                 public_codes_with_cluster_details=frozenset(
                     {"cluster_request_failed", "cluster_unavailable"}
                 ),
+                error_kind_by_code={"cluster_request_failed": "known_failure"},
             ),
             internal_error_message="internal error",
+            unexpected_error_message="unexpected {error_type}: {error}",
         ),
     )
 
@@ -60,8 +62,14 @@ PREPARED_CREATION: PreparedCreation = PreparedCreation(
         users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
     ),
 )
+REFUSED: str = "POST https://c1:9443/v1/bdbs was refused with status 400 (invalid_param)"
 REJECTED_BY_CLUSTER: StepError = StepError(
-    code="cluster_rejected_request", message="cluster answered 400", remote_code="invalid_param"
+    code="cluster_rejected_request",
+    message=REFUSED,
+    remote_code="invalid_param",
+)
+INTERRUPTION_ERROR: PublicError = PublicError(
+    code="internal_error", kind="needs_investigation", message="interrupted"
 )
 COMPENSATION_ERROR: StepError = StepError(code="unreadable_cluster_response", message="relay is down")
 
@@ -90,6 +98,7 @@ def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped
         trace_id="trace-1",
         prepared_creation=PREPARED_CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),
+        interruption_error=INTERRUPTION_ERROR,
     )
 
 
@@ -106,7 +115,8 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
     assert (operation.error, operation.not_rolled_back) == (
         PublicError(
             code="cluster_request_failed",
-            message="cluster answered 400",
+            kind="known_failure",
+            message=REFUSED,
             cluster_url="https://c1:9443",
             cluster_error_code="invalid_param",
         ),

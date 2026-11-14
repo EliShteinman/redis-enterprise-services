@@ -63,17 +63,23 @@ class CreationExecution:
                     error=error,
                     cluster_url=prepared_creation.cluster.api_url,
                 ),
+                interruption_error=self._public_errors.internal_error(),
             )
         except Exception as error:
             logger.critical(msg=f"creation {trace_id} failed on an unexpected error", exc_info=True)
+            unexpected_error: PublicError = self._public_errors.unexpected_error(error=error)
             return self._operation_after_saga_error(
                 trace_id=trace_id,
                 prepared_creation=prepared_creation,
                 saga_error=error,
-                error_if_not_started=self._public_errors.internal_error,
+                error_if_not_started=lambda: unexpected_error,
+                interruption_error=unexpected_error,
             )
         return self._translated_or_manual_intervention_operation(
-            trace_id=trace_id, prepared_creation=prepared_creation, record=record
+            trace_id=trace_id,
+            prepared_creation=prepared_creation,
+            record=record,
+            interruption_error=self._public_errors.internal_error(),
         )
 
     def _run_saga(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaRecord:
@@ -93,6 +99,7 @@ class CreationExecution:
         prepared_creation: PreparedCreation,
         saga_error: Exception,
         error_if_not_started: Callable[[], PublicError],
+        interruption_error: PublicError,
     ) -> Operation:
         try:
             stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
@@ -111,24 +118,33 @@ class CreationExecution:
             trace_id=trace_id,
             prepared_creation=prepared_creation,
             record=record_interrupted_if_running(record=stored_record),
+            interruption_error=interruption_error,
         )
 
     def _translated_or_manual_intervention_operation(
-        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+        self,
+        *,
+        trace_id: str,
+        prepared_creation: PreparedCreation,
+        record: SagaRecord,
+        interruption_error: PublicError,
     ) -> Operation:
         try:
             return self._outcome_translator.operation_from_ended_record(
-                trace_id=trace_id, prepared_creation=prepared_creation, record=record
+                trace_id=trace_id,
+                prepared_creation=prepared_creation,
+                record=record,
+                interruption_error=interruption_error,
             )
-        except Exception:
+        except Exception as error:
             logger.critical(
                 msg=f"saga {trace_id} ended {record.status.value}, but its result cannot be read",
                 exc_info=True,
             )
-            return Operation(
+            return Operation.failed(
                 trace_id=trace_id,
                 status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
-                error=self._public_errors.internal_error(),
+                error=self._public_errors.unexpected_error(error=error),
                 not_rolled_back=self._remaining_resources_or_none(
                     trace_id=trace_id, prepared_creation=prepared_creation, record=record
                 ),

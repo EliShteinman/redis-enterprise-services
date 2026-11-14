@@ -56,8 +56,10 @@ PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(
         public_code_by_internal_code={"name_taken": "name_taken"},
         public_codes_with_cluster_details=frozenset(),
+        error_kind_by_code={},
     ),
     internal_error_message="internal error",
+    unexpected_error_message="unexpected {error_type}: {error}",
 )
 UID_BY_STEP_KEY: dict[str, int] = {
     "database": 7,
@@ -221,6 +223,30 @@ def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_messa
     operation: Operation = harness.run_and_save()
 
     assert operation.error is not None and operation.error.message == "internal error"
+
+
+def test_an_unexpected_error_before_the_saga_runs_shows_its_type_and_text() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.side_effect = RuntimeError("bug in planning")
+
+    operation: Operation = harness.run_and_save()
+
+    assert (
+        operation.error is not None and operation.error.message == "unexpected RuntimeError: bug in planning"
+    )
+
+
+def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text() -> None:
+    harness: ExecutionHarness = ExecutionHarness()
+    harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
+    harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
+
+    operation: Operation = harness.run_and_save()
+
+    assert (
+        operation.error is not None
+        and operation.error.message == "unexpected RuntimeError: bug while finishing"
+    )
 
 
 def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() -> None:

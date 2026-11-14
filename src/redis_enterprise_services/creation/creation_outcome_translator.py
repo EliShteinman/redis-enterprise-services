@@ -39,7 +39,12 @@ class CreationOutcomeTranslator:
         self._database_settings: DatabaseSettings = database_settings
 
     def operation_from_ended_record(
-        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+        self,
+        *,
+        trace_id: str,
+        prepared_creation: PreparedCreation,
+        record: SagaRecord,
+        interruption_error: PublicError,
     ) -> Operation:
         if record.status is SagaStatus.SUCCEEDED:
             return succeeded_operation(
@@ -51,26 +56,40 @@ class CreationOutcomeTranslator:
                     resource_naming=self._resource_naming,
                 ),
             )
-        return self._failed_operation(trace_id=trace_id, prepared_creation=prepared_creation, record=record)
+        return self._failed_operation(
+            trace_id=trace_id,
+            prepared_creation=prepared_creation,
+            record=record,
+            interruption_error=interruption_error,
+        )
 
     def _failed_operation(
-        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+        self,
+        *,
+        trace_id: str,
+        prepared_creation: PreparedCreation,
+        record: SagaRecord,
+        interruption_error: PublicError,
     ) -> Operation:
-        return Operation(
+        return Operation.failed(
             trace_id=trace_id,
             status=OPERATION_STATUS_BY_FAILED_SAGA_STATUS[record.status],
-            error=self._stopped_step_error(cluster=prepared_creation.cluster, record=record),
+            error=self._stopped_step_error(
+                cluster=prepared_creation.cluster, record=record, interruption_error=interruption_error
+            ),
             not_rolled_back=self.remaining_resources(prepared_creation=prepared_creation, record=record),
         )
 
-    def _stopped_step_error(self, *, cluster: ConfiguredCluster, record: SagaRecord) -> PublicError:
+    def _stopped_step_error(
+        self, *, cluster: ConfiguredCluster, record: SagaRecord, interruption_error: PublicError
+    ) -> PublicError:
         stopped_step: StepRecord | None = record.stopped_step()
         if stopped_step is None or stopped_step.error is None:
             logger.warning(
                 msg=f"saga {record.saga_id} ended {record.status.value} and its stopped step has no error "
-                "(it was interrupted), reported as internal_error"
+                f"(it was interrupted), reported as {interruption_error.code}"
             )
-            return self._public_errors.internal_error()
+            return interruption_error
         return self._public_errors.from_code(
             internal_code=stopped_step.error.code,
             message=stopped_step.error.message,

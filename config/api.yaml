@@ -1,6 +1,7 @@
 api:
   validation_error_message: the request does not match the contract
   internal_error_message: internal error
+  unexpected_error_message: "unexpected {error_type}: {error}"
   traceparent_pattern: "^(?!ff)[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$"
   traceparent_error_message: the traceparent header is not in the W3C format
   trace_id_pattern: "^(?!0{32})[0-9a-f]{32}$"

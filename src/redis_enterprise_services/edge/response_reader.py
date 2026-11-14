@@ -38,7 +38,7 @@ class EdgeResponseReader:
             error: RedisEnterpriseServicesError = self._error_for_edge_error_code(
                 edge_error_code=edge_error_code, relay_response=relay_response
             )
-            logger.debug(msg=error.message)
+            logger.warning(msg=f"{error.message}: {relay_response.text}")
             raise error
         return ClusterResponse(
             status_code=relay_response.status_code,
@@ -52,7 +52,7 @@ class EdgeResponseReader:
     def _error_for_edge_error_code(
         self, *, edge_error_code: str, relay_response: requests.Response
     ) -> RedisEnterpriseServicesError:
-        message: str = f"relay answered {relay_response.status_code} {edge_error_code}: {relay_response.text}"
+        message: str = f"the relay answered {relay_response.status_code} {edge_error_code}"
         error_type: type[RedisEnterpriseServicesError] = edge_error_type_for(
             edge_error_code=edge_error_code, codes=self._settings.error_codes
         )

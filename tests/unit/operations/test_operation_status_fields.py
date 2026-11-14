@@ -7,7 +7,8 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
-ERROR: PublicError = PublicError(code="internal_error", message="internal error")
+ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigation", message="internal error")
+KNOWN_FAILURE: PublicError = PublicError(code="cluster_timeout", kind="known_failure", message="slow")
 
 
 @pytest.mark.parametrize(
@@ -18,6 +19,7 @@ ERROR: PublicError = PublicError(code="internal_error", message="internal error"
         (OperationStatus.ROLLED_BACK, None),
         (OperationStatus.REJECTED, None),
         (OperationStatus.REQUIRES_MANUAL_INTERVENTION, None),
+        (OperationStatus.REQUIRES_MANUAL_INTERVENTION, KNOWN_FAILURE),
     ],
 )
 def test_an_error_that_does_not_fit_the_status_is_refused(
@@ -70,3 +72,11 @@ REMAINING: RemainingResource = RemainingResource(
 def test_a_field_that_does_not_fit_the_status_is_refused(operation_fields: dict[str, object]) -> None:
     with pytest.raises(expected_exception=ValidationError):
         Operation.model_validate(obj={"trace_id": "trace-1", **operation_fields})
+
+
+def test_a_failure_that_needs_manual_intervention_needs_investigation() -> None:
+    operation: Operation = Operation.failed(
+        trace_id="trace-1", status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=KNOWN_FAILURE
+    )
+
+    assert operation.error == KNOWN_FAILURE.needing_investigation()

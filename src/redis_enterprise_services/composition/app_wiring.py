@@ -89,7 +89,9 @@ class AppWiring:
 
 def build_public_errors(*, settings: Settings) -> PublicErrors:
     return PublicErrors(
-        settings=settings.operation, internal_error_message=settings.api.internal_error_message
+        settings=settings.operation,
+        internal_error_message=settings.api.internal_error_message,
+        unexpected_error_message=settings.api.unexpected_error_message,
     )
 
 
