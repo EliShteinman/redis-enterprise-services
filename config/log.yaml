@@ -1,9 +1,11 @@
 log:
   level: INFO
   line_format: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
+  line_format_defaults:
+    otelTraceID: "0"
   date_format: "%Y-%m-%dT%H:%M:%S%z"
   stream: ext://sys.stdout
-  server_loggers:
+  root_propagating_loggers:
     - uvicorn
     - uvicorn.error
     - uvicorn.access
