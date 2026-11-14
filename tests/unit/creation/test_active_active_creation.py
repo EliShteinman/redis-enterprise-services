@@ -213,3 +213,108 @@ def test_the_error_names_the_site_of_the_step_that_stopped() -> None:
     )
 
     assert operation.error is not None and operation.error.cluster_url == "https://c2:9443"
+
+
+@pytest.mark.parametrize(
+    argnames="second",
+    argvalues=[
+        pytest.param(C2.model_copy(update={"name": "c1"}), id="same-cluster-name"),
+        pytest.param(C2.model_copy(update={"api_url": "https://c1:9444"}), id="same-host"),
+    ],
+)
+def test_two_sites_that_share_a_cluster_name_or_host_are_refused(second: ConfiguredCluster) -> None:
+    with pytest.raises(expected_exception=DuplicateSitesError):
+        preparation(clusters=[C1, second], filled=[DATABASE, DATABASE]).prepare(creation_request=REQUEST)
+
+
+def translator_for_sites() -> CreationOutcomeTranslator:
+    return CreationOutcomeTranslator(
+        resource_naming=UserResourceNaming(
+            settings=UserResourcesSettings(
+                acl_name_template="{database}-{user}-acl",
+                role_name_template="{database}-{user}-role",
+                role_management="db_viewer",
+            )
+        ),
+        database_settings=load_settings().database,
+        public_errors=PublicErrors(
+            settings=OperationSettings(
+                public_code_by_internal_code={"database_activation_timeout": "cluster_timeout"},
+                public_codes_with_cluster_details=frozenset({"cluster_timeout"}),
+                error_kind_by_code={},
+            ),
+            internal_error_message="internal error",
+            unexpected_error_message="unexpected {error_type}: {error}",
+        ),
+    )
+
+
+AA_WITHOUT_USERS: PreparedCreation = PreparedCreation(
+    clusters=[C1, C2], active_active=True, spec=DatabaseSpec(database=DATABASE, users=[])
+)
+
+
+def test_a_stop_while_finding_a_local_database_names_that_site() -> None:
+    record: SagaRecord = SagaRecord(
+        saga_id="trace-1",
+        status=SagaStatus.ROLLED_BACK,
+        steps=[
+            StepRecord(
+                key="c2/local-database",
+                kind=StepKind.COMPENSATABLE,
+                status=StepStatus.FAILED,
+                error=StepError(code="database_activation_timeout", message="slow"),
+            )
+        ],
+        stopped_at="c2/local-database",
+    )
+
+    operation: Operation = translator_for_sites().operation_from_ended_record(
+        trace_id="trace-1",
+        prepared_creation=AA_WITHOUT_USERS,
+        record=record,
+        interruption_error=PublicError(code="internal_error", kind="needs_investigation", message="i"),
+    )
+
+    assert operation.error is not None and operation.error.cluster_url == "https://c2:9443"
+
+
+def read_back(*, uid: int, host: str) -> JsonValue:
+    return {
+        "values": {
+            **DATABASE.model_dump(mode="json"),
+            "uid": uid,
+            "endpoints": [{"dns_name": f"redis-12000.{host}", "port": 12000, "addr": ["10.0.0.1"]}],
+        },
+        "cluster_state_id": 1,
+    }
+
+
+def test_an_active_active_result_has_the_crdb_and_one_branch_per_site() -> None:
+    results: dict[str, JsonValue] = {
+        "crdb": {"guid": GUID},
+        "c1/read-database": read_back(uid=7, host="c1"),
+        "c2/read-database": read_back(uid=4, host="c2"),
+        "read-crdb": {
+            "default_db_config": {"name": "orders", "memory_size": 104857600},
+            "instances": [{"cluster_url": "https://c1:9443", "id": 1, "compression": 3}],
+        },
+    }
+    done: list[StepRecord] = [
+        StepRecord(key=key, kind=StepKind.COMPENSATABLE, status=StepStatus.DONE, result=result)
+        for key, result in results.items()
+    ]
+
+    operation: Operation = translator_for_sites().operation_from_ended_record(
+        trace_id="trace-1",
+        prepared_creation=AA_WITHOUT_USERS,
+        record=SagaRecord(saga_id="trace-1", status=SagaStatus.SUCCEEDED, steps=done),
+        interruption_error=PublicError(code="internal_error", kind="needs_investigation", message="i"),
+    )
+
+    assert operation.database is not None
+    assert (
+        str(operation.database.crdb_guid),
+        [cluster.db.db_uid for cluster in operation.database.clusters],
+        operation.database.crdb is not None and operation.database.crdb.default_db_config["name"],
+    ) == (GUID, [7, 4], "orders")

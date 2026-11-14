@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
@@ -148,7 +146,6 @@ class ClusterSteps:
             task_tracker=crdb_task_tracker,
             target_resolver=target_resolver,
             guid_field=settings.crdb.task.guid_field,
-            new_task_id=new_task_id,
         )
         self.find_local_crdb_instance: FindLocalCrdbInstanceStep = FindLocalCrdbInstanceStep(
             repository=repositories.crdb, activation_waiter=database_waiter, target_resolver=target_resolver
@@ -158,7 +155,6 @@ class ClusterSteps:
             task_tracker=crdb_task_tracker,
             target_resolver=target_resolver,
             list_fields=settings.database.order_insensitive_fields,
-            new_task_id=new_task_id,
         )
         self.read_crdb: ReadCrdbStep = ReadCrdbStep(
             repository=repositories.crdb,
@@ -242,10 +238,6 @@ def build_database_body_builder(*, settings: Settings) -> DatabaseCreationBodyBu
         default_user_password=settings.database.default_user_password,
         default_tags=settings.database.default_tags,
     )
-
-
-def new_task_id() -> str:
-    return str(uuid4())
 
 
 def rest_repository[TSpec: NamedSpec](

@@ -8,4 +8,4 @@ class CrdbNameLookup(NameLookup):
         self._repository: CrdbRepository = repository
 
     def find_existing(self, *, target: ClusterTarget, names: set[str]) -> set[str]:
-        return names & {crdb.name for crdb in self._repository.list_crdbs(target=target)}
+        return names & self._repository.list_crdb_names(target=target)

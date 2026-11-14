@@ -1,6 +1,7 @@
 import logging
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.crdbs.creation_body import cluster_fqdn
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -38,13 +39,15 @@ class CreationPreparation:
             self._site_cluster_resolver.resolve(placement=site) for site in creation_request.target.sites
         ]
         reject_mixed_networks(clusters=clusters)
-        reject_repeated_clusters(clusters=clusters)
+        reject_sites_on_one_cluster(clusters=clusters)
         filled_database: NewDatabase = self._same_database_on_every_site(
             clusters=clusters,
             requested=requested_database,
             active_active=creation_request.target.active_active,
         )
-        logger.info(msg=f"creating {filled_database.name} on {[c.name for c in clusters]} is prepared")
+        logger.info(
+            msg=f"creating {filled_database.name} on {[cluster.name for cluster in clusters]} is prepared"
+        )
         return PreparedCreation(
             clusters=clusters,
             active_active=creation_request.target.active_active,
@@ -77,8 +80,20 @@ def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:
         raise MixedNetworksError(message=f"the sites are on more than one network: {sorted(networks)}")
 
 
-def reject_repeated_clusters(*, clusters: list[ConfiguredCluster]) -> None:
-    api_urls: list[str] = [cluster.api_url for cluster in clusters]
-    repeated: list[str] = sorted({api_url for api_url in api_urls if api_urls.count(api_url) > 1})
+def reject_sites_on_one_cluster(*, clusters: list[ConfiguredCluster]) -> None:
+    repeated: list[str] = sorted(
+        {
+            identity
+            for identities in (
+                [cluster.api_url for cluster in clusters],
+                [cluster.name for cluster in clusters],
+                [cluster_fqdn(api_url=cluster.api_url) for cluster in clusters],
+            )
+            for identity in identities
+            if identities.count(identity) > 1
+        }
+    )
     if repeated:
-        raise DuplicateSitesError(message=f"more than one site resolves to the same cluster: {repeated}")
+        raise DuplicateSitesError(
+            message=f"more than one site resolves to the same cluster, cluster name or host: {repeated}"
+        )

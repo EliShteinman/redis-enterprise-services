@@ -55,7 +55,6 @@ def step_reading(
             credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
         ),
         list_fields=frozenset({"roles_permissions"}),
-        new_task_id=lambda: "undo",
     )
     return step, repository
 

@@ -1,8 +1,6 @@
 import logging
 from uuid import UUID
 
-from pydantic import ValidationError
-
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
@@ -18,7 +16,12 @@ from redis_enterprise_services.planning.active_active_planned_resources import (
     SitePlannedResource,
     active_active_planned_resources,
 )
-from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY, on_site
+from redis_enterprise_services.planning.creation_step_keys import (
+    CRDB_STEP_KEY,
+    LOCAL_DATABASE_STEP_KEY,
+    READ_DATABASE_STEP_KEY,
+    on_site,
+)
 from redis_enterprise_services.planning.planned_resources import (
     PlannedResource,
     planned_resources_by_step_key,
@@ -144,7 +147,11 @@ class CreationOutcomeTranslator:
             (
                 cluster
                 for cluster in prepared_creation.clusters
-                if step_key.startswith(on_site(cluster_name=cluster.name, step_key=""))
+                if step_key
+                in {
+                    on_site(cluster_name=cluster.name, step_key=LOCAL_DATABASE_STEP_KEY),
+                    on_site(cluster_name=cluster.name, step_key=READ_DATABASE_STEP_KEY),
+                }
             ),
             prepared_creation.cluster,
         )
@@ -176,5 +183,6 @@ def created_crdb_guid_or_none(*, record: SagaRecord, planned: PlannedResource) -
         return None
     try:
         return UUID(CreatedCrdb.model_validate(obj=record.step(key=planned.uid_step_key).result).guid)
-    except ValidationError, ValueError:
+    except ValueError:
+        logger.warning(msg=f"step {planned.uid_step_key} holds no readable CRDB guid")
         return None
