@@ -23,6 +23,7 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
@@ -39,9 +40,16 @@ from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
-    cluster=ConfiguredCluster(
-        name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
-    ),
+    clusters=[
+        ConfiguredCluster(
+            name="c1",
+            network="net-a",
+            environment="DEV",
+            site="dc1",
+            type="generic",
+            api_url="https://c1:9443",
+        )
+    ],
     spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
         users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
@@ -132,6 +140,7 @@ class ExecutionHarness:
                 creation_naming=create_autospec(spec=CreationNaming, instance=True),
             ),
             planner=self.planner,
+            active_active_planner=create_autospec(spec=ActiveActiveCreationPlanner, instance=True),
             saga_executor=self.saga_executor,
             outcome_translator=CreationOutcomeTranslator(
                 resource_naming=UserResourceNaming(settings=USER_RESOURCES),

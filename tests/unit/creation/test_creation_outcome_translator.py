@@ -54,9 +54,16 @@ def translator() -> CreationOutcomeTranslator:
 
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
-    cluster=ConfiguredCluster(
-        name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
-    ),
+    clusters=[
+        ConfiguredCluster(
+            name="c1",
+            network="net-a",
+            environment="DEV",
+            site="dc1",
+            type="generic",
+            api_url="https://c1:9443",
+        )
+    ],
     spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
         users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],

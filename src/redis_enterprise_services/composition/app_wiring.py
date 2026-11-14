@@ -12,7 +12,10 @@ from redis_enterprise_services.liveness.in_process_operation_heartbeats import I
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
+from redis_enterprise_services.planning.availability.combined_name_lookup import CombinedNameLookup
+from redis_enterprise_services.planning.availability.crdb_name_lookup import CrdbNameLookup
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.listed_name_lookup import ListedNameLookup
@@ -149,6 +152,9 @@ def build_database_creation(
             planner=build_planner(
                 settings=settings, cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
             ),
+            active_active_planner=build_active_active_planner(
+                settings=settings, cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
+            ),
             saga_executor=build_saga_executor(
                 settings=settings,
                 saga_lock=state_wiring.saga_lock,
@@ -202,7 +208,12 @@ def build_names_check(
         name_check_scope=ChosenClusterScope(),
         name_availability=NameAvailability(
             lookups=NameLookupsByKind(
-                database=ListedNameLookup(lister=cluster_wiring.repositories.database),
+                database=CombinedNameLookup(
+                    lookups=[
+                        ListedNameLookup(lister=cluster_wiring.repositories.database),
+                        CrdbNameLookup(repository=cluster_wiring.repositories.crdb),
+                    ]
+                ),
                 acl=ListedNameLookup(lister=cluster_wiring.repositories.acl),
                 role=ListedNameLookup(lister=cluster_wiring.repositories.role),
                 user=ListedNameLookup(lister=cluster_wiring.repositories.user),
@@ -226,6 +237,26 @@ def build_planner(
         create_user_step=cluster_wiring.steps.create_user,
         update_database_step=cluster_wiring.steps.update_database,
         read_database_step=cluster_wiring.steps.read_database,
+    )
+
+
+def build_active_active_planner(
+    *, settings: Settings, cluster_wiring: ClusterWiring, user_resource_naming: UserResourceNaming
+) -> ActiveActiveCreationPlanner:
+    return ActiveActiveCreationPlanner(
+        role_management=settings.user_resources.role_management,
+        cluster_fields=settings.cluster_api.fields,
+        resource_naming=user_resource_naming,
+        database_body_builder=cluster_wiring.repositories.database_body_builder,
+        secret_fields=frozenset(settings.database.secret_fields),
+        create_crdb_step=cluster_wiring.steps.create_crdb,
+        find_local_instance_step=cluster_wiring.steps.find_local_crdb_instance,
+        create_acl_step=cluster_wiring.steps.create_acl,
+        create_role_step=cluster_wiring.steps.create_role,
+        create_user_step=cluster_wiring.steps.create_user,
+        update_instances_step=cluster_wiring.steps.update_crdb_instances,
+        read_database_step=cluster_wiring.steps.read_database,
+        read_crdb_step=cluster_wiring.steps.read_crdb,
     )
 
 

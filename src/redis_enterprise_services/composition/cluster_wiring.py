@@ -1,8 +1,11 @@
+from uuid import uuid4
+
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
     SharedCredentialsTargetResolver,
 )
+from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
@@ -11,6 +14,7 @@ from redis_enterprise_services.cluster_access.cluster_credentials import Cluster
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.crdbs.rest_crdb_repository import RestCrdbRepository
 from redis_enterprise_services.databases.database_creation_body_builder import DatabaseCreationBodyBuilder
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.polling_database_waiter import PollingDatabaseWaiter
@@ -25,8 +29,12 @@ from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.roles.role_creation_body_builder import RoleCreationBodyBuilder
+from redis_enterprise_services.steps.create_crdb import CreateCrdbStep
 from redis_enterprise_services.steps.create_resource import CreateResourceStep
+from redis_enterprise_services.steps.find_local_crdb_instance import FindLocalCrdbInstanceStep
+from redis_enterprise_services.steps.read_crdb import ReadCrdbStep
 from redis_enterprise_services.steps.read_database import ReadDatabaseStep
+from redis_enterprise_services.steps.update_crdb_instances import UpdateCrdbInstancesStep
 from redis_enterprise_services.steps.update_database import UpdateDatabaseStep
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 from redis_enterprise_services.users.models import NewUser
@@ -61,8 +69,12 @@ class ClusterRepositories:
         role: EndpointResourceRepository[NewRole],
         user: EndpointResourceRepository[NewUser],
         database_fields: RestDatabaseFieldsRepository,
+        database_body_builder: DatabaseCreationBodyBuilder,
+        crdb: RestCrdbRepository,
     ) -> None:
         self.database: EndpointResourceRepository[NewDatabase] = database
+        self.database_body_builder: DatabaseCreationBodyBuilder = database_body_builder
+        self.crdb: RestCrdbRepository = crdb
         self.database_fields: RestDatabaseFieldsRepository = database_fields
         self.acl: EndpointResourceRepository[NewAcl] = acl
         self.role: EndpointResourceRepository[NewRole] = role
@@ -122,13 +134,53 @@ class ClusterSteps:
             target_resolver=target_resolver,
             settings=settings.database,
         )
+        crdb_task_waiter: CrdbTaskWaiter = CrdbTaskWaiter(
+            cluster_api_caller=cluster_api_caller, status_polling=status_polling, settings=settings.crdb.task
+        )
+        self.create_crdb: CreateCrdbStep = CreateCrdbStep(
+            repository=repositories.crdb,
+            task_waiter=crdb_task_waiter,
+            target_resolver=target_resolver,
+            task_settings=settings.crdb.task,
+            status_field=settings.cluster_api.fields.status,
+            new_task_id=new_task_id,
+        )
+        self.find_local_crdb_instance: FindLocalCrdbInstanceStep = FindLocalCrdbInstanceStep(
+            repository=repositories.crdb, activation_waiter=database_waiter, target_resolver=target_resolver
+        )
+        self.update_crdb_instances: UpdateCrdbInstancesStep = UpdateCrdbInstancesStep(
+            repository=repositories.crdb,
+            task_waiter=crdb_task_waiter,
+            target_resolver=target_resolver,
+            order_insensitive_fields=settings.database.order_insensitive_fields,
+            new_task_id=new_task_id,
+        )
+        self.read_crdb: ReadCrdbStep = ReadCrdbStep(
+            repository=repositories.crdb,
+            target_resolver=target_resolver,
+            secret_fields=frozenset(settings.database.secret_fields),
+            order_insensitive_fields=settings.database.order_insensitive_fields,
+            cluster_added_item_fields=settings.crdb.cluster_added_tag_fields,
+        )
 
 
 def build_cluster_repositories(
     *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
 ) -> ClusterRepositories:
+    database_body_builder: DatabaseCreationBodyBuilder = build_database_body_builder(settings=settings)
     return ClusterRepositories(
-        database=build_database_repository(settings=settings, cluster_api_caller=cluster_api_caller),
+        database=rest_repository(
+            cluster_api_caller=cluster_api_caller,
+            cluster_api_settings=settings.cluster_api,
+            resource=settings.database,
+            body_builder=database_body_builder,
+        ),
+        database_body_builder=database_body_builder,
+        crdb=RestCrdbRepository(
+            cluster_api_caller=cluster_api_caller,
+            database_body_builder=database_body_builder,
+            settings=settings.crdb,
+        ),
         acl=rest_repository(
             cluster_api_caller=cluster_api_caller,
             cluster_api_settings=settings.cluster_api,
@@ -180,18 +232,15 @@ def build_action_completion_waiter(
     )
 
 
-def build_database_repository(
-    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
-) -> EndpointResourceRepository[NewDatabase]:
-    return rest_repository(
-        cluster_api_caller=cluster_api_caller,
-        cluster_api_settings=settings.cluster_api,
-        resource=settings.database,
-        body_builder=DatabaseCreationBodyBuilder(
-            default_user_password=settings.database.default_user_password,
-            default_tags=settings.database.default_tags,
-        ),
+def build_database_body_builder(*, settings: Settings) -> DatabaseCreationBodyBuilder:
+    return DatabaseCreationBodyBuilder(
+        default_user_password=settings.database.default_user_password,
+        default_tags=settings.database.default_tags,
     )
+
+
+def new_task_id() -> str:
+    return str(uuid4())
 
 
 def rest_repository[TSpec: NamedSpec](

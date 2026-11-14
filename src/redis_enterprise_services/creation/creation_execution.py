@@ -12,11 +12,13 @@ from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
+from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -27,6 +29,7 @@ class CreationExecution:
         *,
         names_check: CreationNamesCheck,
         planner: SingleSiteCreationPlanner,
+        active_active_planner: ActiveActiveCreationPlanner,
         saga_executor: SagaExecutor,
         outcome_translator: CreationOutcomeTranslator,
         public_errors: PublicErrors,
@@ -35,6 +38,7 @@ class CreationExecution:
     ) -> None:
         self._names_check: CreationNamesCheck = names_check
         self._planner: SingleSiteCreationPlanner = planner
+        self._active_active_planner: ActiveActiveCreationPlanner = active_active_planner
         self._saga_executor: SagaExecutor = saga_executor
         self._outcome_translator: CreationOutcomeTranslator = outcome_translator
         self._public_errors: PublicErrors = public_errors
@@ -87,11 +91,23 @@ class CreationExecution:
     def _run_saga(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaRecord:
         return self._saga_executor.run(
             saga_id=trace_id,
-            plan=self._planner.plan(cluster=prepared_creation.cluster, spec=prepared_creation.spec),
+            plan=self._plan(trace_id=trace_id, prepared_creation=prepared_creation),
             check_before_start=partial(self._ensure_names_free, prepared_creation=prepared_creation),
         )
 
+    def _plan(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaPlan:
+        if prepared_creation.active_active:
+            return self._active_active_planner.plan(
+                saga_id=trace_id, clusters=prepared_creation.clusters, spec=prepared_creation.spec
+            )
+        return self._planner.plan(cluster=prepared_creation.cluster, spec=prepared_creation.spec)
+
     def _ensure_names_free(self, *, prepared_creation: PreparedCreation) -> None:
+        if prepared_creation.active_active:
+            self._names_check.ensure_free_on_every_site(
+                clusters=prepared_creation.clusters, spec=prepared_creation.spec
+            )
+            return
         self._names_check.ensure_free(cluster=prepared_creation.cluster, spec=prepared_creation.spec)
 
     def _operation_after_saga_error(
