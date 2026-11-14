@@ -12,7 +12,9 @@ from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
-INTERNAL_ERROR: PublicError = PublicError(code="internal_error", message="internal error")
+INTERNAL_ERROR: PublicError = PublicError(
+    code="internal_error", kind="needs_investigation", message="internal error"
+)
 
 
 def stored_saga(*, status: SagaStatus) -> StoredSaga:

@@ -1,3 +1,5 @@
+import logging
+
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.cluster_action_waiter import ClusterActionWaiter
@@ -10,6 +12,8 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
 )
+
+logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class PollingActionWaiter(ClusterActionWaiter):
@@ -35,8 +39,8 @@ class PollingActionWaiter(ClusterActionWaiter):
         return StatusGoal[JsonValue](
             done_status=self._settings.completed_status,
             failed_statuses=self._settings.failed_statuses,
-            failed=lambda status, action_body: ClusterActionFailedError(
-                message=f"action {action_uid} ended as {status}: {action_body}"
+            failed=lambda status, action_body: action_failed(
+                action_uid=action_uid, status=status, action_body=action_body
             ),
             timed_out=lambda: ClusterActionTimeoutError(
                 message=f"action {action_uid} did not complete "
@@ -48,6 +52,12 @@ class PollingActionWaiter(ClusterActionWaiter):
         return self._cluster_api_caller.send(
             target=target, method="GET", path=self._settings.item_path.format(uid=action_uid)
         ).body
+
+
+def action_failed(*, action_uid: str, status: str, action_body: JsonValue) -> ClusterActionFailedError:
+    message: str = f"action {action_uid} ended as {status}"
+    logger.warning(msg=f"{message}: {action_body}")
+    return ClusterActionFailedError(message=message)
 
 
 def action_fields(action_body: JsonValue) -> JsonValue:
