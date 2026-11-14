@@ -11,6 +11,8 @@ class ApiSettings(ConfigModel):
     unexpected_error_message: str
     traceparent_pattern: re.Pattern[str]
     traceparent_error_message: str
+    trace_id_pattern: re.Pattern[str]
+    trace_id_error_message: str
 
     @field_validator("unexpected_error_message")
     @classmethod

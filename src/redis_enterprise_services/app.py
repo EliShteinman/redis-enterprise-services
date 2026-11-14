@@ -1,0 +1,93 @@
+import asyncio
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import cast
+
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from starlette.exceptions import HTTPException
+from starlette.types import ExceptionHandler
+
+from redis_enterprise_services.api import creation_route, liveness_route, operation_route
+from redis_enterprise_services.api.error_handlers import (
+    HttpErrorHandler,
+    ServiceErrorHandler,
+    ValidationErrorHandler,
+)
+from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
+from redis_enterprise_services.composition.app_wiring import AppWiring
+from redis_enterprise_services.config.api_settings import ApiSettings
+from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.logger.configuration import configure_logging
+from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.telemetry.telemetry_providers import (
+    TelemetryProviders,
+    build_telemetry_providers,
+)
+
+
+def create_app() -> FastAPI:
+    settings: Settings = load_settings()
+    configure_process(settings=settings)
+    app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
+    wiring: AppWiring = AppWiring(settings=settings)
+    store_in_app_state(app=app, settings=settings, wiring=wiring)
+    add_error_handling(app=app, settings=settings.api, public_errors=wiring.public_errors)
+    include_routers(app=app)
+    FastAPIInstrumentor.instrument_app(app=app)
+    return app
+
+
+def configure_process(*, settings: Settings) -> None:
+    configure_logging(settings=settings.log)
+    silence_insecure_request_warnings()
+
+
+def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -> None:
+    app.state.settings = settings
+    app.state.wiring = wiring
+    app.state.database_creation = wiring.database_creation
+    app.state.operation_store = wiring.operation_store
+
+
+def include_routers(*, app: FastAPI) -> None:
+    app.include_router(router=liveness_route.router)
+    app.include_router(router=creation_route.router)
+    app.include_router(router=operation_route.router)
+
+
+def add_error_handling(*, app: FastAPI, settings: ApiSettings, public_errors: PublicErrors) -> None:
+    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, public_errors=public_errors)
+    app.add_exception_handler(
+        exc_class_or_status_code=RedisEnterpriseServicesError,
+        handler=cast(ExceptionHandler, ServiceErrorHandler(public_errors=public_errors)),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=RequestValidationError,
+        handler=cast(
+            ExceptionHandler, ValidationErrorHandler(settings=settings, public_errors=public_errors)
+        ),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=HTTPException,
+        handler=cast(ExceptionHandler, HttpErrorHandler(public_errors=public_errors)),
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    settings: Settings = app.state.settings
+    wiring: AppWiring = app.state.wiring
+    telemetry: TelemetryProviders = build_telemetry_providers(settings=settings.telemetry)
+    telemetry.install()
+    try:
+        wiring.start()
+        yield
+    finally:
+        try:
+            await asyncio.to_thread(wiring.stop)
+        finally:
+            telemetry.shutdown()

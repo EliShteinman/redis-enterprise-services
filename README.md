@@ -82,9 +82,11 @@ with the `RES_STATE__*` settings. Without that Redis or those settings, the test
 ```bash
 uv run ruff check . && uv run ruff format .
 uv run basedpyright
+uv run lint-imports
 ```
 
-The lint commands run in pre-commit; the tests do not.
+`lint-imports` checks the import direction between layers; the contracts are in `pyproject.toml`. The lint commands
+run in pre-commit; the tests do not.
 
 ## Local clusters
 

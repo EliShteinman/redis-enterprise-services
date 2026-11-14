@@ -40,3 +40,8 @@ operation:
     cluster_timeout: known_failure
     configuration_error: known_failure
     internal_error: needs_investigation
+    validation_error: customer_fixable
+    operation_not_found: known_failure
+    not_found: needs_investigation
+    method_not_allowed: needs_investigation
+    http_error: needs_investigation
