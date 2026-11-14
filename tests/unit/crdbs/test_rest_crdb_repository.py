@@ -43,3 +43,11 @@ def test_the_crdb_list_is_read_from_its_wrapping_field() -> None:
 def test_a_crdb_list_that_cannot_be_read_is_an_unreadable_answer(body: JsonValue) -> None:
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
         repository_answering(body=body).list_crdbs(target=TARGET)
+
+
+def test_the_crdb_names_are_read_even_when_a_crdb_has_an_unexpected_shape() -> None:
+    names: set[str] = repository_answering(
+        body={"crdbs": [{"name": "orders", "instances": "odd"}]}
+    ).list_crdb_names(target=TARGET)
+
+    assert names == {"orders"}
