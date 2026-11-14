@@ -14,6 +14,7 @@ from redis_enterprise_services.config.background_settings import BackgroundSetti
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredClusters
+from redis_enterprise_services.config.crdb_settings import CrdbSettings
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_network_coverage import networks_missing_from_edge
@@ -36,6 +37,7 @@ YAML_FILES: tuple[str, ...] = (
     "config/telemetry.yaml",
     "config/edge.yaml",
     "config/action.yaml",
+    "config/crdb.yaml",
     "config/acl.yaml",
     "config/cluster_api.yaml",
     "config/database.yaml",
@@ -70,6 +72,7 @@ class Settings(BaseSettings):
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings
+    crdb: CrdbSettings
     acl: ResourceSettings
     cluster_api: ClusterApiSettings
     database: DatabaseSettings

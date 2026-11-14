@@ -1,0 +1,14 @@
+crdb:
+  collection_path: /v1/crdbs
+  item_path: /v1/crdbs/{uid}
+  list_field: crdbs
+  task:
+    item_path: /v1/crdb_tasks/{uid}
+    completed_status: finished
+    failed_statuses:
+      - failed
+      - canceled
+    result_ttl_seconds: 86400
+    wait:
+      poll_interval_seconds: 2
+      timeout_seconds: 600

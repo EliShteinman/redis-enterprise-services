@@ -14,6 +14,8 @@ operation:
     database_creation_failed: cluster_request_failed
     cluster_action_failed: cluster_request_failed
     cluster_action_timeout: cluster_timeout
+    crdb_task_failed: cluster_request_failed
+    crdb_task_timeout: cluster_timeout
     database_activation_timeout: cluster_timeout
     database_deletion_timeout: cluster_timeout
     duplicate_resource_name: internal_error

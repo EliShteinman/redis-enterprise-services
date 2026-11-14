@@ -50,3 +50,15 @@ class IncompleteClusterObjectError(RedisEnterpriseServicesError):
 
 class UnreadableClusterResponseError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "unreadable_cluster_response"
+
+
+class CrdbTaskFailedError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "crdb_task_failed"
+
+    def __init__(self, *, message: str, cluster_error_code: str | None) -> None:
+        super().__init__(message=message)
+        self.cluster_error_code: str | None = cluster_error_code
+
+
+class CrdbTaskTimeoutError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "crdb_task_timeout"
