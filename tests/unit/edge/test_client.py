@@ -199,3 +199,18 @@ def test_every_call_goes_to_the_one_nginx_address_with_the_network_in_a_header(
     ).send(network=NETWORK, request=REQUEST)
 
     assert sent == [(settings.url, NETWORK)]
+
+
+def test_the_relay_body_stays_out_of_the_error_message(
+    monkeypatch: pytest.MonkeyPatch, settings: EdgeSettings
+) -> None:
+    rejected: requests.Response = relay_response(
+        status_code=502,
+        headers={settings.headers.edge_error_code: settings.error_codes.response_rejected},
+        body=b'{"error": "response_rejected", "reason": ["the-relay-explanation"]}',
+    )
+
+    with pytest.raises(expected_exception=EdgeRejectedResponseError) as error:
+        send_through_relay_answering(settings=settings, relay_outcome=rejected, monkeypatch=monkeypatch)
+
+    assert "the-relay-explanation" not in error.value.message
