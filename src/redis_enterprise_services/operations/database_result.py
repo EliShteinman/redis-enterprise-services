@@ -69,17 +69,51 @@ class DatabaseClusterResult(BaseModel):
     db: ClusterDatabaseResult = Field(description="The database on this cluster, as the cluster stored it.")
 
 
+class CrdbInstanceResult(BaseModel):
+    cluster_url: str = Field(
+        description="The API address of the cluster of this instance.",
+        examples=["https://cluster-a.net-a:9443"],
+    )
+    instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
+    compression: int | None = Field(
+        description="The compression level of the sync from this instance (0-6).", examples=[3]
+    )
+
+
+class CrdbResult(BaseModel):
+    default_db_config: dict[str, JsonValue] = Field(
+        description="The database settings every site shares, as the CRDB stored them, without secrets. The "
+        "CRDB keeps only what was sent, so this is every setting the service applied.",
+        examples=[{"name": "orders", "memory_size": 1073741824, "replication": True, "port": 12000}],
+    )
+    causal_consistency: bool | None = Field(
+        description="Whether updates reach every site in the order they depend on each other.",
+        examples=[False],
+    )
+    encryption: bool | None = Field(
+        description="Whether the sync between the sites is encrypted.", examples=[False]
+    )
+    featureset_version: int | None = Field(description="Set by Redis.", examples=[12])
+    protocol_version: int | None = Field(description="Set by Redis.", examples=[1])
+    instances: list[CrdbInstanceResult] = Field(description="One entry per site of the CRDB.")
+
+
 class DatabaseResult(BaseModel):
     name: str = Field(description="The database name, as the cluster stored it.", examples=["orders"])
     memory_size: int = Field(
         description="The memory limit in bytes, as the cluster stored it.", examples=[1073741824]
     )
-    active_active: bool = Field(
-        description="Whether the database is Active-Active. Always false for now.", examples=[False]
-    )
+    active_active: bool = Field(description="Whether the database is Active-Active.", examples=[False])
     crdb_guid: UUID | None = Field(
         description="The Active-Active database id. Null for a single-site database.", examples=[None]
     )
+    crdb: CrdbResult | None = Field(
+        default=None,
+        description="Only for Active-Active: the settings of the CRDB itself, as it stored them. Null for a "
+        "single-site database.",
+    )
     clusters: list[DatabaseClusterResult] = Field(
-        min_length=1, description="One entry per cluster that holds the database. One for now."
+        min_length=1,
+        description="One entry per cluster that holds the database: one for a single-site database, one per "
+        "site, in the order of the request, for an Active-Active one.",
     )
