@@ -4,6 +4,7 @@ operation:
     resources_locked: resources_locked
     invalid_name: invalid_name
     no_matching_cluster: no_matching_cluster
+    mixed_networks: mixed_networks
     edge_connection_failed: cluster_unavailable
     edge_outcome_unknown: cluster_unavailable
     edge_rejected_response: cluster_unavailable
@@ -36,6 +37,7 @@ operation:
     name_taken: customer_fixable
     invalid_name: customer_fixable
     no_matching_cluster: customer_fixable
+    mixed_networks: customer_fixable
     resources_locked: known_failure
     cluster_unavailable: known_failure
     cluster_request_failed: known_failure
