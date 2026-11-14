@@ -51,3 +51,15 @@ def test_the_crdb_names_are_read_even_when_a_crdb_has_an_unexpected_shape() -> N
     ).list_crdb_names(target=TARGET)
 
     assert names == {"orders"}
+
+
+def test_a_crdb_whose_instance_url_is_not_a_cluster_address_is_an_unreadable_answer() -> None:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError):
+        repository_answering(
+            body={
+                "guid": "g",
+                "name": "orders",
+                "default_db_config": {},
+                "instances": [{"id": 1, "cluster": {"url": "cluster-a:9443"}}],
+            }
+        ).read(target=TARGET, guid="g")

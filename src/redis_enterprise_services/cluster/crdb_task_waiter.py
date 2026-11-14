@@ -3,11 +3,13 @@ import logging
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.error_cluster_url import with_cluster_url
 from redis_enterprise_services.cluster.json_body import list_field, string_field, whole_body
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.status_goal import StatusGoal
 from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import CrdbTaskFailedError, CrdbTaskTimeoutError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -28,8 +30,8 @@ class CrdbTaskWaiter:
     def wait_until_finished(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
         try:
             return self._wait(target=target, task_id=task_id)
-        except (CrdbTaskFailedError, CrdbTaskTimeoutError) as error:
-            error.cluster_url = target.api_url
+        except RedisEnterpriseServicesError as error:
+            with_cluster_url(error=error, cluster_url=target.api_url)
             raise
 
     def _wait(self, *, target: ClusterTarget, task_id: str) -> JsonValue:

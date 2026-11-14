@@ -15,6 +15,7 @@ from redis_enterprise_services.exceptions.cluster import (
     CrdbTaskTimeoutError,
     UnreadableClusterResponseError,
 )
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.create_crdb import CreateCrdbInput, CreateCrdbStep, CreatedCrdb
 
@@ -121,3 +122,11 @@ def test_a_creation_sent_again_joins_the_task_that_already_reached_the_cluster()
 def test_a_task_without_a_status_is_an_unreadable_answer() -> None:
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
         StepHarness().find_outcome_with_task(task={"crdb_guid": GUID})
+
+
+def test_an_unknown_task_with_a_crdb_of_that_name_needs_manual_intervention() -> None:
+    harness: StepHarness = StepHarness()
+    harness.repository.list_crdb_names.return_value = {"orders"}
+
+    with pytest.raises(expected_exception=StepNeedsManualInterventionError):
+        harness.find_outcome_with_task(task=NOT_FOUND)

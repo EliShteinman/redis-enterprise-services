@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict
@@ -73,9 +74,12 @@ class FindLocalCrdbInstanceStep(SagaStep[FindLocalCrdbInstanceInput, LocalCrdbIn
         return local
 
 
+DB_UID: re.Pattern[str] = re.compile(pattern=r"[0-9]+")
+
+
 def local_instance(*, crdb: Crdb, api_url: str) -> LocalCrdbInstance:
     instance: CrdbInstance | None = crdb.instance_on(api_url=api_url)
-    if instance is None or not instance.db_uid or not instance.db_uid.isdigit():
+    if instance is None or instance.db_uid is None or not DB_UID.fullmatch(instance.db_uid):
         raise IncompleteClusterObjectError(
             message=f"CRDB {crdb.guid} read on {api_url} has no local database there"
         )

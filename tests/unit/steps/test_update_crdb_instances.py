@@ -10,7 +10,11 @@ from redis_enterprise_services.cluster_access.cluster_credentials import Cluster
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
-from redis_enterprise_services.exceptions.cluster import CrdbTaskTimeoutError, UpdateOutcomeUnclearError
+from redis_enterprise_services.exceptions.cluster import (
+    CrdbTaskTimeoutError,
+    UnrestorableFieldsError,
+    UpdateOutcomeUnclearError,
+)
 from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.undo_task_id import undo_task_id
 from redis_enterprise_services.steps.update_crdb_instances import (
@@ -123,3 +127,13 @@ def test_undoing_first_waits_for_both_the_update_and_an_earlier_undo() -> None:
         "t",
         undo_task_id(task_id="t"),
     ]
+
+
+def test_a_missing_field_that_is_not_a_list_is_refused_before_the_update() -> None:
+    step, _, _ = step_reading(db_config={})
+    unset_scalar: UpdateCrdbInstancesInput = STEP_INPUT.model_copy(
+        update={"values_by_instance": {1: {"proxy_policy": "single"}}}
+    )
+
+    with pytest.raises(expected_exception=UnrestorableFieldsError):
+        step.execute(step_input=unset_scalar, keep_result=ignore)

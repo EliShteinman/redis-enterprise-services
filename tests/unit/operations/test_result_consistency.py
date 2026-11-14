@@ -46,6 +46,20 @@ def test_a_database_result_whose_active_active_fields_disagree_is_refused(
         )
 
 
+def test_a_single_site_result_with_two_clusters_is_refused() -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        DatabaseResult.model_validate(
+            {
+                "name": "orders",
+                "memory_size": 1,
+                "active_active": False,
+                "crdb_guid": None,
+                "crdb": None,
+                "clusters": [CLUSTER, CLUSTER],
+            }
+        )
+
+
 @pytest.mark.parametrize(
     argnames=("resource_type", "uid", "crdb_guid"),
     argvalues=[("user", None, GUID), ("crdb", 5, None), ("permissions", 7, GUID)],
