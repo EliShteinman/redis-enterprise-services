@@ -82,6 +82,7 @@
 הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-Active-Active, אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
+- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`.
 - ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
@@ -185,6 +186,7 @@
     "memory_size": 1073741824,
     "active_active": false,
     "crdb_guid": null,
+    "crdb": null,
     "clusters": [
       {
         "cluster": "cluster-a", "cluster_url": "https://cluster-a.net-a:9443",
@@ -291,9 +293,9 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
 | `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
-| `crdb_guid` | רק ב-`crdb`: ה-guid. חסר כשלא ידוע אם ה-CRDB נוצר |
+| `crdb_guid` | רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb` מדווח על הקלאסטר המתאם (האתר הראשון) |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
-| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
+| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB. ב-`crdb` וב-`permissions` של Active-Active תמיד `null`: מה שמזהה אותם הוא `crdb_guid` |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
 ---
@@ -341,6 +343,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
 | `mixed_networks` | `customer_fixable` | מיד, `422` | אתרי Active-Active ביותר מרשת אחת |
+| `duplicate_sites` | `customer_fixable` | מיד, `422` | שני אתרי Active-Active שמתורגמים לאותו קלאסטר |
 | `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
@@ -349,9 +352,9 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `internal_error` | `needs_investigation` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `unexpected <type>: <text>`, גם מיד וגם בסטטוס. שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, ה-`message` של השגיאה שעצרה (של הצעד, או של השגיאה שקטעה את הריצה כשלצעד אין שגיאה משלו, גם כשה-record לא נקרא); אחרי קריסה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | `customer_fixable` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | `known_failure` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
+| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, task של CRDB הסתיים ב-`failed` או `canceled` (ההודעה מונה כל אתר שנכשל), או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
 | `cluster_unavailable` | `known_failure` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
-| `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
+| `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active`, או task של CRDB שעוד רץ (הוא עוד עלול להסתיים) |
 
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
