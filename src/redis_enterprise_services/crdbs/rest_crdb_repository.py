@@ -1,6 +1,7 @@
-from pydantic import JsonValue, TypeAdapter
+from pydantic import ConfigDict, JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
 from redis_enterprise_services.config.crdb_settings import CrdbSettings
@@ -8,9 +9,11 @@ from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
 from redis_enterprise_services.crdbs.models import Crdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 
-CRDB_LIST: TypeAdapter[list[Crdb]] = TypeAdapter(list[Crdb])
+CRDB: TypeAdapter[Crdb] = TypeAdapter(Crdb, config=ConfigDict(hide_input_in_errors=True))
+CRDB_LIST: TypeAdapter[list[Crdb]] = TypeAdapter(list[Crdb], config=ConfigDict(hide_input_in_errors=True))
 
 
 class RestCrdbRepository(CrdbRepository):
@@ -45,14 +48,23 @@ class RestCrdbRepository(CrdbRepository):
         body: JsonValue = self._cluster_api_caller.send(
             target=target, method="GET", path=self._item_path(guid=guid)
         ).body
-        return Crdb.model_validate(obj=body)
+        return parse_cluster_body(
+            body=body, adapter=CRDB, message_prefix=f"CRDB {guid} came back unreadable at"
+        )
 
     def list_crdbs(self, *, target: ClusterTarget) -> list[Crdb]:
         body: JsonValue = self._cluster_api_caller.send(
             target=target, method="GET", path=self._settings.collection_path
         ).body
-        listed: JsonValue = body.get(self._settings.list_field) if isinstance(body, dict) else None
-        return CRDB_LIST.validate_python(listed or [])
+        if not isinstance(body, dict) or self._settings.list_field not in body:
+            raise UnreadableClusterResponseError(
+                message=f"the CRDB list came back without {self._settings.list_field}"
+            )
+        return parse_cluster_body(
+            body=body[self._settings.list_field],
+            adapter=CRDB_LIST,
+            message_prefix="the CRDB list came back unreadable at",
+        )
 
     def start_update(
         self, *, target: ClusterTarget, guid: str, changes: dict[str, JsonValue], task_id: str

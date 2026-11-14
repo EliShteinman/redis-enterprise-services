@@ -62,7 +62,8 @@ def reject_invalid_values_on_cluster(
         )
     except ConfigurationError as error:
         raise ConfigurationError(
-            message=f"the database defaults that apply together on cluster {cluster.name}: {error.message}"
+            message=f"the database defaults that apply together on cluster {cluster.name} "
+            f"(active_active={active_active}): {error.message}"
         ) from error
 
 
@@ -73,7 +74,10 @@ def merged_default_values(
     labels: dict[str, str | bool] = placement_labels(cluster=cluster, active_active=active_active)
     for override in settings.overrides:
         if selector_matches(selector=override.when, labels=labels):
-            logger.debug(msg=f"defaults for {override.when} apply to cluster {cluster.name}")
+            logger.debug(
+                msg=f"defaults for {override.when} apply on cluster {cluster.name} "
+                f"(active_active={active_active})"
+            )
             values.update(override.values)
     return values
 
