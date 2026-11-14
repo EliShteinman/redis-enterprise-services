@@ -11,6 +11,7 @@ class CrdbTaskSettings(ConfigModel):
     failed_statuses: frozenset[str]
     result_ttl_seconds: PositiveInt
     guid_field: str
+    existing_task_error_code: str
     errors_field: str
     error_cluster_field: str
     error_code_field: str
