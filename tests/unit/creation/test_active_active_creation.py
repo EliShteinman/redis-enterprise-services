@@ -344,3 +344,35 @@ def test_each_site_reads_its_users_from_the_steps_on_that_site() -> None:
         [resource.step_key for user in site.users for resource in user.resources.in_creation_order()]
         for site in sites
     ] == [["c1/acl/app", "c1/role/app", "c1/user/app"], ["c2/acl/app", "c2/role/app", "c2/user/app"]]
+
+
+AA_WITH_A_USER: PreparedCreation = PreparedCreation(
+    clusters=[C1, C2],
+    active_active=True,
+    spec=DatabaseSpec(
+        database=DATABASE,
+        users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
+    ),
+)
+
+
+def test_active_active_permissions_left_behind_are_named_by_the_crdb_guid() -> None:
+    record: SagaRecord = SagaRecord(
+        saga_id="trace-1",
+        status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
+        steps=[
+            StepRecord(
+                key="crdb", kind=StepKind.COMPENSATABLE, status=StepStatus.DONE, result={"guid": GUID}
+            ),
+            StepRecord(key="permissions", kind=StepKind.COMPENSATABLE, status=StepStatus.COMPENSATION_FAILED),
+        ],
+    )
+
+    remaining: list[RemainingResource] = translator_for_sites().remaining_resources(
+        prepared_creation=AA_WITH_A_USER, record=record
+    )
+
+    assert [(item.resource_type, str(item.crdb_guid), item.uid) for item in remaining] == [
+        ("crdb", GUID, None),
+        ("permissions", GUID, None),
+    ]

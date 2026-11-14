@@ -7,6 +7,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_url import cluster_url
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
+from redis_enterprise_services.cluster.error_cluster_url import with_cluster_url
 from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
@@ -79,9 +80,3 @@ def cluster_rejection(
 
 def url_without_query(*, url: str) -> str:
     return urlunsplit(urlsplit(url)._replace(query="", fragment=""))
-
-
-def with_cluster_url[TError: RedisEnterpriseServicesError](*, error: TError, cluster_url: str) -> TError:
-    if error.cluster_url is None:
-        error.cluster_url = cluster_url
-    return error

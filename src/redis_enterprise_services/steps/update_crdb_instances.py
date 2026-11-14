@@ -10,6 +10,7 @@ from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import (
     CrdbTaskTimeoutError,
     IncompleteClusterObjectError,
+    UnrestorableFieldsError,
     UpdateOutcomeUnclearError,
 )
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
@@ -142,10 +143,15 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         instance: CrdbInstance | None = next((i for i in crdb.instances if i.id == instance_id), None)
         if instance is None:
             raise IncompleteClusterObjectError(message=f"CRDB {crdb.guid} has no instance {instance_id}")
-        return {
-            name: instance.db_config.get(name, unset_value(name=name, list_fields=self._list_fields))
-            for name in names
-        }
+        unrestorable: list[str] = [
+            name for name in names if name not in instance.db_config and name not in self._list_fields
+        ]
+        if unrestorable:
+            raise UnrestorableFieldsError(
+                message=f"CRDB {crdb.guid} instance {instance_id} has no {unrestorable}, so an undo could "
+                "not put them back"
+            )
+        return {name: instance.db_config.get(name, []) for name in names}
 
     def _apply(
         self, *, step_input: UpdateCrdbInstancesInput, values_by_instance: InstanceValues, task_id: str
@@ -164,10 +170,6 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
 
     def _coordinator(self, *, step_input: UpdateCrdbInstancesInput) -> ClusterTarget:
         return self._target_resolver.target_for(address=step_input.coordinator)
-
-
-def unset_value(*, name: str, list_fields: frozenset[str]) -> JsonValue:
-    return [] if name in list_fields else None
 
 
 def instance_field(*, instance_id: int, name: str) -> str:
