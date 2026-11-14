@@ -36,14 +36,15 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 
 ## 2. מה בנוי
 
-**יצירת DB באתר אחד, מקצה לקצה.**
+**יצירת DB, באתר אחד או Active-Active על כמה אתרים, מקצה לקצה.**
 
 - **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
 - **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל לפי תוויות של הקלאסטר.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, ובסוף קישור ההרשאות על ה-DB. כל צעד מחכה לסיום הפעולה
-  בקלאסטר.
+  בקלאסטר. ב-Active-Active: קודם CRDB אחד, אחריו לכל אתר היוזרים על ה-DB המקומי, ובסוף PATCH אחד של ההרשאות
+  (`design/creation.md`, סעיף 6).
 - **בטיחות:**
   - נעילה על ה-DB ועל היוזרים לכל משך הריצה, ובדיקה תחתיה שכל השמות פנויים.
   - תוצאה לא ידועה (timeout, שירות קצה שלא ענה) נבדקת בקלאסטר לפני ניסיון חוזר.
@@ -65,7 +66,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 |---|---|
 | בחירת קלאסטר | היום קלאסטר `generic` אחד לכל יעד. בחירה בין כמה לפי מקום (dry_run) |
 | הזדהות | אין הזדהות מול השירות |
-| Active-Active | יצירה, עריכה ומחיקה של CRDB |
+| Active-Active | עריכה ומחיקה של CRDB, והסרה והוספה של אתר (היצירה בנויה) |
 | מחיקה | מחיקת DB עם היוזרים שלו |
 | עריכה | עריכת DB ועריכת רשימת היוזרים |
 | קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
@@ -131,4 +132,5 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | `17-flow-heartbeat-and-abandoned-sweep` | heartbeat וזיהוי קריסה |
 | `18-redis-keys` | המפתחות ב-Redis |
 | `19-api-models-create` | מודלי הבקשה והתוצאה |
-| `planned/p1`–`p6` | העיצוב של מה שעוד לא בנוי: Active-Active, מחיקה, עריכה |
+| `20-seq-create-active-active` | יצירת Active-Active |
+| `planned/p2`–`p6` | העיצוב של מה שעוד לא בנוי: מחיקה, עריכה |
