@@ -40,6 +40,7 @@ from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
+    active_active=False,
     clusters=[
         ConfiguredCluster(
             name="c1",

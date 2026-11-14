@@ -54,6 +54,7 @@ def translator() -> CreationOutcomeTranslator:
 
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
+    active_active=False,
     clusters=[
         ConfiguredCluster(
             name="c1",

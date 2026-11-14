@@ -31,9 +31,11 @@ class RestCrdbRepository(CrdbRepository):
         self._database_body_builder: CreationBodyBuilder[NewDatabase] = database_body_builder
         self._settings: CrdbSettings = settings
 
-    def start_creation(self, *, members: list[ClusterTarget], database: NewDatabase, task_id: str) -> None:
+    def start_creation(
+        self, *, coordinator: ClusterTarget, members: list[ClusterTarget], database: NewDatabase, task_id: str
+    ) -> None:
         self._send_task(
-            target=members[0],
+            target=coordinator,
             method="POST",
             path=self._settings.collection_path,
             body=crdb_creation_body(
