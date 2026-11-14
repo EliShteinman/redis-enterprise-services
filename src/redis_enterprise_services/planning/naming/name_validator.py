@@ -21,6 +21,6 @@ class NameValidator:
     def ensure_valid(self, *, name: str, context: NamingContext) -> None:
         violations: list[NameViolation] = self.violations(name=name, context=context)
         if violations:
-            message: str = "; ".join(violation.describe() for violation in violations)
+            message: str = "; ".join(dict.fromkeys(violation.describe() for violation in violations))
             logger.warning(msg=message)
             raise InvalidNameError(message=message)
