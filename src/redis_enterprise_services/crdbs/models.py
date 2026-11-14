@@ -17,6 +17,10 @@ class CrdbInstance(BaseModel):
     db_config: dict[str, JsonValue] = Field(default_factory=dict)
 
 
+class NamedCrdb(BaseModel):
+    name: str
+
+
 class Crdb(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(hide_input_in_errors=True)
 
