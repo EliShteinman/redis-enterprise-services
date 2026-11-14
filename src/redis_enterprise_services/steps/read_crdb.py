@@ -1,7 +1,7 @@
 import logging
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress
@@ -25,8 +25,19 @@ class ReadCrdbInput(BaseModel):
     expected_config: dict[str, JsonValue]
 
 
+class CrdbInstanceSettings(BaseModel):
+    cluster_url: str
+    id: int
+    compression: int | None
+
+
 class CrdbConfigSnapshot(BaseModel):
     default_db_config: dict[str, JsonValue]
+    causal_consistency: bool | None = None
+    encryption: bool | None = None
+    featureset_version: int | None = None
+    protocol_version: int | None = None
+    instances: list[CrdbInstanceSettings] = Field(default_factory=list)
 
 
 class ReadCrdbStep(SagaStep[ReadCrdbInput, CrdbConfigSnapshot]):
@@ -84,7 +95,19 @@ class ReadCrdbStep(SagaStep[ReadCrdbInput, CrdbConfigSnapshot]):
             raise IncompleteClusterObjectError(
                 message=f"CRDB {step_input.guid} does not hold what was sent for {differing}"
             )
-        return CrdbConfigSnapshot(default_db_config=stored)
+        return CrdbConfigSnapshot(
+            default_db_config=stored,
+            causal_consistency=crdb.causal_consistency,
+            encryption=crdb.encryption,
+            featureset_version=crdb.featureset_version,
+            protocol_version=crdb.protocol_version,
+            instances=[
+                CrdbInstanceSettings(
+                    cluster_url=instance.cluster.url, id=instance.id, compression=instance.compression
+                )
+                for instance in crdb.instances
+            ],
+        )
 
     def _comparable(self, *, config: dict[str, JsonValue]) -> dict[str, JsonValue]:
         return {
