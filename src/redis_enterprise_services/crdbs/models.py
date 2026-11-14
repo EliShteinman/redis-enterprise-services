@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 
 class CrdbInstanceCluster(BaseModel):
@@ -13,6 +13,7 @@ class CrdbInstance(BaseModel):
     id: int
     cluster: CrdbInstanceCluster
     db_uid: str | None = None
+    db_config: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class Crdb(BaseModel):
