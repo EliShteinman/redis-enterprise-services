@@ -8,6 +8,9 @@ from redis_enterprise_services.operations.is_none import is_none
 type RemainingResourceType = Literal["crdb", "database", "acl", "role", "user", "permissions"]
 
 
+CRDB_GUID_RESOURCE_TYPES: frozenset[RemainingResourceType] = frozenset({"crdb", "permissions"})
+
+
 class RemainingResource(BaseModel):
     cluster_url: str = Field(
         description="The cluster the resource is on.", examples=["https://cluster-a.net-a:9443"]
@@ -46,5 +49,8 @@ class RemainingResource(BaseModel):
             raise ValueError(f"a {self.resource_type} resource has no crdb_guid")
         return self
 
-
-CRDB_GUID_RESOURCE_TYPES: frozenset[RemainingResourceType] = frozenset({"crdb", "permissions"})
+    @model_validator(mode="after")
+    def reject_a_uid_on_a_resource_the_crdb_identifies(self) -> Self:
+        if self.uid is not None and (self.resource_type == "crdb" or self.crdb_guid is not None):
+            raise ValueError(f"a {self.resource_type} resource identified by its CRDB has no uid")
+        return self

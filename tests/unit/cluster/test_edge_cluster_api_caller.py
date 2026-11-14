@@ -10,6 +10,7 @@ from redis_enterprise_services.cluster_access.cluster_credentials import Cluster
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
+from redis_enterprise_services.exceptions.edge import EdgeOutcomeUnknownError
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -62,3 +63,29 @@ def test_the_cluster_body_stays_out_of_the_rejection_message() -> None:
         )
 
     assert "the-echoed-value" not in rejection.value.message
+
+
+def test_an_error_on_the_way_to_the_cluster_names_that_cluster() -> None:
+    transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
+    transport.send.side_effect = EdgeOutcomeUnknownError(message="no answer from the relay of local")
+
+    with pytest.raises(expected_exception=EdgeOutcomeUnknownError) as failure:
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
+            target=TARGET, method="GET", path="/v1/bdbs"
+        )
+
+    assert failure.value.cluster_url == "https://cluster.local:9443"
+
+
+def test_a_cluster_refusal_names_the_cluster() -> None:
+    transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
+    transport.send.return_value = ClusterResponse(
+        status_code=404, headers={}, body=None, cluster_state_id=None
+    )
+
+    with pytest.raises(expected_exception=ClusterRejectedRequestError) as failure:
+        EdgeClusterApiCaller(edge_transport=transport, settings=load_settings().cluster_api).send(
+            target=TARGET, method="GET", path="/v1/bdbs/1"
+        )
+
+    assert failure.value.cluster_url == "https://cluster.local:9443"

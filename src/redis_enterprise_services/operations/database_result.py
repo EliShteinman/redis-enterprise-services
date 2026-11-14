@@ -131,6 +131,8 @@ class DatabaseResult(BaseModel):
 
     @model_validator(mode="after")
     def reject_active_active_fields_that_disagree(self) -> Self:
-        if {self.crdb_guid is not None, self.crdb is not None} != {self.active_active}:
+        has_crdb_guid: bool = self.crdb_guid is not None
+        has_crdb: bool = self.crdb is not None
+        if has_crdb_guid != self.active_active or has_crdb != self.active_active:
             raise ValueError("active_active, crdb_guid and crdb must all show the same kind of database")
         return self
