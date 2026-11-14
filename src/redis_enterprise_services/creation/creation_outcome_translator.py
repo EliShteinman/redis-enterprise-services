@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from pydantic import ValidationError
 
@@ -17,9 +18,8 @@ from redis_enterprise_services.planning.active_active_planned_resources import (
     SitePlannedResource,
     active_active_planned_resources,
 )
-from redis_enterprise_services.planning.creation_step_keys import on_site
+from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY, on_site
 from redis_enterprise_services.planning.planned_resources import (
-    CRDB_RESOURCE_TYPE,
     PlannedResource,
     planned_resources_by_step_key,
 )
@@ -171,10 +171,10 @@ def succeeded_operation(*, trace_id: str, database: DatabaseResult) -> Operation
     return Operation(trace_id=trace_id, status=OperationStatus.SUCCEEDED, database=database)
 
 
-def created_crdb_guid_or_none(*, record: SagaRecord, planned: PlannedResource) -> str | None:
-    if planned.resource_type != CRDB_RESOURCE_TYPE:
+def created_crdb_guid_or_none(*, record: SagaRecord, planned: PlannedResource) -> UUID | None:
+    if planned.uid_step_key != CRDB_STEP_KEY:
         return None
     try:
-        return CreatedCrdb.model_validate(obj=record.step(key=planned.uid_step_key).result).guid
-    except ValidationError:
+        return UUID(CreatedCrdb.model_validate(obj=record.step(key=planned.uid_step_key).result).guid)
+    except ValidationError, ValueError:
         return None

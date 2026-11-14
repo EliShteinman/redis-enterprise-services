@@ -5,17 +5,18 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
-from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.crdbs.models import Crdb, CrdbInstance
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import (
+    CrdbTaskTimeoutError,
     IncompleteClusterObjectError,
     UpdateOutcomeUnclearError,
 )
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
+from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.held_values import HeldValues, held_values
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -41,15 +42,15 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         self,
         *,
         repository: CrdbRepository,
-        task_waiter: CrdbTaskWaiter,
+        task_tracker: CrdbTaskTracker,
         target_resolver: ClusterTargetResolver,
-        order_insensitive_fields: frozenset[str],
+        list_fields: frozenset[str],
         new_task_id: Callable[[], str],
     ) -> None:
         self._repository: CrdbRepository = repository
-        self._task_waiter: CrdbTaskWaiter = task_waiter
+        self._task_tracker: CrdbTaskTracker = task_tracker
         self._target_resolver: ClusterTargetResolver = target_resolver
-        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
+        self._list_fields: frozenset[str] = list_fields
         self._new_task_id: Callable[[], str] = new_task_id
 
     @property
@@ -75,6 +76,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
     ) -> CrdbInstancesSnapshot | None:
         if kept_result is None:
             return None
+        self._reject_a_running_task(step_input=step_input)
         match self._held(step_input=step_input, old=kept_result):
             case HeldValues.NEW | HeldValues.BOTH:
                 return kept_result
@@ -87,6 +89,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
 
     def compensate(self, *, step_input: UpdateCrdbInstancesInput, result: CrdbInstancesSnapshot) -> None:
         logger.info(msg=f"restoring the instance values of CRDB {step_input.guid}")
+        self._task_tracker.settle(target=self._coordinator(step_input=step_input), task_id=step_input.task_id)
         match self._held(step_input=step_input, old=result):
             case HeldValues.OLD | HeldValues.BOTH:
                 logger.info(msg=f"CRDB {step_input.guid} already has its old instance values")
@@ -101,6 +104,15 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                     message=f"CRDB {step_input.guid} changed after the update, not restored over that change"
                 )
 
+    def _reject_a_running_task(self, *, step_input: UpdateCrdbInstancesInput) -> None:
+        task: JsonValue | None = self._task_tracker.task_or_none(
+            target=self._coordinator(step_input=step_input), task_id=step_input.task_id
+        )
+        if task is not None and self._task_tracker.is_running(task=task):
+            raise CrdbTaskTimeoutError(
+                message=f"CRDB task {step_input.task_id} is still {self._task_tracker.status_of(task=task)}"
+            )
+
     def _held(self, *, step_input: UpdateCrdbInstancesInput, old: CrdbInstancesSnapshot) -> HeldValues:
         current: CrdbInstancesSnapshot = self._current(step_input=step_input)
         return held_values(
@@ -111,7 +123,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                 instance_field(instance_id=instance_id, name=name)
                 for instance_id, values in step_input.values_by_instance.items()
                 for name in values
-                if name in self._order_insensitive_fields
+                if name in self._list_fields
             ),
         )
 
@@ -131,7 +143,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         if instance is None:
             raise IncompleteClusterObjectError(message=f"CRDB {crdb.guid} has no instance {instance_id}")
         return {
-            name: instance.db_config.get(name, unset_value(name=name, fields=self._order_insensitive_fields))
+            name: instance.db_config.get(name, unset_value(name=name, list_fields=self._list_fields))
             for name in names
         }
 
@@ -139,17 +151,23 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         self, *, step_input: UpdateCrdbInstancesInput, values_by_instance: InstanceValues, task_id: str
     ) -> None:
         coordinator: ClusterTarget = self._coordinator(step_input=step_input)
-        self._repository.start_instances_update(
-            target=coordinator, guid=step_input.guid, values_by_instance=values_by_instance, task_id=task_id
+        self._task_tracker.send_or_join(
+            send=lambda: self._repository.start_instances_update(
+                target=coordinator,
+                guid=step_input.guid,
+                values_by_instance=values_by_instance,
+                task_id=task_id,
+            ),
+            task_id=task_id,
         )
-        self._task_waiter.wait_until_finished(target=coordinator, task_id=task_id)
+        self._task_tracker.wait_until_finished(target=coordinator, task_id=task_id)
 
     def _coordinator(self, *, step_input: UpdateCrdbInstancesInput) -> ClusterTarget:
         return self._target_resolver.target_for(address=step_input.coordinator)
 
 
-def unset_value(*, name: str, fields: frozenset[str]) -> JsonValue:
-    return [] if name in fields else None
+def unset_value(*, name: str, list_fields: frozenset[str]) -> JsonValue:
+    return [] if name in list_fields else None
 
 
 def instance_field(*, instance_id: int, name: str) -> str:

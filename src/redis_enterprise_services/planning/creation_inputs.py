@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.lock_keys import database_lock_key, user_lock_key
@@ -49,3 +51,7 @@ def role_permissions(
 
 def uid_created_by_step(*, step_results: StepResults, step_key: str) -> int:
     return step_results.result_of(key=step_key, result_type=CreatedResource).uid
+
+
+def fixed_input[TInput: BaseModel](*, step_results: StepResults, step_input: TInput) -> TInput:
+    return step_input

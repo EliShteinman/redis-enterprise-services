@@ -29,6 +29,7 @@ from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.roles.role_creation_body_builder import RoleCreationBodyBuilder
+from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.create_crdb import CreateCrdbStep
 from redis_enterprise_services.steps.create_resource import CreateResourceStep
 from redis_enterprise_services.steps.find_local_crdb_instance import FindLocalCrdbInstanceStep
@@ -137,12 +138,16 @@ class ClusterSteps:
         crdb_task_waiter: CrdbTaskWaiter = CrdbTaskWaiter(
             cluster_api_caller=cluster_api_caller, status_polling=status_polling, settings=settings.crdb.task
         )
+        crdb_task_tracker: CrdbTaskTracker = CrdbTaskTracker(
+            task_waiter=crdb_task_waiter,
+            settings=settings.crdb.task,
+            status_field=settings.cluster_api.fields.status,
+        )
         self.create_crdb: CreateCrdbStep = CreateCrdbStep(
             repository=repositories.crdb,
-            task_waiter=crdb_task_waiter,
+            task_tracker=crdb_task_tracker,
             target_resolver=target_resolver,
-            task_settings=settings.crdb.task,
-            status_field=settings.cluster_api.fields.status,
+            guid_field=settings.crdb.task.guid_field,
             new_task_id=new_task_id,
         )
         self.find_local_crdb_instance: FindLocalCrdbInstanceStep = FindLocalCrdbInstanceStep(
@@ -150,9 +155,9 @@ class ClusterSteps:
         )
         self.update_crdb_instances: UpdateCrdbInstancesStep = UpdateCrdbInstancesStep(
             repository=repositories.crdb,
-            task_waiter=crdb_task_waiter,
+            task_tracker=crdb_task_tracker,
             target_resolver=target_resolver,
-            order_insensitive_fields=settings.database.order_insensitive_fields,
+            list_fields=settings.database.order_insensitive_fields,
             new_task_id=new_task_id,
         )
         self.read_crdb: ReadCrdbStep = ReadCrdbStep(
@@ -160,7 +165,7 @@ class ClusterSteps:
             target_resolver=target_resolver,
             secret_fields=frozenset(settings.database.secret_fields),
             order_insensitive_fields=settings.database.order_insensitive_fields,
-            cluster_added_item_fields=settings.crdb.cluster_added_tag_fields,
+            cluster_added_item_fields=settings.crdb.cluster_added_item_fields,
         )
 
 

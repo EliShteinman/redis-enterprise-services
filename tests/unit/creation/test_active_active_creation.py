@@ -13,7 +13,9 @@ from redis_enterprise_services.creation.creation_preparation import CreationPrep
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.exceptions.planning import MixedNetworksError
+from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
+from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
@@ -22,7 +24,13 @@ from redis_enterprise_services.planning.naming.name_validator import NameValidat
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.saga_record import (
+    SagaRecord,
+    SagaStatus,
+    StepError,
+    StepRecord,
+    StepStatus,
+)
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 C1: ConfiguredCluster = ConfiguredCluster(
@@ -32,6 +40,7 @@ C2: ConfiguredCluster = ConfiguredCluster(
     name="c2", network="net-a", environment="DEV", site="dc2", type="generic", api_url="https://c2:9443"
 )
 C3_OTHER_NETWORK: ConfiguredCluster = C2.model_copy(update={"name": "c3", "network": "net-b"})
+GUID: str = "d71cefce-4e31-41fd-b654-37cbb2f39a01"
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 REQUEST: CreateDatabaseRequest = CreateDatabaseRequest.model_validate(
     obj={
@@ -75,6 +84,11 @@ def test_sites_on_more_than_one_network_are_refused() -> None:
         )
 
 
+def test_two_sites_on_the_same_cluster_are_refused() -> None:
+    with pytest.raises(expected_exception=DuplicateSitesError):
+        preparation(clusters=[C1, C1], filled=[DATABASE, DATABASE]).prepare(creation_request=REQUEST)
+
+
 def test_defaults_that_differ_between_sites_are_a_configuration_error() -> None:
     other: NewDatabase = DATABASE.model_copy(update={"replication": True})
 
@@ -100,7 +114,7 @@ def remaining_after_manual_intervention() -> list[RemainingResource]:
         saga_id="trace-1",
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
-            step_record(key="crdb", status=StepStatus.DONE, result={"guid": "g-1"}),
+            step_record(key="crdb", status=StepStatus.DONE, result={"guid": GUID}),
             step_record(key="c2/acl/app", status=StepStatus.COMPENSATION_FAILED, result=acl),
         ],
         stopped_at="c2/acl/app",
@@ -138,10 +152,64 @@ def remaining_after_manual_intervention() -> list[RemainingResource]:
 def test_a_crdb_left_behind_is_reported_on_the_coordinator_with_its_guid() -> None:
     crdb: RemainingResource = remaining_after_manual_intervention()[0]
 
-    assert (crdb.resource_type, crdb.cluster_url, crdb.crdb_guid) == ("crdb", "https://c1:9443", "g-1")
+    assert (crdb.resource_type, crdb.cluster_url, str(crdb.crdb_guid)) == (
+        "crdb",
+        "https://c1:9443",
+        GUID,
+    )
 
 
 def test_a_user_resource_left_behind_is_reported_on_its_own_site() -> None:
     acl: RemainingResource = remaining_after_manual_intervention()[1]
 
     assert (acl.resource_type, acl.cluster_url, acl.uid) == ("acl", "https://c2:9443", 21)
+
+
+def test_the_error_names_the_site_of_the_step_that_stopped() -> None:
+    users: UserResourcesSettings = UserResourcesSettings(
+        acl_name_template="{database}-{user}-acl",
+        role_name_template="{database}-{user}-role",
+        role_management="db_viewer",
+    )
+    record: SagaRecord = SagaRecord(
+        saga_id="trace-1",
+        status=SagaStatus.ROLLED_BACK,
+        steps=[
+            StepRecord(
+                key="c2/acl/app",
+                kind=StepKind.COMPENSATABLE,
+                status=StepStatus.FAILED,
+                error=StepError(
+                    code="cluster_rejected_request", message="refused", remote_code="invalid_param"
+                ),
+            )
+        ],
+        stopped_at="c2/acl/app",
+    )
+    operation: Operation = CreationOutcomeTranslator(
+        resource_naming=UserResourceNaming(settings=users),
+        database_settings=load_settings().database,
+        public_errors=PublicErrors(
+            settings=OperationSettings(
+                public_code_by_internal_code={"cluster_rejected_request": "cluster_request_failed"},
+                public_codes_with_cluster_details=frozenset({"cluster_request_failed"}),
+                error_kind_by_code={},
+            ),
+            internal_error_message="internal error",
+            unexpected_error_message="unexpected {error_type}: {error}",
+        ),
+    ).operation_from_ended_record(
+        trace_id="trace-1",
+        prepared_creation=PreparedCreation(
+            clusters=[C1, C2],
+            active_active=True,
+            spec=DatabaseSpec(
+                database=DATABASE,
+                users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
+            ),
+        ),
+        record=record,
+        interruption_error=PublicError(code="internal_error", kind="needs_investigation", message="i"),
+    )
+
+    assert operation.error is not None and operation.error.cluster_url == "https://c2:9443"

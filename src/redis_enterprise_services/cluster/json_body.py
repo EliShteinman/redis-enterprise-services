@@ -13,3 +13,12 @@ def required_string_field(*, body: JsonValue, name: str, missing_message: str) -
     if value is None:
         raise UnreadableClusterResponseError(message=missing_message)
     return value
+
+
+def list_field(*, body: JsonValue, name: str) -> list[JsonValue]:
+    items: JsonValue = body.get(name) if isinstance(body, dict) else None
+    return items if isinstance(items, list) else []
+
+
+def whole_body(body: JsonValue) -> JsonValue:
+    return body

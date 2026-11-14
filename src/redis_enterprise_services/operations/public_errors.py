@@ -33,7 +33,7 @@ class PublicErrors:
         return self.from_code(
             internal_code=error.code,
             message=error.message,
-            cluster_url=cluster_url,
+            cluster_url=error.cluster_url or cluster_url,
             cluster_error_code=error.cluster_error_code,
         )
 

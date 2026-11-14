@@ -15,6 +15,7 @@ from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.creation_inputs import (
     creation_lock_keys,
+    fixed_input,
     fixed_resource_input,
     role_permissions,
     user_input,
@@ -124,7 +125,7 @@ class ActiveActiveCreationPlanner:
             key=CRDB_STEP_KEY,
             step=self._create_crdb_step,
             build_input=partial(
-                fixed_crdb_input,
+                fixed_input,
                 step_input=CreateCrdbInput(
                     coordinator=address_of(cluster=clusters[0]),
                     members=[address_of(cluster=cluster) for cluster in clusters],
@@ -297,10 +298,6 @@ class ActiveActiveCreationPlanner:
                 )
             ]
         }
-
-
-def fixed_crdb_input(*, step_results: StepResults, step_input: CreateCrdbInput) -> CreateCrdbInput:
-    return step_input
 
 
 def created_crdb_of(*, step_results: StepResults) -> CreatedCrdb:

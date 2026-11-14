@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.exceptions.configuration import ConfigurationError
 
 
 class CrdbClusterCredentials(BaseModel):
@@ -60,4 +61,9 @@ def crdb_instance(*, target: ClusterTarget, compression: int) -> CrdbInstanceInf
 
 
 def cluster_fqdn(*, api_url: str) -> str:
-    return urlsplit(api_url).hostname or api_url
+    hostname: str | None = urlsplit(api_url).hostname
+    if not hostname:
+        raise ConfigurationError(
+            message=f"the cluster API URL {api_url} has no host to name its CRDB instance"
+        )
+    return hostname

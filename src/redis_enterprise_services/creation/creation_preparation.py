@@ -5,7 +5,7 @@ from redis_enterprise_services.creation.create_database_request import CreateDat
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.exceptions.planning import MixedNetworksError
+from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
@@ -38,6 +38,7 @@ class CreationPreparation:
             self._site_cluster_resolver.resolve(placement=site) for site in creation_request.target.sites
         ]
         reject_mixed_networks(clusters=clusters)
+        reject_repeated_clusters(clusters=clusters)
         filled_database: NewDatabase = self._same_database_on_every_site(
             clusters=clusters,
             requested=requested_database,
@@ -57,9 +58,15 @@ class CreationPreparation:
             self._database_defaults.fill_in(cluster=cluster, requested=requested, active_active=active_active)
             for cluster in clusters
         ]
-        if any(database != filled[0] for database in filled):
+        differing: list[str] = sorted(
+            name
+            for name in NewDatabase.model_fields
+            if any(getattr(database, name) != getattr(filled[0], name) for database in filled)
+        )
+        if differing:
             raise ConfigurationError(
-                message=f"the database defaults give different settings on {[c.name for c in clusters]}"
+                message=f"the database defaults give {differing} different values on "
+                f"{[cluster.name for cluster in clusters]}"
             )
         return filled[0]
 
@@ -68,3 +75,10 @@ def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:
     networks: set[str] = {cluster.network for cluster in clusters}
     if len(networks) > 1:
         raise MixedNetworksError(message=f"the sites are on more than one network: {sorted(networks)}")
+
+
+def reject_repeated_clusters(*, clusters: list[ConfiguredCluster]) -> None:
+    api_urls: list[str] = [cluster.api_url for cluster in clusters]
+    repeated: list[str] = sorted({api_url for api_url in api_urls if api_urls.count(api_url) > 1})
+    if repeated:
+        raise DuplicateSitesError(message=f"more than one site resolves to the same cluster: {repeated}")
