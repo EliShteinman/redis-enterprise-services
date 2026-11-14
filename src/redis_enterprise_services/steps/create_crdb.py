@@ -1,7 +1,7 @@
 import logging
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.json_body import required_string_field
@@ -10,6 +10,7 @@ from redis_enterprise_services.cluster.rejection_kind import is_not_found
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskTimeoutError
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
@@ -26,6 +27,12 @@ class CreateCrdbInput(BaseModel):
     members: list[ClusterAddress]
     database: NewDatabase
     task_id: str
+
+    @model_validator(mode="after")
+    def reject_a_coordinator_outside_the_members(self) -> Self:
+        if self.coordinator not in self.members:
+            raise ValueError(f"the coordinator {self.coordinator.api_url} is not one of the CRDB members")
+        return self
 
 
 class CreatedCrdb(BaseModel):
@@ -79,10 +86,12 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
         task: JsonValue | None = self._task_tracker.task_or_none(
             target=self._target(address=step_input.coordinator), task_id=step_input.task_id
         )
-        if task is None or self._task_tracker.has_failed(task=task):
-            logger.info(
-                msg=f"CRDB task {step_input.task_id} never ran or failed, which leaves nothing behind"
-            )
+        if task is None:
+            self._reject_a_crdb_left_without_its_task(step_input=step_input)
+            logger.info(msg=f"CRDB task {step_input.task_id} never ran, which leaves nothing behind")
+            return None
+        if self._task_tracker.has_failed(task=task):
+            logger.info(msg=f"CRDB task {step_input.task_id} failed, which leaves nothing behind")
             return None
         if self._task_tracker.is_running(task=task):
             raise CrdbTaskTimeoutError(
@@ -109,6 +118,14 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
             logger.info(msg=f"CRDB {result.guid} is already gone")
             return
         self._task_tracker.wait_until_finished(target=coordinator, task_id=task_id)
+
+    def _reject_a_crdb_left_without_its_task(self, *, step_input: CreateCrdbInput) -> None:
+        coordinator: ClusterTarget = self._target(address=step_input.coordinator)
+        if step_input.database.name in self._repository.list_crdb_names(target=coordinator):
+            raise StepNeedsManualInterventionError(
+                message=f"CRDB task {step_input.task_id} is unknown, perhaps expired, but a CRDB named "
+                f"{step_input.database.name} exists, so it may be this creation's"
+            )
 
     def _exists(self, *, step_input: CreateCrdbInput, guid: str) -> bool:
         try:
