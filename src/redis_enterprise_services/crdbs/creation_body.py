@@ -25,7 +25,7 @@ class CrdbInstanceInfo(BaseModel):
 
 class CrdbCreationBody(BaseModel):
     name: str
-    default_db_config: dict[str, JsonValue]
+    default_db_config: dict[str, JsonValue] = Field(repr=False)
     causal_consistency: bool
     encryption: bool
     instances: list[CrdbInstanceInfo]
