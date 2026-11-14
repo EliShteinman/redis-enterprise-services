@@ -2,6 +2,7 @@ from typing import ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from redis_enterprise_services.config.error_kind import NEEDS_INVESTIGATION
 from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.is_none import is_none
 from redis_enterprise_services.operations.operation_status import (
@@ -10,7 +11,7 @@ from redis_enterprise_services.operations.operation_status import (
     STATUSES_WITHOUT_ERROR,
     OperationStatus,
 )
-from redis_enterprise_services.operations.public_error import NEEDS_INVESTIGATION, PublicError
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
 
