@@ -12,7 +12,7 @@ from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 
-CRDB: TypeAdapter[Crdb] = TypeAdapter(Crdb, config=ConfigDict(hide_input_in_errors=True))
+CRDB: TypeAdapter[Crdb] = TypeAdapter(Crdb)
 CRDB_LIST: TypeAdapter[list[Crdb]] = TypeAdapter(list[Crdb], config=ConfigDict(hide_input_in_errors=True))
 
 
