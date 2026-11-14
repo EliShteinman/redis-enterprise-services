@@ -36,7 +36,7 @@ class CreationPreparation:
             placement=creation_request.target.single_site()
         )
         filled_database: NewDatabase = self._database_defaults.fill_in(
-            cluster=cluster, requested=requested_database
+            cluster=cluster, requested=requested_database, active_active=creation_request.target.active_active
         )
         logger.info(msg=f"creating {filled_database.name} on {cluster.name} is prepared")
         return PreparedCreation(
