@@ -44,8 +44,9 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
     },
     "active_active": {
         "summary": "Active-Active on two sites, with one user",
-        "description": "One database across every listed site, all on one network. The first site "
-        "coordinates the creation. The service creates the user, its ACL and its role on every site.",
+        "description": "Fields left out take the Active-Active defaults of the service, which may differ "
+        "from single-site ones (eviction_policy is noeviction). cluster generic lets the service pick the "
+        "cluster at each site; two sites may not resolve to the same cluster.",
         "value": {
             "target": {
                 "active_active": True,
