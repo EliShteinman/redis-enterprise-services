@@ -70,8 +70,8 @@
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
-| `active_active` | `false` | ✅ | `true` עוד לא נתמך |
-| `sites` | list | ✅ | איבר אחד בדיוק |
+| `active_active` | bool | ✅ | `true`: DB אחד על כל האתרים (Active-Active) |
+| `sites` | list | ✅ | ב-`false` איבר אחד בדיוק. ב-`true` כמה שרוצים, כולם באותה `network`. האתר הראשון מתאם את היצירה |
 | `sites[].network` | str | ✅ | |
 | `sites[].site` | str | ✅ | |
 | `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
@@ -81,6 +81,8 @@
 `config/clusters.yaml`, באותם `network`, `environment` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, ובשם קלאסטר
 הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
+- ב-Active-Active, אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
+- ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
@@ -199,13 +201,13 @@
 
 כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
 ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster`, `cluster_url`, `network`, `site` ו-`environment` מגיעים
-מהקונפיג. `active_active: false` ו-`crdb_guid: null` קבועים עד Active-Active.
+מהקונפיג. ב-Active-Active כל ענף מגיע מה-DB המקומי באותו אתר, עם היוזר, ה-ACL וה-role שנוצרו בו.
 
 | שדה | הערה |
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
-| `database.crdb_guid` | ה-id של Active-Active. `null` ל-DB באתר אחד |
-| `database.clusters[]` | ענף לכל קלאסטר. היום קלאסטר אחד |
+| `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
+| `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
 | `clusters[].cluster` | שם הקלאסטר מהקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
 | `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
@@ -279,7 +281,8 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | שדה | הערה |
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
-| `resource_type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `crdb_guid` | רק ב-`crdb`: ה-guid. חסר כשלא ידוע אם ה-CRDB נוצר |
 | `name` | שם המשאב. ב-`permissions`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
@@ -328,6 +331,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `validation_error` | `customer_fixable` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
+| `mixed_networks` | `customer_fixable` | מיד, `422` | אתרי Active-Active ביותר מרשת אחת |
 | `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
@@ -342,7 +346,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
-`http_error`); בפועל `invalid_name` ו-`no_matching_cluster` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
+`http_error`); בפועל `invalid_name`, `no_matching_cluster` ו-`mixed_networks` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
 את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
 
 ---
@@ -355,7 +359,6 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
-| Active-Active | `active_active: true` עם כמה `sites`. `crdb_guid` יהיה ה-UUID של ה-CRDB, ו-`clusters[]` יכיל ענף לכל קלאסטר. אתר שנפל באמצע היצירה ⇐ `requires_manual_intervention` (בלי ביטול) |
 | עריכה ומחיקה: היעד | `target: {active_active, crdb_guid, clusters}` (עם ה-`db_uid` וה-uids של כל ענף), מהתוצאה של היצירה, שונה מה-`target` של יצירה |
 | עריכה ומחיקה: קודים | `database_not_found`, `clusters_mismatch`, `sites_diverged` בסטטוס (`rejected`) |
 | עריכת DB | `POST /v1/databases/update` |
