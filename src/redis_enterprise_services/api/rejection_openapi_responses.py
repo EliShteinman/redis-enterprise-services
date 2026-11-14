@@ -22,10 +22,11 @@ CREATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_
         HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, the traceparent header "
         "is missing or malformed, a name breaks the naming rules, the target has no configured cluster, the "
         "Active-Active sites are on more than one network (mixed_networks), or two of them resolve to the "
-        "same cluster (duplicate_sites).",
+        "same cluster, cluster name or host (duplicate_sites).",
         HTTPStatus.INTERNAL_SERVER_ERROR: "configuration_error (the service configuration cannot serve the "
-        "request; the message says what is missing, for example defaults that differ between Active-Active "
-        "sites) or internal_error (the details are in the service log, by trace_id).",
+        "request; the message says what in it is wrong or missing, for example defaults that differ between "
+        "Active-Active sites) or internal_error (a fixed message; the details are in the service log, by "
+        "trace_id).",
     },
 )
 OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(

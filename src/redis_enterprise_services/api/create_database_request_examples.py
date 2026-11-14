@@ -44,8 +44,8 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
     },
     "active_active": {
         "summary": "Active-Active on two sites, with one user",
-        "description": "Fields left out take the service's Active-Active defaults "
-        "(config/database_defaults.yaml, the active_active override). cluster generic lets the service pick "
+        "description": "Fields left out take the service defaults for the target, including the "
+        "Active-Active ones; every site must get the same defaults. cluster generic lets the service pick "
         "the cluster at each site; two sites may not resolve to the same cluster.",
         "value": {
             "target": {
