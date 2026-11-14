@@ -253,15 +253,20 @@ def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup
         )
 
 
-def test_defaults_that_are_invalid_only_for_active_active_stop_at_startup() -> None:
+def test_overrides_that_conflict_only_on_an_active_active_dev_site_stop_at_startup() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=DatabaseDefaultsSettings(
-                values={},
+                values={"data_persistence": "aof"},
                 persistence_values={},
                 overrides=[
-                    DefaultsOverride(when=OverrideSelector(active_active=True), values={"shards_count": 0})
+                    DefaultsOverride(
+                        when=OverrideSelector(environment="DEV"), values={"data_persistence": "snapshot"}
+                    ),
+                    DefaultsOverride(
+                        when=OverrideSelector(active_active=True), values={"aof_policy": "appendfsync-always"}
+                    ),
                 ],
             ),
-            clusters=[cluster(environment="PROD")],
+            clusters=[cluster(environment="DEV")],
         )

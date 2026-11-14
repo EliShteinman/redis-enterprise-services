@@ -1,4 +1,6 @@
-from pydantic import Field, PositiveInt
+from typing import Self
+
+from pydantic import Field, PositiveInt, model_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.item_path import ApiPath, ItemPath
@@ -16,6 +18,12 @@ class CrdbTaskSettings(ConfigModel):
     error_cluster_field: str
     error_code_field: str
     wait: WaitSettings
+
+    @model_validator(mode="after")
+    def reject_a_result_that_expires_during_the_wait(self) -> Self:
+        if self.result_ttl_seconds <= self.wait.timeout_seconds:
+            raise ValueError("result_ttl_seconds must be longer than wait.timeout_seconds")
+        return self
 
 
 class CrdbCreationSettings(ConfigModel):
