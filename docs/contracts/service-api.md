@@ -355,7 +355,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
-| Active-Active | `active_active: true` עם כמה `sites`. `crdb_guid` יהיה ה-UUID של ה-CRDB, ו-`clusters[]` יכיל ענף לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
+| Active-Active | `active_active: true` עם כמה `sites`. `crdb_guid` יהיה ה-UUID של ה-CRDB, ו-`clusters[]` יכיל ענף לכל קלאסטר. אתר שנפל באמצע היצירה ⇐ `requires_manual_intervention` (בלי ביטול) |
 | עריכה ומחיקה: היעד | `target: {active_active, crdb_guid, clusters}` (עם ה-`db_uid` וה-uids של כל ענף), מהתוצאה של היצירה, שונה מה-`target` של יצירה |
 | עריכה ומחיקה: קודים | `database_not_found`, `clusters_mismatch`, `sites_diverged` בסטטוס (`rejected`) |
 | עריכת DB | `POST /v1/databases/update` |

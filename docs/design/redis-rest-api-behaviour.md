@@ -124,7 +124,23 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 - את ה-`guid` הקלאסטר מייצר. אפשר לקבוע אותו ביצירה, אבל לא משתמשים בזה.
 - dry_run: `dry_run=true` בלבד (`dry_run=1` נדחה). התשובה תמיד `200` עם task `queued`, והתוצאה רק ב-task. הוא בודק
   בכל אתר מקום, פורט ופרטי גישה. כשכמה אתרים בעייתיים, מדווח רק הראשון.
-- יצירה שנכשלת באתר אחד (בשלב הבדיקה) לא משאירה כלום באף אתר.
+- יצירה שנכשלת באתר אחד (בשלב הבדיקה) לא משאירה כלום באף אתר. נבדק שוב ב-8.2.0-25: פורט תפוס רק ב-cluster2 ⇐ task
+  `failed` עם `errors: [{cluster_name: cluster2.local, error_code: db_create_failed}]`, וב-cluster1 לא נשאר CRDB או bdb.
+- **שמות כפולים מותרים:** CRDB שני עם אותו שם נוצר בהצלחה, כמו ב-bdb.
+- **`default_db_config` מחזיק רק מה שנשלח:** בדיוק השדות שנשלחו ביצירה, ועוד `module_list`, `port` ו-`tls_mode` שהקלאסטר
+  מוסיף. ערך ברירת מחדל שלא נשלח לא מופיע בו, אף שה-bdb המקומי מחזיק אותו (כ-172 שדות). `version` נשלח `8.4` ונשמר
+  ב-bdb כ-`8.4.0`. לכל tag הקלאסטר מוסיף `isSystem: false`.
+- `PATCH` ל-`default_db_config` משנה רק את השדות שנשלחו, ומגיע ל-bdb בכל אתר. שדה שלא נשלח ביצירה ונוסף ב-`PATCH`
+  נשאר ב-`default_db_config` מאז.
+- `PUT` ל-bdb מקומי משנה רק אותו: `default_db_config` והאתרים האחרים נשארים עם הערך הקודם, ושום דבר לא מתריע.
+- **הוספה והסרה של אתר:** `POST /v1/crdbs/{guid}/updates` עם `{"add_instances": [<instance>]}` או
+  `{"remove_instances": {"instances": [<id>]}}` (התיעוד אומר רשימה, וזה נדחה ב-`400`), עם task. מקבל `?dry_run=true`.
+  `id` של instance הוא עד 31. ההסרה מחכה שהסנכרון יעביר לאתרים האחרים כל מה שהאתר קיבל, ולכן בלי קישורי סנכרון
+  (`replication_links` ריק ב-`health_report`) היא לא מסתיימת.
+- **cancel של שינוי מבנה באמצע:** ביטול של הסרת אתר השאיר CRDB שאי אפשר למחוק. `delete_crdb` נתקע על `posted`, ביטול
+  בכוח עבר, אבל המחיקה החוזרת נכשלה ב-`busy` ו-`PUT /v1/crdbs/{guid}/purge` נכשל ב-`DB ... does not exist`.
+- `GET /v1/crdb_tasks` מחזיר `{"tasks": [...]}`. `PATCH` שגוי ⇐ `400` עם `error_code: null`. cancel ל-task שהסתיים ⇐
+  `406 invalid_input`. CRDB שנמחק ⇐ `404 not_found`.
 - אתר שנופל באמצע יצירה: ה-task נשאר `started` בלי הגבלה, באתרים התקינים כבר יש bdb מקומי, וה-CRDB לא מופיע ב-
   `GET /v1/crdbs`. `POST /v1/crdb_tasks/{id}/actions/cancel` נכנס לתוקף כשהאתר חוזר, וה-bdb החלקי נמחק. בלי cancel
   היצירה מסתיימת. לא משתמשים ב-`force`, כי הוא עלול לשבור את ה-CRDB.
