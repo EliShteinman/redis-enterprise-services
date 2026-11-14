@@ -1,0 +1,81 @@
+from pydantic import JsonValue, TypeAdapter
+
+from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.models import ClusterTarget
+from redis_enterprise_services.cluster_access.http_method import HttpMethod
+from redis_enterprise_services.config.crdb_settings import CrdbSettings
+from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
+from redis_enterprise_services.crdbs.models import Crdb
+from redis_enterprise_services.crdbs.repository import CrdbRepository
+from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
+
+CRDB_LIST: TypeAdapter[list[Crdb]] = TypeAdapter(list[Crdb])
+
+
+class RestCrdbRepository(CrdbRepository):
+    def __init__(
+        self,
+        *,
+        cluster_api_caller: ClusterApiCaller,
+        database_body_builder: CreationBodyBuilder[NewDatabase],
+        settings: CrdbSettings,
+    ) -> None:
+        self._cluster_api_caller: ClusterApiCaller = cluster_api_caller
+        self._database_body_builder: CreationBodyBuilder[NewDatabase] = database_body_builder
+        self._settings: CrdbSettings = settings
+
+    def start_creation(
+        self, *, coordinator: ClusterTarget, members: list[ClusterTarget], database: NewDatabase, task_id: str
+    ) -> None:
+        self._send_task(
+            target=coordinator,
+            method="POST",
+            path=self._settings.collection_path,
+            body=crdb_creation_body(
+                name=database.name,
+                default_db_config=self._database_body_builder.creation_body(spec=database),
+                members=members,
+            ).model_dump(mode="json"),
+            task_id=task_id,
+        )
+
+    def read(self, *, target: ClusterTarget, guid: str) -> Crdb:
+        body: JsonValue = self._cluster_api_caller.send(
+            target=target, method="GET", path=self._item_path(guid=guid)
+        ).body
+        return Crdb.model_validate(obj=body)
+
+    def list_crdbs(self, *, target: ClusterTarget) -> list[Crdb]:
+        body: JsonValue = self._cluster_api_caller.send(
+            target=target, method="GET", path=self._settings.collection_path
+        ).body
+        listed: JsonValue = body.get(self._settings.list_field) if isinstance(body, dict) else None
+        return CRDB_LIST.validate_python(listed or [])
+
+    def start_update(
+        self, *, target: ClusterTarget, guid: str, changes: dict[str, JsonValue], task_id: str
+    ) -> None:
+        self._send_task(
+            target=target, method="PATCH", path=self._item_path(guid=guid), body=changes, task_id=task_id
+        )
+
+    def start_deletion(self, *, target: ClusterTarget, guid: str, task_id: str) -> None:
+        self._send_task(
+            target=target, method="DELETE", path=self._item_path(guid=guid), body=None, task_id=task_id
+        )
+
+    def _send_task(
+        self, *, target: ClusterTarget, method: HttpMethod, path: str, body: JsonValue | None, task_id: str
+    ) -> None:
+        self._cluster_api_caller.send(
+            target=target,
+            method=method,
+            path=path,
+            body=body,
+            crdb_task_id=task_id,
+            result_ttl_seconds=self._settings.task.result_ttl_seconds,
+        )
+
+    def _item_path(self, *, guid: str) -> str:
+        return self._settings.item_path.format(uid=guid)

@@ -72,6 +72,7 @@ layers = [
     "planning",
     "steps | state",
     "recovery",
+    "crdbs",
     "users | roles | acls | databases",
     "resources",
     "cluster",
@@ -102,6 +103,7 @@ source_modules = [
     "redis_enterprise_services.users",
     "redis_enterprise_services.roles",
     "redis_enterprise_services.acls",
+    "redis_enterprise_services.crdbs",
 ]
 forbidden_modules = ["redis_enterprise_services.saga"]
 
@@ -125,12 +127,14 @@ forbidden_modules = [
     "redis_enterprise_services.users",
     "redis_enterprise_services.roles",
     "redis_enterprise_services.acls",
+    "redis_enterprise_services.crdbs",
 ]
 
 [[tool.importlinter.contracts]]
 name = "the listed packages do not import edge directly; of the layers above the cluster API, only app and the composition may"
 type = "forbidden"
 source_modules = [
+    "redis_enterprise_services.crdbs",
     "redis_enterprise_services.resources",
     "redis_enterprise_services.databases",
     "redis_enterprise_services.users",
