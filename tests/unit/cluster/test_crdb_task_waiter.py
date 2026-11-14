@@ -11,6 +11,7 @@ from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.wait_settings import WaitSettings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import CrdbTaskFailedError, CrdbTaskTimeoutError
 from redis_enterprise_services.timing.clock import Clock
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
@@ -116,9 +117,11 @@ def test_every_failing_site_is_named() -> None:
     assert "cluster1.local (db_create_failed), cluster2.local (busy)" in failure.value.message
 
 
-@pytest.mark.parametrize(argnames="task_body", argvalues=[FAILED_TASK, {"status": "started"}])
+@pytest.mark.parametrize(
+    argnames="task_body", argvalues=[FAILED_TASK, {"status": "started"}, {"crdb_guid": "g"}]
+)
 def test_a_task_that_ends_badly_names_the_cluster_it_was_read_from(task_body: JsonValue) -> None:
-    with pytest.raises(expected_exception=(CrdbTaskFailedError, CrdbTaskTimeoutError)) as failure:
+    with pytest.raises(expected_exception=RedisEnterpriseServicesError) as failure:
         waiter_answering(task_body=task_body).wait_until_finished(target=TARGET, task_id=TASK_ID)
 
     assert failure.value.cluster_url == TARGET.api_url

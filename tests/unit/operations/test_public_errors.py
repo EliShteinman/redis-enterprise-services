@@ -1,6 +1,7 @@
 import pytest
 
 from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 from redis_enterprise_services.exceptions.saga import InvalidPlanError
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
@@ -63,3 +64,14 @@ def test_an_unexpected_error_shows_its_type_and_text() -> None:
     published: PublicError = PUBLIC_ERRORS.unexpected_error(error=KeyError("missing-key"))
 
     assert published.message == "unexpected KeyError: 'missing-key'"
+
+
+def test_the_cluster_an_error_came_from_wins_over_the_cluster_the_caller_assumed() -> None:
+    error: ClusterRejectedRequestError = ClusterRejectedRequestError(
+        message="m", cluster_status_code=400, cluster_error_code="x"
+    )
+    error.cluster_url = "https://c2:9443"
+
+    assert (
+        PUBLIC_ERRORS.from_error(error=error, cluster_url="https://c1:9443").cluster_url == "https://c2:9443"
+    )
