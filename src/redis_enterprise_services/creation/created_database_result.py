@@ -11,6 +11,7 @@ from redis_enterprise_services.operations.database_result import DatabasePermiss
 from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
 from redis_enterprise_services.planning.creation_step_keys import (
     CRDB_STEP_KEY,
+    READ_CRDB_STEP_KEY,
     READ_DATABASE_STEP_KEY,
     on_site,
 )
@@ -20,6 +21,7 @@ from redis_enterprise_services.planning.user_resources import UserResources, use
 from redis_enterprise_services.resources.models import CreatedResource, NamedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.steps.create_crdb import CreatedCrdb
+from redis_enterprise_services.steps.read_crdb import CrdbConfigSnapshot
 
 
 def created_database_result(
@@ -39,6 +41,7 @@ def created_database_result(
             "memory_size": first_site["memory_size"],
             "active_active": prepared_creation.active_active,
             "crdb_guid": created_crdb_guid(prepared_creation=prepared_creation, record=record),
+            "crdb": created_crdb_settings(prepared_creation=prepared_creation, record=record),
             "clusters": [
                 cluster_result(
                     site=site,
@@ -101,6 +104,29 @@ def created_crdb_guid(*, prepared_creation: PreparedCreation, record: SagaRecord
     if not prepared_creation.active_active:
         return None
     return CreatedCrdb.model_validate(obj=record.step(key=CRDB_STEP_KEY).result).guid
+
+
+def created_crdb_settings(*, prepared_creation: PreparedCreation, record: SagaRecord) -> JsonValue:
+    if not prepared_creation.active_active:
+        return None
+    snapshot: CrdbConfigSnapshot = CrdbConfigSnapshot.model_validate(
+        obj=record.step(key=READ_CRDB_STEP_KEY).result
+    )
+    return {
+        "default_db_config": snapshot.default_db_config,
+        "causal_consistency": snapshot.causal_consistency,
+        "encryption": snapshot.encryption,
+        "featureset_version": snapshot.featureset_version,
+        "protocol_version": snapshot.protocol_version,
+        "instances": [
+            {
+                "cluster_url": instance.cluster_url,
+                "instance_id": instance.id,
+                "compression": instance.compression,
+            }
+            for instance in snapshot.instances
+        ],
+    }
 
 
 def read_database_values(*, record: SagaRecord, step_key: str) -> dict[str, JsonValue]:
