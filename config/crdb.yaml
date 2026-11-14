@@ -2,7 +2,7 @@ crdb:
   collection_path: /v1/crdbs
   item_path: /v1/crdbs/{uid}
   list_field: crdbs
-  cluster_added_tag_fields:
+  cluster_added_item_fields:
     - isSystem
   creation:
     causal_consistency: false
@@ -16,6 +16,7 @@ crdb:
       - canceled
     result_ttl_seconds: 86400
     guid_field: crdb_guid
+    existing_task_error_code: job_exists
     errors_field: errors
     error_cluster_field: cluster_name
     error_code_field: error_code

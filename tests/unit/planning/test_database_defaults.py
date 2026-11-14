@@ -251,3 +251,17 @@ def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup
             ),
             clusters=[cluster(environment="PROD")],
         )
+
+
+def test_defaults_that_are_invalid_only_for_active_active_stop_at_startup() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        database_defaults_from(
+            settings=DatabaseDefaultsSettings(
+                values={},
+                persistence_values={},
+                overrides=[
+                    DefaultsOverride(when=OverrideSelector(active_active=True), values={"shards_count": 0})
+                ],
+            ),
+            clusters=[cluster(environment="PROD")],
+        )

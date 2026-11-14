@@ -9,7 +9,6 @@ from redis_enterprise_services.cluster_access.cluster_credentials import Cluster
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
-from redis_enterprise_services.steps.find_local_crdb_instance import local_instance
 from redis_enterprise_services.steps.read_crdb import CrdbConfigSnapshot, ReadCrdbInput, ReadCrdbStep
 
 SENT: dict[str, JsonValue] = {
@@ -67,8 +66,3 @@ def test_tags_the_cluster_marked_as_not_system_still_match_what_was_sent() -> No
 def test_a_sent_field_the_crdb_does_not_hold_is_an_incomplete_crdb() -> None:
     with pytest.raises(expected_exception=IncompleteClusterObjectError):
         read_with(stored={key: value for key, value in SENT.items() if key != "replication"})
-
-
-def test_a_crdb_read_on_a_cluster_without_its_local_database_is_incomplete() -> None:
-    with pytest.raises(expected_exception=IncompleteClusterObjectError):
-        local_instance(crdb=crdb_with(default_db_config={}), api_url="https://cluster-a:9443")

@@ -5,17 +5,16 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
-from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
-from redis_enterprise_services.cluster.json_body import required_string_field, string_field
+from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
-from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskTimeoutError
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
+from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -38,17 +37,15 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
         self,
         *,
         repository: CrdbRepository,
-        task_waiter: CrdbTaskWaiter,
+        task_tracker: CrdbTaskTracker,
         target_resolver: ClusterTargetResolver,
-        task_settings: CrdbTaskSettings,
-        status_field: str,
+        guid_field: str,
         new_task_id: Callable[[], str],
     ) -> None:
         self._repository: CrdbRepository = repository
-        self._task_waiter: CrdbTaskWaiter = task_waiter
+        self._task_tracker: CrdbTaskTracker = task_tracker
         self._target_resolver: ClusterTargetResolver = target_resolver
-        self._task_settings: CrdbTaskSettings = task_settings
-        self._status_field: str = status_field
+        self._guid_field: str = guid_field
         self._new_task_id: Callable[[], str] = new_task_id
 
     @property
@@ -57,13 +54,17 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
 
     def execute(self, *, step_input: CreateCrdbInput, keep_result: KeepResult[CreatedCrdb]) -> None:
         coordinator: ClusterTarget = self._target(address=step_input.coordinator)
-        self._repository.start_creation(
-            coordinator=coordinator,
-            members=[self._target(address=member) for member in step_input.members],
-            database=step_input.database,
+        members: list[ClusterTarget] = [self._target(address=member) for member in step_input.members]
+        self._task_tracker.send_or_join(
+            send=lambda: self._repository.start_creation(
+                coordinator=coordinator,
+                members=members,
+                database=step_input.database,
+                task_id=step_input.task_id,
+            ),
             task_id=step_input.task_id,
         )
-        task: JsonValue = self._task_waiter.wait_until_finished(
+        task: JsonValue = self._task_tracker.wait_until_finished(
             target=coordinator, task_id=step_input.task_id
         )
         keep_result(result=CreatedCrdb(guid=self._guid_of(task=task, task_id=step_input.task_id)))
@@ -77,15 +78,18 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
     ) -> CreatedCrdb | None:
         if kept_result is not None:
             return kept_result if self._exists(step_input=step_input, guid=kept_result.guid) else None
-        task: JsonValue | None = self._task_or_none(step_input=step_input)
-        if task is None:
+        task: JsonValue | None = self._task_tracker.task_or_none(
+            target=self._target(address=step_input.coordinator), task_id=step_input.task_id
+        )
+        if task is None or self._task_tracker.has_failed(task=task):
+            logger.info(
+                msg=f"CRDB task {step_input.task_id} never ran or failed, which leaves nothing behind"
+            )
             return None
-        status: str | None = string_field(body=task, name=self._status_field)
-        if status in self._task_settings.failed_statuses:
-            logger.info(msg=f"CRDB task {step_input.task_id} ended as {status}, which leaves nothing behind")
-            return None
-        if status != self._task_settings.completed_status:
-            raise CrdbTaskTimeoutError(message=f"CRDB task {step_input.task_id} is still {status}")
+        if self._task_tracker.is_running(task=task):
+            raise CrdbTaskTimeoutError(
+                message=f"CRDB task {step_input.task_id} is still {self._task_tracker.status_of(task=task)}"
+            )
         found: CreatedCrdb = CreatedCrdb(guid=self._guid_of(task=task, task_id=step_input.task_id))
         keep_result_if_none_kept(result=found)
         return found
@@ -101,7 +105,7 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
                 raise
             logger.info(msg=f"CRDB {result.guid} is already gone")
             return
-        self._task_waiter.wait_until_finished(target=coordinator, task_id=task_id)
+        self._task_tracker.wait_until_finished(target=coordinator, task_id=task_id)
 
     def _exists(self, *, step_input: CreateCrdbInput, guid: str) -> bool:
         try:
@@ -112,22 +116,11 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
             return False
         return True
 
-    def _task_or_none(self, *, step_input: CreateCrdbInput) -> JsonValue | None:
-        try:
-            return self._task_waiter.read_task(
-                target=self._target(address=step_input.coordinator), task_id=step_input.task_id
-            )
-        except ClusterRejectedRequestError as error:
-            if not is_not_found(error=error):
-                raise
-            logger.info(msg=f"CRDB task {step_input.task_id} is unknown to the cluster, so it never started")
-            return None
-
     def _guid_of(self, *, task: JsonValue, task_id: str) -> str:
         return required_string_field(
             body=task,
-            name=self._task_settings.guid_field,
-            missing_message=f"CRDB task {task_id} finished without {self._task_settings.guid_field}",
+            name=self._guid_field,
+            missing_message=f"CRDB task {task_id} finished without {self._guid_field}",
         )
 
     def _target(self, *, address: ClusterAddress) -> ClusterTarget:
