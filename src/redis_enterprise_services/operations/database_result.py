@@ -83,16 +83,11 @@ class CrdbInstanceResult(BaseModel):
 
 class CrdbResult(BaseModel):
     default_db_config: dict[str, JsonValue] = Field(
-        description="The database settings every site shares, as the CRDB stored them. The CRDB keeps only "
-        "what the service sent, so these are the settings the service sent, except the secrets, which are "
-        "left out.",
+        description="The database settings every site shares, as the CRDB stored them: the settings the "
+        "service sent, without the secrets, plus the few the cluster fills in itself (port, module_list, "
+        "tls_mode).",
         examples=[
-            {
-                "name": "orders",
-                "memory_size": 1073741824,
-                "replication": True,
-                "eviction_policy": "noeviction",
-            }
+            {"name": "orders", "memory_size": 1073741824, "eviction_policy": "noeviction", "port": 12000}
         ],
     )
     causal_consistency: bool | None = Field(
