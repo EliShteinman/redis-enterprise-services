@@ -65,11 +65,29 @@ class Operation(BaseModel):
 
     @classmethod
     def requires_manual_intervention(cls, *, trace_id: str, error: PublicError) -> Self:
+        return cls.failed(trace_id=trace_id, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=error)
+
+    @classmethod
+    def failed(
+        cls,
+        *,
+        trace_id: str,
+        status: OperationStatus,
+        error: PublicError,
+        not_rolled_back: list[RemainingResource] | None = None,
+    ) -> Self:
         return cls(
             trace_id=trace_id,
-            status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
-            error=error.needing_investigation(),
+            status=status,
+            error=error_fitting_status(error=error, status=status),
+            not_rolled_back=not_rolled_back,
         )
+
+
+def error_fitting_status(*, error: PublicError, status: OperationStatus) -> PublicError:
+    if status is OperationStatus.REQUIRES_MANUAL_INTERVENTION:
+        return error.needing_investigation()
+    return error
 
 
 def status_fields_problem(*, operation: Operation) -> str | None:
