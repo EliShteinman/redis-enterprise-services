@@ -2,6 +2,8 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
+from redis_enterprise_services.config.base_url import comparable_url
+
 
 class CrdbInstanceCluster(BaseModel):
     url: str
@@ -34,7 +36,11 @@ class Crdb(BaseModel):
     protocol_version: int | None = None
 
     def instance_on(self, *, api_url: str) -> CrdbInstance | None:
-        return next((instance for instance in self.instances if instance.cluster.url == api_url), None)
+        wanted: str = comparable_url(url=api_url)
+        return next(
+            (instance for instance in self.instances if comparable_url(url=instance.cluster.url) == wanted),
+            None,
+        )
 
 
 class CrdbInstanceChange(BaseModel):

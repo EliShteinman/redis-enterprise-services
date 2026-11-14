@@ -9,7 +9,7 @@ from redis_enterprise_services.databases.new_database import NewDatabase
 
 class CrdbRepository(Protocol):
     def start_creation(
-        self, *, members: list[ClusterTarget], database: NewDatabase, task_id: str
+        self, *, coordinator: ClusterTarget, members: list[ClusterTarget], database: NewDatabase, task_id: str
     ) -> None: ...
 
     def read(self, *, target: ClusterTarget, guid: str) -> Crdb: ...

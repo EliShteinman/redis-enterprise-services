@@ -83,16 +83,27 @@ class CrdbInstanceResult(BaseModel):
 
 class CrdbResult(BaseModel):
     default_db_config: dict[str, JsonValue] = Field(
-        description="The database settings every site shares, as the CRDB stored them, without secrets. The "
-        "CRDB keeps only what was sent, so this is every setting the service applied.",
-        examples=[{"name": "orders", "memory_size": 1073741824, "replication": True, "port": 12000}],
+        description="The database settings every site shares, as the CRDB stored them. The CRDB keeps only "
+        "what the service sent, so these are the settings the service sent, except the secrets, which are "
+        "left out.",
+        examples=[
+            {
+                "name": "orders",
+                "memory_size": 1073741824,
+                "replication": True,
+                "eviction_policy": "noeviction",
+            }
+        ],
     )
     causal_consistency: bool | None = Field(
-        description="Whether updates reach every site in the order they depend on each other.",
+        description="Whether updates reach every site in the order they depend on each other. The service "
+        "always sends it; null only when the cluster did not report it back.",
         examples=[False],
     )
     encryption: bool | None = Field(
-        description="Whether the sync between the sites is encrypted.", examples=[False]
+        description="Whether the sync between the sites is encrypted. The service always sends it; null "
+        "only when the cluster did not report it back.",
+        examples=[False],
     )
     featureset_version: int | None = Field(
         description="The CRDB feature set version, set by Redis; null when the cluster did not report it.",
@@ -134,5 +145,9 @@ class DatabaseResult(BaseModel):
         has_crdb_guid: bool = self.crdb_guid is not None
         has_crdb: bool = self.crdb is not None
         if has_crdb_guid != self.active_active or has_crdb != self.active_active:
-            raise ValueError("active_active, crdb_guid and crdb must all show the same kind of database")
+            raise ValueError(
+                f"active_active, crdb_guid and crdb must all show the same kind of database, but "
+                f"active_active is {self.active_active}, crdb_guid is {'set' if has_crdb_guid else 'null'} "
+                f"and crdb is {'set' if has_crdb else 'null'}"
+            )
         return self
