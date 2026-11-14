@@ -1,0 +1,7 @@
+saga:
+  step_retry:
+    attempts: 3
+    backoff_step_seconds: 2
+  compensation_retry:
+    attempts: 5
+    backoff_step_seconds: 2

@@ -1,0 +1,7 @@
+role:
+  collection_path: /v1/roles
+  item_path: /v1/roles/{uid}
+  unreturned_fields: []
+  secret_fields: []
+  list_fields: []
+  database_resource_type: db

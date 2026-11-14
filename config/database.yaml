@@ -1,0 +1,24 @@
+database:
+  collection_path: /v1/bdbs
+  item_path: /v1/bdbs/{uid}
+  unreturned_fields: []
+  secret_fields:
+    - authentication_redis_pass
+    - authentication_admin_pass
+    - authentication_sasl_pass
+  list_fields: []
+  active_status: active
+  required_fields:
+    - uid
+    - status
+    - endpoints
+  endpoints_field: endpoints
+  endpoint_fields:
+    - dns_name
+    - port
+    - addr
+  creation_failed_status: creation-failed
+  default_tags: []
+  wait:
+    poll_interval_seconds: 1
+    timeout_seconds: 120

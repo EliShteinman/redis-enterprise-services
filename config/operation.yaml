@@ -1,0 +1,39 @@
+operation:
+  public_code_by_internal_code:
+    name_taken: name_taken
+    resources_locked: resources_locked
+    invalid_name: invalid_name
+    no_matching_cluster: no_matching_cluster
+    edge_connection_failed: cluster_unavailable
+    edge_outcome_unknown: cluster_unavailable
+    edge_rejected_response: cluster_unavailable
+    edge_rejected_request: internal_error
+    unreadable_cluster_response: cluster_unavailable
+    incomplete_cluster_object: cluster_request_failed
+    cluster_rejected_request: cluster_request_failed
+    database_creation_failed: cluster_request_failed
+    cluster_action_failed: cluster_request_failed
+    cluster_action_timeout: cluster_timeout
+    database_activation_timeout: cluster_timeout
+    database_deletion_timeout: cluster_timeout
+    duplicate_resource_name: internal_error
+    unrestorable_fields: internal_error
+    configuration_error: configuration_error
+    invalid_plan: internal_error
+    missing_step_result: internal_error
+    step_needs_manual_intervention: internal_error
+    missing_step_record: internal_error
+  public_codes_with_cluster_details:
+    - cluster_request_failed
+    - cluster_unavailable
+    - cluster_timeout
+  error_kind_by_code:
+    name_taken: customer_fixable
+    invalid_name: customer_fixable
+    no_matching_cluster: customer_fixable
+    resources_locked: known_failure
+    cluster_unavailable: known_failure
+    cluster_request_failed: known_failure
+    cluster_timeout: known_failure
+    configuration_error: known_failure
+    internal_error: needs_investigation
