@@ -11,18 +11,22 @@ from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.cluster_address import address_of
+from redis_enterprise_services.planning.creation_inputs import (
+    creation_lock_keys,
+    fixed_resource_input,
+    role_permissions,
+    uid_created_by_step,
+    user_input,
+)
 from redis_enterprise_services.planning.creation_step_keys import (
     DATABASE_STEP_KEY,
     PERMISSIONS_STEP_KEY,
     READ_DATABASE_STEP_KEY,
 )
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
-from redis_enterprise_services.planning.lock_keys import database_lock_key, user_lock_key
-from redis_enterprise_services.planning.role_permission import RolePermission
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.user_resources import UserResource, UserResources, user_resources
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
-from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
@@ -215,45 +219,3 @@ class SingleSiteCreationPlanner:
                 )
             ]
         }
-
-
-def fixed_resource_input[TSpec: NamedSpec](
-    *, step_results: StepResults, address: ClusterAddress, spec: TSpec
-) -> CreateResourceInput[TSpec]:
-    return CreateResourceInput(cluster=address, spec=spec)
-
-
-def user_input(
-    *, step_results: StepResults, address: ClusterAddress, user: DatabaseUserSpec, role_step_key: str
-) -> CreateResourceInput[NewUser]:
-    return CreateResourceInput(
-        cluster=address,
-        spec=NewUser(
-            name=user.name,
-            password=user.password,
-            role_uids=[uid_created_by_step(step_results=step_results, step_key=role_step_key)],
-        ),
-    )
-
-
-def creation_lock_keys(*, cluster_url: str, database_name: str, user_names: list[str]) -> list[str]:
-    return [
-        database_lock_key(cluster_url=cluster_url, database_name=database_name),
-        *(user_lock_key(cluster_url=cluster_url, user_name=user_name) for user_name in user_names),
-    ]
-
-
-def role_permissions(
-    *, step_results: StepResults, resources_of_users: list[UserResources]
-) -> list[RolePermission]:
-    return [
-        RolePermission(
-            role_uid=uid_created_by_step(step_results=step_results, step_key=resources.role.step_key),
-            redis_acl_uid=uid_created_by_step(step_results=step_results, step_key=resources.acl.step_key),
-        )
-        for resources in resources_of_users
-    ]
-
-
-def uid_created_by_step(*, step_results: StepResults, step_key: str) -> int:
-    return step_results.result_of(key=step_key, result_type=CreatedResource).uid
