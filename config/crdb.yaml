@@ -2,7 +2,7 @@ crdb:
   collection_path: /v1/crdbs
   item_path: /v1/crdbs/{uid}
   list_field: crdbs
-  cluster_added_tag_fields:
+  cluster_added_item_fields:
     - isSystem
   creation:
     causal_consistency: false
