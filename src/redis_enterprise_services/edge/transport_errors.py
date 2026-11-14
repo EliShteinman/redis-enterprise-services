@@ -28,7 +28,7 @@ def edge_error_for_transport_failure(
     *, network: str, error: requests.RequestException
 ) -> RedisEnterpriseServicesError:
     if isinstance(error, NOT_SENT_REQUEST_ERRORS):
-        return EdgeRejectedRequestError(message=f"the request to the relay of {network} is invalid: {error}")
+        return EdgeRejectedRequestError(message=f"the request to the relay of {network} is invalid")
     if failed_to_connect_to_relay(error=error):
-        return EdgeConnectionFailedError(message=f"the relay of {network} is unreachable: {error}")
-    return EdgeOutcomeUnknownError(message=f"no answer from the relay of {network}: {error}")
+        return EdgeConnectionFailedError(message=f"the relay of {network} is unreachable")
+    return EdgeOutcomeUnknownError(message=f"no answer from the relay of {network}")
