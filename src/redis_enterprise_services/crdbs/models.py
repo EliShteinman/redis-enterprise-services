@@ -13,6 +13,7 @@ class CrdbInstance(BaseModel):
     id: int
     cluster: CrdbInstanceCluster
     db_uid: str | None = None
+    compression: int | None = None
     db_config: dict[str, JsonValue] = Field(default_factory=dict)
 
 
@@ -23,6 +24,10 @@ class Crdb(BaseModel):
     name: str
     default_db_config: dict[str, JsonValue]
     instances: list[CrdbInstance]
+    causal_consistency: bool | None = None
+    encryption: bool | None = None
+    featureset_version: int | None = None
+    protocol_version: int | None = None
 
     def instance_on(self, *, api_url: str) -> CrdbInstance | None:
         return next((instance for instance in self.instances if instance.cluster.url == api_url), None)
