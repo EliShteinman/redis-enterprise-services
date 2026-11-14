@@ -10,6 +10,7 @@ class CrdbTaskSettings(ConfigModel):
     completed_status: str
     failed_statuses: frozenset[str]
     result_ttl_seconds: PositiveInt
+    guid_field: str
     errors_field: str
     error_cluster_field: str
     error_code_field: str
@@ -20,4 +21,5 @@ class CrdbSettings(ConfigModel):
     collection_path: ApiPath
     item_path: ItemPath
     list_field: str
+    cluster_added_tag_fields: frozenset[str]
     task: CrdbTaskSettings
