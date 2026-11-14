@@ -43,7 +43,6 @@ class StepHarness:
                 credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
             ),
             guid_field="crdb_guid",
-            new_task_id=lambda: "delete-task",
         )
 
     def find_outcome_with_task(self, *, task: JsonValue | Exception) -> CreatedCrdb | None:

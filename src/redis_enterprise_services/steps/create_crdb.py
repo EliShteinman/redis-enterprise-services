@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Callable
 from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, JsonValue
@@ -15,6 +14,7 @@ from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
+from redis_enterprise_services.steps.undo_task_id import undo_task_id
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -40,13 +40,11 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
         task_tracker: CrdbTaskTracker,
         target_resolver: ClusterTargetResolver,
         guid_field: str,
-        new_task_id: Callable[[], str],
     ) -> None:
         self._repository: CrdbRepository = repository
         self._task_tracker: CrdbTaskTracker = task_tracker
         self._target_resolver: ClusterTargetResolver = target_resolver
         self._guid_field: str = guid_field
-        self._new_task_id: Callable[[], str] = new_task_id
 
     @property
     def kind(self) -> StepKind:
@@ -57,7 +55,6 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
         members: list[ClusterTarget] = [self._target(address=member) for member in step_input.members]
         self._task_tracker.send_or_join(
             send=lambda: self._repository.start_creation(
-                coordinator=coordinator,
                 members=members,
                 database=step_input.database,
                 task_id=step_input.task_id,
@@ -97,9 +94,14 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
     def compensate(self, *, step_input: CreateCrdbInput, result: CreatedCrdb) -> None:
         logger.info(msg=f"deleting CRDB {result.guid}")
         coordinator: ClusterTarget = self._target(address=step_input.coordinator)
-        task_id: str = self._new_task_id()
+        task_id: str = undo_task_id(task_id=step_input.task_id)
         try:
-            self._repository.start_deletion(target=coordinator, guid=result.guid, task_id=task_id)
+            self._task_tracker.send_or_join(
+                send=lambda: self._repository.start_deletion(
+                    target=coordinator, guid=result.guid, task_id=task_id
+                ),
+                task_id=task_id,
+            )
         except ClusterRejectedRequestError as error:
             if not is_not_found(error=error):
                 raise

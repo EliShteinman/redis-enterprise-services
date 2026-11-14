@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Callable
 from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, JsonValue
@@ -18,6 +17,7 @@ from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.held_values import HeldValues, held_values
+from redis_enterprise_services.steps.undo_task_id import undo_task_id
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -45,13 +45,11 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         task_tracker: CrdbTaskTracker,
         target_resolver: ClusterTargetResolver,
         list_fields: frozenset[str],
-        new_task_id: Callable[[], str],
     ) -> None:
         self._repository: CrdbRepository = repository
         self._task_tracker: CrdbTaskTracker = task_tracker
         self._target_resolver: ClusterTargetResolver = target_resolver
         self._list_fields: frozenset[str] = list_fields
-        self._new_task_id: Callable[[], str] = new_task_id
 
     @property
     def kind(self) -> StepKind:
@@ -97,7 +95,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                 self._apply(
                     step_input=step_input,
                     values_by_instance=result.values_by_instance,
-                    task_id=self._new_task_id(),
+                    task_id=undo_task_id(task_id=step_input.task_id),
                 )
             case HeldValues.NEITHER:
                 raise UpdateOutcomeUnclearError(
