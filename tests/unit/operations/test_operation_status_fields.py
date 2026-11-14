@@ -7,7 +7,8 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
-ERROR: PublicError = PublicError(code="internal_error", message="internal error")
+ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigation", message="internal error")
+KNOWN_FAILURE: PublicError = PublicError(code="cluster_timeout", kind="known_failure", message="slow")
 
 
 @pytest.mark.parametrize(
@@ -18,6 +19,7 @@ ERROR: PublicError = PublicError(code="internal_error", message="internal error"
         (OperationStatus.ROLLED_BACK, None),
         (OperationStatus.REJECTED, None),
         (OperationStatus.REQUIRES_MANUAL_INTERVENTION, None),
+        (OperationStatus.REQUIRES_MANUAL_INTERVENTION, KNOWN_FAILURE),
     ],
 )
 def test_an_error_that_does_not_fit_the_status_is_refused(

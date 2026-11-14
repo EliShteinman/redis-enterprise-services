@@ -30,3 +30,13 @@ operation:
     - cluster_request_failed
     - cluster_unavailable
     - cluster_timeout
+  error_kind_by_code:
+    name_taken: customer_fixable
+    invalid_name: customer_fixable
+    no_matching_cluster: customer_fixable
+    resources_locked: known_failure
+    cluster_unavailable: known_failure
+    cluster_request_failed: known_failure
+    cluster_timeout: known_failure
+    configuration_error: known_failure
+    internal_error: needs_investigation

@@ -10,7 +10,7 @@ from redis_enterprise_services.operations.operation_status import (
     STATUSES_WITHOUT_ERROR,
     OperationStatus,
 )
-from redis_enterprise_services.operations.public_error import PublicError
+from redis_enterprise_services.operations.public_error import NEEDS_INVESTIGATION, PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
 
 
@@ -65,12 +65,20 @@ class Operation(BaseModel):
 
     @classmethod
     def requires_manual_intervention(cls, *, trace_id: str, error: PublicError) -> Self:
-        return cls(trace_id=trace_id, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=error)
+        return cls(
+            trace_id=trace_id,
+            status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
+            error=error.needing_investigation(),
+        )
 
 
 def status_fields_problem(*, operation: Operation) -> str | None:
     if (operation.error is None) != (operation.status in STATUSES_WITHOUT_ERROR):
         return "must have an error" if operation.error is None else "cannot have an error"
+    if operation.status is OperationStatus.REQUIRES_MANUAL_INTERVENTION and (
+        operation.error is not None and operation.error.kind != NEEDS_INVESTIGATION
+    ):
+        return f"must have an error of kind {NEEDS_INVESTIGATION}"
     if operation.database is not None and operation.status is not OperationStatus.SUCCEEDED:
         return "cannot have a database"
     if operation.not_rolled_back is not None and operation.status not in STATUSES_WITH_REMAINING_RESOURCES:
