@@ -72,3 +72,11 @@ REMAINING: RemainingResource = RemainingResource(
 def test_a_field_that_does_not_fit_the_status_is_refused(operation_fields: dict[str, object]) -> None:
     with pytest.raises(expected_exception=ValidationError):
         Operation.model_validate(obj={"trace_id": "trace-1", **operation_fields})
+
+
+def test_a_failure_that_needs_manual_intervention_needs_investigation() -> None:
+    operation: Operation = Operation.failed(
+        trace_id="trace-1", status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, error=KNOWN_FAILURE
+    )
+
+    assert operation.error == KNOWN_FAILURE.needing_investigation()
