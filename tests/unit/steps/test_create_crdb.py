@@ -11,6 +11,7 @@ from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskTimeoutError
+from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.create_crdb import CreateCrdbInput, CreateCrdbStep, CreatedCrdb
 
 GUID: str = "d71cefce-4e31-41fd-b654-37cbb2f39a01"
@@ -35,12 +36,13 @@ class StepHarness:
         self.kept: list[CreatedCrdb] = []
         self.step: CreateCrdbStep = CreateCrdbStep(
             repository=self.repository,
-            task_waiter=self.task_waiter,
+            task_tracker=CrdbTaskTracker(
+                task_waiter=self.task_waiter, settings=load_settings().crdb.task, status_field="status"
+            ),
             target_resolver=SharedCredentialsTargetResolver(
                 credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
             ),
-            task_settings=load_settings().crdb.task,
-            status_field="status",
+            guid_field="crdb_guid",
             new_task_id=lambda: "delete-task",
         )
 
@@ -99,3 +101,15 @@ def test_deleting_a_crdb_that_is_already_gone_is_done() -> None:
     harness.step.compensate(step_input=STEP_INPUT, result=CreatedCrdb(guid=GUID))
 
     harness.task_waiter.wait_until_finished.assert_not_called()
+
+
+def test_a_creation_sent_again_joins_the_task_that_already_reached_the_cluster() -> None:
+    harness: StepHarness = StepHarness()
+    harness.repository.start_creation.side_effect = ClusterRejectedRequestError(
+        message="m", cluster_status_code=406, cluster_error_code="job_exists"
+    )
+    harness.task_waiter.wait_until_finished.return_value = {"status": "finished", "crdb_guid": GUID}
+
+    harness.step.execute(step_input=STEP_INPUT, keep_result=harness.keep)
+
+    assert harness.kept == [CreatedCrdb(guid=GUID)]

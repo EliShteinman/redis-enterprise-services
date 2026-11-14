@@ -75,7 +75,7 @@ class FindLocalCrdbInstanceStep(SagaStep[FindLocalCrdbInstanceInput, LocalCrdbIn
 
 def local_instance(*, crdb: Crdb, api_url: str) -> LocalCrdbInstance:
     instance: CrdbInstance | None = crdb.instance_on(api_url=api_url)
-    if instance is None or not instance.db_uid:
+    if instance is None or not instance.db_uid or not instance.db_uid.isdigit():
         raise IncompleteClusterObjectError(
             message=f"CRDB {crdb.guid} read on {api_url} has no local database there"
         )

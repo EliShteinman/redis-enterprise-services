@@ -7,9 +7,11 @@ from redis_enterprise_services.cluster.cluster_target_resolver import SharedCred
 from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
-from redis_enterprise_services.exceptions.cluster import UpdateOutcomeUnclearError
+from redis_enterprise_services.exceptions.cluster import CrdbTaskTimeoutError, UpdateOutcomeUnclearError
+from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.update_crdb_instances import (
     CrdbInstancesSnapshot,
     UpdateCrdbInstancesInput,
@@ -37,16 +39,22 @@ def crdb_holding(*, db_config: dict[str, JsonValue]) -> Crdb:
     )
 
 
-def step_reading(*, db_config: dict[str, JsonValue]) -> tuple[UpdateCrdbInstancesStep, MagicMock]:
+def step_reading(
+    *, db_config: dict[str, JsonValue], task: JsonValue = None
+) -> tuple[UpdateCrdbInstancesStep, MagicMock]:
     repository: MagicMock = create_autospec(spec=CrdbRepository, instance=True)
     repository.read.return_value = crdb_holding(db_config=db_config)
+    task_waiter: MagicMock = create_autospec(spec=CrdbTaskWaiter, instance=True)
+    task_waiter.read_task.return_value = task if task is not None else {"status": "finished"}
     step: UpdateCrdbInstancesStep = UpdateCrdbInstancesStep(
         repository=repository,
-        task_waiter=create_autospec(spec=CrdbTaskWaiter, instance=True),
+        task_tracker=CrdbTaskTracker(
+            task_waiter=task_waiter, settings=load_settings().crdb.task, status_field="status"
+        ),
         target_resolver=SharedCredentialsTargetResolver(
             credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
         ),
-        order_insensitive_fields=frozenset({"roles_permissions"}),
+        list_fields=frozenset({"roles_permissions"}),
         new_task_id=lambda: "undo",
     )
     return step, repository
@@ -97,3 +105,10 @@ def test_undoing_puts_the_old_values_back_on_each_instance() -> None:
     assert (
         repository.start_instances_update.call_args.kwargs["values_by_instance"] == BEFORE.values_by_instance
     )
+
+
+def test_a_patch_whose_task_is_still_running_has_an_unknown_outcome() -> None:
+    step, _ = step_reading(db_config={}, task={"status": "started"})
+
+    with pytest.raises(expected_exception=CrdbTaskTimeoutError):
+        step.find_outcome(step_input=STEP_INPUT, kept_result=BEFORE, keep_result_if_none_kept=ignore)
