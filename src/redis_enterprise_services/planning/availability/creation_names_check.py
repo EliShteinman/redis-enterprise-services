@@ -22,3 +22,13 @@ class CreationNamesCheck:
             clusters=self._name_check_scope.clusters_to_check(chosen=cluster),
             requested_names=self._creation_naming.requested_names(spec=spec),
         )
+
+    def ensure_free_on_every_site(self, *, clusters: list[ConfiguredCluster], spec: DatabaseSpec) -> None:
+        to_check: dict[str, ConfiguredCluster] = {
+            checked.name: checked
+            for cluster in clusters
+            for checked in self._name_check_scope.clusters_to_check(chosen=cluster)
+        }
+        self._name_availability.ensure_free(
+            clusters=list(to_check.values()), requested_names=self._creation_naming.requested_names(spec=spec)
+        )

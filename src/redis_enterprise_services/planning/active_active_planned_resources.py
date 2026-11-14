@@ -1,0 +1,56 @@
+from typing import ClassVar
+
+from pydantic import BaseModel, ConfigDict
+
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY, PERMISSIONS_STEP_KEY, on_site
+from redis_enterprise_services.planning.database_spec import DatabaseSpec
+from redis_enterprise_services.planning.planned_resources import (
+    CRDB_RESOURCE_TYPE,
+    PERMISSIONS_RESOURCE_TYPE,
+    PlannedResource,
+)
+from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.user_resources import user_resources
+
+
+class SitePlannedResource(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    cluster: ConfiguredCluster
+    resource: PlannedResource
+
+
+def active_active_planned_resources(
+    *, spec: DatabaseSpec, resource_naming: UserResourceNaming, clusters: list[ConfiguredCluster]
+) -> dict[str, SitePlannedResource]:
+    database_name: str = spec.database.name
+    coordinator: ConfiguredCluster = clusters[0]
+    planned: dict[str, SitePlannedResource] = {
+        CRDB_STEP_KEY: SitePlannedResource(
+            cluster=coordinator,
+            resource=PlannedResource(
+                resource_type=CRDB_RESOURCE_TYPE, name=database_name, uid_step_key=CRDB_STEP_KEY
+            ),
+        )
+    }
+    for cluster in clusters:
+        for user in spec.users:
+            for resource in user_resources(
+                naming=resource_naming, database_name=database_name, user=user
+            ).in_creation_order():
+                site_key: str = on_site(cluster_name=cluster.name, step_key=resource.step_key)
+                planned[site_key] = SitePlannedResource(
+                    cluster=cluster,
+                    resource=PlannedResource(
+                        resource_type=resource.kind, name=resource.name, uid_step_key=site_key
+                    ),
+                )
+    if spec.users:
+        planned[PERMISSIONS_STEP_KEY] = SitePlannedResource(
+            cluster=coordinator,
+            resource=PlannedResource(
+                resource_type=PERMISSIONS_RESOURCE_TYPE, name=database_name, uid_step_key=CRDB_STEP_KEY
+            ),
+        )
+    return planned

@@ -8,9 +8,10 @@ from redis_enterprise_services.planning.name_kind import NameKind
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.user_resources import user_resources
 
-type PlannedResourceType = NameKind | Literal["permissions"]
+type PlannedResourceType = NameKind | Literal["permissions", "crdb"]
 
 PERMISSIONS_RESOURCE_TYPE: Final[Literal["permissions"]] = "permissions"
+CRDB_RESOURCE_TYPE: Final[Literal["crdb"]] = "crdb"
 
 
 class PlannedResource(BaseModel):
