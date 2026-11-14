@@ -102,7 +102,7 @@ class ActiveActiveCreationPlanner:
             self._read_crdb_planned_step(clusters=clusters, database=spec.database),
         ]
         logger.info(
-            msg=f"Active-Active database {spec.database.name} on {[c.name for c in clusters]} "
+            msg=f"Active-Active database {spec.database.name} on {[cluster.name for cluster in clusters]} "
             f"plans {len(steps)} steps"
         )
         return SagaPlan(
