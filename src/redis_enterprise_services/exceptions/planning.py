@@ -9,6 +9,11 @@ class NoMatchingClusterError(RedisEnterpriseServicesError):
     status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_CONTENT
 
 
+class MixedNetworksError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "mixed_networks"
+    status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_CONTENT
+
+
 class InvalidNameError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "invalid_name"
     status_code: ClassVar[int] = HTTPStatus.UNPROCESSABLE_CONTENT
