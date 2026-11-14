@@ -6,12 +6,13 @@ from redis_enterprise_services.config.cluster_inventory import ClusterType, Envi
 from redis_enterprise_services.config.config_model import ConfigModel
 
 
-class OverrideClusterSelector(ConfigModel):
+class OverrideSelector(ConfigModel):
     network: str | None = Field(default=None, min_length=1)
     environment: Environment | None = None
     site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None
     cluster_name: str | None = Field(default=None, min_length=1)
+    active_active: bool | None = None
 
     @model_validator(mode="after")
     def reject_empty_selector(self) -> Self:
@@ -21,7 +22,7 @@ class OverrideClusterSelector(ConfigModel):
 
 
 class DefaultsOverride(ConfigModel):
-    when: OverrideClusterSelector
+    when: OverrideSelector
     values: dict[str, JsonValue] = Field(min_length=1)
 
 

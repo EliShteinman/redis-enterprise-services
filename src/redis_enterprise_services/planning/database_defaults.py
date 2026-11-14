@@ -5,7 +5,7 @@ from pydantic import JsonValue, ValidationError
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
-    OverrideClusterSelector,
+    OverrideSelector,
 )
 from redis_enterprise_services.databases.new_database import (
     PERSISTENCE_MODE_BY_FIELD,
@@ -23,8 +23,12 @@ class DatabaseDefaults:
     def __init__(self, *, settings: DatabaseDefaultsSettings) -> None:
         self._settings: DatabaseDefaultsSettings = settings
 
-    def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
-        values: dict[str, JsonValue] = merged_default_values(settings=self._settings, cluster=cluster)
+    def fill_in(
+        self, *, cluster: ConfiguredCluster, requested: NewDatabase, active_active: bool
+    ) -> NewDatabase:
+        values: dict[str, JsonValue] = merged_default_values(
+            settings=self._settings, cluster=cluster, active_active=active_active
+        )
         values.update(requested.model_dump(exclude_none=True))
         return NewDatabase.model_validate(
             obj=with_persistence_settings_of_its_mode(
@@ -38,14 +42,17 @@ def database_defaults_from(
 ) -> DatabaseDefaults:
     reject_invalid_default_values(settings=settings)
     for cluster in clusters:
-        reject_invalid_values_on_cluster(settings=settings, cluster=cluster)
+        for active_active in (False, True):
+            reject_invalid_values_on_cluster(settings=settings, cluster=cluster, active_active=active_active)
     return DatabaseDefaults(settings=settings)
 
 
 def reject_invalid_values_on_cluster(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, active_active: bool
 ) -> None:
-    merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
+    merged: dict[str, JsonValue] = merged_default_values(
+        settings=settings, cluster=cluster, active_active=active_active
+    )
     try:
         reject_persistence_settings_of_another_mode(base={}, override=merged)
         reject_invalid_options(
@@ -60,22 +67,24 @@ def reject_invalid_values_on_cluster(
 
 
 def merged_default_values(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, active_active: bool
 ) -> dict[str, JsonValue]:
     values: dict[str, JsonValue] = dict(settings.values)
+    labels: dict[str, str | bool] = placement_labels(cluster=cluster, active_active=active_active)
     for override in settings.overrides:
-        if selector_matches(selector=override.when, cluster=cluster):
+        if selector_matches(selector=override.when, labels=labels):
             logger.debug(msg=f"defaults for {override.when} apply to cluster {cluster.name}")
             values.update(override.values)
     return values
 
 
-def selector_matches(*, selector: OverrideClusterSelector, cluster: ConfiguredCluster) -> bool:
-    return selector.model_dump(exclude_none=True).items() <= cluster_labels(cluster=cluster).items()
+def selector_matches(*, selector: OverrideSelector, labels: dict[str, str | bool]) -> bool:
+    return selector.model_dump(exclude_none=True).items() <= labels.items()
 
 
-def cluster_labels(*, cluster: ConfiguredCluster) -> dict[str, str]:
+def placement_labels(*, cluster: ConfiguredCluster, active_active: bool) -> dict[str, str | bool]:
     return {
+        "active_active": active_active,
         "network": cluster.network,
         "environment": cluster.environment,
         "site": cluster.site,

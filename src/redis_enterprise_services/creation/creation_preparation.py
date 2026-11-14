@@ -39,7 +39,9 @@ class CreationPreparation:
         ]
         reject_mixed_networks(clusters=clusters)
         filled_database: NewDatabase = self._same_database_on_every_site(
-            clusters=clusters, requested=requested_database
+            clusters=clusters,
+            requested=requested_database,
+            active_active=creation_request.target.active_active,
         )
         logger.info(msg=f"creating {filled_database.name} on {[c.name for c in clusters]} is prepared")
         return PreparedCreation(
@@ -49,10 +51,11 @@ class CreationPreparation:
         )
 
     def _same_database_on_every_site(
-        self, *, clusters: list[ConfiguredCluster], requested: NewDatabase
+        self, *, clusters: list[ConfiguredCluster], requested: NewDatabase, active_active: bool
     ) -> NewDatabase:
         filled: list[NewDatabase] = [
-            self._database_defaults.fill_in(cluster=cluster, requested=requested) for cluster in clusters
+            self._database_defaults.fill_in(cluster=cluster, requested=requested, active_active=active_active)
+            for cluster in clusters
         ]
         if any(database != filled[0] for database in filled):
             raise ConfigurationError(
