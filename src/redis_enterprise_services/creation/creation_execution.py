@@ -63,7 +63,9 @@ class CreationExecution:
                     error=error,
                     cluster_url=prepared_creation.cluster.api_url,
                 ),
-                interruption_error=self._public_errors.internal_error(),
+                interruption_error=self._public_errors.from_error(
+                    error=error, cluster_url=prepared_creation.cluster.api_url
+                ),
             )
         except Exception as error:
             logger.critical(msg=f"creation {trace_id} failed on an unexpected error", exc_info=True)
@@ -105,9 +107,7 @@ class CreationExecution:
             stored_record: SagaRecord | None = self._saga_record_reader.find(saga_id=trace_id)
         except UnreadableSagaRecordError:
             logger.critical(msg=f"the record of saga {trace_id} cannot be read", exc_info=True)
-            return Operation.requires_manual_intervention(
-                trace_id=trace_id, error=self._public_errors.internal_error()
-            )
+            return Operation.requires_manual_intervention(trace_id=trace_id, error=interruption_error)
         if stored_record is None:
             return rejected_operation(trace_id=trace_id, error=error_if_not_started())
         logger.critical(

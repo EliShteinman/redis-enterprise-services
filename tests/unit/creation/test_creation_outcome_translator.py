@@ -179,5 +179,4 @@ def test_an_interrupted_creation_reports_an_internal_error() -> None:
         stopped_at="database",
     )
 
-    assert operation.error is not None
-    assert operation.error.code == "internal_error"
+    assert operation.error == INTERRUPTION_ERROR
