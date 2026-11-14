@@ -1,4 +1,6 @@
-from pydantic import BaseModel, JsonValue
+from typing import ClassVar
+
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
@@ -47,8 +49,10 @@ def created_database_result(
                     site=site,
                     database=read_database_values(record=record, step_key=site.read_step_key),
                     permissions=[
-                        created_permission(record=record, user=user, resources=resources).model_dump()
-                        for user, resources in site.users
+                        created_permission(
+                            record=record, user=user.spec, resources=user.resources
+                        ).model_dump()
+                        for user in site.users
                     ],
                     database_settings=database_settings,
                 )
@@ -58,10 +62,19 @@ def created_database_result(
     )
 
 
+class CreatedUser(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    spec: DatabaseUserSpec
+    resources: UserResources
+
+
 class CreatedSite(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     cluster: ConfiguredCluster
     read_step_key: str
-    users: list[tuple[DatabaseUserSpec, UserResources]]
+    users: list[CreatedUser]
 
 
 def created_sites(
@@ -74,7 +87,12 @@ def created_sites(
                 cluster=prepared_creation.cluster,
                 read_step_key=READ_DATABASE_STEP_KEY,
                 users=[
-                    (user, user_resources(naming=resource_naming, database_name=database_name, user=user))
+                    CreatedUser(
+                        spec=user,
+                        resources=user_resources(
+                            naming=resource_naming, database_name=database_name, user=user
+                        ),
+                    )
                     for user in prepared_creation.spec.users
                 ],
             )
@@ -84,9 +102,9 @@ def created_sites(
             cluster=cluster,
             read_step_key=on_site(cluster_name=cluster.name, step_key=READ_DATABASE_STEP_KEY),
             users=[
-                (
-                    user,
-                    site_user_resources(
+                CreatedUser(
+                    spec=user,
+                    resources=site_user_resources(
                         naming=resource_naming,
                         database_name=database_name,
                         user=user,
