@@ -207,6 +207,7 @@
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
+| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config` בלי סיסמאות (ה-CRDB שומר רק מה שנשלח, ולכן זו כל הגדרה שהשירות קבע), `causal_consistency`, `encryption`, `featureset_version`, `protocol_version`, ולכל אתר `cluster_url`, `instance_id` ו-`compression` |
 | `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
 | `clusters[].cluster` | שם הקלאסטר מהקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
