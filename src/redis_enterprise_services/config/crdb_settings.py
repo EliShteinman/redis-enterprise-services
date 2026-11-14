@@ -27,6 +27,6 @@ class CrdbSettings(ConfigModel):
     collection_path: ApiPath
     item_path: ItemPath
     list_field: str
-    cluster_added_tag_fields: frozenset[str]
+    cluster_added_item_fields: frozenset[str]
     creation: CrdbCreationSettings
     task: CrdbTaskSettings

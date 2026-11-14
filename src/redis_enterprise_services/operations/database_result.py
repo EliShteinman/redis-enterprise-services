@@ -1,6 +1,7 @@
+from typing import ClassVar, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from redis_enterprise_services.config.cluster_inventory import Environment
 
@@ -76,7 +77,7 @@ class CrdbInstanceResult(BaseModel):
     )
     instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
     compression: int | None = Field(
-        description="The compression level of the sync from this instance (0-6).", examples=[3]
+        ge=0, le=6, description="The compression level of the sync from this instance (0-6).", examples=[3]
     )
 
 
@@ -93,12 +94,22 @@ class CrdbResult(BaseModel):
     encryption: bool | None = Field(
         description="Whether the sync between the sites is encrypted.", examples=[False]
     )
-    featureset_version: int | None = Field(description="Set by Redis.", examples=[12])
-    protocol_version: int | None = Field(description="Set by Redis.", examples=[1])
-    instances: list[CrdbInstanceResult] = Field(description="One entry per site of the CRDB.")
+    featureset_version: int | None = Field(
+        description="The CRDB feature set version, set by Redis; null when the cluster did not report it.",
+        examples=[12],
+    )
+    protocol_version: int | None = Field(
+        description="The CRDB sync protocol version, set by Redis; null when the cluster did not report it.",
+        examples=[1],
+    )
+    instances: list[CrdbInstanceResult] = Field(
+        min_length=1, description="One entry per site of the CRDB, in the order the CRDB lists them."
+    )
 
 
 class DatabaseResult(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(json_schema_serialization_defaults_required=True)
+
     name: str = Field(description="The database name, as the cluster stored it.", examples=["orders"])
     memory_size: int = Field(
         description="The memory limit in bytes, as the cluster stored it.", examples=[1073741824]
@@ -117,3 +128,9 @@ class DatabaseResult(BaseModel):
         description="One entry per cluster that holds the database: one for a single-site database, one per "
         "site, in the order of the request, for an Active-Active one.",
     )
+
+    @model_validator(mode="after")
+    def reject_active_active_fields_that_disagree(self) -> Self:
+        if {self.crdb_guid is not None, self.crdb is not None} != {self.active_active}:
+            raise ValueError("active_active, crdb_guid and crdb must all show the same kind of database")
+        return self

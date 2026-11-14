@@ -1,6 +1,7 @@
-from typing import Literal
+from typing import Literal, Self
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from redis_enterprise_services.operations.is_none import is_none
 
@@ -21,13 +22,16 @@ class RemainingResource(BaseModel):
     )
     uid: int | None = Field(
         description="The resource uid on the cluster, or null when it is unknown whether it was created. "
-        "For permissions: the database uid.",
+        "For permissions: the database uid. Always null for crdb and for Active-Active permissions, which "
+        "crdb_guid identifies instead.",
         examples=[11],
     )
-    crdb_guid: str | None = Field(
+    crdb_guid: UUID | None = Field(
         default=None,
         exclude_if=is_none,
-        description="Only for crdb: the CRDB guid, or missing when it is unknown whether it was created.",
+        description="Only for crdb and Active-Active permissions: the CRDB guid. For crdb, missing when it "
+        "is unknown whether the CRDB was created. A crdb item is reported on the coordinator, the first "
+        "site.",
         examples=["d71cefce-4e31-41fd-b654-37cbb2f39a01"],
     )
     last_error: str | None = Field(
@@ -35,3 +39,12 @@ class RemainingResource(BaseModel):
         "failed, otherwise of its step. The code is one of the error.code values. Null when there was none.",
         examples=["cluster_unavailable: relay is down"],
     )
+
+    @model_validator(mode="after")
+    def reject_a_guid_on_a_resource_without_a_crdb(self) -> Self:
+        if self.crdb_guid is not None and self.resource_type not in CRDB_GUID_RESOURCE_TYPES:
+            raise ValueError(f"a {self.resource_type} resource has no crdb_guid")
+        return self
+
+
+CRDB_GUID_RESOURCE_TYPES: frozenset[RemainingResourceType] = frozenset({"crdb", "permissions"})
