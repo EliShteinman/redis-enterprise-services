@@ -47,7 +47,8 @@ class EdgeClusterApiCaller(ClusterApiCaller):
         try:
             response: ClusterResponse = self._edge_transport.send(network=target.network, request=request)
         except RedisEnterpriseServicesError as error:
-            raise with_cluster_url(error=error, cluster_url=target.api_url) from None
+            with_cluster_url(error=error, cluster_url=target.api_url)
+            raise
         if is_cluster_rejection(status_code=response.status_code):
             raise with_cluster_url(
                 error=cluster_rejection(
