@@ -4,6 +4,10 @@ crdb:
   list_field: crdbs
   cluster_added_tag_fields:
     - isSystem
+  creation:
+    causal_consistency: false
+    encryption: false
+    compression: 3
   task:
     item_path: /v1/crdb_tasks/{uid}
     completed_status: finished
