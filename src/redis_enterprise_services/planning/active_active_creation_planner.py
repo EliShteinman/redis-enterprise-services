@@ -10,6 +10,7 @@ from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
 from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.creation_inputs import (
@@ -28,7 +29,7 @@ from redis_enterprise_services.planning.creation_step_keys import (
 )
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResource, UserResources, user_resources
+from redis_enterprise_services.planning.user_resources import UserResources
 from redis_enterprise_services.resources.cluster_object_body import without_fields
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
@@ -147,7 +148,12 @@ class ActiveActiveCreationPlanner:
             for step in self._steps_for_user(
                 cluster=cluster,
                 user=user,
-                resources=self._site_resources(cluster=cluster, spec=spec, user=user),
+                resources=site_user_resources(
+                    naming=self._resource_naming,
+                    database_name=spec.database.name,
+                    user=user,
+                    cluster_name=cluster.name,
+                ),
             )
         ]
 
@@ -280,29 +286,17 @@ class ActiveActiveCreationPlanner:
                 for permission in role_permissions(
                     step_results=step_results,
                     resources_of_users=[
-                        self._site_resources(cluster=cluster, spec=spec, user=user) for user in spec.users
+                        site_user_resources(
+                            naming=self._resource_naming,
+                            database_name=spec.database.name,
+                            user=user,
+                            cluster_name=cluster.name,
+                        )
+                        for user in spec.users
                     ],
                 )
             ]
         }
-
-    def _site_resources(
-        self, *, cluster: ConfiguredCluster, spec: DatabaseSpec, user: DatabaseUserSpec
-    ) -> UserResources:
-        resources: UserResources = user_resources(
-            naming=self._resource_naming, database_name=spec.database.name, user=user
-        )
-        return UserResources(
-            acl=on_site_resource(cluster_name=cluster.name, resource=resources.acl),
-            role=on_site_resource(cluster_name=cluster.name, resource=resources.role),
-            user=on_site_resource(cluster_name=cluster.name, resource=resources.user),
-        )
-
-
-def on_site_resource(*, cluster_name: str, resource: UserResource) -> UserResource:
-    return resource.model_copy(
-        update={"step_key": on_site(cluster_name=cluster_name, step_key=resource.step_key)}
-    )
 
 
 def fixed_crdb_input(*, step_results: StepResults, step_input: CreateCrdbInput) -> CreateCrdbInput:
