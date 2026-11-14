@@ -174,6 +174,7 @@ forbidden_modules = [
     "redis_enterprise_services.background.thread_pool_task_runner",
     "redis_enterprise_services.liveness.in_process_operation_heartbeats",
     "redis_enterprise_services.databases.rest_database_fields_repository",
+    "redis_enterprise_services.crdbs.rest_crdb_repository",
     "redis_enterprise_services.databases.polling_database_waiter",
     "redis_enterprise_services.state.redis_client",
     "redis_enterprise_services.state.tracked_record_writer",
