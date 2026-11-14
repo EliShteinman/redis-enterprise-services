@@ -9,6 +9,9 @@ crdb:
       - failed
       - canceled
     result_ttl_seconds: 86400
+    errors_field: errors
+    error_cluster_field: cluster_name
+    error_code_field: error_code
     wait:
       poll_interval_seconds: 2
       timeout_seconds: 600

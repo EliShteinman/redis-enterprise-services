@@ -10,6 +10,9 @@ class CrdbTaskSettings(ConfigModel):
     completed_status: str
     failed_statuses: frozenset[str]
     result_ttl_seconds: PositiveInt
+    errors_field: str
+    error_cluster_field: str
+    error_code_field: str
     wait: WaitSettings
 
 
