@@ -77,7 +77,11 @@ class CrdbInstanceResult(BaseModel):
     )
     instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
     compression: int | None = Field(
-        ge=0, le=6, description="The compression level of the sync from this instance (0-6).", examples=[3]
+        ge=0,
+        le=6,
+        description="The compression level of the sync from this instance (0-6); null only when the "
+        "cluster did not report it.",
+        examples=[3],
     )
 
 
@@ -85,7 +89,7 @@ class CrdbResult(BaseModel):
     default_db_config: dict[str, JsonValue] = Field(
         description="The database settings every site shares, as the CRDB stored them: the settings the "
         "service sent, without the secrets, plus the few the cluster fills in itself (port, module_list, "
-        "tls_mode).",
+        "tls_mode, and isSystem on every tag).",
         examples=[
             {"name": "orders", "memory_size": 1073741824, "eviction_policy": "noeviction", "port": 12000}
         ],
@@ -145,4 +149,10 @@ class DatabaseResult(BaseModel):
                 f"active_active is {self.active_active}, crdb_guid is {'set' if has_crdb_guid else 'null'} "
                 f"and crdb is {'set' if has_crdb else 'null'}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def reject_more_than_one_cluster_for_a_single_site(self) -> Self:
+        if not self.active_active and len(self.clusters) != 1:
+            raise ValueError(f"a single-site database has exactly one cluster, not {len(self.clusters)}")
         return self
