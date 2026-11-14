@@ -227,7 +227,8 @@
   "database": null,
   "error": {
     "code": "cluster_request_failed",
-    "message": "…",
+    "kind": "known_failure",
+    "message": "POST https://cluster-a.net-a:9443/v1/bdbs was refused with status 400 (invalid_schema)",
     "cluster_url": "https://cluster-a.net-a:9443",
     "cluster_error_code": "invalid_schema"
   },
@@ -248,6 +249,22 @@
 
 **`error`:** השגיאה של הצעד שעצר את הפעולה. `cluster_url` ו-`cluster_error_code` מופיעים רק ב-`cluster_request_failed`,
 `cluster_unavailable` ו-`cluster_timeout`. `cluster_error_code` מופיע רק כשהקלאסטר החזיר קוד שגיאה משלו.
+
+**`error.kind`:** מה עושים עם השגיאה. כל קוד ממופה לסוג אחד (`operation.error_kind_by_code`):
+
+| `kind` | משמעות |
+|---|---|
+| `customer_fixable` | הלקוח מבין ומתקן לבד, למשל שם תפוס או שם לא חוקי |
+| `known_failure` | התמיכה מבינה את הסיבה מהקוד, למשל קלאסטר לא זמין. אחרי ביטול מלא: לנסות שוב מאוחר יותר |
+| `needs_investigation` | צריך לעקוב אחרי ה-trace לאורך השרשרת: השירות, הריליי והקלאסטר |
+
+`requires_manual_intervention` הוא תמיד `needs_investigation`, בלי קשר לקוד. קוד בלי סוג בקונפיג, וגם סוג שיתווסף
+בעתיד ושהקורא לא מכיר, נקראים כ-`needs_investigation`.
+
+**`error.message`:** טקסט של השירות, לא גוף גולמי ממי שמתחת. השגיאות שהשירות מכיר מקבלות הודעה קבועה שאומרת מה נכשל
+ואיפה, למשל `POST <url> was refused with status 409 (name_already_exists)`. הגוף המלא של הריליי, של הקלאסטר ושל
+action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שגיאה לא צפויה, שאף טיפול לא תפס, עולה עם הפרטים הגולמיים שלה:
+`unexpected <type>: <text>` (`api.unexpected_error_message`).
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
 - ב-`rolled_back`: רשימה ריקה.
@@ -298,6 +315,10 @@
 - **בכל השאר** (שאילתת הסטטוס, כתובת לא קיימת, method שגוי): `{"trace_id", "error"}`, בלי `status`, כי אין פעולה שנדחתה.
   `trace_id` הוא של הבקשה עצמה: מה-`traceparent`, או, בלי `traceparent` תקין, של ה-trace שהשירות פתח לבקשה.
 
+גם כאן יש ב-`error` את `kind` (סעיף 4). `validation_error` הוא `customer_fixable`, `operation_not_found` הוא
+`known_failure`, ו-`not_found`, `method_not_allowed` ו-`http_error` הם `needs_investigation`, כי הם מצביעים על באג
+בצד הקורא.
+
 ב-`validation_error` יש גם `error.details`: רשימה של `{location, message}` לכל שדה שלא עומד בחוזה, למשל
 `body.spec.database.memory_size` או `header.traceparent`.
 
@@ -311,7 +332,7 @@
 | `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
 | `http_error` | מיד, עם ה-status של ה-HTTP | שגיאת HTTP אחרת של ה-framework, שאין לה קוד משלה |
 | `configuration_error` | מיד `500`, או בסטטוס | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד. בסטטוס רק כרשת ביטחון: רשת בלי ריליי נדחית כבר בעלייה |
-| `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. מיד: `message` קבוע (`internal error`). בסטטוס: כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרת (קריסה, record שלא נקרא, תוצאה שלא נבנתה) ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
+| `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `unexpected <type>: <text>`, גם מיד וגם בסטטוס. שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרי קריסה, record שלא נקרא או צעד שנעצר בלי שגיאה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
 | `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
 | `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
