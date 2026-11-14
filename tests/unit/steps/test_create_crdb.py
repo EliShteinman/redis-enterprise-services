@@ -10,7 +10,11 @@ from redis_enterprise_services.cluster_access.cluster_credentials import Cluster
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskTimeoutError
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterRejectedRequestError,
+    CrdbTaskTimeoutError,
+    UnreadableClusterResponseError,
+)
 from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
 from redis_enterprise_services.steps.create_crdb import CreateCrdbInput, CreateCrdbStep, CreatedCrdb
 
@@ -112,3 +116,8 @@ def test_a_creation_sent_again_joins_the_task_that_already_reached_the_cluster()
     harness.step.execute(step_input=STEP_INPUT, keep_result=harness.keep)
 
     assert harness.kept == [CreatedCrdb(guid=GUID)]
+
+
+def test_a_task_without_a_status_is_an_unreadable_answer() -> None:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError):
+        StepHarness().find_outcome_with_task(task={"crdb_guid": GUID})
