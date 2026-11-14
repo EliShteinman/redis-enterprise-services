@@ -5,7 +5,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
 from redis_enterprise_services.config.crdb_settings import CrdbSettings
 from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
-from redis_enterprise_services.crdbs.models import Crdb
+from redis_enterprise_services.crdbs.models import Crdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
@@ -58,6 +58,21 @@ class RestCrdbRepository(CrdbRepository):
     ) -> None:
         self._send_task(
             target=target, method="PATCH", path=self._item_path(guid=guid), body=changes, task_id=task_id
+        )
+
+    def start_instances_update(
+        self,
+        *,
+        target: ClusterTarget,
+        guid: str,
+        values_by_instance: dict[int, dict[str, JsonValue]],
+        task_id: str,
+    ) -> None:
+        self.start_update(
+            target=target,
+            guid=guid,
+            changes=instances_change(values_by_instance=values_by_instance).model_dump(mode="json"),
+            task_id=task_id,
         )
 
     def start_deletion(self, *, target: ClusterTarget, guid: str, task_id: str) -> None:

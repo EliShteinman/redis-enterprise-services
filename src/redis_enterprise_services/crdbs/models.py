@@ -26,3 +26,21 @@ class Crdb(BaseModel):
 
     def instance_on(self, *, api_url: str) -> CrdbInstance | None:
         return next((instance for instance in self.instances if instance.cluster.url == api_url), None)
+
+
+class CrdbInstanceChange(BaseModel):
+    id: int
+    db_config: dict[str, JsonValue]
+
+
+class CrdbInstancesChange(BaseModel):
+    instances: list[CrdbInstanceChange]
+
+
+def instances_change(*, values_by_instance: dict[int, dict[str, JsonValue]]) -> CrdbInstancesChange:
+    return CrdbInstancesChange(
+        instances=[
+            CrdbInstanceChange(id=instance_id, db_config=values)
+            for instance_id, values in values_by_instance.items()
+        ]
+    )

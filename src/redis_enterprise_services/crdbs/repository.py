@@ -20,4 +20,13 @@ class CrdbRepository(Protocol):
         self, *, target: ClusterTarget, guid: str, changes: dict[str, JsonValue], task_id: str
     ) -> None: ...
 
+    def start_instances_update(
+        self,
+        *,
+        target: ClusterTarget,
+        guid: str,
+        values_by_instance: dict[int, dict[str, JsonValue]],
+        task_id: str,
+    ) -> None: ...
+
     def start_deletion(self, *, target: ClusterTarget, guid: str, task_id: str) -> None: ...
