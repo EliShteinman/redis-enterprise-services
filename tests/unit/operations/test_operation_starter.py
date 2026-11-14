@@ -33,9 +33,12 @@ class OperationStarterHarness:
             operation_heartbeats=self.operation_heartbeats,
             public_errors=PublicErrors(
                 settings=OperationSettings(
-                    public_code_by_internal_code={}, public_codes_with_cluster_details=frozenset()
+                    public_code_by_internal_code={},
+                    public_codes_with_cluster_details=frozenset(),
+                    error_kind_by_code={},
                 ),
                 internal_error_message="internal error",
+                unexpected_error_message="unexpected {error_type}: {error}",
             ),
         )
 
