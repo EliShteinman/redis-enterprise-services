@@ -113,7 +113,8 @@
 ב-`error.message`.
 
 **ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`config/database_defaults.yaml`).
-אם אין לשירות ברירת מחדל לשדה, ה-DB נוצר עם ברירת המחדל של Redis. היום:
+השירות שולח במפורש כל הגדרה שחשובה לו, גם כשהיא שווה לברירת המחדל של Redis, כדי ששינוי של Redis, או ברירת מחדל שונה
+ל-DB ול-CRDB, לא ישנו התנהגות בלי תכנון. override יכול לבחור לפי תוויות הקלאסטר וגם לפי `active_active`. היום:
 
 | שדה | ברירת מחדל |
 |---|---|
@@ -124,6 +125,13 @@
 | `snapshot_policy` | `[{"secs": 3600, "writes": 1}]`, רק כש-`data_persistence` הוא `snapshot` |
 | `shards_placement` | `dense` |
 | `proxy_policy` | `all-master-shards` |
+| `sharding` | `false` |
+| `shards_count` | `1` |
+| `slave_ha` | `false` |
+| `eviction_policy` | `volatile-lru`, וב-Active-Active `noeviction` (מה ש-Redis נותן לכל סוג, נשלח במפורש) |
+
+ב-Active-Active נשלחות במפורש גם ההגדרות של ה-CRDB עצמו (`config/crdb.yaml`, `creation`): `causal_consistency: false`,
+`encryption: false`, ו-`compression: 3` בכל instance.
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
 כך גם `sharding: true` בלי `shard_key_regex` (Redis דוחה אותו), ו-`shard_key_regex` או `shards_count` מעל 1 בלי
