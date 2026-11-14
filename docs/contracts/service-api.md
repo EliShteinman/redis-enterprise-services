@@ -82,7 +82,7 @@
 הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-Active-Active, אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
-- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`.
+- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר, לאותו שם קלאסטר או לאותו host ⇐ `422 duplicate_sites`.
 - ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
@@ -224,7 +224,7 @@
     "active_active": true,
     "crdb_guid": "d71cefce-4e31-41fd-b654-37cbb2f39a01",
     "crdb": {
-      "default_db_config": {"name": "orders", "memory_size": 1073741824, "replication": true, "eviction_policy": "noeviction", "port": 12000},
+      "default_db_config": {"name": "orders", "memory_size": 1073741824, "replication": true, "eviction_policy": "noeviction", "default_user": true, "tags": ["…"], "port": 12000, "tls_mode": "disabled", "…": "…"},
       "causal_consistency": false,
       "encryption": false,
       "featureset_version": 12,
@@ -250,7 +250,7 @@
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
-| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config` בלי סיסמאות (ה-CRDB שומר רק מה שנשלח, ולכן זו כל הגדרה שהשירות קבע), `causal_consistency`, `encryption`, `featureset_version`, `protocol_version`, ולכל אתר `cluster_url`, `instance_id` ו-`compression` |
+| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency`, `encryption`, `featureset_version`, `protocol_version`, ולכל אתר `cluster_url`, `instance_id` ו-`compression` |
 | `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
 | `clusters[].cluster` | שם הקלאסטר מהקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
@@ -376,7 +376,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
 | `mixed_networks` | `customer_fixable` | מיד, `422` | אתרי Active-Active ביותר מרשת אחת |
-| `duplicate_sites` | `customer_fixable` | מיד, `422` | שני אתרי Active-Active שמתורגמים לאותו קלאסטר |
+| `duplicate_sites` | `customer_fixable` | מיד, `422` | שני אתרי Active-Active שמתורגמים לאותו קלאסטר, לאותו שם קלאסטר או לאותו host |
 | `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
