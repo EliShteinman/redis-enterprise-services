@@ -1,0 +1,9 @@
+from typing import Protocol
+
+
+class SagaLock(Protocol):
+    def acquire(self, *, lock_keys: list[str], owner: str) -> None: ...
+
+    def release(self, *, lock_keys: list[str], owner: str) -> None: ...
+
+    def raise_unless_held(self, *, lock_keys: list[str], owner: str) -> None: ...
