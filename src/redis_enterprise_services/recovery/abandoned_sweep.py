@@ -39,7 +39,7 @@ class AbandonedSweep:
 
 def operation_after_crash(*, trace_id: str, saga: StoredSaga | None, error: PublicError) -> Operation:
     status: OperationStatus = status_after_crash(saga=saga)
-    return Operation(
+    return Operation.failed(
         trace_id=trace_id,
         status=status,
         error=error,
