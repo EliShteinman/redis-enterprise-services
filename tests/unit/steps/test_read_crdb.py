@@ -60,7 +60,11 @@ def test_tags_the_cluster_marked_as_not_system_still_match_what_was_sent() -> No
         "port": 12000,
     }
 
-    assert "authentication_redis_pass" not in read_with(stored=stored).default_db_config
+    assert read_with(stored=stored).default_db_config["tags"] == stored["tags"]
+
+
+def test_the_crdb_settings_are_kept_without_secrets() -> None:
+    assert "authentication_redis_pass" not in read_with(stored={**SENT, "port": 12000}).default_db_config
 
 
 def test_a_sent_field_the_crdb_does_not_hold_is_an_incomplete_crdb() -> None:

@@ -26,6 +26,13 @@ class CrdbTaskWaiter:
         self._settings: CrdbTaskSettings = settings
 
     def wait_until_finished(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
+        try:
+            return self._wait(target=target, task_id=task_id)
+        except CrdbTaskTimeoutError as error:
+            error.cluster_url = error.cluster_url or target.api_url
+            raise
+
+    def _wait(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
         return self._status_polling.wait_for(
             read=lambda: self.read_task(target=target, task_id=task_id),
             fields_of=whole_body,

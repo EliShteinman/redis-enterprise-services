@@ -6,13 +6,16 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
 from redis_enterprise_services.config.crdb_settings import CrdbSettings
 from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
-from redis_enterprise_services.crdbs.models import Crdb, instances_change
+from redis_enterprise_services.crdbs.models import Crdb, NamedCrdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 
 CRDB: TypeAdapter[Crdb] = TypeAdapter(Crdb)
+NAMED_CRDB_LIST: TypeAdapter[list[NamedCrdb]] = TypeAdapter(
+    list[NamedCrdb], config=ConfigDict(hide_input_in_errors=True)
+)
 CRDB_LIST: TypeAdapter[list[Crdb]] = TypeAdapter(list[Crdb], config=ConfigDict(hide_input_in_errors=True))
 
 
@@ -28,11 +31,9 @@ class RestCrdbRepository(CrdbRepository):
         self._database_body_builder: CreationBodyBuilder[NewDatabase] = database_body_builder
         self._settings: CrdbSettings = settings
 
-    def start_creation(
-        self, *, coordinator: ClusterTarget, members: list[ClusterTarget], database: NewDatabase, task_id: str
-    ) -> None:
+    def start_creation(self, *, members: list[ClusterTarget], database: NewDatabase, task_id: str) -> None:
         self._send_task(
-            target=coordinator,
+            target=members[0],
             method="POST",
             path=self._settings.collection_path,
             body=crdb_creation_body(
@@ -53,6 +54,21 @@ class RestCrdbRepository(CrdbRepository):
         )
 
     def list_crdbs(self, *, target: ClusterTarget) -> list[Crdb]:
+        return parse_cluster_body(
+            body=self._listed(target=target),
+            adapter=CRDB_LIST,
+            message_prefix="the CRDB list came back unreadable at",
+        )
+
+    def list_crdb_names(self, *, target: ClusterTarget) -> set[str]:
+        named: list[NamedCrdb] = parse_cluster_body(
+            body=self._listed(target=target),
+            adapter=NAMED_CRDB_LIST,
+            message_prefix="the CRDB list came back without readable names at",
+        )
+        return {crdb.name for crdb in named}
+
+    def _listed(self, *, target: ClusterTarget) -> JsonValue:
         body: JsonValue = self._cluster_api_caller.send(
             target=target, method="GET", path=self._settings.collection_path
         ).body
@@ -60,11 +76,7 @@ class RestCrdbRepository(CrdbRepository):
             raise UnreadableClusterResponseError(
                 message=f"the CRDB list came back without {self._settings.list_field}"
             )
-        return parse_cluster_body(
-            body=body[self._settings.list_field],
-            adapter=CRDB_LIST,
-            message_prefix="the CRDB list came back unreadable at",
-        )
+        return body[self._settings.list_field]
 
     def start_update(
         self, *, target: ClusterTarget, guid: str, changes: dict[str, JsonValue], task_id: str
