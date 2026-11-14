@@ -67,11 +67,13 @@ POST /v1/databases/create
      overrides:
        - when: {environment: DEV}
          values: {replication: false}
+       - when: {active_active: true}
+         values: {eviction_policy: noeviction}
    ```
 
    - הסדר: `values`, אחריהן כל דריסה שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף השדות שהבקשה
      שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
-   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
+   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type`, `cluster_name` ו-`active_active`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - **שדות של מצב שמירה:** `aof_policy` שייך ל-`aof` ו-`snapshot_policy` ל-`snapshot`. אחרי המיזוג נקבע
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` שלו אם הבקשה
@@ -79,6 +81,10 @@ POST /v1/databases/create
      שלהם, אחרת `422 validation_error`.
    - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות. כך גם ברירות המחדל שחלות יחד
      על כל קלאסטר בקונפיג: שתי דריסות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
+
+4. **ב-Active-Active:** כל אתר עובר את שלבים 2 ו-3 לבד. אחר כך: כל האתרים באותה רשת (אחרת `mixed_networks`), כל אתר
+   על קלאסטר אחר, בשם אחר וב-host אחר (אחרת `duplicate_sites`), וכל האתרים יוצאים עם אותן הגדרות (אחרת
+   `configuration_error`, עם שמות השדות השונים). סעיף 6.
 
 כל מה שבשלב הזה לא נוגע בקלאסטר, ולכן כשל בו הוא תשובה מיידית, ושום דבר לא נשמר.
 
@@ -116,10 +122,10 @@ POST /v1/databases/create
 - שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - **המתנה בקלאסטר:** כל המתנה קוראת את המצב כל `poll_interval_seconds` עד `timeout_seconds` (`database.wait`,
-  `action.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
+  `action.wait`, `crdb.task.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
   או לא ענה, 5xx של הקלאסטר, או קוד מ-`cluster_api.transient_error_codes`) נרשמת כ-WARNING, והקריאה חוזרת. כל שגיאה
-  אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout` או
-  `database_deletion_timeout` (בחוזה: `cluster_timeout`). אם אף קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה
+  אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout`,
+  `database_deletion_timeout` או `crdb_task_timeout` (בחוזה: `cluster_timeout`). אם אף קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה
   האחרונה במקום ה-timeout, למשל `cluster_unavailable`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
@@ -209,7 +215,7 @@ POST /v1/databases/create
   `sharding`, `shard_key_regex`) לא יכולים להיות שונים.
 - **אין dry_run:** יצירה שנכשלת בשלב הבדיקה של הקלאסטר (מקום, פורט, פרטי גישה), גם באתר אחד, לא משאירה כלום באף אתר
   ומחזירה אותה שגיאה שה-dry_run היה מחזיר, ולכן בדיקה מראש לא מוסיפה. אתר שנופל באמצע היצירה הוא מקרה אחר (הסעיף הבא).
-- **אתר שנופל באמצע יצירה** (ה-task נשאר `started`): אחרי זמן ההמתנה מהקונפיג ⇐ `requires_manual_intervention`. לא
+- **אתר שנופל באמצע יצירה** (ה-task נשאר `started`): אחרי `crdb.task.wait.timeout_seconds` (600 שניות) ⇐ `requires_manual_intervention`. לא
   שולחים cancel (החלטת הבעלים): בניסוי ישן cancel של יצירה עבד ומחק את ה-bdb החלקי, אבל cancel של שינוי מבנה אחר
   (הסרת אתר) השאיר CRDB שאי אפשר למחוק, ולכן לא מסתכנים. אדם מחליט לפי ה-task id ששמור ב-record.
 - **task id קבוע:** ה-`X-Task-ID` נגזר מה-saga ומהצעד. בקשה שנשלחת שוב עם אותו id נענית `406 job_exists`, כלומר
@@ -219,7 +225,7 @@ POST /v1/databases/create
 - **בדיקת שמות:** שם ה-DB, היוזרים, ה-ACLs וה-roles פנויים בכל אתר, ושם ה-DB פנוי גם בין ה-CRDBs.
 - **רשת:** כל האתרים באותה רשת. אחרת ⇐ נדחה. סביבה מעורבת לא נבדקת (באחריות השירות שבונה את הבקשות). תוצאה של
   ההחלטה: אתר DEV ואתר PROD באותה רשת מקבלים ברירות מחדל שונות (`replication`), והבקשה נגמרת ב-`500
-  configuration_error`, למרות שהטעות בבקשה. מספר האתרים לא מוגבל, גם אתר אחד (CRDB עם instance אחד) מותר. שני אתרים
+  configuration_error`, למרות שהטעות בבקשה. מספר האתרים מוגבל רק בקלאסטר: `id` של instance מגיע עד 31. גם אתר אחד (CRDB עם instance אחד) מותר. שני אתרים
   עם אותו קלאסטר, אותו שם קלאסטר או אותו host ⇐ `422 duplicate_sites`. הקלאסטר הראשון ברשימה הוא המתאם. ה-FQDN (`name` של instance) נלקח מה-URL של הקלאסטר.
 - **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. `PATCH /v1/crdbs` נשלח בלי `cluster-state-id`, כך שההרשאות
   ב-AA נשענות על הנעילה בלבד, והנעילה מגינה רק מפני הרצות של השירות הזה, לא מפני שינוי מה-UI או מכלי אחר.
@@ -229,5 +235,7 @@ POST /v1/databases/create
 - **בדיקה מול המעבדה (2026-11-14):** יצירה דרך השירות על שני אתרים עם יוזר עברה תוך כ-21 שניות; ACL שנדחה ביטל הכל,
   כולל ה-CRDB, בלי שאריות; שום בקשה או תשובה לא נחסמה בחומת האש.
 - **tags:** דרך ה-CRDB (`default_db_config.tags`), לא דרך ה-bdb המקומי.
-- **הסנכרון בין האתרים** רץ ישירות בין הקלאסטרים, לא דרך cluster-relay. רק הבקשות של השירות עוברות דרכו. הוא דורש שכל
+- **הסנכרון בין האתרים** רץ ישירות בין הקלאסטרים, לא דרך cluster-relay. רק הבקשות של השירות עוברות דרכו. גם
+  `api_url` מהקונפיג נשלח כ-URL של ה-instance, והקלאסטר המתאם קורא אליו ישירות, ולכן כל קלאסטר חייב להגיע ל-`api_url`
+  של כל האחרים. הוא דורש שכל
   קלאסטר יפענח את `redis-<port>.<fqdn>` של האחרים.
