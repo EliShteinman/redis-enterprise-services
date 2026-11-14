@@ -1,6 +1,8 @@
 import logging
 from uuid import UUID
 
+from pydantic import ValidationError
+
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
@@ -182,7 +184,11 @@ def created_crdb_guid_or_none(*, record: SagaRecord, planned: PlannedResource) -
     if planned.uid_step_key != CRDB_STEP_KEY:
         return None
     try:
-        return UUID(CreatedCrdb.model_validate(obj=record.step(key=planned.uid_step_key).result).guid)
+        guid: str = CreatedCrdb.model_validate(obj=record.step(key=planned.uid_step_key).result).guid
+    except ValidationError:
+        return None
+    try:
+        return UUID(guid)
     except ValueError:
-        logger.warning(msg=f"step {planned.uid_step_key} holds no readable CRDB guid")
+        logger.warning(msg=f"step {planned.uid_step_key} holds {guid!r}, which is not a CRDB guid")
         return None
