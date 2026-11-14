@@ -255,16 +255,18 @@
 | `kind` | משמעות |
 |---|---|
 | `customer_fixable` | הלקוח מבין ומתקן לבד, למשל שם תפוס או שם לא חוקי |
-| `known_failure` | התמיכה מבינה את הסיבה מהקוד, למשל קלאסטר לא זמין. אחרי ביטול מלא: לנסות שוב מאוחר יותר |
+| `known_failure` | התמיכה מבינה את הסיבה מהקוד, למשל קלאסטר לא זמין. ב-`cluster_unavailable` וב-`cluster_timeout` אחרי ביטול מלא, אפשר לנסות שוב מאוחר יותר |
 | `needs_investigation` | צריך לעקוב אחרי ה-trace לאורך השרשרת: השירות, הריליי והקלאסטר |
 
-`requires_manual_intervention` הוא תמיד `needs_investigation`, בלי קשר לקוד. קוד בלי סוג בקונפיג, וגם סוג שיתווסף
-בעתיד ושהקורא לא מכיר, נקראים כ-`needs_investigation`.
+`requires_manual_intervention` הוא תמיד `needs_investigation`, בלי קשר לקוד. קוד שאין לו סוג בקונפיג מתפרסם
+כ-`needs_investigation`. קורא שמקבל סוג שהוא לא מכיר (סוג שיתווסף בעתיד) צריך לקרוא אותו כ-`needs_investigation`. הסוג
+של כל קוד בטבלה שבסעיף 6.
 
 **`error.message`:** טקסט של השירות, לא גוף גולמי ממי שמתחת. השגיאות שהשירות מכיר מקבלות הודעה קבועה שאומרת מה נכשל
 ואיפה, למשל `POST <url> was refused with status 409 (name_already_exists)`. הגוף המלא של הריליי, של הקלאסטר ושל
 action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שגיאה לא צפויה, שאף טיפול לא תפס, עולה עם הפרטים הגולמיים שלה:
-`unexpected <type>: <text>` (`api.unexpected_error_message`).
+`unexpected <type>: <text>` (`api.unexpected_error_message`). זו החלטה: הטקסט הוא של השגיאה עצמה, בלי סינון, ולכן
+הוא יכול להכיל ערכים, למשל שגיאת אימות של pydantic שמציגה את הקלט שלה.
 
 **`not_rolled_back[]`:** מה שנשאר בקלאסטר.
 - ב-`rolled_back`: רשימה ריקה.
@@ -315,29 +317,28 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 - **בכל השאר** (שאילתת הסטטוס, כתובת לא קיימת, method שגוי): `{"trace_id", "error"}`, בלי `status`, כי אין פעולה שנדחתה.
   `trace_id` הוא של הבקשה עצמה: מה-`traceparent`, או, בלי `traceparent` תקין, של ה-trace שהשירות פתח לבקשה.
 
-גם כאן יש ב-`error` את `kind` (סעיף 4). `validation_error` הוא `customer_fixable`, `operation_not_found` הוא
-`known_failure`, ו-`not_found`, `method_not_allowed` ו-`http_error` הם `needs_investigation`, כי הם מצביעים על באג
-בצד הקורא.
+גם כאן יש ב-`error` את `kind` (סעיף 4), לפי הטבלה למטה. `not_found`, `method_not_allowed` ו-`http_error` הם
+`needs_investigation`, כי הם מצביעים על באג בצד הקורא.
 
 ב-`validation_error` יש גם `error.details`: רשימה של `{location, message}` לכל שדה שלא עומד בחוזה, למשל
 `body.spec.database.memory_size` או `header.traceparent`.
 
-| `code` | איפה | מתי |
-|---|---|---|
-| `validation_error` | מיד, `422` | הבקשה לא עומדת בחוזה |
-| `invalid_name` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
-| `no_matching_cluster` | מיד, `422` | אין קלאסטר שמתאים ליעד |
-| `not_found` | מיד, `404` | כתובת לא קיימת |
-| `operation_not_found` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
-| `method_not_allowed` | מיד, `405` | method שהכתובת לא מקבלת |
-| `http_error` | מיד, עם ה-status של ה-HTTP | שגיאת HTTP אחרת של ה-framework, שאין לה קוד משלה |
-| `configuration_error` | מיד `500`, או בסטטוס | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד. בסטטוס רק כרשת ביטחון: רשת בלי ריליי נדחית כבר בעלייה |
-| `internal_error` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `unexpected <type>: <text>`, גם מיד וגם בסטטוס. שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, כשהשגיאה הגיעה מצעד, ה-`message` שלו; אחרי קריסה, record שלא נקרא או צעד שנעצר בלי שגיאה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
-| `name_taken` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
-| `resources_locked` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
-| `cluster_unavailable` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
-| `cluster_timeout` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
+| `code` | `kind` | איפה | מתי |
+|---|---|---|---|
+| `validation_error` | `customer_fixable` | מיד, `422` | הבקשה לא עומדת בחוזה |
+| `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
+| `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
+| `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
+| `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
+| `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
+| `http_error` | `needs_investigation` | מיד, עם ה-status של ה-HTTP | שגיאת HTTP אחרת של ה-framework, שאין לה קוד משלה |
+| `configuration_error` | `known_failure` | מיד `500`, או בסטטוס | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד. בסטטוס רק כרשת ביטחון: רשת בלי ריליי נדחית כבר בעלייה |
+| `internal_error` | `needs_investigation` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `unexpected <type>: <text>`, גם מיד וגם בסטטוס. שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, ה-`message` של השגיאה שעצרה (של הצעד, או של השגיאה שקטעה את הריצה כשלצעד אין שגיאה משלו, גם כשה-record לא נקרא); אחרי קריסה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
+| `name_taken` | `customer_fixable` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
+| `resources_locked` | `known_failure` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
+| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
+| `cluster_unavailable` | `known_failure` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
+| `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
 
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
