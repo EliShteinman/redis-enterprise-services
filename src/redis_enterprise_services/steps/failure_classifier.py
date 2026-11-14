@@ -4,6 +4,8 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
+    CrdbTaskFailedError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
@@ -27,6 +29,7 @@ REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], .
 
 CLUSTER_REPORTED_FAILURE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionFailedError,
+    CrdbTaskFailedError,
     DatabaseCreationFailedError,
     IncompleteClusterObjectError,
 )
@@ -44,6 +47,7 @@ TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     EdgeError,
     ClusterActionTimeoutError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseDeletionTimeoutError,
     UnreadableClusterResponseError,

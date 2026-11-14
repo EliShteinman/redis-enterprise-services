@@ -1,0 +1,99 @@
+from unittest.mock import MagicMock, create_autospec
+
+import pytest
+from pydantic import JsonValue, SecretStr
+
+from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
+from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
+from redis_enterprise_services.cluster.models import ClusterAddress
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.crdbs.models import Crdb
+from redis_enterprise_services.crdbs.repository import CrdbRepository
+from redis_enterprise_services.exceptions.cluster import UpdateOutcomeUnclearError
+from redis_enterprise_services.steps.update_crdb_instances import (
+    CrdbInstancesSnapshot,
+    UpdateCrdbInstancesInput,
+    UpdateCrdbInstancesStep,
+)
+
+NEW_PERMISSIONS: JsonValue = [{"role_uid": 3, "redis_acl_uid": 3}]
+STEP_INPUT: UpdateCrdbInstancesInput = UpdateCrdbInstancesInput(
+    coordinator=ClusterAddress(network="net-a", api_url="https://cluster-a:9443"),
+    guid="g",
+    values_by_instance={1: {"roles_permissions": NEW_PERMISSIONS}},
+    task_id="t",
+)
+BEFORE: CrdbInstancesSnapshot = CrdbInstancesSnapshot(values_by_instance={1: {"roles_permissions": []}})
+
+
+def crdb_holding(*, db_config: dict[str, JsonValue]) -> Crdb:
+    return Crdb.model_validate(
+        obj={
+            "guid": "g",
+            "name": "orders",
+            "default_db_config": {},
+            "instances": [{"id": 1, "cluster": {"url": "https://cluster-a:9443"}, "db_config": db_config}],
+        }
+    )
+
+
+def step_reading(*, db_config: dict[str, JsonValue]) -> tuple[UpdateCrdbInstancesStep, MagicMock]:
+    repository: MagicMock = create_autospec(spec=CrdbRepository, instance=True)
+    repository.read.return_value = crdb_holding(db_config=db_config)
+    step: UpdateCrdbInstancesStep = UpdateCrdbInstancesStep(
+        repository=repository,
+        task_waiter=create_autospec(spec=CrdbTaskWaiter, instance=True),
+        target_resolver=SharedCredentialsTargetResolver(
+            credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
+        ),
+        order_insensitive_fields=frozenset({"roles_permissions"}),
+        new_task_id=lambda: "undo",
+    )
+    return step, repository
+
+
+def ignore(result: CrdbInstancesSnapshot) -> None:
+    return None
+
+
+def test_an_instance_without_permissions_is_snapshotted_as_an_empty_list() -> None:
+    step, _ = step_reading(db_config={})
+    kept: list[CrdbInstancesSnapshot] = []
+
+    step.execute(step_input=STEP_INPUT, keep_result=lambda result: kept.append(result))
+
+    assert kept == [BEFORE]
+
+
+@pytest.mark.parametrize(
+    argnames=("db_config", "found"),
+    argvalues=[
+        pytest.param({"roles_permissions": NEW_PERMISSIONS}, BEFORE, id="applied"),
+        pytest.param({}, None, id="not-applied"),
+    ],
+)
+def test_the_outcome_is_found_by_what_the_instances_hold(
+    db_config: dict[str, JsonValue], found: CrdbInstancesSnapshot | None
+) -> None:
+    step, _ = step_reading(db_config=db_config)
+
+    assert (
+        step.find_outcome(step_input=STEP_INPUT, kept_result=BEFORE, keep_result_if_none_kept=ignore) == found
+    )
+
+
+def test_instances_holding_something_else_need_manual_intervention() -> None:
+    step, _ = step_reading(db_config={"roles_permissions": [{"role_uid": 9, "redis_acl_uid": 9}]})
+
+    with pytest.raises(expected_exception=UpdateOutcomeUnclearError):
+        step.find_outcome(step_input=STEP_INPUT, kept_result=BEFORE, keep_result_if_none_kept=ignore)
+
+
+def test_undoing_puts_the_old_values_back_on_each_instance() -> None:
+    step, repository = step_reading(db_config={"roles_permissions": NEW_PERMISSIONS})
+
+    step.compensate(step_input=STEP_INPUT, result=BEFORE)
+
+    assert (
+        repository.start_instances_update.call_args.kwargs["values_by_instance"] == BEFORE.values_by_instance
+    )

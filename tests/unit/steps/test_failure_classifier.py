@@ -5,6 +5,8 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
+    CrdbTaskFailedError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
@@ -53,6 +55,8 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         (DatabaseActivationTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
         (DatabaseDeletionTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
         (UnreadableClusterResponseError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
+        (CrdbTaskFailedError(message="m", cluster_error_code="db_create_failed"), FailureCategory.FAILED),
+        (CrdbTaskTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
     ],
 )
 def test_a_step_error_gets_its_failure_category(
