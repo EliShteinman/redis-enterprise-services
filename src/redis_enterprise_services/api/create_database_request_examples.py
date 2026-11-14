@@ -42,6 +42,24 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
             },
         },
     },
+    "active_active": {
+        "summary": "Active-Active on two sites, with one user",
+        "description": "One database across every listed site, all on one network. The first site "
+        "coordinates the creation. The service creates the user, its ACL and its role on every site.",
+        "value": {
+            "target": {
+                "active_active": True,
+                "sites": [
+                    {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"},
+                    {"network": "net-a", "site": "dc2", "environment": "PROD", "cluster": "generic"},
+                ],
+            },
+            "spec": {
+                "database": {"name": "orders", "memory_size": 1073741824},
+                "users": [{"name": "app", "password": "S3cure-Passw0rd", "acl_rule": "+@all ~orders:*"}],
+            },
+        },
+    },
     "snapshot": {
         "summary": "Snapshot persistence with its own rules",
         "description": "snapshot_policy is sent only together with data_persistence snapshot.",
