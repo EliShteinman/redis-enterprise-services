@@ -3,6 +3,7 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
 from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY, PERMISSIONS_STEP_KEY, on_site
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.planned_resources import (
@@ -25,7 +26,7 @@ def active_active_planned_resources(
     *, spec: DatabaseSpec, resource_naming: UserResourceNaming, clusters: list[ConfiguredCluster]
 ) -> dict[str, SitePlannedResource]:
     database_name: str = spec.database.name
-    coordinator: ConfiguredCluster = clusters[0]
+    coordinator: ConfiguredCluster = coordinator_of(clusters=clusters)
     planned: dict[str, SitePlannedResource] = {
         CRDB_STEP_KEY: SitePlannedResource(
             cluster=coordinator,

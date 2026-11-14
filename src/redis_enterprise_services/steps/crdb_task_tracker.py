@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
-from redis_enterprise_services.cluster.json_body import string_field
+from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
 from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
@@ -39,8 +39,12 @@ class CrdbTaskTracker:
             logger.info(msg=f"CRDB task {task_id} is unknown to the cluster")
             return None
 
-    def status_of(self, *, task: JsonValue) -> str | None:
-        return string_field(body=task, name=self._status_field)
+    def status_of(self, *, task: JsonValue) -> str:
+        return required_string_field(
+            body=task,
+            name=self._status_field,
+            missing_message=f"a CRDB task answered without {self._status_field}",
+        )
 
     def is_finished(self, *, task: JsonValue) -> bool:
         return self.status_of(task=task) == self._settings.completed_status

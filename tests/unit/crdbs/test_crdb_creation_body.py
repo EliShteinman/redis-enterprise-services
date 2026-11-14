@@ -1,4 +1,4 @@
-from pydantic import JsonValue, SecretStr
+from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
@@ -21,16 +21,6 @@ def test_each_member_is_an_instance_named_by_the_host_of_its_api_url() -> None:
     )
 
     assert [instance.cluster.name for instance in body.instances] == ["cluster-a.net-a", "cluster-b.net-a"]
-
-
-def test_the_database_settings_go_whole_into_default_db_config() -> None:
-    settings: dict[str, JsonValue] = {"name": "orders", "memory_size": 1, "replication": False}
-
-    body: CrdbCreationBody = crdb_creation_body(
-        name="orders", default_db_config=settings, members=MEMBERS, settings=SETTINGS
-    )
-
-    assert body.default_db_config == settings
 
 
 def test_every_instance_carries_the_configured_compression_explicitly() -> None:

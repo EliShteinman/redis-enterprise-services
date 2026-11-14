@@ -12,6 +12,7 @@ from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
 from redis_enterprise_services.planning.cluster_address import address_of
+from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
 from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.creation_inputs import (
     creation_lock_keys,
@@ -127,7 +128,7 @@ class ActiveActiveCreationPlanner:
             build_input=partial(
                 fixed_input,
                 step_input=CreateCrdbInput(
-                    coordinator=address_of(cluster=clusters[0]),
+                    coordinator=address_of(cluster=coordinator_of(clusters=clusters)),
                     members=[address_of(cluster=cluster) for cluster in clusters],
                     database=database,
                     task_id=crdb_task_id(saga_id=saga_id, step_key=CRDB_STEP_KEY),
@@ -216,7 +217,7 @@ class ActiveActiveCreationPlanner:
                 step=self._update_instances_step,
                 build_input=partial(
                     self._permissions_input,
-                    coordinator=address_of(cluster=clusters[0]),
+                    coordinator=address_of(cluster=coordinator_of(clusters=clusters)),
                     clusters=clusters,
                     spec=spec,
                     task_id=crdb_task_id(saga_id=saga_id, step_key=PERMISSIONS_STEP_KEY),
@@ -271,7 +272,7 @@ class ActiveActiveCreationPlanner:
             step=self._read_crdb_step,
             build_input=partial(
                 read_crdb_input,
-                coordinator=address_of(cluster=clusters[0]),
+                coordinator=address_of(cluster=coordinator_of(clusters=clusters)),
                 expected_config=without_fields(
                     fields=self._database_body_builder.creation_body(spec=database), names=self._secret_fields
                 ),
