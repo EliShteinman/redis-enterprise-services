@@ -87,7 +87,9 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
 
     def compensate(self, *, step_input: UpdateCrdbInstancesInput, result: CrdbInstancesSnapshot) -> None:
         logger.info(msg=f"restoring the instance values of CRDB {step_input.guid}")
-        self._task_tracker.settle(target=self._coordinator(step_input=step_input), task_id=step_input.task_id)
+        undo_id: str = undo_task_id(task_id=step_input.task_id)
+        for task_id in (step_input.task_id, undo_id):
+            self._task_tracker.settle(target=self._coordinator(step_input=step_input), task_id=task_id)
         match self._held(step_input=step_input, old=result):
             case HeldValues.OLD | HeldValues.BOTH:
                 logger.info(msg=f"CRDB {step_input.guid} already has its old instance values")
@@ -95,7 +97,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                 self._apply(
                     step_input=step_input,
                     values_by_instance=result.values_by_instance,
-                    task_id=undo_task_id(task_id=step_input.task_id),
+                    task_id=undo_id,
                 )
             case HeldValues.NEITHER:
                 raise UpdateOutcomeUnclearError(

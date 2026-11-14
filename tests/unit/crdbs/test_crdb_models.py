@@ -1,7 +1,12 @@
+import pytest
+
 from redis_enterprise_services.crdbs.models import Crdb
 
 
-def test_the_local_instance_is_found_by_the_cluster_api_url() -> None:
+@pytest.mark.parametrize(
+    argnames="api_url", argvalues=["https://cluster-a.net-a:9443", "HTTPS://Cluster-A.net-a:9443"]
+)
+def test_the_local_instance_is_found_by_the_cluster_api_url(api_url: str) -> None:
     crdb: Crdb = Crdb.model_validate(
         obj={
             "guid": "g",
@@ -14,4 +19,4 @@ def test_the_local_instance_is_found_by_the_cluster_api_url() -> None:
         }
     )
 
-    assert crdb.instance_on(api_url="https://cluster-a.net-a:9443") == crdb.instances[0]
+    assert crdb.instance_on(api_url=api_url) == crdb.instances[0]

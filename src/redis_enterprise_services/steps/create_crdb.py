@@ -55,6 +55,7 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
         members: list[ClusterTarget] = [self._target(address=member) for member in step_input.members]
         self._task_tracker.send_or_join(
             send=lambda: self._repository.start_creation(
+                coordinator=coordinator,
                 members=members,
                 database=step_input.database,
                 task_id=step_input.task_id,

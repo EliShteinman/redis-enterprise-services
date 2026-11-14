@@ -21,11 +21,23 @@ def reject_an_invalid_port(url: str) -> str:
     return url
 
 
+def reject_a_missing_host(url: str) -> str:
+    if not urlsplit(url).hostname:
+        raise ValueError(f"{url} has no host")
+    return url
+
+
 type BaseUrl = Annotated[
-    str, Field(pattern=r"^https?://[^/\s?#]+(/[^\s?#]*[^/\s?#])?$"), AfterValidator(reject_an_invalid_port)
+    str,
+    Field(pattern=r"^https?://[^/\s?#]+(/[^\s?#]*[^/\s?#])?$"),
+    AfterValidator(reject_an_invalid_port),
+    AfterValidator(reject_a_missing_host),
 ]
 type RelayUrl = Annotated[
-    str, Field(pattern=r"^https?://[^/\s?#]+(/[^\s?#]*)?$"), AfterValidator(reject_an_invalid_port)
+    str,
+    Field(pattern=r"^https?://[^/\s?#]+(/[^\s?#]*)?$"),
+    AfterValidator(reject_an_invalid_port),
+    AfterValidator(reject_a_missing_host),
 ]
 
 
