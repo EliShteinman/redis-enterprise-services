@@ -137,7 +137,7 @@ cluster-state-id: 155          (אופציונלי)
 | # | דרישה | למה |
 |---|---|---|
 | C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
-| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, גם ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי |
-| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs` ו-`POST /v1/users`, `POST /v1/crdbs`, ובהמשך גם `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`). ב-`POST /v1/crdbs`: אותה סיסמה, ופרטי הגישה של admin לכל קלאסטר |
+| C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, גם ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי. תשובת crdb כוללת גם `instances[].cluster.credentials.password` (בבדיקה ריק, אבל נמחק כמו סוד) |
+| C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs`, `POST /v1/users` ו-`POST /v1/crdbs`, ובהמשך גם של `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`). ב-`POST /v1/crdbs`: אותה סיסמה, ופרטי הגישה של admin לכל קלאסטר |
 
 הדרישות חלות על כל רמות הלוג חוץ מ-DEBUG.
