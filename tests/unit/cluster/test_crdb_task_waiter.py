@@ -92,3 +92,25 @@ def test_a_failed_task_names_the_site_and_not_the_description() -> None:
 def test_a_task_that_never_finishes_times_out() -> None:
     with pytest.raises(expected_exception=CrdbTaskTimeoutError):
         waiter_answering(task_body={"status": "started"}).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+
+def test_a_task_canceled_without_errors_still_fails_with_its_status() -> None:
+    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
+        waiter_answering(task_body={"status": "canceled"}).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+    assert failure.value.message == f"CRDB task {TASK_ID} ended as canceled"
+
+
+def test_every_failing_site_is_named() -> None:
+    failed_on_two: JsonValue = {
+        "status": "failed",
+        "errors": [
+            {"cluster_name": "cluster1.local", "error_code": "db_create_failed"},
+            {"cluster_name": "cluster2.local", "error_code": "busy"},
+        ],
+    }
+
+    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
+        waiter_answering(task_body=failed_on_two).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+    assert "cluster1.local (db_create_failed), cluster2.local (busy)" in failure.value.message

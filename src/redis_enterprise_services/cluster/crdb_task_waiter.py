@@ -3,7 +3,7 @@ import logging
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
-from redis_enterprise_services.cluster.json_body import string_field
+from redis_enterprise_services.cluster.json_body import list_field, string_field, whole_body
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.status_goal import StatusGoal
 from redis_enterprise_services.cluster.status_polling import StatusPolling
@@ -28,7 +28,7 @@ class CrdbTaskWaiter:
     def wait_until_finished(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
         return self._status_polling.wait_for(
             read=lambda: self.read_task(target=target, task_id=task_id),
-            fields_of=task_fields,
+            fields_of=whole_body,
             goal=self._finished_goal(task_id=task_id),
             subject=f"CRDB task {task_id}",
             wait=self._settings.wait,
@@ -47,26 +47,29 @@ class CrdbTaskWaiter:
                 task_id=task_id, status=status, task_body=task_body
             ),
             timed_out=lambda: CrdbTaskTimeoutError(
-                message=f"CRDB task {task_id} did not finish in {self._settings.wait.timeout_seconds} seconds"
+                message=f"CRDB task {task_id} did not finish in "
+                f"{self._settings.wait.timeout_seconds} seconds and may still finish"
             ),
         )
 
     def _task_failed(self, *, task_id: str, status: str, task_body: JsonValue) -> CrdbTaskFailedError:
         logger.info(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
-        first_error: JsonValue = first_item(body=task_body, name=self._settings.errors_field)
-        cluster_name: str | None = string_field(body=first_error, name=self._settings.error_cluster_field)
-        error_code: str | None = string_field(body=first_error, name=self._settings.error_code_field)
-        place: str = "" if cluster_name is None else f" on {cluster_name}"
-        reason: str = "" if error_code is None else f" ({error_code})"
+        errors: list[JsonValue] = list_field(body=task_body, name=self._settings.errors_field)
+        failures: list[str] = [self._failure(error=error) for error in errors]
         return CrdbTaskFailedError(
-            message=f"CRDB task {task_id} ended as {status}{place}{reason}", cluster_error_code=error_code
+            message=f"CRDB task {task_id} ended as {status}"
+            + (f" on {', '.join(failures)}" if failures else ""),
+            cluster_error_code=next(
+                (
+                    code
+                    for error in errors
+                    if (code := string_field(body=error, name=self._settings.error_code_field))
+                ),
+                None,
+            ),
         )
 
-
-def first_item(*, body: JsonValue, name: str) -> JsonValue:
-    items: JsonValue = body.get(name) if isinstance(body, dict) else None
-    return items[0] if isinstance(items, list) and items else None
-
-
-def task_fields(task_body: JsonValue) -> JsonValue:
-    return task_body
+    def _failure(self, *, error: JsonValue) -> str:
+        cluster_name: str | None = string_field(body=error, name=self._settings.error_cluster_field)
+        error_code: str | None = string_field(body=error, name=self._settings.error_code_field)
+        return f"{cluster_name or 'an unnamed cluster'}" + ("" if error_code is None else f" ({error_code})")
