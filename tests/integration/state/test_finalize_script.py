@@ -14,7 +14,7 @@ from redis_enterprise_services.saga.contract.saga_record import SagaRecord, Saga
 from redis_enterprise_services.state.redis_abandoned_store import RedisAbandonedStore
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
-ERROR: PublicError = PublicError(code="internal_error", message="the pod stopped")
+ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigation", message="the pod stopped")
 
 
 class AbandonedTrace:
