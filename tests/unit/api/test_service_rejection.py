@@ -11,6 +11,7 @@ def rejection_of(*, public_code: RejectionErrorCode) -> ServiceRejection:
     return service_rejection(
         error=InvalidNameError(message="the name is invalid"),
         public_code=public_code,
+        kind="customer_fixable",
         internal_error_message=INTERNAL_ERROR_MESSAGE,
     )
 

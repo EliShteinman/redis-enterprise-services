@@ -36,9 +36,11 @@ class ServiceErrorHandler:
         self._public_errors: PublicErrors = public_errors
 
     async def __call__(self, request: Request, error: RedisEnterpriseServicesError) -> Response:
+        public_code: RejectionErrorCode = self._public_code(internal_code=error.code)
         rejection: ServiceRejection = service_rejection(
             error=error,
-            public_code=self._public_code(internal_code=error.code),
+            public_code=public_code,
+            kind=self._public_errors.kind_of(code=public_code),
             internal_error_message=self._public_errors.internal_error().message,
         )
         log_service_error(error=error, status_code=rejection.status_code)
@@ -51,8 +53,9 @@ class ServiceErrorHandler:
 
 
 class ValidationErrorHandler:
-    def __init__(self, *, settings: ApiSettings) -> None:
+    def __init__(self, *, settings: ApiSettings, public_errors: PublicErrors) -> None:
         self._settings: ApiSettings = settings
+        self._public_errors: PublicErrors = public_errors
 
     async def __call__(self, request: Request, error: RequestValidationError) -> Response:
         field_errors: list[FieldError] = field_errors_from(error_details=error.errors())
@@ -62,21 +65,28 @@ class ValidationErrorHandler:
             status_code=HTTPStatus.UNPROCESSABLE_CONTENT,
             error=RejectionError(
                 code=VALIDATION_ERROR_CODE,
+                kind=self._public_errors.kind_of(code=VALIDATION_ERROR_CODE),
                 message=self._settings.validation_error_message,
                 details=field_errors,
             ),
         )
 
 
-async def http_exception_handler(request: Request, error: HTTPException) -> Response:
-    code: RejectionErrorCode = http_error_code(status_code=error.status_code)
-    logger.info(msg=f"{code}: {request.method} {request.url.path}")
-    return rejection_response(
-        request=request,
-        status_code=error.status_code,
-        error=RejectionError(code=code, message=str(error.detail)),
-        headers=error.headers,
-    )
+class HttpErrorHandler:
+    def __init__(self, *, public_errors: PublicErrors) -> None:
+        self._public_errors: PublicErrors = public_errors
+
+    async def __call__(self, request: Request, error: HTTPException) -> Response:
+        code: RejectionErrorCode = http_error_code(status_code=error.status_code)
+        logger.info(msg=f"{code}: {request.method} {request.url.path}")
+        return rejection_response(
+            request=request,
+            status_code=error.status_code,
+            error=RejectionError(
+                code=code, kind=self._public_errors.kind_of(code=code), message=str(error.detail)
+            ),
+            headers=error.headers,
+        )
 
 
 def log_service_error(*, error: RedisEnterpriseServicesError, status_code: int) -> None:

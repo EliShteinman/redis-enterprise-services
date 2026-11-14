@@ -11,9 +11,9 @@ from starlette.types import ExceptionHandler
 
 from redis_enterprise_services.api import creation_route, liveness_route, operation_route
 from redis_enterprise_services.api.error_handlers import (
+    HttpErrorHandler,
     ServiceErrorHandler,
     ValidationErrorHandler,
-    http_exception_handler,
 )
 from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
 from redis_enterprise_services.composition.app_wiring import AppWiring
@@ -67,10 +67,13 @@ def add_error_handling(*, app: FastAPI, settings: ApiSettings, public_errors: Pu
     )
     app.add_exception_handler(
         exc_class_or_status_code=RequestValidationError,
-        handler=cast(ExceptionHandler, ValidationErrorHandler(settings=settings)),
+        handler=cast(
+            ExceptionHandler, ValidationErrorHandler(settings=settings, public_errors=public_errors)
+        ),
     )
     app.add_exception_handler(
-        exc_class_or_status_code=HTTPException, handler=cast(ExceptionHandler, http_exception_handler)
+        exc_class_or_status_code=HTTPException,
+        handler=cast(ExceptionHandler, HttpErrorHandler(public_errors=public_errors)),
     )
 
 

@@ -7,7 +7,7 @@ from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.rejection_error import RejectionError
 from redis_enterprise_services.api.rejection_response import rejection_response
 
-ERROR: RejectionError = RejectionError(code="validation_error", message="invalid")
+ERROR: RejectionError = RejectionError(code="validation_error", kind="customer_fixable", message="invalid")
 
 
 def endpoint() -> None: ...

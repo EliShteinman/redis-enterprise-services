@@ -21,9 +21,11 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         except Exception as error:  # noqa: BLE001 - logged with its traceback by report_internal_error
             report_internal_error(error=error, message="unexpected error")
-            internal_error: PublicError = self._public_errors.internal_error()
+            unexpected_error: PublicError = self._public_errors.unexpected_error(error=error)
             return rejection_response(
                 request=request,
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                error=RejectionError(code=internal_error.code, message=internal_error.message),
+                error=RejectionError(
+                    code=unexpected_error.code, kind=unexpected_error.kind, message=unexpected_error.message
+                ),
             )
