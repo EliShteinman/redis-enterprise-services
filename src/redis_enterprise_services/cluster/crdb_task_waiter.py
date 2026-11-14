@@ -28,8 +28,8 @@ class CrdbTaskWaiter:
     def wait_until_finished(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
         try:
             return self._wait(target=target, task_id=task_id)
-        except CrdbTaskTimeoutError as error:
-            error.cluster_url = error.cluster_url or target.api_url
+        except (CrdbTaskFailedError, CrdbTaskTimeoutError) as error:
+            error.cluster_url = target.api_url
             raise
 
     def _wait(self, *, target: ClusterTarget, task_id: str) -> JsonValue:
@@ -62,21 +62,20 @@ class CrdbTaskWaiter:
     def _task_failed(self, *, task_id: str, status: str, task_body: JsonValue) -> CrdbTaskFailedError:
         logger.info(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
         errors: list[JsonValue] = list_field(body=task_body, name=self._settings.errors_field)
-        failures: list[str] = [self._failure(error=error) for error in errors]
+        failing_sites: list[str] = [self._failing_site(error=error) for error in errors]
         return CrdbTaskFailedError(
             message=f"CRDB task {task_id} ended as {status}"
-            + (f" on {', '.join(failures)}" if failures else ""),
-            cluster_error_code=next(
-                (
-                    code
-                    for error in errors
-                    if (code := string_field(body=error, name=self._settings.error_code_field))
-                ),
-                None,
-            ),
+            + (f" on {', '.join(failing_sites)}" if failing_sites else ""),
+            cluster_error_code=self._first_error_code(errors=errors),
         )
 
-    def _failure(self, *, error: JsonValue) -> str:
+    def _first_error_code(self, *, errors: list[JsonValue]) -> str | None:
+        codes: list[str | None] = [
+            string_field(body=error, name=self._settings.error_code_field) for error in errors
+        ]
+        return next((code for code in codes if code), None)
+
+    def _failing_site(self, *, error: JsonValue) -> str:
         cluster_name: str | None = string_field(body=error, name=self._settings.error_cluster_field)
         error_code: str | None = string_field(body=error, name=self._settings.error_code_field)
         return f"{cluster_name or 'an unnamed cluster'}" + ("" if error_code is None else f" ({error_code})")
