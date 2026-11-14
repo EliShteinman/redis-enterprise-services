@@ -55,3 +55,10 @@ def test_an_added_rule_judges_the_name_by_its_context() -> None:
 def test_an_invalid_name_is_refused() -> None:
     with pytest.raises(expected_exception=InvalidNameError):
         NameValidator(rules=RULES).ensure_valid(name="orders_1", context=CONTEXT)
+
+
+def test_the_same_violation_from_two_rule_sets_is_reported_once() -> None:
+    with pytest.raises(expected_exception=InvalidNameError) as refusal:
+        NameValidator(rules=[*RULES, *RULES]).ensure_valid(name="orders_1", context=CONTEXT)
+
+    assert refusal.value.message.count("does not match") == 1
