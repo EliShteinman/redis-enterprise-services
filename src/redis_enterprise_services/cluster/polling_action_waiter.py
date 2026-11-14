@@ -4,6 +4,7 @@ from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.cluster_action_waiter import ClusterActionWaiter
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
+from redis_enterprise_services.cluster.json_body import whole_body
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.status_goal import StatusGoal
 from redis_enterprise_services.cluster.status_polling import StatusPolling
@@ -29,7 +30,7 @@ class PollingActionWaiter(ClusterActionWaiter):
             return None
         return self._status_polling.wait_for(
             read=lambda: self._read_action_body(target=target, action_uid=action_uid),
-            fields_of=action_fields,
+            fields_of=whole_body,
             goal=self._completion_goal(action_uid=action_uid),
             subject=f"action {action_uid}",
             wait=self._settings.wait,
@@ -57,7 +58,3 @@ class PollingActionWaiter(ClusterActionWaiter):
 def action_failed(*, action_uid: str, status: str, action_body: JsonValue) -> ClusterActionFailedError:
     logger.info(msg=f"the body of failed action {action_uid}: {action_body}")
     return ClusterActionFailedError(message=f"action {action_uid} ended as {status}")
-
-
-def action_fields(action_body: JsonValue) -> JsonValue:
-    return action_body

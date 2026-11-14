@@ -12,6 +12,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulCl
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -43,10 +44,16 @@ class EdgeClusterApiCaller(ClusterApiCaller):
             crdb_task_id=crdb_task_id,
             result_ttl_seconds=result_ttl_seconds,
         )
-        response: ClusterResponse = self._edge_transport.send(network=target.network, request=request)
+        try:
+            response: ClusterResponse = self._edge_transport.send(network=target.network, request=request)
+        except RedisEnterpriseServicesError as error:
+            raise with_cluster_url(error=error, cluster_url=target.api_url) from None
         if is_cluster_rejection(status_code=response.status_code):
-            raise cluster_rejection(
-                request=request, response=response, error_code_field=self._settings.fields.error_code
+            raise with_cluster_url(
+                error=cluster_rejection(
+                    request=request, response=response, error_code_field=self._settings.fields.error_code
+                ),
+                cluster_url=target.api_url,
             )
         return SuccessfulClusterResponse(body=response.body, cluster_state_id=response.cluster_state_id)
 
@@ -71,3 +78,9 @@ def cluster_rejection(
 
 def url_without_query(*, url: str) -> str:
     return urlunsplit(urlsplit(url)._replace(query="", fragment=""))
+
+
+def with_cluster_url[TError: RedisEnterpriseServicesError](*, error: TError, cluster_url: str) -> TError:
+    if error.cluster_url is None:
+        error.cluster_url = cluster_url
+    return error
