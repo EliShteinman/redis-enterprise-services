@@ -74,11 +74,23 @@ def test_a_finished_task_is_returned() -> None:
     )
 
 
-def test_a_failed_task_keeps_the_cluster_error_code() -> None:
+def test_a_task_failed_on_the_polled_cluster_keeps_its_error_code() -> None:
+    failed_here: JsonValue = {
+        "status": "failed",
+        "errors": [{"cluster_name": "Cluster.local", "error_code": "db_create_failed"}],
+    }
+
+    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
+        waiter_answering(task_body=failed_here).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+    assert failure.value.cluster_error_code == "db_create_failed"
+
+
+def test_a_task_failed_on_another_site_gives_no_error_code_for_the_polled_cluster() -> None:
     with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
         waiter_answering(task_body=FAILED_TASK).wait_until_finished(target=TARGET, task_id=TASK_ID)
 
-    assert failure.value.cluster_error_code == "db_create_failed"
+    assert failure.value.cluster_error_code is None
 
 
 def test_a_failed_task_names_the_site_and_not_the_description() -> None:
@@ -115,21 +127,6 @@ def test_every_failing_site_is_named() -> None:
         waiter_answering(task_body=failed_on_two).wait_until_finished(target=TARGET, task_id=TASK_ID)
 
     assert "cluster1.local (db_create_failed), cluster2.local (busy)" in failure.value.message
-
-
-def test_sites_failing_with_different_codes_give_no_single_code() -> None:
-    failed_on_two: JsonValue = {
-        "status": "failed",
-        "errors": [
-            {"cluster_name": "cluster1.local", "error_code": "db_create_failed"},
-            {"cluster_name": "cluster2.local", "error_code": "busy"},
-        ],
-    }
-
-    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
-        waiter_answering(task_body=failed_on_two).wait_until_finished(target=TARGET, task_id=TASK_ID)
-
-    assert failure.value.cluster_error_code is None
 
 
 @pytest.mark.parametrize(

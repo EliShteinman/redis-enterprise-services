@@ -270,3 +270,24 @@ def test_overrides_that_conflict_only_on_an_active_active_dev_site_stop_at_start
             ),
             clusters=[cluster(environment="DEV")],
         )
+
+
+def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> None:
+    sharded: DatabaseDefaults = DatabaseDefaults(
+        settings=DatabaseDefaultsSettings(
+            values={
+                "sharding": True,
+                "shards_count": 2,
+                "shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}],
+            },
+            persistence_values=PERSISTENCE_VALUES,
+            overrides=[],
+        )
+    )
+
+    with pytest.raises(expected_exception=ConfigurationError):
+        sharded.fill_in(
+            cluster=cluster(environment="DEV"),
+            requested=NewDatabase(name="orders", memory_size=104857600, sharding=False),
+            active_active=False,
+        )

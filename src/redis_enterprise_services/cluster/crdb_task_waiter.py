@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit
 
 from pydantic import JsonValue
 
@@ -38,7 +39,7 @@ class CrdbTaskWaiter:
         return self._status_polling.wait_for(
             read=lambda: self.read_task(target=target, task_id=task_id),
             fields_of=whole_body,
-            goal=self._finished_goal(task_id=task_id),
+            goal=self._finished_goal(target=target, task_id=task_id),
             subject=f"CRDB task {task_id}",
             wait=self._settings.wait,
         )
@@ -48,12 +49,12 @@ class CrdbTaskWaiter:
             target=target, method="GET", path=self._settings.item_path.format(uid=task_id)
         ).body
 
-    def _finished_goal(self, *, task_id: str) -> StatusGoal[JsonValue]:
+    def _finished_goal(self, *, target: ClusterTarget, task_id: str) -> StatusGoal[JsonValue]:
         return StatusGoal[JsonValue](
             done_status=self._settings.completed_status,
             failed_statuses=self._settings.failed_statuses,
             failed=lambda status, task_body: self._task_failed(
-                task_id=task_id, status=status, task_body=task_body
+                target=target, task_id=task_id, status=status, task_body=task_body
             ),
             timed_out=lambda: CrdbTaskTimeoutError(
                 message=f"CRDB task {task_id} did not finish in "
@@ -61,21 +62,30 @@ class CrdbTaskWaiter:
             ),
         )
 
-    def _task_failed(self, *, task_id: str, status: str, task_body: JsonValue) -> CrdbTaskFailedError:
+    def _task_failed(
+        self, *, target: ClusterTarget, task_id: str, status: str, task_body: JsonValue
+    ) -> CrdbTaskFailedError:
         logger.info(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
         errors: list[JsonValue] = list_field(body=task_body, name=self._settings.errors_field)
         failing_sites: list[str] = [self._failing_site(error=error) for error in errors]
         return CrdbTaskFailedError(
             message=f"CRDB task {task_id} ended as {status}"
             + (f" on {', '.join(failing_sites)}" if failing_sites else ""),
-            cluster_error_code=self._error_code_shared_by_every_site(errors=errors),
+            cluster_error_code=self._error_code_of_the_polled_cluster(target=target, errors=errors),
         )
 
-    def _error_code_shared_by_every_site(self, *, errors: list[JsonValue]) -> str | None:
+    def _error_code_of_the_polled_cluster(
+        self, *, target: ClusterTarget, errors: list[JsonValue]
+    ) -> str | None:
+        polled_host: str | None = urlsplit(target.api_url).hostname
+        sites: set[str] = {
+            (string_field(body=error, name=self._settings.error_cluster_field) or "").lower()
+            for error in errors
+        }
         codes: set[str | None] = {
             string_field(body=error, name=self._settings.error_code_field) for error in errors
         }
-        return codes.pop() if len(codes) == 1 else None
+        return codes.pop() if sites == {polled_host} and len(codes) == 1 else None
 
     def _failing_site(self, *, error: JsonValue) -> str:
         cluster_name: str | None = string_field(body=error, name=self._settings.error_cluster_field)
