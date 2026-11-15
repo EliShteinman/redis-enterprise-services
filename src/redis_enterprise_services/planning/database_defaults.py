@@ -6,6 +6,7 @@ from pydantic_core import ErrorDetails
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
+    DatabaseKind,
     DatabaseKindDefaults,
     OverrideSelector,
 )
@@ -19,8 +20,6 @@ from redis_enterprise_services.exceptions.configuration import ConfigurationErro
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 DATA_PERSISTENCE_FIELD: str = "data_persistence"
-SINGLE_SITE_KIND: str = "single_site"
-ACTIVE_ACTIVE_KIND: str = "active_active"
 
 
 class DatabaseDefaults:
@@ -30,12 +29,9 @@ class DatabaseDefaults:
     def fill_in(
         self, *, cluster: ConfiguredCluster, requested: NewDatabase, active_active: bool
     ) -> NewDatabase:
-        defaults: DatabaseKindDefaults = defaults_of_kind(
-            settings=self._settings, active_active=active_active
-        )
-        values: dict[str, JsonValue] = merged_default_values(
-            defaults=defaults, kind=kind_of(active_active=active_active), cluster=cluster
-        )
+        kind: DatabaseKind = DatabaseKind.of(active_active=active_active)
+        defaults: DatabaseKindDefaults = self._settings.of_kind(kind=kind)
+        values: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
         values.update(requested.model_dump(exclude_none=True))
         try:
             return NewDatabase.model_validate(
@@ -45,17 +41,10 @@ class DatabaseDefaults:
             )
         except ValidationError as error:
             raise ConfigurationError(
-                message=f"the request together with the database defaults of cluster {cluster.name} is not "
-                f"valid: {'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
+                message=f"the request together with the database_defaults.{kind} values of cluster "
+                f"{cluster.name} is not valid: "
+                f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
             ) from error
-
-
-def defaults_of_kind(*, settings: DatabaseDefaultsSettings, active_active: bool) -> DatabaseKindDefaults:
-    return settings.active_active if active_active else settings.single_site
-
-
-def kind_of(*, active_active: bool) -> str:
-    return ACTIVE_ACTIVE_KIND if active_active else SINGLE_SITE_KIND
 
 
 def issue_text(*, issue: ErrorDetails) -> str:
@@ -67,16 +56,15 @@ def issue_text(*, issue: ErrorDetails) -> str:
 def database_defaults_from(
     *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
 ) -> DatabaseDefaults:
-    for active_active in (False, True):
-        defaults: DatabaseKindDefaults = defaults_of_kind(settings=settings, active_active=active_active)
-        kind: str = kind_of(active_active=active_active)
+    for kind in DatabaseKind:
+        defaults: DatabaseKindDefaults = settings.of_kind(kind=kind)
         reject_invalid_default_values_of_kind(defaults=defaults, kind=kind)
         for cluster in clusters:
             reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
     return DatabaseDefaults(settings=settings)
 
 
-def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: str) -> None:
+def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: DatabaseKind) -> None:
     try:
         reject_invalid_default_values(defaults=defaults)
     except ConfigurationError as error:
@@ -84,7 +72,7 @@ def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kin
 
 
 def reject_invalid_values_on_cluster(
-    *, defaults: DatabaseKindDefaults, kind: str, cluster: ConfiguredCluster
+    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> None:
     merged: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
     try:
@@ -105,19 +93,22 @@ def reject_invalid_values_on_cluster(
 
 
 def merged_default_values(
-    *, defaults: DatabaseKindDefaults, kind: str, cluster: ConfiguredCluster
+    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
     return {**defaults.values, **override_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)}
 
 
 def override_values_on_cluster(
-    *, defaults: DatabaseKindDefaults, kind: str, cluster: ConfiguredCluster
+    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
     labels: dict[str, str] = placement_labels(cluster=cluster)
     values: dict[str, JsonValue] = {}
     for override in defaults.overrides:
         if selector_matches(selector=override.when, labels=labels):
-            logger.debug(msg=f"database_defaults.{kind} for {override.when} apply on cluster {cluster.name}")
+            logger.debug(
+                msg=f"database_defaults.{kind} for {override.when.model_dump(exclude_none=True)} apply on "
+                f"cluster {cluster.name}"
+            )
             values.update(override.values)
     return values
 
