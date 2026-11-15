@@ -19,6 +19,8 @@ uv sync
 uv run pre-commit install
 ```
 
+`uv.lock` is not kept in git. `uv sync` creates it on the first run; the pre-commit hooks need it.
+
 ## Running
 
 Locally, from the project root (host and port come from `config/server.yaml`):
