@@ -11,7 +11,6 @@ from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import (
-    CrdbTaskTimeoutError,
     UnrestorableFieldsError,
     UpdateOutcomeUnclearError,
 )
@@ -111,11 +110,14 @@ def test_undoing_puts_the_old_values_back_on_each_instance() -> None:
     )
 
 
-def test_a_patch_whose_task_is_still_running_has_an_unknown_outcome() -> None:
-    step, _, _ = step_reading(db_config={}, task={"status": "started"})
+def test_a_patch_whose_task_is_still_running_is_waited_for_before_deciding() -> None:
+    step, _, task_waiter = step_reading(
+        db_config={"roles_permissions": NEW_PERMISSIONS}, task={"status": "started"}
+    )
 
-    with pytest.raises(expected_exception=CrdbTaskTimeoutError):
-        step.find_outcome(step_input=STEP_INPUT, kept_result=BEFORE, keep_result_if_none_kept=ignore)
+    step.find_outcome(step_input=STEP_INPUT, kept_result=BEFORE, keep_result_if_none_kept=ignore)
+
+    task_waiter.wait_until_finished.assert_called_once()
 
 
 def test_undoing_first_waits_for_both_the_update_and_an_earlier_undo() -> None:
