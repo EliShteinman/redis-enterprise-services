@@ -40,6 +40,7 @@ class CreationPreparation:
         ]
         reject_mixed_networks(clusters=clusters)
         reject_sites_on_one_cluster(clusters=clusters)
+        reject_clusters_that_clash(clusters=clusters)
         filled_database: NewDatabase = self._same_database_on_every_site(
             clusters=clusters,
             requested=requested_database,
@@ -81,12 +82,22 @@ def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:
 
 
 def reject_sites_on_one_cluster(*, clusters: list[ConfiguredCluster]) -> None:
-    reject_repeated(kind="cluster address", values=[cluster.api_url for cluster in clusters])
-    reject_repeated(kind="cluster name", values=[cluster.name for cluster in clusters])
-    reject_repeated(kind="host", values=[cluster_fqdn(api_url=cluster.api_url) for cluster in clusters])
-
-
-def reject_repeated(*, kind: str, values: list[str]) -> None:
-    repeated: list[str] = sorted({value for value in values if values.count(value) > 1})
+    repeated: list[str] = repeated_values(values=[cluster.api_url for cluster in clusters])
     if repeated:
-        raise DuplicateSitesError(message=f"more than one site resolves to the same {kind}: {repeated}")
+        raise DuplicateSitesError(message=f"more than one site resolves to the same cluster: {repeated}")
+
+
+def reject_clusters_that_clash(*, clusters: list[ConfiguredCluster]) -> None:
+    for kind, values in (
+        ("cluster name", [cluster.name for cluster in clusters]),
+        ("host", [cluster_fqdn(api_url=cluster.api_url) for cluster in clusters]),
+    ):
+        repeated: list[str] = repeated_values(values=values)
+        if repeated:
+            raise ConfigurationError(
+                message=f"different clusters of one Active-Active database share a {kind}: {repeated}"
+            )
+
+
+def repeated_values(*, values: list[str]) -> list[str]:
+    return sorted({value for value in values if values.count(value) > 1})

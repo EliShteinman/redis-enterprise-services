@@ -223,8 +223,10 @@ def test_the_error_names_the_site_of_the_step_that_stopped() -> None:
         pytest.param(C2.model_copy(update={"api_url": "https://c1:9444"}), id="same-host"),
     ],
 )
-def test_two_sites_that_share_a_cluster_name_or_host_are_refused(second: ConfiguredCluster) -> None:
-    with pytest.raises(expected_exception=DuplicateSitesError):
+def test_different_clusters_that_share_a_name_or_host_are_a_configuration_error(
+    second: ConfiguredCluster,
+) -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
         preparation(clusters=[C1, second], filled=[DATABASE, DATABASE]).prepare(creation_request=REQUEST)
 
 
