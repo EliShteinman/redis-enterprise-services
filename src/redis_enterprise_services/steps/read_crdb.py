@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
@@ -23,18 +24,19 @@ class ReadCrdbInput(BaseModel):
     coordinator: ClusterAddress
     guid: str
     expected_config: dict[str, JsonValue]
+    expected_settings: CrdbCreationSettings
 
 
 class CrdbInstanceSettings(BaseModel):
     cluster_url: str
     id: int
-    compression: int | None
+    compression: int
 
 
 class CrdbConfigSnapshot(BaseModel):
     default_db_config: dict[str, JsonValue]
-    causal_consistency: bool | None = None
-    encryption: bool | None = None
+    causal_consistency: bool
+    encryption: bool
     featureset_version: int | None = None
     protocol_version: int | None = None
     instances: list[CrdbInstanceSettings] = Field(default_factory=list)
@@ -92,20 +94,21 @@ class ReadCrdbStep(SagaStep[ReadCrdbInput, CrdbConfigSnapshot]):
                 config=without_fields(fields=step_input.expected_config, names=self._secret_fields)
             ),
             order_insensitive_fields=self._order_insensitive_fields,
-        )
+        ) + sync_settings_not_holding(crdb=crdb, expected=step_input.expected_settings)
         if differing:
             raise IncompleteClusterObjectError(
                 message=f"CRDB {step_input.guid} does not hold what was sent for {differing}"
             )
+        expected: CrdbCreationSettings = step_input.expected_settings
         return CrdbConfigSnapshot(
             default_db_config=stored,
-            causal_consistency=crdb.causal_consistency,
-            encryption=crdb.encryption,
+            causal_consistency=expected.causal_consistency,
+            encryption=expected.encryption,
             featureset_version=crdb.featureset_version,
             protocol_version=crdb.protocol_version,
             instances=[
                 CrdbInstanceSettings(
-                    cluster_url=instance.cluster.url, id=instance.id, compression=instance.compression
+                    cluster_url=instance.cluster.url, id=instance.id, compression=expected.compression
                 )
                 for instance in crdb.instances
             ],
@@ -124,4 +127,20 @@ def without_item_fields(*, value: JsonValue, names: frozenset[str]) -> JsonValue
     return [
         {key: field for key, field in item.items() if key not in names} if isinstance(item, dict) else item
         for item in value
+    ]
+
+
+def sync_settings_not_holding(*, crdb: Crdb, expected: CrdbCreationSettings) -> list[str]:
+    differing: list[str] = [
+        name
+        for name, value in (
+            ("causal_consistency", crdb.causal_consistency),
+            ("encryption", crdb.encryption),
+        )
+        if value != getattr(expected, name)
+    ]
+    return differing + [
+        f"instances[{instance.id}].compression"
+        for instance in crdb.instances
+        if instance.compression != expected.compression
     ]
