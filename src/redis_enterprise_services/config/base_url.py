@@ -23,12 +23,6 @@ def reject_a_missing_host(url: str) -> str:
     return url
 
 
-def reject_a_missing_host(url: str) -> str:
-    if not urlsplit(url).hostname:
-        raise ValueError("the URL has no host")
-    return url
-
-
 type BaseUrl = Annotated[
     str,
     Field(pattern=r"^https?://[^/\s?#]+(/[^\s?#]*[^/\s?#])?$"),
