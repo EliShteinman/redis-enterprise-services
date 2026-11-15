@@ -41,7 +41,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
-- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל לפי תוויות של הקלאסטר.
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל לפי תוויות של הקלאסטר ולפי
+  `active_active`. ב-Active-Active גם: כל האתרים באותה רשת, על קלאסטרים שונים, ועם אותן הגדרות.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, ובסוף קישור ההרשאות על ה-DB. כל צעד מחכה לסיום הפעולה
   בקלאסטר. ב-Active-Active: קודם CRDB אחד, אחריו לכל אתר היוזרים על ה-DB המקומי, ובסוף PATCH אחד של ההרשאות
   (`design/creation.md`, סעיף 6).
@@ -54,7 +55,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay.
 
 **נבדק מול קלאסטר אמיתי:** הצלחה עם הרשאות שנבדקו בחיבור ל-DB, כשל בכל אחד מחמשת הצעדים שהסתיים בביטול מלא,
-בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5).
+בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5). Active-Active על שני אתרים ועל אתר
+אחד, ו-ACL שנדחה שביטל הכל כולל ה-CRDB (`design/creation.md` סעיף 6).
 
 ---
 
@@ -80,7 +82,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 ![שכבות הקוד](diagrams/01-layers.drawio.svg)
 
 `src/redis_enterprise_services/`. כיווני הייבוא נאכפים ב-`import-linter` (`pyproject.toml`), מלמעלה למטה. כל שורה
-בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לארבע
+בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לחמש
 חבילות המשאבים) נמצא ב-`pyproject.toml`.
 
 | שכבה | חבילות | מה יש בה |
@@ -90,7 +92,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | פקודות | `creation` | הכנה, ריצה ברקע, תרגום התוצאה |
 | תכנון | `planning` | בקשה ⇐ קלאסטר, ברירות מחדל, תוכנית צעדים, בדיקת שמות |
 | צעדים, מצב וזיהוי קריסה | `steps`, `state`, `recovery` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis; זיהוי קריסה |
-| משאבים | `databases`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
+| משאבים | `databases`, `crdbs`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
 | תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
 | מנוע ופעולות | `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה |
 | תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |

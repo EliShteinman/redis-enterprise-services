@@ -87,7 +87,8 @@
 - ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
   ההודעה מונה את השדות השונים. זה קורה בעיקר כשהבקשה מערבבת סביבות (למשל אתר DEV ואתר PROD באותה רשת, ש-`replication`
   שלהם שונה): הטעות בבקשה, אבל הקוד `configuration_error` (`known_failure`). שליחת השדות שבהודעה במפורש בבקשה עוקפת
-  את זה. כשמצב השמירה שונה, ההודעה מונה רק את `data_persistence`, כי `aof_policy` ו-`snapshot_policy` לא נשלחים יחד.
+  את זה. כשמצב השמירה שונה, ההודעה לא מונה את `aof_policy` ו-`snapshot_policy` (הם לא נשלחים יחד), אלא את `data_persistence`
+  ואת שאר השדות השונים.
 - בקשה שתקינה לבד, אבל לא תקינה יחד עם ברירות המחדל של הקלאסטר (למשל `sharding: false` מול ברירת מחדל עם
   `shard_key_regex`) ⇐ `500 configuration_error` עם הסיבה. היום אין ברירת מחדל כזו.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
@@ -256,7 +257,7 @@
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
-| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency`, `encryption`, `featureset_version`, `protocol_version`, ולכל אתר `cluster_url`, `instance_id` ו-`compression` |
+| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency`, `encryption`, `featureset_version`, `protocol_version` (כל אחד מהם `null` כשהקלאסטר לא החזיר אותו), ולכל אתר `cluster_url`, `instance_id` ו-`compression`. `instances` לפי הסדר של ה-CRDB, לא של הבקשה: מתאימים instance לענף שלו לפי `cluster_url` |
 | `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
 | `clusters[].cluster` | שם הקלאסטר מהקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
@@ -332,7 +333,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
 | `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
-| `crdb_guid` | חסר כשהוא ריק (ב-`database` לעומת זאת `crdb_guid` מופיע תמיד, גם כ-`null`). רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb`, ופריט `permissions` של Active-Active (שמכסה את כל האתרים), מדווחים על הקלאסטר המתאם (האתר הראשון) |
+| `crdb_guid` | חסר כשהוא ריק (לעומת `database.crdb_guid` בתוצאה, שמופיע תמיד, גם כ-`null`). רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb`, ופריט `permissions` של Active-Active (שמכסה את כל האתרים), מדווחים על הקלאסטר המתאם (האתר הראשון) |
 | `name` | שם המשאב. ב-`permissions` וב-`crdb`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB. ב-`crdb` וב-`permissions` של Active-Active תמיד `null`: מה שמזהה אותם הוא `crdb_guid` |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
