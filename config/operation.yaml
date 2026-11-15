@@ -18,6 +18,7 @@ operation:
     cluster_action_timeout: cluster_timeout
     crdb_task_failed: cluster_request_failed
     crdb_task_timeout: cluster_timeout
+    crdb_task_id_mismatch: internal_error
     database_activation_timeout: cluster_timeout
     database_deletion_timeout: cluster_timeout
     duplicate_resource_name: internal_error
