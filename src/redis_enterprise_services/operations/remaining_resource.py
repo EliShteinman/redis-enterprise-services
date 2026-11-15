@@ -21,7 +21,8 @@ class RemainingResource(BaseModel):
         examples=["acl"],
     )
     name: str = Field(
-        description="The resource name. For permissions: the database name.", examples=["orders-app-acl"]
+        description="The resource name. For permissions and crdb: the database name.",
+        examples=["orders-app-acl"],
     )
     uid: int | None = Field(
         description="The resource uid on the cluster, or null when it is unknown whether it was created. "
@@ -33,8 +34,8 @@ class RemainingResource(BaseModel):
         default=None,
         exclude_if=is_none,
         description="Only for crdb and Active-Active permissions: the CRDB guid. For crdb, missing when it "
-        "is unknown whether the CRDB was created. A crdb item is reported on the coordinator, the first "
-        "site.",
+        "is unknown whether the CRDB was created. A crdb item and an Active-Active permissions item, which "
+        "covers every site, are reported on the coordinator, the first site.",
         examples=["d71cefce-4e31-41fd-b654-37cbb2f39a01"],
     )
     last_error: str | None = Field(
