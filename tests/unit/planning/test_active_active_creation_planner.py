@@ -2,6 +2,7 @@ from pydantic import BaseModel, JsonValue
 
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
@@ -58,6 +59,7 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     database_body_builder=BodyWithSecret(),
     secret_fields=frozenset({"authentication_redis_pass"}),
+    crdb_creation=CrdbCreationSettings(causal_consistency=False, encryption=False, compression=3),
     create_crdb_step=IdleStep(),
     find_local_instance_step=IdleStep(),
     create_acl_step=IdleStep(),
@@ -130,6 +132,14 @@ def test_the_crdb_check_expects_what_is_sent_without_secrets() -> None:
     assert step_inputs_by_key()["read-crdb"]["expected_config"] == {  # type: ignore[index]
         "name": "orders",
         "memory_size": 104857600,
+    }
+
+
+def test_the_crdb_check_expects_the_sync_settings_that_are_sent() -> None:
+    assert step_inputs_by_key()["read-crdb"]["expected_settings"] == {  # type: ignore[index]
+        "causal_consistency": False,
+        "encryption": False,
+        "compression": 3,
     }
 
 
