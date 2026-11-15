@@ -23,3 +23,8 @@ def test_a_task_result_kept_no_longer_than_the_wait_is_refused() -> None:
 
 def test_a_task_result_kept_longer_than_the_wait_is_accepted() -> None:
     assert CrdbTaskSettings.model_validate({**TASK, "result_ttl_seconds": 601}).result_ttl_seconds == 601
+
+
+def test_a_completed_status_that_is_also_failed_is_refused() -> None:
+    with pytest.raises(expected_exception=ValidationError):
+        CrdbTaskSettings.model_validate({**TASK, "result_ttl_seconds": 601, "failed_statuses": ["finished"]})
