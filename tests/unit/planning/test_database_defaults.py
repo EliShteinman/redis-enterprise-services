@@ -285,7 +285,7 @@ def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> 
         )
     )
 
-    with pytest.raises(expected_exception=ConfigurationError):
+    with pytest.raises(expected_exception=ConfigurationError, match=r"only together with sharding true$"):
         sharded.fill_in(
             cluster=cluster(environment="DEV"),
             requested=NewDatabase(name="orders", memory_size=104857600, sharding=False),

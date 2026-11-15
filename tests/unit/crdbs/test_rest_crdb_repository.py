@@ -73,3 +73,9 @@ def test_a_task_started_under_another_id_is_a_task_id_mismatch() -> None:
         repository_answering(body={"id": "another", "status": "queued"}).start_deletion(
             target=TARGET, guid="g", task_id="ours"
         )
+
+
+def test_a_task_started_under_our_id_in_upper_case_is_accepted() -> None:
+    repository_answering(
+        body={"id": "16A0C036-6D3A-4AD0-9352-A56108EA8138", "status": "queued"}
+    ).start_deletion(target=TARGET, guid="g", task_id="16a0c036-6d3a-4ad0-9352-a56108ea8138")
