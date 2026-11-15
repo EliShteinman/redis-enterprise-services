@@ -26,7 +26,7 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 | יצירה ועדכון של DB | `status` חוזר ל-`active` (בדרך: `pending`, `active-change-pending`). התשובה כוללת `action_uid`. 1–6 שניות |
 | מחיקת DB | `delete-pending`, ואז `404`. כשנייה עד 4 שניות |
 | ACL, role, user | אם יש `action_uid`, `GET /v1/actions/{uid}` עד `completed` (או `failed`, `cancelled`, `aborted`) |
-| CRDB | `GET /v1/crdb_tasks/{id}` עד `finished` או `failed`. ב-`failed`: `errors` עם `cluster_name` |
+| CRDB | `GET /v1/crdb_tasks/{id}` עד `finished`, `failed` או `canceled` (נצפה בהקלטות). ב-`failed`: `errors` עם `cluster_name` |
 
 בלי ההמתנה הצעד הבא נדחה: `PUT` ל-bdb מיד אחרי מחיקת role נדחה ב-`409 busy`, ו-`PUT` בזמן `active-change-pending`
 נדחה ב-`409 db_busy`. שניהם זמניים.
@@ -121,7 +121,7 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 - `X-Task-ID` חייב להיות UUID תקני (גרסאות 1–5); ערך אחר ⇐ `400`. אותו `X-Task-ID` פעמיים ⇐ `406 job_exists`, ולא
   נוצר CRDB שני. תוצאת task נשמרת 500 שניות כברירת מחדל, ולכן שולחים `X-Result-TTL` ארוך יותר (24 שעות).
   אחרי שהתוצאה פגה, `GET /v1/crdb_tasks/{id}` עונה `404` כמו ל-task שלא הגיע. לא מאתרים לפי שם, כי שמות CRDB כפולים
-  מותרים. הבדיקה של תוצאה לא ידועה רצה תוך דקות, הרבה לפני שהתוצאה פגה. מי שמטפל ידנית אחרי שהתוצאה פגה נעזר
+  מותרים. רק כש-task לא נמצא והשם קיים, זה סימן שאולי ה-CRDB של היצירה, ולכן ⇐ התערבות ידנית. הבדיקה של תוצאה לא ידועה רצה תוך דקות, הרבה לפני שהתוצאה פגה. מי שמטפל ידנית אחרי שהתוצאה פגה נעזר
   ב-record של ה-saga (ה-guid נשמר בו ברגע שה-task הסתיים) וב-`GET /v1/crdbs` לפי השם ולפי ה-instances, כשיש כמה
   CRDBs באותו שם.
 - את ה-`guid` הקלאסטר מייצר. אפשר לקבוע אותו ביצירה, אבל לא משתמשים בזה.
