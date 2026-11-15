@@ -31,5 +31,6 @@ class DatabaseKindDefaults(ConfigModel):
     overrides: list[DefaultsOverride]
 
 
-class DatabaseDefaultsSettings(DatabaseKindDefaults):
+class DatabaseDefaultsSettings(ConfigModel):
+    single_site: DatabaseKindDefaults
     active_active: DatabaseKindDefaults
