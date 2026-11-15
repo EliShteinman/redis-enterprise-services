@@ -60,13 +60,14 @@ POST /v1/databases/create
 
    ```yaml
    database_defaults:
-     values: {version: "8.4", replication: true, data_persistence: aof, ...}
-     persistence_values:
-       aof: {aof_policy: appendfsync-every-sec}
-       snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
-     overrides:
-       - when: {environment: DEV}
-         values: {replication: false}
+     single_site:
+       values: {version: "8.4", replication: true, data_persistence: aof, ...}
+       persistence_values:
+         aof: {aof_policy: appendfsync-every-sec}
+         snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
+       overrides:
+         - when: {environment: DEV}
+           values: {replication: false}
      active_active:
        values: {version: "8.4", replication: true, eviction_policy: noeviction, ...}
        persistence_values: {...}
@@ -75,8 +76,8 @@ POST /v1/databases/create
            values: {replication: false}
    ```
 
-   - **שני סוגים נפרדים:** DB באתר אחד לוקח רק את `values`, `persistence_values` ו-`overrides`. DB ב-Active-Active
-     לוקח רק את מה שתחת `active_active`, שמכיל סט מלא משלו. אין ערך שעובר מסוג לסוג. ערך שצריך להשתנות בשני
+   - **שני סוגים נפרדים, זה לצד זה:** DB באתר אחד לוקח רק את מה שתחת `single_site`, ו-DB ב-Active-Active רק את מה
+     שתחת `active_active`. לכל אחד סט מלא משלו (`values`, `persistence_values`, `overrides`). אין ערך שעובר מסוג לסוג. ערך שצריך להשתנות בשני
      הסוגים משנים בשני הסטים: אין בדיקה שהם נשארים זהים.
    - הסדר: `values` של הסוג, אחריהן כל דריסה של אותו סוג שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף
      השדות שהבקשה שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
