@@ -314,7 +314,10 @@ def test_an_active_active_result_has_the_crdb_and_one_branch_per_site() -> None:
         "c2/read-database": read_back(uid=4, host="c2"),
         "read-crdb": {
             "default_db_config": {"name": "orders", "memory_size": 104857600},
-            "instances": [{"cluster_url": "https://c1:9443", "id": 1, "compression": 3}],
+            "instances": [
+                {"cluster_url": "https://c1:9443", "id": 1, "compression": 3},
+                {"cluster_url": "https://c2:9443", "id": 2, "compression": 3},
+            ],
         },
     }
     done: list[StepRecord] = [
