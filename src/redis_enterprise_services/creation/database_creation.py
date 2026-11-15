@@ -6,7 +6,6 @@ from redis_enterprise_services.creation.creation_preparation import CreationPrep
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.prepared_run import PreparedRun
-from redis_enterprise_services.operations.start_once_result import StartOnceResult
 
 
 class DatabaseCreation:
@@ -21,8 +20,8 @@ class DatabaseCreation:
         self._execution: CreationExecution = execution
         self._operation_starter: OperationStarter = operation_starter
 
-    def start_once(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> StartOnceResult:
-        return self._operation_starter.start_once(
+    def start_once(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> None:
+        self._operation_starter.start_once(
             trace_id=trace_id,
             prepare_run=partial(self._prepare_run, trace_id=trace_id, creation_request=creation_request),
         )
