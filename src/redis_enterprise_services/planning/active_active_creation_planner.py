@@ -7,6 +7,7 @@ from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -66,6 +67,7 @@ class ActiveActiveCreationPlanner:
         resource_naming: UserResourceNaming,
         database_body_builder: CreationBodyBuilder[NewDatabase],
         secret_fields: frozenset[str],
+        crdb_creation: CrdbCreationSettings,
         create_crdb_step: SagaStep[CreateCrdbInput, CreatedCrdb],
         find_local_instance_step: SagaStep[FindLocalCrdbInstanceInput, LocalCrdbInstance],
         create_acl_step: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
@@ -80,6 +82,7 @@ class ActiveActiveCreationPlanner:
         self._resource_naming: UserResourceNaming = resource_naming
         self._database_body_builder: CreationBodyBuilder[NewDatabase] = database_body_builder
         self._secret_fields: frozenset[str] = secret_fields
+        self._crdb_creation: CrdbCreationSettings = crdb_creation
         self._create_crdb_step: SagaStep[CreateCrdbInput, CreatedCrdb] = create_crdb_step
         self._find_local_instance_step: SagaStep[FindLocalCrdbInstanceInput, LocalCrdbInstance] = (
             find_local_instance_step
@@ -276,6 +279,7 @@ class ActiveActiveCreationPlanner:
                 expected_config=without_fields(
                     fields=self._database_body_builder.creation_body(spec=database), names=self._secret_fields
                 ),
+                expected_settings=self._crdb_creation,
             ),
         )
 
@@ -317,10 +321,15 @@ def local_instance_input(*, step_results: StepResults, address: ClusterAddress) 
 
 
 def read_crdb_input(
-    *, step_results: StepResults, coordinator: ClusterAddress, expected_config: dict[str, JsonValue]
+    *,
+    step_results: StepResults,
+    coordinator: ClusterAddress,
+    expected_config: dict[str, JsonValue],
+    expected_settings: CrdbCreationSettings,
 ) -> ReadCrdbInput:
     return ReadCrdbInput(
         coordinator=coordinator,
         guid=created_crdb_of(step_results=step_results).guid,
         expected_config=expected_config,
+        expected_settings=expected_settings,
     )

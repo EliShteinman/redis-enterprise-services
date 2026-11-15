@@ -204,7 +204,7 @@ POST /v1/databases/create
 | 3..N | לכל קלאסטר ולכל יוזר: ACL, role עם `resources` של ה-bdb **המקומי**, user | הפיך |
 | N+1 | רק כשיש יוזרים: `PATCH` אחד ל-CRDB עם `instances[].db_config.roles_permissions`, רשימה לכל instance | הפיך: `PATCH` עם הערכים שנקראו לפני השינוי |
 | N+2 | לכל קלאסטר: קריאת ה-bdb ובדיקה שההרשאות נשמרו | קריאה בלבד |
-| N+3 | קריאת ה-CRDB ובדיקה ש-`default_db_config` מחזיק כל שדה שנשלח (tags משווים לפי `key` ו-`value`) | קריאה בלבד |
+| N+3 | קריאת ה-CRDB ובדיקה ש-`default_db_config` מחזיק כל שדה שנשלח (tags משווים לפי `key` ו-`value`), וש-`causal_consistency`, `encryption` ו-`compression` של כל instance הם כמו שנשלחו | קריאה בלבד |
 
 - **אותם צעדים, כמה קלאסטרים:** המפרק פורש כל צעד מקומי לצעד לכל קלאסטר, עם מפתח שמתחיל בקלאסטר. אותה מחלקה, פרמטר
   קלאסטר שונה. כשל באחד מבטל את האחרים כרגיל.

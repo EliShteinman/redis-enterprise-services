@@ -249,6 +249,7 @@ def build_active_active_planner(
         resource_naming=user_resource_naming,
         database_body_builder=cluster_wiring.repositories.database_body_builder,
         secret_fields=frozenset(settings.database.secret_fields),
+        crdb_creation=settings.crdb.creation,
         create_crdb_step=cluster_wiring.steps.create_crdb,
         find_local_instance_step=cluster_wiring.steps.find_local_crdb_instance,
         create_acl_step=cluster_wiring.steps.create_acl,
