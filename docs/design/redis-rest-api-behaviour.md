@@ -94,8 +94,8 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 | כיבוי `sharding` עם 2 shards | `406 invalid_sharding` | - |
 | `replication` עם node אחד | `406` | - |
 
-ביצירה עם `sharding: true`, התיעוד של אובייקט ה-bdb (`docs/reference/redis-rest-api/objects/bdb.json`) קובע ש-`shard_key_regex`
-חובה. זה לא נבדק מול קלאסטר.
+ביצירה עם `sharding: true`, התיעוד של Redis לאובייקט ה-bdb קובע ש-`shard_key_regex` חובה. זה לא נבדק מול
+קלאסטר, ולכן השירות דוחה בקשה כזו בעצמו.
 
 ### הרשאות (`roles_permissions`)
 

@@ -235,6 +235,21 @@ def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
         defaults_with_override(values={"snapshot_policy": [{"secs": 60, "writes": 1}]})
 
 
+def test_an_override_that_turns_persistence_off_drops_the_base_policy_at_startup() -> None:
+    database_defaults_from(
+        settings=DatabaseDefaultsSettings(
+            values={"data_persistence": "aof", "aof_policy": "appendfsync-every-sec"},
+            persistence_values={},
+            overrides=[
+                DefaultsOverride(
+                    when=OverrideSelector(environment="DEV"), values={"data_persistence": "disabled"}
+                )
+            ],
+        ),
+        clusters=[cluster(environment="DEV")],
+    )
+
+
 def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
