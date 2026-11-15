@@ -46,6 +46,28 @@ def test_a_database_result_whose_active_active_fields_disagree_is_refused(
         )
 
 
+def active_active_result(*, instance_url: str) -> dict[str, object]:
+    return {
+        "name": "orders",
+        "memory_size": 1,
+        "active_active": True,
+        "crdb_guid": GUID,
+        "crdb": {**CRDB, "instances": [{"cluster_url": instance_url, "instance_id": 1, "compression": 3}]},
+        "clusters": [CLUSTER],
+    }
+
+
+def test_an_active_active_result_whose_instances_are_its_clusters_is_accepted() -> None:
+    assert DatabaseResult.model_validate(
+        active_active_result(instance_url="https://cluster-a.net-a:9443")
+    ).crdb
+
+
+def test_an_active_active_result_with_an_instance_outside_its_clusters_is_refused() -> None:
+    with pytest.raises(expected_exception=ValidationError, match="the CRDB instances are on"):
+        DatabaseResult.model_validate(active_active_result(instance_url="https://cluster-b.net-a:9443"))
+
+
 def test_a_single_site_result_with_two_clusters_is_refused() -> None:
     with pytest.raises(expected_exception=ValidationError):
         DatabaseResult.model_validate(
