@@ -258,7 +258,7 @@
 |---|---|
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
-| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency` ו-`encryption`, ולכל אתר `cluster_url`, `instance_id` ו-`compression` (שלושתם כמו שנשלחו: הם נבדקים, וערך אחר מבטל את היצירה), ו-`featureset_version` ו-`protocol_version` (נקבעים ב-Redis, `null` כשהקלאסטר לא החזיר אותם). `instances` לפי הסדר של ה-CRDB, לא של הבקשה: מתאימים instance לענף שלו לפי `cluster_url` |
+| `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency`, `encryption`, ולכל אתר `cluster_url`, `instance_id` ו-`compression`. `causal_consistency`, `encryption` ו-`compression` הם כמו שנשלחו: הם נבדקים, וערך אחר מבטל את היצירה. `featureset_version` ו-`protocol_version` נקבעים ב-Redis, ו-`null` כשהקלאסטר לא החזיר אותם. `instances` לפי הסדר של ה-CRDB, לא של הבקשה. מתאימים instance לענף שלו לפי `cluster_url`, כשמשווים בלי רישיות ועם הפורט ברירת המחדל של הסכמה (השירות בודק שכל instance שייך לאחד הענפים) |
 | `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
 | `clusters[].cluster` | שם הקלאסטר מהקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
