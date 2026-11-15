@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -31,6 +32,18 @@ class DatabaseKindDefaults(ConfigModel):
     overrides: list[DefaultsOverride]
 
 
+class DatabaseKind(StrEnum):
+    SINGLE_SITE = "single_site"
+    ACTIVE_ACTIVE = "active_active"
+
+    @classmethod
+    def of(cls, *, active_active: bool) -> DatabaseKind:
+        return cls.ACTIVE_ACTIVE if active_active else cls.SINGLE_SITE
+
+
 class DatabaseDefaultsSettings(ConfigModel):
     single_site: DatabaseKindDefaults
     active_active: DatabaseKindDefaults
+
+    def of_kind(self, *, kind: DatabaseKind) -> DatabaseKindDefaults:
+        return self.active_active if kind == DatabaseKind.ACTIVE_ACTIVE else self.single_site
