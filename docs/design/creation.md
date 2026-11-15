@@ -15,7 +15,7 @@
 POST /v1/databases/create
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
  ├─ OperationStarter.start_once
- │   ├─ יש פעולה לאותו trace?                           ⇐ 200 עם המצב שלה
+ │   ├─ יש פעולה לאותו trace?                           ⇐ 202, שום דבר לא מתחיל
  │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
  │   ├─ התחלה אטומית: running + heartbeat
  │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
