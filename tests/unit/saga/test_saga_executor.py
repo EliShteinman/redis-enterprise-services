@@ -403,6 +403,21 @@ def test_a_find_outcome_that_shows_a_failure_records_that_failure_as_the_step_er
     assert record.steps[0].error is not None and record.steps[0].error.message == FAILED.message
 
 
+def test_a_find_outcome_that_needs_manual_intervention_records_its_reason_as_the_step_error(
+    calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
+) -> None:
+    steps: list[PlannedStep[FakeInput, FakeResult]] = [
+        planned(
+            step=FakeStep(calls=calls, execute_script=[OUTCOME_UNKNOWN], find_outcome_answers=[AMBIGUOUS]),
+            key="a",
+        ),
+    ]
+
+    record: SagaRecord = run(steps=steps, record_writer=record_writer, lock=lock)
+
+    assert record.steps[0].error is not None and record.steps[0].error.message == AMBIGUOUS.message
+
+
 def test_a_result_found_before_a_failing_find_outcome_is_rolled_back(
     calls: list[str], record_writer: InMemorySagaRecordWriter, lock: InMemorySagaLock
 ) -> None:
