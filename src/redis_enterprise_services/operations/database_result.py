@@ -72,7 +72,8 @@ class DatabaseClusterResult(BaseModel):
 
 class CrdbInstanceResult(BaseModel):
     cluster_url: str = Field(
-        description="The API address of the cluster of this instance.",
+        description="The API address of the cluster of this instance, the same as the cluster_url of that "
+        "cluster in clusters.",
         examples=["https://cluster-a.net-a:9443"],
     )
     instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
