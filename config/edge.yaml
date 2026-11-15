@@ -18,6 +18,3 @@ edge:
     invalid_request: invalid_request
     connection_failed: connection_failed
     response_rejected: response_rejected
-  networks:
-    local:
-      firewall: null
