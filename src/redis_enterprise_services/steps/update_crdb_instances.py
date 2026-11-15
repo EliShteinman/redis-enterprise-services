@@ -83,7 +83,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
     ) -> CrdbInstancesSnapshot | None:
         if kept_result is None:
             return None
-        self._reject_a_running_or_failed_task(step_input=step_input)
+        self._wait_for_its_task(step_input=step_input)
         match self._held(step_input=step_input, old=kept_result):
             case HeldValues.NEW | HeldValues.BOTH:
                 return kept_result
@@ -113,15 +113,13 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                     message=f"CRDB {step_input.guid} changed after the update, not restored over that change"
                 )
 
-    def _reject_a_running_or_failed_task(self, *, step_input: UpdateCrdbInstancesInput) -> None:
+    def _wait_for_its_task(self, *, step_input: UpdateCrdbInstancesInput) -> None:
         coordinator: ClusterTarget = self._coordinator(step_input=step_input)
         task: JsonValue | None = self._task_tracker.task_or_none(
             target=coordinator, task_id=step_input.task_id
         )
         if task is not None:
-            self._task_tracker.reject_a_running_or_failed_task(
-                target=coordinator, task=task, task_id=step_input.task_id
-            )
+            self._task_tracker.finished_task(target=coordinator, task=task, task_id=step_input.task_id)
 
     def _held(self, *, step_input: UpdateCrdbInstancesInput, old: CrdbInstancesSnapshot) -> HeldValues:
         current: CrdbInstancesSnapshot = self._current(step_input=step_input)
