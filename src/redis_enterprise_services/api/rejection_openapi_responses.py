@@ -33,9 +33,9 @@ CREATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_
 OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
     model=RejectedRequest,
     description_by_status={
-        HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired.",
+        HTTPStatus.NOT_FOUND: "The trace_id is not known, or its result has expired (operation_not_found).",
         HTTPStatus.UNPROCESSABLE_CONTENT: "The traceparent header is missing or malformed, or the trace_id "
-        "is not 32 lowercase hex characters, or it is all zeros.",
+        "is not 32 lowercase hex characters, or it is all zeros (validation_error).",
         HTTPStatus.INTERNAL_SERVER_ERROR: "internal_error (a fixed message; the details are in the service "
         "log, by trace_id).",
     },

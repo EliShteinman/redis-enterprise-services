@@ -46,9 +46,9 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "summary": "Active-Active on two sites, with one user",
         "description": "Fields left out take the service defaults for the target, plus the defaults set "
         "for Active-Active only. When a default differs between the sites, the request is answered "
-        "configuration_error naming those fields, and sending them explicitly avoids it. cluster generic "
-        "means the one generic cluster configured at each site. All sites must be on one network (else "
-        "mixed_networks), and two sites may not resolve to the same cluster (else duplicate_sites).",
+        "configuration_error naming those fields, and sending them explicitly avoids it. All sites must be "
+        "on one network (else mixed_networks), and two sites may not resolve to the same cluster (else "
+        "duplicate_sites).",
         "value": {
             "target": {
                 "active_active": True,
