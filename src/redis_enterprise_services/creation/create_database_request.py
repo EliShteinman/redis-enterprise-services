@@ -30,9 +30,6 @@ class CreateDatabaseTarget(BaseModel):
     def naming_context(self) -> NamingContext:
         return NamingContext(active_active=self.active_active, sites=self.sites)
 
-    def single_site(self) -> SitePlacement:
-        return self.sites[0]
-
 
 class CreateDatabaseRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
