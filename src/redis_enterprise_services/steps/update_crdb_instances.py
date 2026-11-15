@@ -8,7 +8,6 @@ from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarg
 from redis_enterprise_services.crdbs.models import Crdb, CrdbInstance
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import (
-    CrdbTaskTimeoutError,
     IncompleteClusterObjectError,
     UnrestorableFieldsError,
     UpdateOutcomeUnclearError,
@@ -75,7 +74,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
     ) -> CrdbInstancesSnapshot | None:
         if kept_result is None:
             return None
-        self._reject_a_running_task(step_input=step_input)
+        self._reject_an_unfinished_task(step_input=step_input)
         match self._held(step_input=step_input, old=kept_result):
             case HeldValues.NEW | HeldValues.BOTH:
                 return kept_result
@@ -105,13 +104,14 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                     message=f"CRDB {step_input.guid} changed after the update, not restored over that change"
                 )
 
-    def _reject_a_running_task(self, *, step_input: UpdateCrdbInstancesInput) -> None:
+    def _reject_an_unfinished_task(self, *, step_input: UpdateCrdbInstancesInput) -> None:
+        coordinator: ClusterTarget = self._coordinator(step_input=step_input)
         task: JsonValue | None = self._task_tracker.task_or_none(
-            target=self._coordinator(step_input=step_input), task_id=step_input.task_id
+            target=coordinator, task_id=step_input.task_id
         )
-        if task is not None and self._task_tracker.is_running(task=task):
-            raise CrdbTaskTimeoutError(
-                message=f"CRDB task {step_input.task_id} is still {self._task_tracker.status_of(task=task)}"
+        if task is not None:
+            self._task_tracker.reject_an_unfinished_task(
+                target=coordinator, task=task, task_id=step_input.task_id
             )
 
     def _held(self, *, step_input: UpdateCrdbInstancesInput, old: CrdbInstancesSnapshot) -> HeldValues:

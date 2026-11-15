@@ -63,3 +63,10 @@ def test_a_crdb_whose_instance_url_is_not_a_cluster_address_is_an_unreadable_ans
                 "instances": [{"id": 1, "cluster": {"url": "cluster-a:9443"}}],
             }
         ).read(target=TARGET, guid="g")
+
+
+def test_a_task_started_under_another_id_is_an_unreadable_answer() -> None:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError):
+        repository_answering(body={"id": "another", "status": "queued"}).start_deletion(
+            target=TARGET, guid="g", task_id="ours"
+        )

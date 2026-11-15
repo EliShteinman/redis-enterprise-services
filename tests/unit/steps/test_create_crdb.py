@@ -12,6 +12,7 @@ from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
+    CrdbTaskFailedError,
     CrdbTaskTimeoutError,
     UnreadableClusterResponseError,
 )
@@ -74,15 +75,18 @@ def test_a_finished_creation_keeps_the_guid_of_its_task() -> None:
     assert harness.kept == [CreatedCrdb(guid=GUID)]
 
 
-@pytest.mark.parametrize(
-    argnames="task",
-    argvalues=[
-        pytest.param(NOT_FOUND, id="task-never-arrived"),
-        pytest.param({"status": "failed"}, id="failed"),
-    ],
-)
-def test_a_creation_whose_task_never_ran_or_failed_left_nothing(task: JsonValue | Exception) -> None:
-    assert StepHarness().find_outcome_with_task(task=task) is None
+def test_a_creation_whose_task_never_arrived_left_nothing() -> None:
+    assert StepHarness().find_outcome_with_task(task=NOT_FOUND) is None
+
+
+def test_a_creation_whose_task_failed_is_a_certain_failure() -> None:
+    harness: StepHarness = StepHarness()
+    harness.task_waiter.wait_until_finished.side_effect = CrdbTaskFailedError(
+        message="failed", cluster_error_code=None
+    )
+
+    with pytest.raises(expected_exception=CrdbTaskFailedError):
+        harness.find_outcome_with_task(task={"status": "failed"})
 
 
 def test_a_creation_whose_task_finished_is_found_by_our_task_id() -> None:
