@@ -76,17 +76,31 @@ def test_a_finished_creation_keeps_the_guid_of_its_task() -> None:
 
 
 def test_a_creation_whose_task_never_arrived_left_nothing() -> None:
-    assert StepHarness().find_outcome_with_task(task=NOT_FOUND) is None
-
-
-def test_a_creation_whose_task_failed_is_a_certain_failure() -> None:
     harness: StepHarness = StepHarness()
+    harness.repository.list_crdb_names.return_value = set()
+
+    assert harness.find_outcome_with_task(task=NOT_FOUND) is None
+
+
+def failed_task_harness(*, crdb_names: set[str]) -> StepHarness:
+    harness: StepHarness = StepHarness()
+    harness.repository.list_crdb_names.return_value = crdb_names
     harness.task_waiter.wait_until_finished.side_effect = CrdbTaskFailedError(
         message="failed", cluster_error_code=None
     )
+    return harness
 
+
+def test_a_creation_whose_task_failed_is_a_certain_failure() -> None:
     with pytest.raises(expected_exception=CrdbTaskFailedError):
-        harness.find_outcome_with_task(task={"status": "failed"})
+        failed_task_harness(crdb_names=set()).find_outcome_with_task(task={"status": "failed"})
+
+
+def test_a_failed_creation_that_left_a_crdb_of_its_name_needs_manual_intervention() -> None:
+    harness: StepHarness = failed_task_harness(crdb_names={"orders"})
+
+    with pytest.raises(expected_exception=StepNeedsManualInterventionError):
+        harness.step.execute(step_input=STEP_INPUT, keep_result=harness.keep)
 
 
 def test_a_creation_whose_task_finished_is_found_by_our_task_id() -> None:

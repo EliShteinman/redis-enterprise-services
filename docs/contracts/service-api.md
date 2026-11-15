@@ -88,6 +88,8 @@
   ההודעה מונה את השדות השונים. זה קורה בעיקר כשהבקשה מערבבת סביבות (למשל אתר DEV ואתר PROD באותה רשת, ש-`replication`
   שלהם שונה): הטעות בבקשה, אבל הקוד `configuration_error` (`known_failure`). שליחת השדות שבהודעה במפורש בבקשה עוקפת
   את זה. כשמצב השמירה שונה, ההודעה מונה רק את `data_persistence`, כי `aof_policy` ו-`snapshot_policy` לא נשלחים יחד.
+- בקשה שתקינה לבד, אבל לא תקינה יחד עם ברירות המחדל של הקלאסטר (למשל `sharding: false` מול ברירת מחדל עם
+  `shard_key_regex`) ⇐ `500 configuration_error` עם הסיבה. היום אין ברירת מחדל כזו.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
@@ -389,7 +391,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `internal_error` | `needs_investigation` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `unexpected <type>: <text>`, גם מיד וגם בסטטוס. שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, ה-`message` של השגיאה שעצרה (של הצעד, או של השגיאה שקטעה את הריצה כשלצעד אין שגיאה משלו, גם כשה-record לא נקרא); אחרי קריסה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
 | `name_taken` | `customer_fixable` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס באחד הקלאסטרים, או שם ה-DB תפוס על ידי CRDB |
 | `resources_locked` | `known_failure` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באחד הקלאסטרים של הבקשה, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, task של CRDB הסתיים ב-`failed` או `canceled` (ההודעה מונה כל אתר שנכשל), או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
+| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, task של CRDB הסתיים ב-`failed` או `canceled` (ההודעה מונה כל אתר שנכשל לפי ה-host של ה-`cluster_url` שלו; `cluster_url` הוא הקלאסטר המתאם, ו-`cluster_error_code` מופיע רק כשהמתאם עצמו נכשל), או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
 | `cluster_unavailable` | `known_failure` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
 | `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active`, או task של CRDB שעוד רץ (הוא עוד עלול להסתיים) |
 
