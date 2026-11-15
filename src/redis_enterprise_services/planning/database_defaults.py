@@ -88,16 +88,10 @@ def reject_invalid_values_on_cluster(
 def merged_default_values(
     *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, active_active: bool
 ) -> dict[str, JsonValue]:
-    values: dict[str, JsonValue] = dict(settings.values)
-    labels: dict[str, str | bool] = placement_labels(cluster=cluster, active_active=active_active)
-    for override in settings.overrides:
-        if selector_matches(selector=override.when, labels=labels):
-            logger.debug(
-                msg=f"defaults for {override.when} apply on cluster {cluster.name} "
-                f"(active_active={active_active})"
-            )
-            values.update(override.values)
-    return values
+    return {
+        **settings.values,
+        **override_values_on_cluster(settings=settings, cluster=cluster, active_active=active_active),
+    }
 
 
 def override_values_on_cluster(
@@ -107,6 +101,10 @@ def override_values_on_cluster(
     values: dict[str, JsonValue] = {}
     for override in settings.overrides:
         if selector_matches(selector=override.when, labels=labels):
+            logger.debug(
+                msg=f"defaults for {override.when} apply on cluster {cluster.name} "
+                f"(active_active={active_active})"
+            )
             values.update(override.values)
     return values
 
