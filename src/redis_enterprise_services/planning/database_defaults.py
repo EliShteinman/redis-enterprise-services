@@ -154,5 +154,6 @@ def reject_invalid_options(*, values: dict[str, JsonValue]) -> None:
         DatabaseOptions.model_validate(obj=values)
     except ValidationError as error:
         raise ConfigurationError(
-            message=f"database defaults {sorted(values)} are not valid: {error}"
+            message=f"database defaults {sorted(values)} are not valid: "
+            f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
         ) from error
