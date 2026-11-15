@@ -209,6 +209,19 @@ def test_find_outcome_trusts_what_was_kept_without_searching(
     repository.find_by_name.assert_not_called()
 
 
+def test_find_outcome_finds_nothing_when_the_kept_resource_is_gone(
+    repository: MagicMock, step: CreateResourceStep[NewUser]
+) -> None:
+    repository.read_created.side_effect = ClusterRejectedRequestError(
+        message="m", cluster_status_code=404, cluster_error_code="not_found"
+    )
+
+    assert (
+        step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
+        is None
+    )
+
+
 def test_find_outcome_waits_until_the_kept_resource_is_created(
     completion_waiter: MagicMock, step: CreateResourceStep[NewUser]
 ) -> None:
