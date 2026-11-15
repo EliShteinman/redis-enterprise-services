@@ -67,20 +67,26 @@ POST /v1/databases/create
      overrides:
        - when: {environment: DEV}
          values: {replication: false}
-       - when: {active_active: true}
-         values: {eviction_policy: noeviction}
+     active_active:
+       values: {version: "8.4", replication: true, eviction_policy: noeviction, ...}
+       persistence_values: {...}
+       overrides:
+         - when: {environment: DEV}
+           values: {replication: false}
    ```
 
-   - הסדר: `values`, אחריהן כל דריסה שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף השדות שהבקשה
-     שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
-   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type`, `cluster_name` ו-`active_active`.
+   - **שני סוגים נפרדים:** DB באתר אחד לוקח רק את `values`, `persistence_values` ו-`overrides`. DB ב-Active-Active
+     לוקח רק את מה שתחת `active_active`, שמכיל סט מלא משלו. אין ערך שעובר מסוג לסוג.
+   - הסדר: `values` של הסוג, אחריהן כל דריסה של אותו סוג שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף
+     השדות שהבקשה שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
+   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - **שדות של מצב שמירה:** `aof_policy` שייך ל-`aof` ו-`snapshot_policy` ל-`snapshot`. אחרי המיזוג נקבע
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` שלו אם הבקשה
      לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
      שלהם, אחרת `422 validation_error`.
    - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות. כך גם ברירות המחדל שחלות יחד
-     על כל קלאסטר בקונפיג: שתי דריסות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
+     על כל קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי דריסות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
 4. **ב-Active-Active:** כל אתר עובר את שלב 2 לבד. אחר כך, לפני ברירות המחדל: כל האתרים באותה רשת (אחרת
    `mixed_networks`), כל אתר על קלאסטר אחר (אחרת `duplicate_sites`), וקלאסטרים שונים בשם אחר וב-host אחר (אחרת
