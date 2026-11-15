@@ -10,8 +10,9 @@ __pycache__/
 build/
 dist/
 
-# Virtual environment
+# Virtual environment and lock file
 .venv/
+uv.lock
 
 # Tools
 .ruff_cache/
