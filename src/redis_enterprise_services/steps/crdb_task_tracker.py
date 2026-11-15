@@ -8,7 +8,11 @@ from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
 from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
-from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskFailedError
+from redis_enterprise_services.exceptions.cluster import (
+    ClusterRejectedRequestError,
+    CrdbTaskFailedError,
+    CrdbTaskTimeoutError,
+)
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -54,6 +58,12 @@ class CrdbTaskTracker:
 
     def is_running(self, *, task: JsonValue) -> bool:
         return not self.is_finished(task=task) and not self.has_failed(task=task)
+
+    def reject_an_unfinished_task(self, *, target: ClusterTarget, task: JsonValue, task_id: str) -> None:
+        if self.is_running(task=task):
+            raise CrdbTaskTimeoutError(message=f"CRDB task {task_id} is still {self.status_of(task=task)}")
+        if self.has_failed(task=task):
+            self._task_waiter.wait_until_finished(target=target, task_id=task_id)
 
     def settle(self, *, target: ClusterTarget, task_id: str) -> None:
         task: JsonValue | None = self.task_or_none(target=target, task_id=task_id)
