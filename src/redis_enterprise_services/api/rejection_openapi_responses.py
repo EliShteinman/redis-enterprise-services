@@ -25,8 +25,9 @@ CREATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_
         "than one network (mixed_networks), or two of them resolve to the same cluster (duplicate_sites).",
         HTTPStatus.INTERNAL_SERVER_ERROR: "configuration_error (the service configuration cannot serve the "
         "request, and the message says what in the configuration is wrong or missing; when it names fields "
-        "whose defaults differ between the Active-Active sites, sending those fields in the request avoids "
-        "it) or internal_error (a fixed message; the details are in the service log, by trace_id).",
+        "whose defaults differ between the Active-Active sites, usually because the request mixes "
+        "environments, sending those fields in the request avoids it) or internal_error (a fixed message; "
+        "the details are in the service log, by trace_id).",
     },
 )
 OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
