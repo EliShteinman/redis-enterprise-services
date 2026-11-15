@@ -62,13 +62,7 @@ class CreationPreparation:
             self._database_defaults.fill_in(cluster=cluster, requested=requested, active_active=active_active)
             for cluster in clusters
         ]
-        differing: list[str] = fields_to_send(
-            differing=[
-                name
-                for name in NewDatabase.model_fields
-                if any(getattr(database, name) != getattr(filled[0], name) for database in filled)
-            ]
-        )
+        differing: list[str] = differences_to_report(differing=differing_fields(databases=filled))
         if differing:
             raise ConfigurationError(
                 message=f"the database defaults give {differing} different values on "
@@ -77,7 +71,15 @@ class CreationPreparation:
         return filled[0]
 
 
-def fields_to_send(*, differing: list[str]) -> list[str]:
+def differing_fields(*, databases: list[NewDatabase]) -> list[str]:
+    return [
+        name
+        for name in NewDatabase.model_fields
+        if any(getattr(database, name) != getattr(databases[0], name) for database in databases)
+    ]
+
+
+def differences_to_report(*, differing: list[str]) -> list[str]:
     if DATA_PERSISTENCE_FIELD in differing:
         return sorted(name for name in differing if name not in PERSISTENCE_MODE_BY_FIELD)
     return sorted(differing)
