@@ -78,9 +78,8 @@ class CrdbInstanceResult(BaseModel):
         examples=["https://cluster-a.net-a:9443"],
     )
     instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
-    compression: int | None = Field(
-        description="The compression level of the sync from this instance (0-6); null only when the "
-        "cluster did not report it.",
+    compression: int = Field(
+        description="The compression level of the sync from this instance (0-6), as sent and checked.",
         examples=[3],
     )
 
@@ -94,14 +93,13 @@ class CrdbResult(BaseModel):
             {"name": "orders", "memory_size": 1073741824, "eviction_policy": "noeviction", "port": 12000}
         ],
     )
-    causal_consistency: bool | None = Field(
-        description="Whether updates reach every site in the order they depend on each other. The service "
-        "always sends it; null only when the cluster did not report it back.",
+    causal_consistency: bool = Field(
+        description="Whether updates reach every site in the order they depend on each other, as sent and "
+        "checked.",
         examples=[False],
     )
-    encryption: bool | None = Field(
-        description="Whether the sync between the sites is encrypted. The service always sends it; null "
-        "only when the cluster did not report it back.",
+    encryption: bool = Field(
+        description="Whether the sync between the sites is encrypted, as sent and checked.",
         examples=[False],
     )
     featureset_version: int | None = Field(
