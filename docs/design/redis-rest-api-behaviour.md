@@ -144,7 +144,7 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
   `406 invalid_input`. CRDB שנמחק ⇐ `404 not_found`.
 - אתר שנופל באמצע יצירה: ה-task נשאר `started` בלי הגבלה, באתרים התקינים כבר יש bdb מקומי, וה-CRDB לא מופיע ב-
   `GET /v1/crdbs`. `POST /v1/crdb_tasks/{id}/actions/cancel` נכנס לתוקף כשהאתר חוזר, וה-bdb החלקי נמחק. בלי cancel
-  היצירה מסתיימת. לא משתמשים ב-`force`, כי הוא עלול לשבור את ה-CRDB.
+  היצירה מסתיימת. השירות לא שולח cancel בכלל (`creation.md` סעיף 6), וגם `force` עלול לשבור את ה-CRDB.
 - מחיקה: `DELETE /v1/crdbs/{guid}` עם task. כ-10 שניות.
 - `GET /v1/crdbs` מחזיר `{"crdbs": [...]}`.
 - ה-uid של ה-bdb המקומי ידוע רק לקלאסטר עצמו: `local_databases` או `instances[].db_uid` של `GET /v1/crdbs/{guid}`
