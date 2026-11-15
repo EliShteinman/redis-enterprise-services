@@ -111,9 +111,19 @@ def test_a_creation_whose_task_finished_is_found_by_our_task_id() -> None:
     assert found == CreatedCrdb(guid=GUID)
 
 
-def test_a_creation_whose_task_is_still_running_is_not_cancelled_but_left_unknown() -> None:
+def test_a_creation_whose_task_is_still_running_is_waited_for() -> None:
+    harness: StepHarness = StepHarness()
+    harness.task_waiter.wait_until_finished.return_value = {"status": "finished", "crdb_guid": GUID}
+
+    assert harness.find_outcome_with_task(task={"status": "started"}) == CreatedCrdb(guid=GUID)
+
+
+def test_a_creation_whose_task_outlives_the_wait_is_not_cancelled_but_left_unknown() -> None:
+    harness: StepHarness = StepHarness()
+    harness.task_waiter.wait_until_finished.side_effect = CrdbTaskTimeoutError(message="still started")
+
     with pytest.raises(expected_exception=CrdbTaskTimeoutError):
-        StepHarness().find_outcome_with_task(task={"status": "started"})
+        harness.find_outcome_with_task(task={"status": "started"})
 
 
 def test_deleting_a_crdb_that_is_already_gone_is_done() -> None:

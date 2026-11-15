@@ -67,7 +67,12 @@ def reject_invalid_values_on_cluster(
         settings=settings, cluster=cluster, active_active=active_active
     )
     try:
-        reject_persistence_settings_of_another_mode(base={}, override=merged)
+        reject_persistence_settings_of_another_mode(
+            base=settings.values,
+            override=override_values_on_cluster(
+                settings=settings, cluster=cluster, active_active=active_active
+            ),
+        )
         reject_invalid_options(
             values=with_persistence_settings_of_its_mode(
                 values=merged, persistence_values=settings.persistence_values
@@ -91,6 +96,17 @@ def merged_default_values(
                 msg=f"defaults for {override.when} apply on cluster {cluster.name} "
                 f"(active_active={active_active})"
             )
+            values.update(override.values)
+    return values
+
+
+def override_values_on_cluster(
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, active_active: bool
+) -> dict[str, JsonValue]:
+    labels: dict[str, str | bool] = placement_labels(cluster=cluster, active_active=active_active)
+    values: dict[str, JsonValue] = {}
+    for override in settings.overrides:
+        if selector_matches(selector=override.when, labels=labels):
             values.update(override.values)
     return values
 

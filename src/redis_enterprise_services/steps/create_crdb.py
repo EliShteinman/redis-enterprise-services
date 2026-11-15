@@ -95,13 +95,13 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
             self._reject_a_crdb_left_behind(step_input=step_input, why="is unknown, perhaps expired")
             logger.info(msg=f"CRDB task {step_input.task_id} never ran, which leaves nothing behind")
             return None
-        self._finished_task(
+        finished: JsonValue = self._finished_task(
             step_input=step_input,
-            wait=lambda: self._task_tracker.reject_a_running_or_failed_task(
+            wait=lambda: self._task_tracker.finished_task(
                 target=coordinator, task=task, task_id=step_input.task_id
             ),
         )
-        found: CreatedCrdb = CreatedCrdb(guid=self._guid_of(task=task, task_id=step_input.task_id))
+        found: CreatedCrdb = CreatedCrdb(guid=self._guid_of(task=finished, task_id=step_input.task_id))
         keep_result_if_none_kept(result=found)
         return found
 
