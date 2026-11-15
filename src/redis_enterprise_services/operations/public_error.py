@@ -13,8 +13,7 @@ PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {
     "invalid_name": "a name breaks the naming rules",
     "no_matching_cluster": "no configured cluster for the target",
     "mixed_networks": "the sites of an Active-Active database are not all on one network",
-    "duplicate_sites": "two sites of an Active-Active database resolve to the same cluster, cluster name or "
-    "host",
+    "duplicate_sites": "two sites of an Active-Active database resolve to the same cluster",
     "cluster_request_failed": "the cluster refused or failed a request",
     "cluster_unavailable": "the cluster or the edge service cannot be reached",
     "cluster_timeout": "the cluster did not finish in time",
