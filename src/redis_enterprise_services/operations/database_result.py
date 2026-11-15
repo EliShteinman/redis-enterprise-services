@@ -125,9 +125,10 @@ class DatabaseResult(BaseModel):
     memory_size: int = Field(
         description="The memory limit in bytes, as the cluster stored it.", examples=[1073741824]
     )
-    active_active: bool = Field(description="Whether the database is Active-Active.", examples=[False])
+    active_active: bool = Field(description="Whether the database is Active-Active.", examples=[True])
     crdb_guid: UUID | None = Field(
-        description="The Active-Active database id. Null for a single-site database.", examples=[None]
+        description="The Active-Active database id. Null for a single-site database.",
+        examples=["d71cefce-4e31-41fd-b654-37cbb2f39a01"],
     )
     crdb: CrdbResult | None = Field(
         default=None,

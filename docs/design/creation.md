@@ -123,11 +123,11 @@ POST /v1/databases/create
 - שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - **המתנה בקלאסטר:** כל המתנה קוראת את המצב כל `poll_interval_seconds` עד `timeout_seconds` (`database.wait`,
-  `action.wait`, `crdb.task.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
-  או לא ענה, 5xx של הקלאסטר, או קוד מ-`cluster_api.transient_error_codes`) נרשמת כ-WARNING, והקריאה חוזרת. כל שגיאה
-  אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout`,
-  `database_deletion_timeout` או `crdb_task_timeout` (בחוזה: `cluster_timeout`). אם אף קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה
-  האחרונה במקום ה-timeout, למשל `cluster_unavailable`.
+  `action.wait`, `crdb.task.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב
+  (שירות קצה שלא התחבר או לא ענה, 5xx של הקלאסטר, או קוד מ-`cluster_api.transient_error_codes`) נרשמת כ-WARNING,
+  והקריאה חוזרת. כל שגיאה אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`,
+  `database_activation_timeout`, `database_deletion_timeout` או `crdb_task_timeout` (בחוזה: `cluster_timeout`). אם אף
+  קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה האחרונה במקום ה-timeout, למשל `cluster_unavailable`.
 - גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
 
@@ -216,12 +216,17 @@ POST /v1/databases/create
   `sharding`, `shard_key_regex`) לא יכולים להיות שונים.
 - **אין dry_run:** יצירה שנכשלת בשלב הבדיקה של הקלאסטר (מקום, פורט, פרטי גישה), גם באתר אחד, לא משאירה כלום באף אתר
   ומחזירה אותה שגיאה שה-dry_run היה מחזיר, ולכן בדיקה מראש לא מוסיפה. אתר שנופל באמצע היצירה הוא מקרה אחר (הסעיף הבא).
-- **אתר שנופל באמצע יצירה** (ה-task נשאר `started`): אחרי `crdb.task.wait.timeout_seconds` (600 שניות) ⇐ `requires_manual_intervention`. לא
-  שולחים cancel (החלטת הבעלים): בניסוי ישן cancel של יצירה עבד ומחק את ה-bdb החלקי, אבל cancel של שינוי מבנה אחר
+- **אתר שנופל באמצע יצירה** (ה-task נשאר `started`): אחרי `crdb.task.wait.timeout_seconds` (600 שניות) ⇐
+  `requires_manual_intervention`. לא שולחים cancel (החלטת הבעלים): בניסוי ישן cancel של יצירה עבד ומחק את ה-bdb החלקי, אבל cancel של שינוי מבנה אחר
   (הסרת אתר) השאיר CRDB שאי אפשר למחוק, ולכן לא מסתכנים. אדם מחליט לפי ה-task id ששמור ב-record.
 - **task id קבוע:** ה-`X-Task-ID` נגזר מה-saga ומהצעד. בקשה שנשלחת שוב עם אותו id נענית `406 job_exists`, כלומר
   הראשונה הגיעה, והצעד מחכה ל-task הקיים במקום להיכשל. צעד ההרשאות קורא את ה-task שלו לפני שהוא מחליט: task שעוד
-  רץ ⇐ תוצאה לא ידועה, וביטול מחכה שה-task יסתיים לפני שהוא משחזר.
+  רץ ⇐ תוצאה לא ידועה, וביטול מחכה שה-task יסתיים לפני שהוא משחזר. task שכבר הסתיים ב-`failed` או `canceled` ⇐ כישלון
+  ודאי, וה-saga מבטל את מה שנוצר לפניו. גם הקלאסטר חייב להחזיר את אותו id בתשובה, אחרת ⇐
+  `requires_manual_intervention`.
+- **task id של ביטול:** הביטול (מחיקת ה-CRDB, או שחזור ההרשאות) שולח task id שני, שנגזר מה-id של הצעד
+  (`undo_task_id`), כך שב-record יש עד שני task ids לכל צעד. ביטול שנכשל לא נשלח שוב עם id חדש: הוא מצטרף ל-task
+  שנכשל עד שהתוצאה פגה, ונגמר בהתערבות ידנית.
 - **תוצאה לא ידועה של היצירה:** מאתרים לפי ה-`X-Task-ID` שלנו, לא לפי השם, כי שמות CRDB כפולים מותרים. task שלא
   נמצא (`404`, למשל כי התוצאה שלו פגה) כשקיים CRDB באותו שם ⇐ `requires_manual_intervention`, כי ייתכן שהוא של
   היצירה הזו.

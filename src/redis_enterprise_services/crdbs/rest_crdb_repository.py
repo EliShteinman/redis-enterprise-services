@@ -4,6 +4,7 @@ from pydantic import ConfigDict, JsonValue, TypeAdapter
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
+from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
 from redis_enterprise_services.config.crdb_settings import CrdbSettings
@@ -115,14 +116,26 @@ class RestCrdbRepository(CrdbRepository):
         self, *, target: ClusterTarget, method: HttpMethod, path: str, body: JsonValue | None, task_id: str
     ) -> None:
         logger.info(msg=f"{method} {path} on {target.api_url} as CRDB task {task_id}")
-        self._cluster_api_caller.send(
+        answer: JsonValue = self._cluster_api_caller.send(
             target=target,
             method=method,
             path=path,
             body=body,
             crdb_task_id=task_id,
             result_ttl_seconds=self._settings.task.result_ttl_seconds,
+        ).body
+        self._reject_another_task_id(answer=answer, task_id=task_id, target=target)
+
+    def _reject_another_task_id(self, *, answer: JsonValue, task_id: str, target: ClusterTarget) -> None:
+        answered_id: str = required_string_field(
+            body=answer,
+            name=self._settings.task.id_field,
+            missing_message=f"CRDB task {task_id} was started without a task id at {target.api_url}",
         )
+        if answered_id != task_id:
+            raise UnreadableClusterResponseError(
+                message=f"CRDB task {task_id} was started as task {answered_id} at {target.api_url}"
+            )
 
     def _item_path(self, *, guid: str) -> str:
         return self._settings.item_path.format(uid=guid)

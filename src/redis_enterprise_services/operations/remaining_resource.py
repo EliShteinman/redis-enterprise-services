@@ -18,17 +18,17 @@ class RemainingResource(BaseModel):
     resource_type: RemainingResourceType = Field(
         description="crdb is the Active-Active database itself, with its local databases on every site. "
         "permissions are the role-to-ACL links of the database.",
-        examples=["acl"],
+        examples=["crdb"],
     )
     name: str = Field(
         description="The resource name. For permissions and crdb: the database name.",
-        examples=["orders-app-acl"],
+        examples=["orders"],
     )
     uid: int | None = Field(
         description="The resource uid on the cluster, or null when it is unknown whether it was created. "
         "For permissions: the database uid. Always null for crdb and for Active-Active permissions, which "
         "crdb_guid identifies instead.",
-        examples=[11],
+        examples=[None],
     )
     crdb_guid: UUID | None = Field(
         default=None,

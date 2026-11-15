@@ -9,8 +9,9 @@ from redis_enterprise_services.config.wait_settings import WaitSettings
 
 class CrdbTaskSettings(ConfigModel):
     item_path: ItemPath
+    id_field: str
     completed_status: str
-    failed_statuses: frozenset[str]
+    failed_statuses: frozenset[str] = Field(min_length=1)
     result_ttl_seconds: PositiveInt
     guid_field: str
     existing_task_error_code: str
@@ -23,6 +24,12 @@ class CrdbTaskSettings(ConfigModel):
     def reject_a_result_that_expires_during_the_wait(self) -> Self:
         if self.result_ttl_seconds <= self.wait.timeout_seconds:
             raise ValueError("result_ttl_seconds must be longer than wait.timeout_seconds")
+        return self
+
+    @model_validator(mode="after")
+    def reject_a_completed_status_counted_as_failed(self) -> Self:
+        if self.completed_status in self.failed_statuses:
+            raise ValueError(f"{self.completed_status} cannot be both the completed and a failed status")
         return self
 
 
