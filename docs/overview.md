@@ -41,8 +41,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
-- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל לפי תוויות של הקלאסטר ולפי
-  `active_active`. ב-Active-Active גם: כל האתרים באותה רשת, על קלאסטרים שונים, ועם אותן הגדרות.
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל מהסט של הסוג (אתר אחד
+  או Active-Active, כל אחד עם סט מלא משלו) ולפי תוויות של הקלאסטר. ב-Active-Active גם: כל האתרים באותה רשת, על קלאסטרים שונים, ועם אותן הגדרות.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
   ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר. ב-Active-Active: קודם CRDB אחד, אחריו לכל אתר היוזרים על ה-DB המקומי, ובסוף PATCH אחד של ההרשאות
   (`design/creation.md`, סעיף 6).
