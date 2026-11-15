@@ -1,10 +1,7 @@
-import logging
 from typing import Annotated
 from urllib.parse import SplitResult, urlsplit
 
 from pydantic import AfterValidator, Field
-
-logger: logging.Logger = logging.getLogger(name=__name__)
 
 DEFAULT_PORT_BY_SCHEME: dict[str, int] = {"http": 80, "https": 443}
 NO_PORT: int = 0
@@ -17,7 +14,6 @@ def reject_an_invalid_port(url: str) -> str:
         raise ValueError(f"the URL has an invalid port: {error}") from error
     if port == NO_PORT:
         raise ValueError(f"the URL has port {NO_PORT}, which nothing listens on")
-    logger.debug(msg=f"a URL uses port {port or 'the scheme default'}")
     return url
 
 
@@ -44,5 +40,7 @@ type RelayUrl = Annotated[
 def comparable_url(*, url: str) -> str:
     parts: SplitResult = urlsplit(url)
     scheme: str = parts.scheme.lower()
+    if parts.port is None and scheme not in DEFAULT_PORT_BY_SCHEME:
+        raise ValueError(f"a URL with scheme {scheme!r} and no port cannot be compared")
     port: int = DEFAULT_PORT_BY_SCHEME[scheme] if parts.port is None else parts.port
     return f"{scheme}://{(parts.hostname or '').lower()}:{port}{parts.path}"
