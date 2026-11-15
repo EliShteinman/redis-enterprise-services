@@ -9,6 +9,7 @@ from redis_enterprise_services.config.wait_settings import WaitSettings
 
 class CrdbTaskSettings(ConfigModel):
     item_path: ItemPath
+    id_field: str
     completed_status: str
     failed_statuses: frozenset[str] = Field(min_length=1)
     result_ttl_seconds: PositiveInt
