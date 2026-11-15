@@ -44,7 +44,7 @@ class PollingActionWaiter(ClusterActionWaiter):
             ),
             timed_out=lambda: ClusterActionTimeoutError(
                 message=f"action {action_uid} did not complete "
-                f"in {self._settings.wait.timeout_seconds} seconds"
+                f"in {self._settings.wait.timeout_seconds:g} seconds"
             ),
         )
 
@@ -55,7 +55,7 @@ class PollingActionWaiter(ClusterActionWaiter):
 
 
 def action_failed(*, action_uid: str, status: str, action_body: JsonValue) -> ClusterActionFailedError:
-    logger.info(msg=f"the body of failed action {action_uid}: {action_body}")
+    logger.warning(msg=f"the body of failed action {action_uid}: {action_body}")
     return ClusterActionFailedError(message=f"action {action_uid} ended as {status}")
 
 
