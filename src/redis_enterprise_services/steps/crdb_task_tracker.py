@@ -59,7 +59,9 @@ class CrdbTaskTracker:
     def is_running(self, *, task: JsonValue) -> bool:
         return not self.is_finished(task=task) and not self.has_failed(task=task)
 
-    def reject_an_unfinished_task(self, *, target: ClusterTarget, task: JsonValue, task_id: str) -> None:
+    def reject_a_running_or_failed_task(
+        self, *, target: ClusterTarget, task: JsonValue, task_id: str
+    ) -> None:
         if self.is_running(task=task):
             raise CrdbTaskTimeoutError(message=f"CRDB task {task_id} is still {self.status_of(task=task)}")
         if self.has_failed(task=task):
