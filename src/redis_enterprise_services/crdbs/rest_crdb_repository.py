@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from pydantic import ConfigDict, JsonValue, TypeAdapter
 
@@ -135,10 +136,17 @@ class RestCrdbRepository(CrdbRepository):
             name=self._settings.task.id_field,
             missing_message=f"CRDB task {task_id} was started without a task id at {target.api_url}",
         )
-        if answered_id != task_id:
+        if not same_task_id(answered_id=answered_id, task_id=task_id):
             raise CrdbTaskIdMismatchError(
                 message=f"CRDB task {task_id} was started as task {answered_id} at {target.api_url}"
             )
 
     def _item_path(self, *, guid: str) -> str:
         return self._settings.item_path.format(uid=guid)
+
+
+def same_task_id(*, answered_id: str, task_id: str) -> bool:
+    try:
+        return UUID(answered_id) == UUID(task_id)
+    except ValueError:
+        return answered_id == task_id

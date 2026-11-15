@@ -23,7 +23,7 @@ def reject_an_invalid_port(url: str) -> str:
 
 def reject_a_missing_host(url: str) -> str:
     if not urlsplit(url).hostname:
-        raise ValueError(f"{url} has no host")
+        raise ValueError("the URL has no host")
     return url
 
 
