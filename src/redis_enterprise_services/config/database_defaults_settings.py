@@ -12,7 +12,6 @@ class OverrideSelector(ConfigModel):
     site: str | None = Field(default=None, min_length=1)
     type: ClusterType | None = None
     cluster_name: str | None = Field(default=None, min_length=1)
-    active_active: bool | None = None
 
     @model_validator(mode="after")
     def reject_empty_selector(self) -> Self:
@@ -26,7 +25,11 @@ class DefaultsOverride(ConfigModel):
     values: dict[str, JsonValue] = Field(min_length=1)
 
 
-class DatabaseDefaultsSettings(ConfigModel):
+class DatabaseKindDefaults(ConfigModel):
     values: dict[str, JsonValue]
     persistence_values: dict[str, dict[str, JsonValue]]
     overrides: list[DefaultsOverride]
+
+
+class DatabaseDefaultsSettings(DatabaseKindDefaults):
+    active_active: DatabaseKindDefaults

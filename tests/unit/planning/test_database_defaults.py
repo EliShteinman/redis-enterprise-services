@@ -4,6 +4,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
 from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
+    DatabaseKindDefaults,
     DefaultsOverride,
     OverrideSelector,
 )
@@ -19,8 +20,10 @@ PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
     "aof": {"aof_policy": "appendfsync-every-sec"},
     "snapshot": {"snapshot_policy": [{"secs": 3600, "writes": 1}]},
 }
+NO_ACTIVE_ACTIVE: DatabaseKindDefaults = DatabaseKindDefaults(values={}, persistence_values={}, overrides=[])
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
+        active_active=NO_ACTIVE_ACTIVE,
         values={"replication": True, "data_persistence": "aof"},
         persistence_values=PERSISTENCE_VALUES,
         overrides=[DefaultsOverride(when=OverrideSelector(environment="DEV"), values={"replication": False})],
@@ -71,6 +74,7 @@ def test_the_request_beats_every_default() -> None:
 def test_a_later_override_beats_an_earlier_one() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
+            active_active=NO_ACTIVE_ACTIVE,
             values={},
             persistence_values={},
             overrides=[
@@ -93,6 +97,7 @@ def test_a_later_override_beats_an_earlier_one() -> None:
 def test_an_override_applies_only_when_all_its_labels_match() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
+            active_active=NO_ACTIVE_ACTIVE,
             values={"replication": True},
             persistence_values={},
             overrides=[
@@ -133,6 +138,7 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=DatabaseDefaultsSettings(
+                active_active=NO_ACTIVE_ACTIVE,
                 values={},
                 persistence_values={},
                 overrides=[DefaultsOverride(when=OverrideSelector(environment="DEV"), values=values)],
@@ -142,34 +148,35 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
 
 
 def test_every_override_selector_field_is_a_placement_label() -> None:
-    assert set(OverrideSelector.model_fields) == set(
-        placement_labels(cluster=cluster(environment="DEV"), active_active=False)
+    assert set(OverrideSelector.model_fields) == set(placement_labels(cluster=cluster(environment="DEV")))
+
+
+SEPARATE_KINDS: DatabaseDefaults = DatabaseDefaults(
+    settings=DatabaseDefaultsSettings(
+        values={"replication": True, "eviction_policy": "volatile-lru"},
+        persistence_values={},
+        overrides=[DefaultsOverride(when=OverrideSelector(environment="DEV"), values={"replication": False})],
+        active_active=DatabaseKindDefaults(
+            values={"replication": True, "eviction_policy": "noeviction"}, persistence_values={}, overrides=[]
+        ),
     )
-
-
-@pytest.mark.parametrize(
-    argnames=("active_active", "eviction_policy"), argvalues=[(False, "volatile-lru"), (True, "noeviction")]
 )
-def test_an_active_active_override_applies_only_to_active_active(
-    active_active: bool, eviction_policy: str
-) -> None:
-    defaults: DatabaseDefaults = DatabaseDefaults(
-        settings=DatabaseDefaultsSettings(
-            values={"eviction_policy": "volatile-lru"},
-            persistence_values={},
-            overrides=[
-                DefaultsOverride(
-                    when=OverrideSelector(active_active=True), values={"eviction_policy": "noeviction"}
-                )
-            ],
-        )
+
+
+def test_an_active_active_database_takes_the_active_active_defaults() -> None:
+    filled: NewDatabase = SEPARATE_KINDS.fill_in(
+        cluster=cluster(environment="PROD"), requested=REQUESTED, active_active=True
     )
 
-    filled: NewDatabase = defaults.fill_in(
-        cluster=cluster(environment="PROD"), requested=REQUESTED, active_active=active_active
+    assert filled.eviction_policy == "noeviction"
+
+
+def test_an_override_of_a_single_site_database_never_reaches_an_active_active_database() -> None:
+    filled: NewDatabase = SEPARATE_KINDS.fill_in(
+        cluster=cluster(environment="DEV"), requested=REQUESTED, active_active=True
     )
 
-    assert filled.eviction_policy == eviction_policy
+    assert filled.replication is True
 
 
 @pytest.mark.parametrize(
@@ -214,6 +221,7 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
 def defaults_with_override(*, values: dict[str, JsonValue]) -> DatabaseDefaults:
     return database_defaults_from(
         settings=DatabaseDefaultsSettings(
+            active_active=NO_ACTIVE_ACTIVE,
             values={"data_persistence": "aof"},
             persistence_values=PERSISTENCE_VALUES,
             overrides=[DefaultsOverride(when=OverrideSelector(environment="PROD"), values=values)],
@@ -238,6 +246,7 @@ def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
 def test_an_override_that_turns_persistence_off_drops_the_base_policy_at_startup() -> None:
     database_defaults_from(
         settings=DatabaseDefaultsSettings(
+            active_active=NO_ACTIVE_ACTIVE,
             values={"data_persistence": "aof", "aof_policy": "appendfsync-every-sec"},
             persistence_values={},
             overrides=[
@@ -254,6 +263,7 @@ def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=DatabaseDefaultsSettings(
+                active_active=NO_ACTIVE_ACTIVE,
                 values={},
                 persistence_values={},
                 overrides=[
@@ -268,20 +278,25 @@ def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup
         )
 
 
-def test_overrides_that_conflict_only_on_an_active_active_dev_site_stop_at_startup() -> None:
+def test_overrides_that_conflict_only_in_the_active_active_defaults_stop_at_startup() -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=DatabaseDefaultsSettings(
                 values={"data_persistence": "aof"},
                 persistence_values={},
-                overrides=[
-                    DefaultsOverride(
-                        when=OverrideSelector(environment="DEV"), values={"data_persistence": "snapshot"}
-                    ),
-                    DefaultsOverride(
-                        when=OverrideSelector(active_active=True), values={"aof_policy": "appendfsync-always"}
-                    ),
-                ],
+                overrides=[],
+                active_active=DatabaseKindDefaults(
+                    values={"data_persistence": "aof"},
+                    persistence_values={},
+                    overrides=[
+                        DefaultsOverride(
+                            when=OverrideSelector(environment="DEV"), values={"data_persistence": "snapshot"}
+                        ),
+                        DefaultsOverride(
+                            when=OverrideSelector(site="dc1"), values={"aof_policy": "appendfsync-always"}
+                        ),
+                    ],
+                ),
             ),
             clusters=[cluster(environment="DEV")],
         )
@@ -290,6 +305,7 @@ def test_overrides_that_conflict_only_on_an_active_active_dev_site_stop_at_start
 def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> None:
     sharded: DatabaseDefaults = DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
+            active_active=NO_ACTIVE_ACTIVE,
             values={
                 "sharding": True,
                 "shards_count": 2,
