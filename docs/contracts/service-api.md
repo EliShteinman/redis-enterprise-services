@@ -82,7 +82,8 @@
 הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-Active-Active, אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
-- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר, לאותו שם קלאסטר או לאותו host ⇐ `422 duplicate_sites`.
+- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`. שני קלאסטרים שונים עם אותו שם או אותו host
+  ⇐ `500 configuration_error`: הטעות בקונפיג של הקלאסטרים, לא בבקשה.
 - ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
   ההודעה מונה את השדות השונים. זה קורה בעיקר כשהבקשה מערבבת סביבות (למשל אתר DEV ואתר PROD באותה רשת, ש-`replication`
   שלהם שונה): הטעות בבקשה, אבל הקוד `configuration_error` (`known_failure`). שליחת השדה במפורש בבקשה עוקפת את זה.
@@ -157,7 +158,9 @@
 3. קישור כל role ל-ACL שלו על ה-DB.
 
 ב-Active-Active: CRDB אחד עם DB מקומי בכל אתר, היוזרים, ה-ACLs וה-roles בכל אתר (כל role מוגבל ל-DB המקומי של האתר
-שלו), ו-PATCH אחד ל-CRDB שקושר בכל אתר כל role ל-ACL שלו. שמות ה-DB נבדקים גם מול שמות ה-CRDBs.
+שלו), וכשיש יוזרים, PATCH אחד ל-CRDB שקושר בכל אתר כל role ל-ACL שלו.
+
+בכל יצירה, גם באתר בודד, שם ה-DB נבדק גם מול שמות ה-CRDBs בקלאסטר.
 
 לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
 עם `name_taken`.
@@ -328,8 +331,8 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
 | `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
-| `crdb_guid` | חסר כשהוא ריק (ב-`database` לעומת זאת `crdb_guid` מופיע תמיד, גם כ-`null`). רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb` מדווח על הקלאסטר המתאם (האתר הראשון) |
-| `name` | שם המשאב. ב-`permissions`: שם ה-DB |
+| `crdb_guid` | חסר כשהוא ריק (ב-`database` לעומת זאת `crdb_guid` מופיע תמיד, גם כ-`null`). רק ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb`, ופריט `permissions` של Active-Active (שמכסה את כל האתרים), מדווחים על הקלאסטר המתאם (האתר הראשון) |
+| `name` | שם המשאב. ב-`permissions` וב-`crdb`: שם ה-DB |
 | `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB. ב-`crdb` וב-`permissions` של Active-Active תמיד `null`: מה שמזהה אותם הוא `crdb_guid` |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
@@ -378,7 +381,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 | `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
 | `mixed_networks` | `customer_fixable` | מיד, `422` | אתרי Active-Active ביותר מרשת אחת |
-| `duplicate_sites` | `customer_fixable` | מיד, `422` | שני אתרי Active-Active שמתורגמים לאותו קלאסטר, לאותו שם קלאסטר או לאותו host |
+| `duplicate_sites` | `customer_fixable` | מיד, `422` | שני אתרי Active-Active שמתורגמים לאותו קלאסטר |
 | `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
