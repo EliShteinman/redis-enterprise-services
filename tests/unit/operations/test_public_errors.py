@@ -73,5 +73,6 @@ def test_the_cluster_an_error_came_from_wins_over_the_cluster_the_caller_assumed
     error.cluster_url = "https://c2:9443"
 
     assert (
-        PUBLIC_ERRORS.from_error(error=error, cluster_url="https://c1:9443").cluster_url == "https://c2:9443"
+        PUBLIC_ERRORS.from_error(error=error, fallback_cluster_url="https://c1:9443").cluster_url
+        == "https://c2:9443"
     )

@@ -62,3 +62,7 @@ class CrdbTaskFailedError(RedisEnterpriseServicesError):
 
 class CrdbTaskTimeoutError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "crdb_task_timeout"
+
+
+class CrdbTaskIdMismatchError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "crdb_task_id_mismatch"
