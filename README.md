@@ -64,7 +64,6 @@ Secrets are passed only through environment variables. Required:
   (`redis://user:password@host:port` or `rediss://...`).
 - `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
 - `RES_CLUSTER_CREDENTIALS__USERNAME`, `RES_CLUSTER_CREDENTIALS__PASSWORD`: the admin user of the clusters.
-- `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
 
 Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
 the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed,
