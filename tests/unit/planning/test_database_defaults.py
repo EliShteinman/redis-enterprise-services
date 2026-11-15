@@ -40,7 +40,6 @@ def single_site_settings(
 
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=single_site_settings(
-        active_active=NO_ACTIVE_ACTIVE,
         values={"replication": True, "data_persistence": "aof"},
         persistence_values=PERSISTENCE_VALUES,
         overrides=[DefaultsOverride(when=OverrideSelector(environment="DEV"), values={"replication": False})],
@@ -91,7 +90,6 @@ def test_the_request_beats_every_default() -> None:
 def test_a_later_override_beats_an_earlier_one() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=single_site_settings(
-            active_active=NO_ACTIVE_ACTIVE,
             values={},
             persistence_values={},
             overrides=[
@@ -114,7 +112,6 @@ def test_a_later_override_beats_an_earlier_one() -> None:
 def test_an_override_applies_only_when_all_its_labels_match() -> None:
     defaults: DatabaseDefaults = DatabaseDefaults(
         settings=single_site_settings(
-            active_active=NO_ACTIVE_ACTIVE,
             values={"replication": True},
             persistence_values={},
             overrides=[
@@ -155,7 +152,6 @@ def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=single_site_settings(
-                active_active=NO_ACTIVE_ACTIVE,
                 values={},
                 persistence_values={},
                 overrides=[DefaultsOverride(when=OverrideSelector(environment="DEV"), values=values)],
@@ -238,7 +234,6 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
 def defaults_with_override(*, values: dict[str, JsonValue]) -> DatabaseDefaults:
     return database_defaults_from(
         settings=single_site_settings(
-            active_active=NO_ACTIVE_ACTIVE,
             values={"data_persistence": "aof"},
             persistence_values=PERSISTENCE_VALUES,
             overrides=[DefaultsOverride(when=OverrideSelector(environment="PROD"), values=values)],
@@ -263,7 +258,6 @@ def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
 def test_an_override_that_turns_persistence_off_drops_the_base_policy_at_startup() -> None:
     database_defaults_from(
         settings=single_site_settings(
-            active_active=NO_ACTIVE_ACTIVE,
             values={"data_persistence": "aof", "aof_policy": "appendfsync-every-sec"},
             persistence_values={},
             overrides=[
@@ -280,7 +274,6 @@ def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
             settings=single_site_settings(
-                active_active=NO_ACTIVE_ACTIVE,
                 values={},
                 persistence_values={},
                 overrides=[
@@ -322,7 +315,6 @@ def test_overrides_that_conflict_only_in_the_active_active_defaults_stop_at_star
 def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> None:
     sharded: DatabaseDefaults = DatabaseDefaults(
         settings=single_site_settings(
-            active_active=NO_ACTIVE_ACTIVE,
             values={
                 "sharding": True,
                 "shards_count": 2,
