@@ -17,8 +17,8 @@ class CreateDatabaseTarget(BaseModel):
     )
     sites: list[SitePlacement] = Field(
         min_length=1,
-        description="Where the database is created: exactly one site for a single-site database, any number "
-        "for an Active-Active one.",
+        description="Where the database is created: exactly one site for a single-site database, one or more "
+        "for an Active-Active one (one site gives a CRDB with a single instance).",
     )
 
     @model_validator(mode="after")
