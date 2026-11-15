@@ -78,8 +78,6 @@ class CrdbInstanceResult(BaseModel):
     )
     instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
     compression: int | None = Field(
-        ge=0,
-        le=6,
         description="The compression level of the sync from this instance (0-6); null only when the "
         "cluster did not report it.",
         examples=[3],
@@ -150,6 +148,18 @@ class DatabaseResult(BaseModel):
                 f"active_active, crdb_guid and crdb must all show the same kind of database, but "
                 f"active_active is {self.active_active}, crdb_guid is {'set' if has_crdb_guid else 'null'} "
                 f"and crdb is {'set' if has_crdb else 'null'}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def reject_crdb_instances_that_are_not_the_clusters(self) -> Self:
+        if self.crdb is None:
+            return self
+        instance_urls: list[str] = sorted(instance.cluster_url for instance in self.crdb.instances)
+        cluster_urls: list[str] = sorted(cluster.cluster_url for cluster in self.clusters)
+        if instance_urls != cluster_urls:
+            raise ValueError(
+                f"the CRDB instances are on {instance_urls}, but the database clusters are {cluster_urls}"
             )
         return self
 
