@@ -5,6 +5,7 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
     CrdbTaskFailedError,
+    CrdbTaskIdMismatchError,
     CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
@@ -20,10 +21,13 @@ from redis_enterprise_services.exceptions.edge import (
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
 )
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
 REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    CrdbTaskIdMismatchError,
     DuplicateResourceNameError,
+    StepNeedsManualInterventionError,
     UpdateOutcomeUnclearError,
 )
 

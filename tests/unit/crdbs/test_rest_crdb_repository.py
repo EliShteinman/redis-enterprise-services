@@ -10,7 +10,10 @@ from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.rest_crdb_repository import RestCrdbRepository
 from redis_enterprise_services.databases.database_creation_body_builder import DatabaseCreationBodyBuilder
-from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
+from redis_enterprise_services.exceptions.cluster import (
+    CrdbTaskIdMismatchError,
+    UnreadableClusterResponseError,
+)
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",
@@ -65,8 +68,8 @@ def test_a_crdb_whose_instance_url_is_not_a_cluster_address_is_an_unreadable_ans
         ).read(target=TARGET, guid="g")
 
 
-def test_a_task_started_under_another_id_is_an_unreadable_answer() -> None:
-    with pytest.raises(expected_exception=UnreadableClusterResponseError):
+def test_a_task_started_under_another_id_is_a_task_id_mismatch() -> None:
+    with pytest.raises(expected_exception=CrdbTaskIdMismatchError):
         repository_answering(body={"id": "another", "status": "queued"}).start_deletion(
             target=TARGET, guid="g", task_id="ours"
         )

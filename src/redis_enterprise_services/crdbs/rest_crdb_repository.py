@@ -12,7 +12,10 @@ from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
 from redis_enterprise_services.crdbs.models import Crdb, NamedCrdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
+from redis_enterprise_services.exceptions.cluster import (
+    CrdbTaskIdMismatchError,
+    UnreadableClusterResponseError,
+)
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -133,7 +136,7 @@ class RestCrdbRepository(CrdbRepository):
             missing_message=f"CRDB task {task_id} was started without a task id at {target.api_url}",
         )
         if answered_id != task_id:
-            raise UnreadableClusterResponseError(
+            raise CrdbTaskIdMismatchError(
                 message=f"CRDB task {task_id} was started as task {answered_id} at {target.api_url}"
             )
 
