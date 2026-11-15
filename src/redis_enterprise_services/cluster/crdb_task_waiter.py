@@ -58,14 +58,14 @@ class CrdbTaskWaiter:
             ),
             timed_out=lambda: CrdbTaskTimeoutError(
                 message=f"CRDB task {task_id} did not finish in "
-                f"{self._settings.wait.timeout_seconds} seconds and may still finish"
+                f"{self._settings.wait.timeout_seconds:g} seconds and may still finish"
             ),
         )
 
     def _task_failed(
         self, *, target: ClusterTarget, task_id: str, status: str, task_body: JsonValue
     ) -> CrdbTaskFailedError:
-        logger.info(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
+        logger.warning(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
         errors: list[JsonValue] = list_field(body=task_body, name=self._settings.errors_field)
         failing_sites: list[str] = [self._failing_site(error=error) for error in errors]
         return CrdbTaskFailedError(
@@ -78,14 +78,13 @@ class CrdbTaskWaiter:
         self, *, target: ClusterTarget, errors: list[JsonValue]
     ) -> str | None:
         polled_host: str | None = urlsplit(target.api_url).hostname
-        sites: set[str] = {
-            (string_field(body=error, name=self._settings.error_cluster_field) or "").lower()
-            for error in errors
-        }
         codes: set[str | None] = {
-            string_field(body=error, name=self._settings.error_code_field) for error in errors
+            string_field(body=error, name=self._settings.error_code_field)
+            for error in errors
+            if (string_field(body=error, name=self._settings.error_cluster_field) or "").lower()
+            == polled_host
         }
-        return codes.pop() if sites == {polled_host} and len(codes) == 1 else None
+        return codes.pop() if len(codes) == 1 else None
 
     def _failing_site(self, *, error: JsonValue) -> str:
         cluster_name: str | None = string_field(body=error, name=self._settings.error_cluster_field)

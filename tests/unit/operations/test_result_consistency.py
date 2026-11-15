@@ -57,9 +57,9 @@ def active_active_result(*, instance_url: str) -> dict[str, object]:
     }
 
 
-def test_an_active_active_result_whose_instances_are_its_clusters_is_accepted() -> None:
+def test_an_active_active_result_whose_instances_are_its_clusters_in_another_spelling_is_accepted() -> None:
     assert DatabaseResult.model_validate(
-        active_active_result(instance_url="https://cluster-a.net-a:9443")
+        active_active_result(instance_url="HTTPS://Cluster-A.net-a:9443")
     ).crdb
 
 
