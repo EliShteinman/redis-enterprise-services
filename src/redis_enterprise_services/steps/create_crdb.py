@@ -123,7 +123,7 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
             return
         self._task_tracker.wait_until_finished(target=coordinator, task_id=task_id)
 
-    def _finished_task[TResult](self, *, step_input: CreateCrdbInput, wait: Callable[[], TResult]) -> TResult:
+    def _finished_task(self, *, step_input: CreateCrdbInput, wait: Callable[[], JsonValue]) -> JsonValue:
         try:
             return wait()
         except CrdbTaskFailedError:
