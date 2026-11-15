@@ -137,3 +137,18 @@ def test_a_task_that_ends_badly_names_the_cluster_it_was_read_from(task_body: Js
         waiter_answering(task_body=task_body).wait_until_finished(target=TARGET, task_id=TASK_ID)
 
     assert failure.value.cluster_url == TARGET.api_url
+
+
+def test_the_polled_cluster_keeps_its_error_code_when_another_site_failed_too() -> None:
+    failed_on_two: JsonValue = {
+        "status": "failed",
+        "errors": [
+            {"cluster_name": "cluster.local", "error_code": "db_create_failed"},
+            {"cluster_name": "cluster2.local", "error_code": "busy"},
+        ],
+    }
+
+    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
+        waiter_answering(task_body=failed_on_two).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+    assert failure.value.cluster_error_code == "db_create_failed"

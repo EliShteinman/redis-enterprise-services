@@ -1,7 +1,7 @@
 import logging
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
@@ -29,8 +29,17 @@ class UpdateCrdbInstancesInput(BaseModel):
 
     coordinator: ClusterAddress
     guid: str
-    values_by_instance: InstanceValues
+    values_by_instance: InstanceValues = Field(min_length=1)
     task_id: str
+
+    @model_validator(mode="after")
+    def reject_an_instance_without_values(self) -> Self:
+        empty: list[int] = [
+            instance_id for instance_id, values in self.values_by_instance.items() if not values
+        ]
+        if empty:
+            raise ValueError(f"instances {empty} have no values to change")
+        return self
 
 
 class CrdbInstancesSnapshot(BaseModel):

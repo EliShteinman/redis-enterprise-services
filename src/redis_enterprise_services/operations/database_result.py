@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
+from redis_enterprise_services.config.base_url import comparable_url
 from redis_enterprise_services.config.cluster_inventory import Environment
 
 
@@ -155,8 +156,10 @@ class DatabaseResult(BaseModel):
     def reject_crdb_instances_that_are_not_the_clusters(self) -> Self:
         if self.crdb is None:
             return self
-        instance_urls: list[str] = sorted(instance.cluster_url for instance in self.crdb.instances)
-        cluster_urls: list[str] = sorted(cluster.cluster_url for cluster in self.clusters)
+        instance_urls: list[str] = sorted(
+            comparable_url(url=instance.cluster_url) for instance in self.crdb.instances
+        )
+        cluster_urls: list[str] = sorted(comparable_url(url=cluster.cluster_url) for cluster in self.clusters)
         if instance_urls != cluster_urls:
             raise ValueError(
                 f"the CRDB instances are on {instance_urls}, but the database clusters are {cluster_urls}"
