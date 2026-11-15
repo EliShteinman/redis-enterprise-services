@@ -4,10 +4,10 @@ from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.crdbs.creation_body import cluster_fqdn
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.database_defaults import DATA_PERSISTENCE_FIELD, DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -62,10 +62,12 @@ class CreationPreparation:
             self._database_defaults.fill_in(cluster=cluster, requested=requested, active_active=active_active)
             for cluster in clusters
         ]
-        differing: list[str] = sorted(
-            name
-            for name in NewDatabase.model_fields
-            if any(getattr(database, name) != getattr(filled[0], name) for database in filled)
+        differing: list[str] = fields_to_send(
+            differing=[
+                name
+                for name in NewDatabase.model_fields
+                if any(getattr(database, name) != getattr(filled[0], name) for database in filled)
+            ]
         )
         if differing:
             raise ConfigurationError(
@@ -73,6 +75,12 @@ class CreationPreparation:
                 f"{[cluster.name for cluster in clusters]}"
             )
         return filled[0]
+
+
+def fields_to_send(*, differing: list[str]) -> list[str]:
+    if DATA_PERSISTENCE_FIELD in differing:
+        return sorted(name for name in differing if name not in PERSISTENCE_MODE_BY_FIELD)
+    return sorted(differing)
 
 
 def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:

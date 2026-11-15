@@ -12,7 +12,7 @@ from redis_enterprise_services.creation.created_database_result import CreatedSi
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
 from redis_enterprise_services.operations.operation import Operation
@@ -95,6 +95,20 @@ def test_defaults_that_differ_between_sites_are_a_configuration_error() -> None:
 
     with pytest.raises(expected_exception=ConfigurationError):
         preparation(clusters=[C1, C2], filled=[DATABASE, other]).prepare(creation_request=REQUEST)
+
+
+def test_a_persistence_mode_that_differs_between_sites_names_only_the_mode() -> None:
+    snapshot: NewDatabase = DATABASE.model_copy(
+        update={"data_persistence": "snapshot", "snapshot_policy": [SnapshotRule(secs=3600, writes=1)]}
+    )
+    aof: NewDatabase = DATABASE.model_copy(
+        update={"data_persistence": "aof", "aof_policy": "appendfsync-every-sec"}
+    )
+
+    with pytest.raises(expected_exception=ConfigurationError) as refusal:
+        preparation(clusters=[C1, C2], filled=[aof, snapshot]).prepare(creation_request=REQUEST)
+
+    assert "['data_persistence']" in refusal.value.message
 
 
 def test_a_single_site_database_on_two_sites_is_refused() -> None:

@@ -10,6 +10,7 @@ crdb:
     compression: 3
   task:
     item_path: /v1/crdb_tasks/{uid}
+    id_field: id
     completed_status: finished
     failed_statuses:
       - failed

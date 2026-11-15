@@ -9,7 +9,7 @@ from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarg
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskTimeoutError
+from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
@@ -83,20 +83,17 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
     ) -> CreatedCrdb | None:
         if kept_result is not None:
             return kept_result if self._exists(step_input=step_input, guid=kept_result.guid) else None
+        coordinator: ClusterTarget = self._target(address=step_input.coordinator)
         task: JsonValue | None = self._task_tracker.task_or_none(
-            target=self._target(address=step_input.coordinator), task_id=step_input.task_id
+            target=coordinator, task_id=step_input.task_id
         )
         if task is None:
             self._reject_a_crdb_left_without_its_task(step_input=step_input)
             logger.info(msg=f"CRDB task {step_input.task_id} never ran, which leaves nothing behind")
             return None
-        if self._task_tracker.has_failed(task=task):
-            logger.info(msg=f"CRDB task {step_input.task_id} failed, which leaves nothing behind")
-            return None
-        if self._task_tracker.is_running(task=task):
-            raise CrdbTaskTimeoutError(
-                message=f"CRDB task {step_input.task_id} is still {self._task_tracker.status_of(task=task)}"
-            )
+        self._task_tracker.reject_an_unfinished_task(
+            target=coordinator, task=task, task_id=step_input.task_id
+        )
         found: CreatedCrdb = CreatedCrdb(guid=self._guid_of(task=task, task_id=step_input.task_id))
         keep_result_if_none_kept(result=found)
         return found
