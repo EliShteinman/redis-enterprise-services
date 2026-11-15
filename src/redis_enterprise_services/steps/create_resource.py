@@ -78,7 +78,7 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         kept_result: CreatedResource | None,
     ) -> CreatedResource | None:
         if kept_result is not None:
-            return self._repository.read_created(target=target, uid=kept_result.uid)
+            return self._kept_or_none(target=target, kept_result=kept_result)
         found: NamedResource | None = only_one_named(
             found=self._repository.find_by_name(target=target, name=step_input.spec.name),
             name=step_input.spec.name,
@@ -86,6 +86,15 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         if found is None:
             return None
         return self._repository.read_created(target=target, uid=found.uid)
+
+    def _kept_or_none(self, *, target: ClusterTarget, kept_result: CreatedResource) -> CreatedResource | None:
+        try:
+            return self._repository.read_created(target=target, uid=kept_result.uid)
+        except ClusterRejectedRequestError as error:
+            if not is_not_found(error=error):
+                raise
+            logger.warning(msg=f"kept {kept_result.name} (uid {kept_result.uid}) is no longer on the cluster")
+            return None
 
     def compensate(self, *, step_input: CreateResourceInput[TSpec], result: CreatedResource) -> None:
         logger.info(msg=f"removing created {result.name}")
