@@ -1,6 +1,5 @@
-from typing import ClassVar, Self
+from typing import ClassVar
 
-from pydantic import model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -16,7 +15,6 @@ from redis_enterprise_services.config.cluster_credentials_settings import Cluste
 from redis_enterprise_services.config.cluster_inventory import ConfiguredClusters
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
-from redis_enterprise_services.config.edge_network_coverage import networks_missing_from_edge
 from redis_enterprise_services.config.edge_settings import EdgeSettings
 from redis_enterprise_services.config.liveness_settings import LivenessSettings
 from redis_enterprise_services.config.log_settings import LogSettings
@@ -86,13 +84,6 @@ class Settings(BaseSettings):
     background: BackgroundSettings
     liveness: LivenessSettings
     cluster_credentials: ClusterCredentialsSettings
-
-    @model_validator(mode="after")
-    def reject_cluster_networks_without_edge(self) -> Self:
-        missing: list[str] = networks_missing_from_edge(clusters=self.clusters, networks=self.edge.networks)
-        if missing:
-            raise ValueError(f"networks in clusters with no entry in edge.networks: {missing}")
-        return self
 
     @classmethod
     def settings_customise_sources(
