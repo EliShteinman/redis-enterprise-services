@@ -1,4 +1,4 @@
-from pydantic import Field, PositiveFloat, SecretStr
+from pydantic import PositiveFloat
 
 from redis_enterprise_services.config.base_url import RelayUrl
 from redis_enterprise_services.config.config_model import ConfigModel
@@ -23,16 +23,6 @@ class EdgeErrorCodeSettings(ConfigModel):
     response_rejected: str
 
 
-class FirewallSettings(ConfigModel):
-    authorization_header: str = Field(min_length=1)
-    username: str = Field(min_length=1)
-    password: SecretStr = Field(min_length=1)
-
-
-class EdgeNetworkSettings(ConfigModel):
-    firewall: FirewallSettings | None
-
-
 class EdgeSettings(ConfigModel):
     url: RelayUrl
     connect_timeout_seconds: PositiveFloat
@@ -40,4 +30,3 @@ class EdgeSettings(ConfigModel):
     headers: EdgeHeaderSettings
     request_content_type: str
     error_codes: EdgeErrorCodeSettings
-    networks: dict[str, EdgeNetworkSettings]

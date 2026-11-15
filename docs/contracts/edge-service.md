@@ -15,9 +15,8 @@ header של סיסמת ה-DataPower של אותה רשת, ו-header של Host ע
 
 | # | דרישה |
 |---|---|
-| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`). רשת של קלאסטר מ-`config/clusters.yaml` שחסרה ב-`edge.networks` נדחית בעליית השירות |
-| C0b | את סיסמת ה-DataPower מוסיף ה-NGINX. אם היא צריכה להגיע מהשירות, כל בקשה נושאת שם משתמש וסיסמה (`Basic`) של אותה רשת, ב-header מהקונפיג (`edge.networks.<רשת>.firewall`). הסיסמה מגיעה ממשתנה סביבה. `firewall: null` ⇐ השירות לא שולח header |
-| C0c | אימות חומת האש נפרד מ-`x-cluster-authorization` ולא מתנגש בו |
+| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`) |
+| C0b | את האימות מול ה-DataPower מוסיף הפרוקסי (ה-NGINX). השירות לא שולח פרטי גישה לחומת האש |
 | C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
 | C0e | אם הכתובת ב-HTTPS, התעודה לא נבדקת. שגיאת TLS יכולה לקרות גם אחרי שהבקשה נשלחה (חומת האש מפענחת ומצפינה מחדש) |
 | C0f | כש-DataPower או cluster-relay נכשלים או לא עונים בזמן, ה-NGINX עונה בעצמו (`502` או `504`, גוף שאינו JSON, בלי `x-edge-error`). זה צפוי: השירות מתייחס לתשובה כזו כתוצאה לא ידועה, ובודק לפני שהוא ממשיך |
@@ -37,7 +36,6 @@ header של סיסמת ה-DataPower של אותה רשת, ו-header של Host ע
 ```
 POST <edge.url>                                     (ה-NGINX)
 x-network: <רשת>
-<header האימות של חומת האש>: Basic <פרטי הרשת>     (אם מוגדר)
 x-cluster-method: PUT
 x-cluster-url: https://<cluster>:9443/v1/bdbs/7
 x-cluster-authorization: Basic <credentials>
