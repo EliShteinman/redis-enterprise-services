@@ -5,6 +5,7 @@ from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
 
 TASK: dict[str, object] = {
     "item_path": "/v1/crdb_tasks/{uid}",
+    "id_field": "id",
     "completed_status": "finished",
     "failed_statuses": ["failed"],
     "guid_field": "crdb_guid",
