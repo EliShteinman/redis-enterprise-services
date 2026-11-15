@@ -12,7 +12,6 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.prepared_run import PreparedRun
 from redis_enterprise_services.operations.public_errors import PublicErrors
-from redis_enterprise_services.operations.start_once_result import StartOnceResult
 
 RUNNING_OPERATION: Operation = Operation(trace_id="trace-1")
 
@@ -42,8 +41,8 @@ class OperationStarterHarness:
             ),
         )
 
-    def start_once(self) -> StartOnceResult:
-        return self.operation_starter.start_once(trace_id="trace-1", prepare_run=self.prepare_run)
+    def start_once(self) -> None:
+        self.operation_starter.start_once(trace_id="trace-1", prepare_run=self.prepare_run)
 
 
 def test_a_new_operation_is_started_before_it_is_submitted() -> None:
@@ -60,28 +59,22 @@ def test_a_new_operation_is_started_before_it_is_submitted() -> None:
     ]
 
 
-def test_a_known_trace_returns_its_operation_without_preparing() -> None:
+def test_a_known_trace_starts_nothing_and_is_not_prepared() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
     harness.store.find.return_value = RUNNING_OPERATION
 
-    result: StartOnceResult = harness.start_once()
+    harness.start_once()
 
-    assert (result, harness.prepare_run.called) == (
-        StartOnceResult(operation=RUNNING_OPERATION, already_existed=True),
-        False,
-    )
+    assert (harness.prepare_run.called, harness.store.create_if_absent.called) == (False, False)
 
 
-def test_an_operation_started_meanwhile_is_returned_and_not_submitted() -> None:
+def test_an_operation_started_meanwhile_is_not_submitted() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
     harness.store.create_if_absent.return_value = RUNNING_OPERATION
 
-    result: StartOnceResult = harness.start_once()
+    harness.start_once()
 
-    assert (result, harness.task_runner.submit.called) == (
-        StartOnceResult(operation=RUNNING_OPERATION, already_existed=True),
-        False,
-    )
+    assert not harness.task_runner.submit.called
 
 
 def test_a_request_that_fails_its_preparation_starts_nothing() -> None:
