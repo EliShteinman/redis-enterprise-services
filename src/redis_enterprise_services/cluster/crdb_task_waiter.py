@@ -67,7 +67,7 @@ class CrdbTaskWaiter:
     ) -> CrdbTaskFailedError:
         logger.warning(msg=f"the body of {status} CRDB task {task_id}: {task_body}")
         errors: list[JsonValue] = list_field(body=task_body, name=self._settings.errors_field)
-        failing_sites: list[str] = [self._failing_site(error=error) for error in errors]
+        failing_sites: list[str] = list(dict.fromkeys(self._failing_site(error=error) for error in errors))
         return CrdbTaskFailedError(
             message=f"CRDB task {task_id} ended as {status}"
             + (f" on {', '.join(failing_sites)}" if failing_sites else ""),
