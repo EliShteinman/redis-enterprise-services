@@ -46,4 +46,8 @@ class DatabaseDefaultsSettings(ConfigModel):
     active_active: DatabaseKindDefaults
 
     def of_kind(self, *, kind: DatabaseKind) -> DatabaseKindDefaults:
-        return self.active_active if kind == DatabaseKind.ACTIVE_ACTIVE else self.single_site
+        match kind:
+            case DatabaseKind.SINGLE_SITE:
+                return self.single_site
+            case DatabaseKind.ACTIVE_ACTIVE:
+                return self.active_active
