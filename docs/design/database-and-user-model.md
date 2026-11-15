@@ -101,7 +101,7 @@ Redis מאפשר הבדלים, אבל השירות לא ישתמש בזה.
 | role | `resources` | נגזר: `[{type: db, uids: [ה-DB]}]` | מגביל את ה-role ל-DB של היוזר בלבד |
 | user | `name` | ה-UI, חובה | המפתח של היוזר. בלי `-`, וכל שם פעם אחת בבקשה. הקלאסטר אוכף ייחודיות, תלוית רישיות |
 | user | `email` | לא נשלח | אין מיילים ליוזרים |
-| user | `password` | ה-UI, חובה, לא ריקה | |
+| user | `password` | ה-UI, חובה, לפחות 8 תווים (`REDIS_MIN_PASSWORD_LENGTH`) | |
 | user | `auth_method` | לא נשלח. ברירת המחדל של הקלאסטר היא `regular` | |
 | user | `role_uids` | ה-Saga | |
 
