@@ -53,7 +53,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
         ):
             return
         raise DatabaseDeletionTimeoutError(
-            message=f"database {uid} still exists after {self._settings.wait.timeout_seconds} seconds"
+            message=f"database {uid} still exists after {self._settings.wait.timeout_seconds:g} seconds"
         )
 
     def _activation_goal(self, *, uid: int) -> StatusGoal[DatabaseFieldsSnapshot]:
@@ -65,7 +65,7 @@ class PollingDatabaseWaiter(DatabaseActivationWaiter, ResourceCompletionWaiter):
             ),
             timed_out=lambda: DatabaseActivationTimeoutError(
                 message=f"database {uid} is not {self._settings.active_status} "
-                f"after {self._settings.wait.timeout_seconds} seconds"
+                f"after {self._settings.wait.timeout_seconds:g} seconds"
             ),
         )
 

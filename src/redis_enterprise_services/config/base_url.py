@@ -14,10 +14,10 @@ def reject_an_invalid_port(url: str) -> str:
     try:
         port: int | None = urlsplit(url).port
     except ValueError as error:
-        raise ValueError(f"{url} has an invalid port: {error}") from error
+        raise ValueError(f"the URL has an invalid port: {error}") from error
     if port == NO_PORT:
-        raise ValueError(f"{url} has port {NO_PORT}, which nothing listens on")
-    logger.debug(msg=f"{url} uses port {port or 'the scheme default'}")
+        raise ValueError(f"the URL has port {NO_PORT}, which nothing listens on")
+    logger.debug(msg=f"a URL uses port {port or 'the scheme default'}")
     return url
 
 
