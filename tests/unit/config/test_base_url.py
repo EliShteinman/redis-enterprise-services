@@ -8,6 +8,7 @@ from redis_enterprise_services.config.base_url import BaseUrl
     argnames="url",
     argvalues=[
         "https:///x",
+        "https://:9443",
         "https://c1:9443?x=1",
         "https://c1:9443#top",
         "https://c1:port",
