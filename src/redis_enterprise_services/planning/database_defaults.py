@@ -30,11 +30,17 @@ class DatabaseDefaults:
             settings=self._settings, cluster=cluster, active_active=active_active
         )
         values.update(requested.model_dump(exclude_none=True))
-        return NewDatabase.model_validate(
-            obj=with_persistence_settings_of_its_mode(
-                values=values, persistence_values=self._settings.persistence_values
+        try:
+            return NewDatabase.model_validate(
+                obj=with_persistence_settings_of_its_mode(
+                    values=values, persistence_values=self._settings.persistence_values
+                )
             )
-        )
+        except ValidationError as error:
+            raise ConfigurationError(
+                message=f"the request together with the database defaults of cluster {cluster.name} is not "
+                f"valid: {[issue['msg'] for issue in error.errors(include_input=False)]}"
+            ) from error
 
 
 def database_defaults_from(
