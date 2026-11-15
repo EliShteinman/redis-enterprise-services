@@ -68,14 +68,14 @@ class CrdbTaskWaiter:
         return CrdbTaskFailedError(
             message=f"CRDB task {task_id} ended as {status}"
             + (f" on {', '.join(failing_sites)}" if failing_sites else ""),
-            cluster_error_code=self._first_error_code(errors=errors),
+            cluster_error_code=self._error_code_shared_by_every_site(errors=errors),
         )
 
-    def _first_error_code(self, *, errors: list[JsonValue]) -> str | None:
-        codes: list[str | None] = [
+    def _error_code_shared_by_every_site(self, *, errors: list[JsonValue]) -> str | None:
+        codes: set[str | None] = {
             string_field(body=error, name=self._settings.error_code_field) for error in errors
-        ]
-        return next((code for code in codes if code), None)
+        }
+        return codes.pop() if len(codes) == 1 else None
 
     def _failing_site(self, *, error: JsonValue) -> str:
         cluster_name: str | None = string_field(body=error, name=self._settings.error_cluster_field)

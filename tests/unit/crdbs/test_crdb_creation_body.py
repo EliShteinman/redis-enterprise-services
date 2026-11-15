@@ -29,3 +29,15 @@ def test_every_instance_carries_the_configured_compression_explicitly() -> None:
     )
 
     assert [instance.compression for instance in body.instances] == [3, 3]
+
+
+def test_every_instance_sends_the_cluster_admin_password_as_plain_text() -> None:
+    body: CrdbCreationBody = crdb_creation_body(
+        name="orders", default_db_config={}, members=MEMBERS, settings=SETTINGS
+    )
+
+    sent: list[str] = [
+        instance["cluster"]["credentials"]["password"]
+        for instance in body.model_dump(mode="json")["instances"]
+    ]
+    assert sent == ["secret", "secret"]

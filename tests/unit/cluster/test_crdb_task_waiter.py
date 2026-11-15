@@ -117,6 +117,21 @@ def test_every_failing_site_is_named() -> None:
     assert "cluster1.local (db_create_failed), cluster2.local (busy)" in failure.value.message
 
 
+def test_sites_failing_with_different_codes_give_no_single_code() -> None:
+    failed_on_two: JsonValue = {
+        "status": "failed",
+        "errors": [
+            {"cluster_name": "cluster1.local", "error_code": "db_create_failed"},
+            {"cluster_name": "cluster2.local", "error_code": "busy"},
+        ],
+    }
+
+    with pytest.raises(expected_exception=CrdbTaskFailedError) as failure:
+        waiter_answering(task_body=failed_on_two).wait_until_finished(target=TARGET, task_id=TASK_ID)
+
+    assert failure.value.cluster_error_code is None
+
+
 @pytest.mark.parametrize(
     argnames="task_body", argvalues=[FAILED_TASK, {"status": "started"}, {"crdb_guid": "g"}]
 )

@@ -88,7 +88,9 @@ class ReadCrdbStep(SagaStep[ReadCrdbInput, CrdbConfigSnapshot]):
         )
         differing: list[str] = fields_not_holding(
             current=self._comparable(config=stored),
-            expected=without_fields(fields=step_input.expected_config, names=self._secret_fields),
+            expected=self._comparable(
+                config=without_fields(fields=step_input.expected_config, names=self._secret_fields)
+            ),
             order_insensitive_fields=self._order_insensitive_fields,
         )
         if differing:
