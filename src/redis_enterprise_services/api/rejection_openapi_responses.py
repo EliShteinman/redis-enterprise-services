@@ -19,14 +19,14 @@ def rejection_openapi_responses(
 CREATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
     model=RejectedOperation,
     description_by_status={
-        HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract, the traceparent header "
-        "is missing or malformed, a name breaks the naming rules, the target has no configured cluster, the "
-        "Active-Active sites are on more than one network (mixed_networks), or two of them resolve to the "
-        "same cluster, cluster name or host (duplicate_sites).",
+        HTTPStatus.UNPROCESSABLE_CONTENT: "The request does not match the contract or the traceparent "
+        "header is missing or malformed (validation_error), a name breaks the naming rules (invalid_name), "
+        "the target has no configured cluster (no_matching_cluster), the Active-Active sites are on more "
+        "than one network (mixed_networks), or two of them resolve to the same cluster (duplicate_sites).",
         HTTPStatus.INTERNAL_SERVER_ERROR: "configuration_error (the service configuration cannot serve the "
-        "request; the message says what in it is wrong or missing, for example a field the request leaves "
-        "out whose default differs between the Active-Active sites) or internal_error (a fixed message; the "
-        "details are in the service log, by trace_id).",
+        "request, and the message says what in the configuration is wrong or missing; when it names fields "
+        "whose defaults differ between the Active-Active sites, sending those fields in the request avoids "
+        "it) or internal_error (a fixed message; the details are in the service log, by trace_id).",
     },
 )
 OPERATION_ROUTE_REJECTION_RESPONSES: dict[int | str, dict[str, Any]] = rejection_openapi_responses(
