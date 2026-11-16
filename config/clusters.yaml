@@ -1,7 +1,0 @@
-clusters:
-  - name: FILL-IN-CLUSTER-NAME
-    network: FILL-IN-NETWORK
-    environment: PROD
-    site: FILL-IN-SITE
-    type: generic
-    api_url: https://fill-in-cluster-fqdn:9443
