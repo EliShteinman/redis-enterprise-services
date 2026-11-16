@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue
 
-from redis_enterprise_services.operations.database_result import DatabaseClusterResult
+from redis_enterprise_services.operations.results.database_result import DatabaseClusterResult
 
 
 class CrdbResult(BaseModel):

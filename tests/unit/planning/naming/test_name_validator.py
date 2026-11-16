@@ -1,13 +1,13 @@
 import pytest
 
-from redis_enterprise_services.config.naming_settings import NameRulesSettings
+from redis_enterprise_services.config.defaults.naming_settings import NameRulesSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_rule import NameRule
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.name_violation import NameViolation
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
-from redis_enterprise_services.planning.site_placement import SitePlacement
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
 
 RULES: list[NameRule] = configured_name_rules(
     settings=NameRulesSettings.model_validate(

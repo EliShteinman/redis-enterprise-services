@@ -2,7 +2,7 @@ import logging
 
 import requests
 
-from redis_enterprise_services.config.edge_settings import EdgeSettings
+from redis_enterprise_services.config.service.edge_settings import EdgeSettings
 from redis_enterprise_services.edge.encoding import encoded_json_body
 from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse

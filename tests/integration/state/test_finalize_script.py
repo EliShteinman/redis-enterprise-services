@@ -5,9 +5,9 @@ import pytest
 from redis import Redis
 
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
