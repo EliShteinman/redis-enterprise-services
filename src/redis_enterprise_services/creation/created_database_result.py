@@ -1,5 +1,6 @@
 from pydantic import JsonValue
 
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_permission import created_permission
@@ -19,6 +20,7 @@ def created_database_result(
     prepared_creation: PreparedCreation,
     record: SagaRecord,
     database_settings: DatabaseSettings,
+    cluster_fields: ClusterFieldSettings,
     resource_naming: UserResourceNaming,
 ) -> DatabaseResult:
     database: dict[str, JsonValue] = DatabaseFieldsSnapshot.model_validate(
@@ -28,8 +30,8 @@ def created_database_result(
     return DatabaseResult.model_validate(
         obj={
             "kind": "single_site",
-            "name": database["name"],
-            "memory_size": database["memory_size"],
+            "name": database[cluster_fields.name],
+            "memory_size": database[cluster_fields.memory_size],
             "cluster": {
                 "cluster": cluster.fqdn,
                 "cluster_url": cluster.api_url,

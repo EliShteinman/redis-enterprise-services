@@ -1,5 +1,6 @@
 import logging
 
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
@@ -33,10 +34,12 @@ class CreationOutcomeTranslator:
         resource_naming: UserResourceNaming,
         public_errors: PublicErrors,
         database_settings: DatabaseSettings,
+        cluster_fields: ClusterFieldSettings,
     ) -> None:
         self._resource_naming: UserResourceNaming = resource_naming
         self._public_errors: PublicErrors = public_errors
         self._database_settings: DatabaseSettings = database_settings
+        self._cluster_fields: ClusterFieldSettings = cluster_fields
 
     def operation_from_ended_record(
         self,
@@ -53,6 +56,7 @@ class CreationOutcomeTranslator:
                     prepared_creation=prepared_creation,
                     record=record,
                     database_settings=self._database_settings,
+                    cluster_fields=self._cluster_fields,
                     resource_naming=self._resource_naming,
                 ),
             )
