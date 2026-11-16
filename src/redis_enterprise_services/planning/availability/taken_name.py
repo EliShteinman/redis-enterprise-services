@@ -2,7 +2,7 @@ from redis_enterprise_services.planning.availability.requested_name import Reque
 
 
 class TakenName(RequestedName):
-    cluster_name: str
+    cluster_fqdn: str
 
     def describe(self) -> str:
-        return f"{self.kind} {self.name} exists on {self.cluster_name}"
+        return f"{self.kind} {self.name} exists on {self.cluster_fqdn}"

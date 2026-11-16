@@ -8,7 +8,7 @@ from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
 from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
-from redis_enterprise_services.config.crdb_settings import CrdbSettings
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings, CrdbSettings
 from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
 from redis_enterprise_services.crdbs.models import Crdb, NamedCrdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository
@@ -41,7 +41,13 @@ class RestCrdbRepository(CrdbRepository):
         self._settings: CrdbSettings = settings
 
     def start_creation(
-        self, *, coordinator: ClusterTarget, members: list[ClusterTarget], database: NewDatabase, task_id: str
+        self,
+        *,
+        coordinator: ClusterTarget,
+        members: list[ClusterTarget],
+        database: NewDatabase,
+        settings: CrdbCreationSettings,
+        task_id: str,
     ) -> None:
         self._send_task(
             target=coordinator,
@@ -49,9 +55,11 @@ class RestCrdbRepository(CrdbRepository):
             path=self._settings.collection_path,
             body=crdb_creation_body(
                 name=database.name,
-                default_db_config=self._database_body_builder.creation_body(spec=database),
+                default_db_config=self._database_body_builder.creation_body(
+                    spec=database, cluster=coordinator
+                ),
                 members=members,
-                settings=self._settings.creation,
+                settings=settings,
             ).model_dump(mode="json"),
             task_id=task_id,
         )

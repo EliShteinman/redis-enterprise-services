@@ -55,7 +55,7 @@
   "target": {
     "active_active": false,
     "sites": [
-      {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}
+      {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}
     ]
   },
   "spec": {
@@ -73,18 +73,18 @@
 |---|---|---|---|
 | `active_active` | bool | ✅ | `true`: DB אחד על כל האתרים (Active-Active) |
 | `sites` | list | ✅ | ב-`false` איבר אחד בדיוק. ב-`true` אחד או יותר, כולם באותה `network` ועל קלאסטרים שונים. השירות לא מגביל את המספר; הקלאסטר מגביל את `id` של instance ל-31, ויותר מזה לא נבדק. האתר הראשון מתאם את היצירה |
-| `sites[].network` | str | ✅ | |
-| `sites[].site` | str | ✅ | |
 | `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
-| `sites[].cluster` | str | ✅ | `generic`, או שם של קלאסטר ייעודי |
+| `sites[].network` | str | ✅ | שם הרשת, כמו בקונפיג של השירות |
+| `sites[].site` | str | ✅ | שם האתר, כמו בקונפיג של השירות |
+| `sites[].cluster` | str | ✅ | `generic`, או ה-FQDN של קלאסטר ייעודי, כפי שהוא כתוב בקונפיג של השירות |
 
 **איך נמצא הקלאסטר:** הבקשה מתארת את הקלאסטר ולא יודעת את הכתובת שלו. השירות מתרגם אותו לכתובת לפי
-`config/clusters.yaml`, באותם `network`, `environment` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, ובשם קלאסטר
-הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
+`helm/files/clusters.yaml`, באותם `environment`, `network` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, וב-FQDN
+הקלאסטר מסוג `dedicated` עם ה-FQDN הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-Active-Active, אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
-- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`. שני קלאסטרים שונים עם אותו שם או אותו host
-  ⇐ `500 configuration_error`: הטעות בקונפיג של הקלאסטרים, לא בבקשה.
+- ב-Active-Active, שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`. שני קלאסטרים שונים עם אותו FQDN או אותו host,
+  או עם סיסמה שונה ל-`default_user`, ⇐ `500 configuration_error`: הטעות בקונפיג של הקלאסטרים, לא בבקשה.
 - ב-Active-Active, ברירות מחדל שנותנות הגדרות שונות לאתרים שונים ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
   ההודעה מונה את השדות השונים. זה קורה בעיקר כשהבקשה מערבבת סביבות (למשל אתר DEV ואתר PROD באותה רשת, ש-`replication`
   שלהם שונה): הטעות בבקשה, אבל הקוד `configuration_error` (`known_failure`). שליחת השדות שבהודעה במפורש בבקשה עוקפת
@@ -121,11 +121,11 @@
 (`naming.redis.database`). השירות מחמיר לעד 20 תווים (`naming.database`). אחרת ⇐ `422 invalid_name`, והכללים שהופרו
 ב-`error.message`.
 
-**ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`config/database_defaults.yaml`).
+**ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`helm/files/defaults.yaml`).
 השירות שולח במפורש כל הגדרה שחשובה לו, גם כשהיא שווה לברירת המחדל של Redis, כדי ששינוי של Redis, או ברירת מחדל שונה
-ל-DB ול-CRDB, לא ישנו התנהגות בלי תכנון. יש שני סטים מלאים זה לצד זה, `single_site` ו-`active_active` (ערכים, ערכי מצב
-שמירה ודריסות), ושום ערך של סט אחד לא חל על הסוג השני. override בוחר לפי תוויות הקלאסטר. היום, בשני הסטים אותו ערך,
-אלא אם השורה אומרת אחרת:
+ל-DB ול-CRDB, לא ישנו התנהגות בלי תכנון. יש שני סטים מלאים זה לצד זה, `single_site` ו-`active_active` (ערכים וערכי
+מצב שמירה), ושום ערך של סט אחד לא חל על הסוג השני. סביבה, רשת, אתר או קלאסטר ב-`helm/files/clusters.yaml` יכולים
+לדרוס כל ערך, לכל סוג בנפרד. היום, בשני הסטים אותו ערך, אלא אם השורה אומרת אחרת:
 
 | שדה | ברירת מחדל |
 |---|---|
@@ -141,7 +141,8 @@
 | `slave_ha` | `false` |
 | `eviction_policy` | `volatile-lru`, וב-Active-Active `noeviction` (מה ש-Redis נותן לכל סוג, נשלח במפורש) |
 
-ב-Active-Active נשלחות במפורש גם ההגדרות של ה-CRDB עצמו (`config/crdb.yaml`, `creation`): `causal_consistency: false`,
+ב-Active-Active נשלחות במפורש גם ההגדרות של ה-CRDB עצמו (`helm/files/defaults.yaml`, `database_defaults.active_active.crdb`,
+וסביבה, רשת או אתר ב-`helm/files/clusters.yaml` יכולים לדרוס אותן): `causal_consistency: false`,
 `encryption: false`, ו-`compression: 3` בכל instance.
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
@@ -202,8 +203,8 @@
     "crdb": null,
     "clusters": [
       {
-        "cluster": "cluster-a", "cluster_url": "https://cluster-a.net-a:9443",
-        "network": "net-a", "site": "dc1", "environment": "PROD",
+        "cluster": "cluster-a.net-a", "cluster_url": "https://cluster-a.net-a:9443",
+        "environment": "PROD", "network": "net-a", "site": "NY",
         "access": {
           "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
         },
@@ -245,15 +246,15 @@
       ]
     },
     "clusters": [
-      {"cluster": "cluster-a", "site": "dc1", "access": {"endpoints": ["…"]}, "db": {"db_uid": 7, "settings": {"…": "…"}, "permissions": ["…"]}},
-      {"cluster": "cluster-b", "site": "dc2", "access": {"endpoints": ["…"]}, "db": {"db_uid": 4, "settings": {"…": "…"}, "permissions": ["…"]}}
+      {"cluster": "cluster-a.net-a", "site": "NY", "access": {"endpoints": ["…"]}, "db": {"db_uid": 7, "settings": {"…": "…"}, "permissions": ["…"]}},
+      {"cluster": "cluster-b.net-a", "site": "TLV", "access": {"endpoints": ["…"]}, "db": {"db_uid": 4, "settings": {"…": "…"}, "permissions": ["…"]}}
     ]
   }
 }
 ```
 
 כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
-ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster`, `cluster_url`, `network`, `site` ו-`environment` מגיעים
+ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster` (ה-FQDN של הקלאסטר), `cluster_url`, `environment`, `network` ו-`site` מגיעים
 מהקונפיג. ב-Active-Active כל ענף מגיע מה-DB המקומי באותו אתר, עם היוזר, ה-ACL וה-role שנוצרו בו.
 
 | שדה | הערה |
@@ -262,7 +263,7 @@
 | `database.crdb_guid` | ה-guid של ה-CRDB ב-Active-Active. `null` ל-DB באתר אחד |
 | `database.crdb` | רק ב-Active-Active (`null` באתר אחד): ההגדרות של ה-CRDB עצמו כפי שהוא שמר אותן. `default_db_config`: כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag), `causal_consistency`, `encryption`, ולכל אתר `cluster_url`, `instance_id` ו-`compression`. `causal_consistency`, `encryption` ו-`compression` הם כמו שנשלחו: הם נבדקים, וערך אחר מבטל את היצירה. `featureset_version` ו-`protocol_version` נקבעים ב-Redis, ו-`null` כשהקלאסטר לא החזיר אותם. `instances` לפי הסדר של ה-CRDB, לא של הבקשה. מתאימים instance לענף שלו לפי `cluster_url`, כשמשווים בלי רישיות ועם הפורט ברירת המחדל של הסכמה (השירות בודק שכל instance שייך לאחד הענפים) |
 | `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
-| `clusters[].cluster` | שם הקלאסטר מהקונפיג |
+| `clusters[].cluster` | ה-FQDN של הקלאסטר, כפי שהוא כתוב בקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
 | `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
 | `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
@@ -402,7 +403,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
 `http_error`); בפועל `invalid_name`, `no_matching_cluster`, `mixed_networks` ו-`duplicate_sites` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
-את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
+את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`helm/files/service.yaml`.
 
 ---
 
