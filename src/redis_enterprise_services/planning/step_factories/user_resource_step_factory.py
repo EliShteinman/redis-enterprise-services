@@ -2,14 +2,14 @@ from functools import partial
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.role_management import RoleManagement
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.config.defaults.role_management import RoleManagement
+from redis_enterprise_services.planning.planned.user_resources import UserResource, UserResources
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.step_factories.step_inputs import (
     UidFromStepResults,
     fixed_input,
     uid_created_by_step,
 )
-from redis_enterprise_services.planning.user_resources import UserResource, UserResources
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.saga.contract.saga_step import SagaStep

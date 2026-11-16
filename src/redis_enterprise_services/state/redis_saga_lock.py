@@ -4,7 +4,7 @@ from typing import cast
 from redis import Redis
 from redis.commands.core import Script
 
-from redis_enterprise_services.config.state_settings import LockSettings
+from redis_enterprise_services.config.service.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError
 from redis_enterprise_services.saga.contract.saga_lock import SagaLock
 from redis_enterprise_services.state.lock_attempts import LockAttempts

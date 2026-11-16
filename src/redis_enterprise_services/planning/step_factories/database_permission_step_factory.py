@@ -2,10 +2,10 @@ from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
-from redis_enterprise_services.planning.creation_step_keys import PERMISSIONS_STEP_KEY
+from redis_enterprise_services.planning.keys.creation_step_keys import PERMISSIONS_STEP_KEY
+from redis_enterprise_services.planning.planned.user_resources import UserResources
 from redis_enterprise_services.planning.step_factories.role_permission_values import RolePermissionValues
 from redis_enterprise_services.planning.step_factories.step_inputs import UidFromStepResults
-from redis_enterprise_services.planning.user_resources import UserResources
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep

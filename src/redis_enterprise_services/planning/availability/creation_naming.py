@@ -1,10 +1,10 @@
 from redis_enterprise_services.planning.availability.requested_name import RequestedName
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
-from redis_enterprise_services.planning.planned_resources import (
+from redis_enterprise_services.planning.planned.planned_resources import (
     PERMISSIONS_RESOURCE_TYPE,
     planned_resources_by_step_key,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 
 class CreationNaming:

@@ -4,7 +4,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextvars import Context, copy_context
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
-from redis_enterprise_services.config.background_settings import BackgroundSettings
+from redis_enterprise_services.config.service.background_settings import BackgroundSettings
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

@@ -8,7 +8,7 @@ from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeCluste
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError

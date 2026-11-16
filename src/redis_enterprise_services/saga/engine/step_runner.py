@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from pydantic import ValidationError
 
-from redis_enterprise_services.config.saga_settings import SagaSettings
+from redis_enterprise_services.config.service.saga_settings import SagaSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier

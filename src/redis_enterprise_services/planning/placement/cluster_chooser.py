@@ -1,0 +1,10 @@
+from typing import Protocol
+
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
+
+
+class ClusterChooser(Protocol):
+    def choose(
+        self, *, placement: SitePlacement, candidates: list[ConfiguredCluster]
+    ) -> ConfiguredCluster: ...
