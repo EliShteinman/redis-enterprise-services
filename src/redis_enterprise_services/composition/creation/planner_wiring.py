@@ -1,4 +1,4 @@
-from redis_enterprise_services.composition.cluster_steps import ClusterSteps
+from redis_enterprise_services.composition.cluster.cluster_steps import ClusterSteps
 from redis_enterprise_services.config.defaults.role_management import RoleManagement
 from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner

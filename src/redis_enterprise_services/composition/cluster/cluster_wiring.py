@@ -7,12 +7,12 @@ from redis_enterprise_services.cluster.cluster_target_resolver import (
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.composition.cluster_repositories import (
+from redis_enterprise_services.composition.cluster.cluster_repositories import (
     ClusterRepositories,
     build_cluster_repositories,
 )
-from redis_enterprise_services.composition.cluster_steps import ClusterSteps, build_cluster_steps
-from redis_enterprise_services.composition.cluster_waiters import build_cluster_waiters
+from redis_enterprise_services.composition.cluster.cluster_steps import ClusterSteps, build_cluster_steps
+from redis_enterprise_services.composition.cluster.cluster_waiters import build_cluster_waiters
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.service.edge_settings import EdgeSettings
