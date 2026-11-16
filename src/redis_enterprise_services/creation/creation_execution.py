@@ -3,7 +3,7 @@ from collections.abc import Callable
 from functools import partial
 
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.creation_planning import CreationPlanning
+from redis_enterprise_services.creation.planning.creation_planning import CreationPlanning
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.operations.errors.public_error import PublicError

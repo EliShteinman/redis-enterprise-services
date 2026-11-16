@@ -1,8 +1,8 @@
 import logging
 
-from redis_enterprise_services.creation.created_crdb_guid import created_crdb_guid_or_none
-from redis_enterprise_services.creation.creation_record_reader import CreationRecordReader
+from redis_enterprise_services.creation.results.created_crdb_guid import created_crdb_guid_or_none
 from redis_enterprise_services.creation.results.created_resources import created_uid_or_none
+from redis_enterprise_services.creation.results.creation_record_reader import CreationRecordReader
 from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
