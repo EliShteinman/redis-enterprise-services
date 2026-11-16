@@ -2,18 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
+from redis_enterprise_services.config.defaults.naming_settings import RedisNameRulesSettings
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.config.settings import load_settings
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.planning import InvalidNameError
-from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
-from redis_enterprise_services.planning.site_placement import SitePlacement
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec, DatabaseUserSpec
 
 CONTEXT: NamingContext = NamingContext(
     site=SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")

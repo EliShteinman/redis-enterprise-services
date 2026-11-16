@@ -1,6 +1,6 @@
 from pydantic import ConfigDict, JsonValue, TypeAdapter
 
-from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
+from redis_enterprise_services.cluster.bodies.cluster_body import parse_cluster_body
 from redis_enterprise_services.resources.models import ClusterObject, NamedResource
 
 OBJECT_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(

@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import Field, PositiveInt, model_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.item_path import ApiPath, ItemPath
-from redis_enterprise_services.config.wait_settings import WaitSettings
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
+from redis_enterprise_services.config.validation.item_path import ApiPath, ItemPath
 
 
 class CrdbTaskSettings(ConfigModel):
