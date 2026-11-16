@@ -1,18 +1,17 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.acls.models import NewAcl
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
-from redis_enterprise_services.creation.created_resources import created_resource
+from redis_enterprise_services.creation.created_permission import created_permission
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
+from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResources, user_resources
-from redis_enterprise_services.resources.models import CreatedResource, NamedResource
+from redis_enterprise_services.planning.user_resources import user_resources
+from redis_enterprise_services.resources.models import NamedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 
@@ -21,6 +20,7 @@ def created_database_result(
     prepared_creation: PreparedCreation,
     record: SagaRecord,
     database_settings: DatabaseSettings,
+    cluster_fields: ClusterFieldSettings,
     resource_naming: UserResourceNaming,
 ) -> DatabaseResult:
     database: dict[str, JsonValue] = DatabaseFieldsSnapshot.model_validate(
@@ -30,8 +30,8 @@ def created_database_result(
     return DatabaseResult.model_validate(
         obj={
             "kind": "single_site",
-            "name": database["name"],
-            "memory_size": database["memory_size"],
+            "name": database[cluster_fields.name],
+            "memory_size": database[cluster_fields.memory_size],
             "cluster": {
                 "cluster": cluster.fqdn,
                 "cluster_url": cluster.api_url,
@@ -57,21 +57,4 @@ def created_database_result(
                 },
             },
         }
-    )
-
-
-def created_permission(
-    *, record: SagaRecord, user: DatabaseUserSpec, resources: UserResources
-) -> DatabasePermissionResult:
-    created_user: CreatedResource = created_resource(record=record, step_key=resources.user.step_key)
-    created_acl: CreatedResource = created_resource(record=record, step_key=resources.acl.step_key)
-    created_role: CreatedResource = created_resource(record=record, step_key=resources.role.step_key)
-    return DatabasePermissionResult(
-        user_uid=created_user.uid,
-        user_name=created_user.name,
-        user_password=user.password,
-        acl_uid=created_acl.uid,
-        acl_rule=NewAcl.model_validate(obj=created_acl.fields).acl,
-        role_uid=created_role.uid,
-        role_name=created_role.name,
     )

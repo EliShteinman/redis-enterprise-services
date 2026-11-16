@@ -8,7 +8,7 @@ from redis_enterprise_services.config.cluster_credentials_settings import Cluste
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.config.operation_settings import OperationSettings
-from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.active_active_preparation import ActiveActivePreparation
 from redis_enterprise_services.creation.active_active_record_reader import ActiveActiveRecordReader
@@ -193,6 +193,7 @@ def test_the_refusal_of_different_default_user_passwords_shows_no_password() -> 
 
 @pytest.fixture
 def translator(config_dir: Path) -> CreationOutcomeTranslator[PreparedActiveActiveCreation]:
+    settings: Settings = load_settings(config_dir=config_dir)
     return CreationOutcomeTranslator(
         record_reader=ActiveActiveRecordReader(
             resource_naming=UserResourceNaming(
@@ -202,7 +203,8 @@ def translator(config_dir: Path) -> CreationOutcomeTranslator[PreparedActiveActi
                     role_management="db_viewer",
                 )
             ),
-            database_settings=load_settings(config_dir=config_dir).database,
+            database_settings=settings.database,
+            cluster_fields=settings.cluster_api.fields,
         ),
         public_errors=PublicErrors(
             settings=OperationSettings(

@@ -138,7 +138,7 @@ Git holds only `helm/files/clusters.example.yaml`, an example with placeholders.
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
 Logs go to the console, as lines or JSON (`log.console_format`). With `log.file.enabled` they also go to a rotating
-file (`log.file`, JSON by default). Requests to `log.quiet_paths` (`/health`) are left out of the logs below
+file (`log.file`, JSON by default). Requests to `api.liveness_path` (`/health`) are left out of the logs below
 `log.quiet_kept_level` (WARNING), and out of the traces and metrics.
 
 ## Deployment (Helm)

@@ -1,3 +1,4 @@
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_active_active_result import created_active_active_result
@@ -5,7 +6,6 @@ from redis_enterprise_services.creation.creation_record_reader import CreationRe
 from redis_enterprise_services.creation.prepared_active_active_creation import PreparedActiveActiveCreation
 from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.planning.active_active_planned_resources import (
-    SitePlannedResource,
     active_active_planned_resources,
 )
 from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
@@ -14,6 +14,7 @@ from redis_enterprise_services.planning.creation_step_keys import (
     READ_DATABASE_STEP_KEY,
     on_site,
 )
+from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
@@ -21,9 +22,16 @@ DATABASE_STEP_KEYS_ON_A_SITE: tuple[str, ...] = (LOCAL_DATABASE_STEP_KEY, READ_D
 
 
 class ActiveActiveRecordReader(CreationRecordReader[PreparedActiveActiveCreation]):
-    def __init__(self, *, resource_naming: UserResourceNaming, database_settings: DatabaseSettings) -> None:
+    def __init__(
+        self,
+        *,
+        resource_naming: UserResourceNaming,
+        database_settings: DatabaseSettings,
+        cluster_fields: ClusterFieldSettings,
+    ) -> None:
         self._resource_naming: UserResourceNaming = resource_naming
         self._database_settings: DatabaseSettings = database_settings
+        self._cluster_fields: ClusterFieldSettings = cluster_fields
 
     def database_result(
         self, *, prepared_creation: PreparedActiveActiveCreation, record: SagaRecord
@@ -32,6 +40,7 @@ class ActiveActiveRecordReader(CreationRecordReader[PreparedActiveActiveCreation
             prepared_creation=prepared_creation,
             record=record,
             database_settings=self._database_settings,
+            cluster_fields=self._cluster_fields,
             resource_naming=self._resource_naming,
         )
 

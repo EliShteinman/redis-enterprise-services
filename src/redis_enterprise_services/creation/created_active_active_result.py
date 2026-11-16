@@ -1,10 +1,11 @@
 from pydantic import JsonValue
 
+from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.crdb_instance_of_cluster import crdb_instance_of_cluster
 from redis_enterprise_services.creation.created_crdb_guid import created_crdb_guid
-from redis_enterprise_services.creation.created_database_result import created_permission
+from redis_enterprise_services.creation.created_permission import created_permission
 from redis_enterprise_services.creation.prepared_active_active_creation import PreparedActiveActiveCreation
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -27,6 +28,7 @@ def created_active_active_result(
     prepared_creation: PreparedActiveActiveCreation,
     record: SagaRecord,
     database_settings: DatabaseSettings,
+    cluster_fields: ClusterFieldSettings,
     resource_naming: UserResourceNaming,
 ) -> ActiveActiveDatabaseResult:
     crdb: CrdbConfigSnapshot = CrdbConfigSnapshot.model_validate(
@@ -38,8 +40,8 @@ def created_active_active_result(
     return ActiveActiveDatabaseResult.model_validate(
         obj={
             "kind": "active_active",
-            "name": databases[0]["name"],
-            "memory_size": databases[0]["memory_size"],
+            "name": databases[0][cluster_fields.name],
+            "memory_size": databases[0][cluster_fields.memory_size],
             "crdb": {
                 "guid": created_crdb_guid(record=record),
                 "causal_consistency": crdb.causal_consistency,

@@ -12,7 +12,10 @@ from redis_enterprise_services.config.database_defaults_settings import (
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.crdb_spec import CrdbSpec
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
+from redis_enterprise_services.planning.database_defaults import (
+    DatabaseDefaults,
+    reject_invalid_defaults_on_any_cluster,
+)
 
 ADMIN: ClusterCredentialsSettings = ClusterCredentialsSettings(username="admin", password=SecretStr("secret"))
 DEFAULT_USER_PASSWORD: SecretStr = SecretStr("default-user-secret")
@@ -146,7 +149,7 @@ def test_the_active_active_values_of_the_cluster_apply_to_active_active() -> Non
 )
 def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
-        database_defaults_from(settings=defaults_settings(database=values), clusters=[])
+        reject_invalid_defaults_on_any_cluster(settings=defaults_settings(database=values), clusters=[])
 
 
 @pytest.mark.parametrize(
@@ -187,9 +190,9 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
 def defaults_checked_on(
     *, configured: ConfiguredCluster, database: dict[str, JsonValue] | None = None
 ) -> DatabaseDefaults:
-    return database_defaults_from(
-        settings=defaults_settings(database=database or {"data_persistence": "aof"}), clusters=[configured]
-    )
+    settings: DatabaseDefaultsSettings = defaults_settings(database=database or {"data_persistence": "aof"})
+    reject_invalid_defaults_on_any_cluster(settings=settings, clusters=[configured])
+    return DatabaseDefaults(settings=settings)
 
 
 def test_a_cluster_may_set_the_policy_of_the_default_mode() -> None:
@@ -238,15 +241,13 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
 
 
 def test_the_crdb_values_of_the_coordinator_beat_the_crdb_defaults() -> None:
-    assert (
-        DEFAULTS.crdb_settings(coordinator=cluster(crdb={"compression": 6}), requested=None).compression == 6
-    )
+    assert DEFAULTS.crdb_settings(cluster=cluster(crdb={"compression": 6}), requested=None).compression == 6
 
 
 def test_a_requested_crdb_value_beats_the_configured_one() -> None:
     assert (
         DEFAULTS.crdb_settings(
-            coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
+            cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
         ).compression
         == 1
     )
@@ -254,7 +255,7 @@ def test_a_requested_crdb_value_beats_the_configured_one() -> None:
 
 def test_a_crdb_field_left_out_of_the_request_comes_from_config() -> None:
     assert DEFAULTS.crdb_settings(
-        coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
+        cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
     ) == CrdbCreationSettings(causal_consistency=True, encryption=False, compression=6)
 
 
@@ -279,7 +280,7 @@ def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> 
 
 def test_a_startup_error_names_the_set_of_defaults_it_comes_from() -> None:
     with pytest.raises(expected_exception=ConfigurationError, match=r"database_defaults\.active_active"):
-        database_defaults_from(
+        reject_invalid_defaults_on_any_cluster(
             settings=defaults_settings(
                 database={}, active_active_database={"eviction_policy": "not-a-policy"}
             ),
