@@ -56,7 +56,6 @@ def trace_id(client: Redis, keys: RedisKeys) -> Iterator[str]:
         *[keys.lock(lock_key=lock_key) for lock_key in itest_lock_keys(trace_id=test_trace_id)],
     )
     client.srem(keys.open_trace_ids(), test_trace_id)
-    client.srem(keys.unfinished_saga_ids(), test_trace_id)
 
 
 @pytest.fixture

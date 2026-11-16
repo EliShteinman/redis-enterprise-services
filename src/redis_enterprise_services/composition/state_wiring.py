@@ -39,7 +39,6 @@ class StateWiring:
         self.saga_record_store: RedisSagaRecordStore = RedisSagaRecordStore(
             client=redis_client,
             keys=redis_keys,
-            record_writer=record_writer,
             finished_ttl_seconds=settings.state.finished_ttl_seconds,
         )
         self.abandoned_store: RedisAbandonedStore = RedisAbandonedStore(

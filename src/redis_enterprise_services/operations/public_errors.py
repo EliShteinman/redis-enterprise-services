@@ -24,7 +24,7 @@ class PublicErrors:
 
     def unexpected_error(self, *, error: BaseException) -> PublicError:
         return self._internal_error_with(
-            message=self._unexpected_error_message.format(error_type=type(error).__name__, error=error)
+            message=self._unexpected_error_message.format(error_type=type(error).__name__)
         )
 
     def from_error(
