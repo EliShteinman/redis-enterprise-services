@@ -1,4 +1,4 @@
-from uuid import UUID
+from typing import Literal
 
 from pydantic import BaseModel, Field, JsonValue
 
@@ -73,16 +73,13 @@ class DatabaseClusterResult(BaseModel):
 
 
 class DatabaseResult(BaseModel):
+    kind: Literal["single_site"] = Field(
+        description="The kind of the database: single_site, a database on one cluster. The value is the "
+        "name of the kind in the service configuration.",
+        examples=["single_site"],
+    )
     name: str = Field(description="The database name, as the cluster stored it.", examples=["orders"])
     memory_size: int = Field(
         description="The memory limit in bytes, as the cluster stored it.", examples=[1073741824]
     )
-    active_active: bool = Field(
-        description="Whether the database is Active-Active. Always false for now.", examples=[False]
-    )
-    crdb_guid: UUID | None = Field(
-        description="The Active-Active database id. Null for a single-site database.", examples=[None]
-    )
-    clusters: list[DatabaseClusterResult] = Field(
-        min_length=1, description="One entry per cluster that holds the database. One for now."
-    )
+    cluster: DatabaseClusterResult = Field(description="The cluster that holds the database.")
