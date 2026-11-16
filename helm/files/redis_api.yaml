@@ -1,4 +1,5 @@
 cluster_api:
+  scheme: https
   fields:
     status: status
     error_code: error_code
