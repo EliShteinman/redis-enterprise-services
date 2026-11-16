@@ -174,24 +174,26 @@ def test_the_top_of_the_tree_comes_from_the_read_back_not_the_request(created: D
     assert (created.name, created.memory_size) == ("orders", 104857700)
 
 
+def test_a_created_database_is_reported_as_single_site(created: DatabaseResult) -> None:
+    assert created.kind == "single_site"
+
+
 def test_a_created_database_names_its_cluster_by_its_fqdn(created: DatabaseResult) -> None:
-    assert created.clusters[0].cluster == PREPARED_CREATION.cluster.fqdn
+    assert created.cluster.cluster == PREPARED_CREATION.cluster.fqdn
 
 
 def test_a_created_database_returns_the_endpoints_the_cluster_reported(created: DatabaseResult) -> None:
-    assert created.clusters[0].access.model_dump()["endpoints"] == [ENDPOINT]
+    assert created.cluster.access.model_dump()["endpoints"] == [ENDPOINT]
 
 
 def test_a_created_database_returns_every_creation_field_as_the_cluster_stored_it(
     created: DatabaseResult,
 ) -> None:
-    assert created.clusters[0].db.settings == {
-        name: READ_BACK_VALUES[name] for name in NewDatabase.model_fields
-    }
+    assert created.cluster.db.settings == {name: READ_BACK_VALUES[name] for name in NewDatabase.model_fields}
 
 
 def test_each_user_comes_back_with_its_acl_and_role_as_one_permission(created: DatabaseResult) -> None:
-    assert created.clusters[0].db.permissions == [
+    assert created.cluster.db.permissions == [
         DatabasePermissionResult(
             user_uid=13,
             user_name="app",
