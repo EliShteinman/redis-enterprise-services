@@ -36,6 +36,8 @@ FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     *CLUSTER_REPORTED_FAILURE_ERRORS,
 )
 
+NEVER_SENT_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (EdgeConnectionFailedError,)
+
 TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     EdgeConnectionFailedError,
     EdgeOutcomeUnknownError,
@@ -61,6 +63,8 @@ class ClusterFailureClassifier(FailureClassifier):
             return self._classify_rejection(error=error)
         if isinstance(error, FAILED_ERRORS):
             return FailureCategory.FAILED
+        if isinstance(error, NEVER_SENT_ERRORS):
+            return FailureCategory.TRANSIENT
         if isinstance(error, OUTCOME_UNKNOWN_ERRORS):
             return FailureCategory.OUTCOME_UNKNOWN
         return FailureCategory.FAILED
