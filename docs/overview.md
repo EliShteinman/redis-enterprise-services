@@ -43,12 +43,15 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 
 **יצירת DB, באתר אחד או Active-Active על כמה אתרים, מקצה לקצה.**
 
-- **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
+- **ממשק:** (`contracts/service-api.md`) route לכל סוג: `POST /v1/databases/create` לאתר אחד ו-`POST /v1/crdbs/create`
+  ל-Active-Active. שניהם מחזירים `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
-- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml`, מהסט
-  של הסוג (אתר אחד או Active-Active, כל אחד עם סט מלא משלו), עם הדריסות של אותו סוג בסביבה, ברשת, באתר ובקלאסטר.
-  ב-Active-Active גם: כל האתרים באותה רשת, על קלאסטרים שונים, ועם אותן הגדרות.
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד (`target.site`, אתר אחד) מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
+  הדריסות של הסביבה, הרשת, האתר והקלאסטר.
+  ב-Active-Active (`target.sites`, אתר אחד או יותר): כל אתר נמצא באותה דרך, ברירות המחדל מהסט `active_active` (לכל סוג סט מלא
+  משלו, עם הדריסות של אותו סוג), והגדרות ה-CRDB מהבקשה (`spec.crdb`) או מהקונפיג. כל האתרים באותה רשת, על קלאסטרים
+  שונים, ועם אותן הגדרות.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
   ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר. ב-Active-Active: קודם CRDB אחד, אחריו לכל אתר היוזרים על ה-DB המקומי, ובסוף PATCH אחד של ההרשאות
   (`design/creation.md`, סעיף 6).
@@ -57,7 +60,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
   - תוצאה לא ידועה (timeout, שירות קצה שלא ענה) נבדקת בקלאסטר לפני ניסיון חוזר.
   - ביטול רק אחרי כישלון ודאי. כל השאר ⇐ `requires_manual_intervention`, והנעילה נשארת.
 - **התאוששות:** heartbeat לכל פעולה, וסריקה בכל pod שמסמנת פעולות של pod שנפל.
-- **תוצאה:** עץ ה-DB, שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
+- **תוצאה:** עץ ה-DB (`kind: "single_site"` עם קלאסטר אחד, או `kind: "active_active"` עם ה-CRDB וענף לכל קלאסטר), שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
 - **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay. הלוג לקונסול כשורה או כ-JSON,
   ואפשר גם קובץ JSON מתחלף. `/health` לא נכנס ללוגים מתחת ל-WARNING, ולא ל-traces ול-metrics.
 

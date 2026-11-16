@@ -33,10 +33,10 @@ class CreationPreparation:
         self._name_validator.ensure_valid(name=requested_database.name, context=context)
         self._user_names_validator.ensure_valid(spec=creation_request.spec, context=context)
         cluster: ConfiguredCluster = self._site_cluster_resolver.resolve(
-            placement=creation_request.target.single_site()
+            placement=creation_request.target.site
         )
         filled_database: NewDatabase = self._database_defaults.fill_in(
-            cluster=cluster, requested=requested_database, active_active=creation_request.target.active_active
+            cluster=cluster, requested=requested_database, active_active=False
         )
         logger.info(msg=f"creating {filled_database.name} on {cluster.fqdn} is prepared")
         return PreparedCreation(
