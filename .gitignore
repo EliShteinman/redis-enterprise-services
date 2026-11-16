@@ -33,3 +33,6 @@ logs/
 
 # Local reference material (not part of the project)
 docs/reference/
+
+# Filled cluster files hold passwords; only clusters.example.yaml is kept
+helm/files/*clusters.yaml
