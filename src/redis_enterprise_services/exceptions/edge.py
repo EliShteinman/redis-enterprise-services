@@ -7,19 +7,23 @@ class EdgeError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "edge_error"
 
 
-class EdgeRejectedRequestError(RedisEnterpriseServicesError):
+class EdgeRejectedRequestError(EdgeError):
     code: ClassVar[str] = "edge_rejected_request"
 
 
-class EdgeConnectionFailedError(EdgeError):
+class EdgeUnansweredError(EdgeError):
+    code: ClassVar[str] = "edge_unanswered"
+
+
+class EdgeConnectionFailedError(EdgeUnansweredError):
     code: ClassVar[str] = "edge_connection_failed"
 
 
-class EdgeOutcomeUnknownError(EdgeError):
+class EdgeOutcomeUnknownError(EdgeUnansweredError):
     code: ClassVar[str] = "edge_outcome_unknown"
 
 
-class EdgeRejectedResponseError(EdgeError):
+class EdgeRejectedResponseError(EdgeUnansweredError):
     code: ClassVar[str] = "edge_rejected_response"
 
     def __init__(self, *, message: str, cluster_status_code: int | None) -> None:

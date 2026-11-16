@@ -88,7 +88,7 @@ class RedisAbandonedStore(AbandonedStore):
         raw: str | None = cast(str | None, self._client.get(name=self._keys.saga_record(saga_id=trace_id)))
         if raw is None:
             return None
-        return StoredSaga(raw_json=raw, record=readable_saga_record(trace_id=trace_id, raw_json=raw))
+        return StoredSaga(raw_json=raw, record=saga_record_or_none(trace_id=trace_id, raw_json=raw))
 
     def finalize_if_still_abandoned(
         self,
@@ -142,7 +142,7 @@ class RedisAbandonedStore(AbandonedStore):
         return sorted(cast(set[str], self._client.smembers(name=self._keys.held_locks(owner=trace_id))))
 
 
-def readable_saga_record(*, trace_id: str, raw_json: str) -> SagaRecord | None:
+def saga_record_or_none(*, trace_id: str, raw_json: str) -> SagaRecord | None:
     try:
         return SagaRecord.model_validate_json(json_data=raw_json)
     except ValidationError:
