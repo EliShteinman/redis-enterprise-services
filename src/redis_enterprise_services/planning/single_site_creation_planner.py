@@ -1,11 +1,13 @@
 import logging
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.planning.cluster_address import address_of
-from redis_enterprise_services.planning.creation_lock_keys import creation_lock_keys
-from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.planning.keys.creation_lock_keys import creation_lock_keys
+from redis_enterprise_services.planning.keys.creation_step_keys import READ_DATABASE_STEP_KEY
+from redis_enterprise_services.planning.placement.cluster_address import address_of
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resources import UserResources, user_resources
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.step_factories.database_permission_step_factory import (
     DatabasePermissionStepFactory,
 )
@@ -19,8 +21,6 @@ from redis_enterprise_services.planning.step_factories.read_database_step_factor
 from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
     UserResourceStepFactory,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResources, user_resources
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 

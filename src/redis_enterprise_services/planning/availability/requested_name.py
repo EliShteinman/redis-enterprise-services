@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
-from redis_enterprise_services.planning.name_kind import NameKind
+from redis_enterprise_services.planning.planned.name_kind import NameKind
 
 
 class RequestedName(BaseModel):

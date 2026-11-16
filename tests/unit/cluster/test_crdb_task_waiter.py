@@ -7,11 +7,11 @@ from pydantic import JsonValue, SecretStr
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
-from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
-from redis_enterprise_services.cluster.status_polling import StatusPolling
+from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import CrdbTaskFailedError, CrdbTaskTimeoutError
 from redis_enterprise_services.timing.clock import Clock

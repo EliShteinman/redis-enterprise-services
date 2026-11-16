@@ -3,13 +3,13 @@ from urllib.parse import urlsplit
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.bodies.json_body import list_field, string_field, whole_body
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.error_cluster_url import with_cluster_url
-from redis_enterprise_services.cluster.json_body import list_field, string_field, whole_body
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster.status_goal import StatusGoal
-from redis_enterprise_services.cluster.status_polling import StatusPolling
-from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
+from redis_enterprise_services.cluster.waiting.status_goal import StatusGoal
+from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbTaskSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.cluster import CrdbTaskFailedError, CrdbTaskTimeoutError
 
