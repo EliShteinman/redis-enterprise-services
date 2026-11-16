@@ -6,8 +6,8 @@ from redis_enterprise_services.config.clusters.cluster_inventory import Configur
 from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.spec.database_defaults import (
-    DatabaseDefaults,
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.spec.database_defaults_validation import (
     reject_invalid_defaults_on_any_cluster,
 )
 
