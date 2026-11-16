@@ -68,27 +68,44 @@ class ReadDatabaseStep(SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot]):
         snapshot: DatabaseFieldsSnapshot = self._fields_reader.read(
             target=self._target_resolver.target_for(address=step_input.cluster), uid=step_input.uid
         )
-        missing: list[str] = missing_database_values(values=snapshot.values, settings=self._settings)
-        if missing:
-            raise IncompleteClusterObjectError(
-                message=f"database {step_input.uid} came back without a value for {missing}"
-            )
-        differing: list[str] = fields_not_holding(
-            current=snapshot.values,
-            expected=step_input.expected_values,
+        raise_if_values_are_missing(uid=step_input.uid, values=snapshot.values, settings=self._settings)
+        raise_if_values_differ(
+            uid=step_input.uid,
+            values=snapshot.values,
+            expected_values=step_input.expected_values,
             order_insensitive_fields=self._settings.order_insensitive_fields,
         )
-        if differing:
-            raise IncompleteClusterObjectError(
-                message=f"database {step_input.uid} does not hold what was set for {differing}"
-            )
-        return snapshot.model_copy(
-            update={
-                "values": without_fields(
-                    fields=snapshot.values, names=frozenset(self._settings.secret_fields)
-                )
-            }
+        return snapshot_without_fields(snapshot=snapshot, names=frozenset(self._settings.secret_fields))
+
+
+def raise_if_values_are_missing(
+    *, uid: int, values: dict[str, JsonValue], settings: DatabaseSettings
+) -> None:
+    missing: list[str] = missing_database_values(values=values, settings=settings)
+    if missing:
+        raise IncompleteClusterObjectError(message=f"database {uid} came back without a value for {missing}")
+
+
+def raise_if_values_differ(
+    *,
+    uid: int,
+    values: dict[str, JsonValue],
+    expected_values: dict[str, JsonValue],
+    order_insensitive_fields: frozenset[str],
+) -> None:
+    differing: list[str] = fields_not_holding(
+        current=values, expected=expected_values, order_insensitive_fields=order_insensitive_fields
+    )
+    if differing:
+        raise IncompleteClusterObjectError(
+            message=f"database {uid} does not hold what was set for {differing}"
         )
+
+
+def snapshot_without_fields(
+    *, snapshot: DatabaseFieldsSnapshot, names: frozenset[str]
+) -> DatabaseFieldsSnapshot:
+    return snapshot.model_copy(update={"values": without_fields(fields=snapshot.values, names=names)})
 
 
 def required_field_names(*, settings: DatabaseSettings) -> list[str]:

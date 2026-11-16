@@ -16,8 +16,8 @@ from redis_enterprise_services.planning.placement.cluster_directory import Clust
 from redis_enterprise_services.planning.placement.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.placement.site_cluster_resolver import SiteClusterResolver
 from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.spec.database_defaults import (
-    DatabaseDefaults,
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.spec.database_defaults_validation import (
     reject_invalid_defaults_on_any_cluster,
 )
 
