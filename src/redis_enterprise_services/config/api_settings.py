@@ -17,11 +17,10 @@ class ApiSettings(ConfigModel):
     @field_validator("unexpected_error_message")
     @classmethod
     def reject_unknown_placeholders(cls, template: str) -> str:
-        sample: ValueError = ValueError("sample")
         try:
-            template.format(error_type=type(sample).__name__, error=sample)
+            template.format(error_type=ValueError.__name__)
         except (KeyError, IndexError, ValueError, AttributeError, TypeError) as error:
             raise ValueError(
-                f"unexpected_error_message cannot be filled with an error type and an error: {error!r}"
+                f"unexpected_error_message cannot be filled with an error type alone: {error!r}"
             ) from error
         return template
