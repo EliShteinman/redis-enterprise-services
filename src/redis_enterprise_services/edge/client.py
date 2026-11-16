@@ -46,7 +46,6 @@ class EdgeClient:
                 data=data,
                 timeout=(self._settings.connect_timeout_seconds, self._settings.request_timeout_seconds),
                 allow_redirects=False,
-                verify=False,  # noqa: S501
             )
         except requests.RequestException as error:
             logger.warning(msg=f"{request_line} failed: {error!r}")
