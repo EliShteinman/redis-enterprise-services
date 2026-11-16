@@ -1,5 +1,5 @@
 from redis_enterprise_services.acls.models import NewAcl
-from redis_enterprise_services.creation.created_resources import created_resource
+from redis_enterprise_services.creation.results.created_resources import created_resource
 from redis_enterprise_services.operations.results.database_result import DatabasePermissionResult
 from redis_enterprise_services.planning.planned.user_resources import UserResources
 from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec

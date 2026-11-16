@@ -1,8 +1,8 @@
 import logging
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
-from redis_enterprise_services.creation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.requests.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext

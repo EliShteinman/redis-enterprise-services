@@ -9,7 +9,7 @@ from redis_enterprise_services.config.defaults.user_resources_settings import Us
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
