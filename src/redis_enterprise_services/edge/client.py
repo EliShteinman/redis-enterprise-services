@@ -17,10 +17,12 @@ class EdgeClient:
         self,
         *,
         settings: EdgeSettings,
+        session: requests.Session,
         header_builder: EdgeHeaderBuilder,
         response_reader: EdgeResponseReader,
     ) -> None:
         self._settings: EdgeSettings = settings
+        self._session: requests.Session = session
         self._header_builder: EdgeHeaderBuilder = header_builder
         self._response_reader: EdgeResponseReader = response_reader
 
@@ -40,7 +42,7 @@ class EdgeClient:
         self, *, network: str, relay_url: str, headers: dict[str, str], data: bytes | None, request_line: str
     ) -> requests.Response:
         try:
-            return requests.post(
+            return self._session.post(
                 url=relay_url,
                 headers=headers,
                 data=data,

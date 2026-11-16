@@ -33,5 +33,4 @@ class LogSettings(ConfigModel):
     json_dropped_fields: frozenset[str]
     file: LogFileSettings
     root_propagating_loggers: list[str]
-    quiet_paths: frozenset[str]
     quiet_kept_level: LogLevel
