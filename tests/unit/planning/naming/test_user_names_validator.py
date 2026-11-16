@@ -16,8 +16,7 @@ from redis_enterprise_services.planning.site_placement import SitePlacement
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
 CONTEXT: NamingContext = NamingContext(
-    active_active=False,
-    sites=[SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")],
+    site=SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")
 )
 
 

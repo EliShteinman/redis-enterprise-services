@@ -29,36 +29,33 @@ def created_database_result(
     cluster: ConfiguredCluster = prepared_creation.cluster
     return DatabaseResult.model_validate(
         obj={
+            "kind": "single_site",
             "name": database["name"],
             "memory_size": database["memory_size"],
-            "active_active": False,
-            "crdb_guid": None,
-            "clusters": [
-                {
-                    "cluster": cluster.fqdn,
-                    "cluster_url": cluster.api_url,
-                    "network": cluster.network,
-                    "site": cluster.site,
-                    "environment": cluster.environment,
-                    "access": {"endpoints": database[database_settings.endpoints_field]},
-                    "db": {
-                        "db_uid": NamedResource.model_validate(obj=database).uid,
-                        "settings": {name: database[name] for name in NewDatabase.model_fields},
-                        "permissions": [
-                            created_permission(
-                                record=record,
+            "cluster": {
+                "cluster": cluster.fqdn,
+                "cluster_url": cluster.api_url,
+                "network": cluster.network,
+                "site": cluster.site,
+                "environment": cluster.environment,
+                "access": {"endpoints": database[database_settings.endpoints_field]},
+                "db": {
+                    "db_uid": NamedResource.model_validate(obj=database).uid,
+                    "settings": {name: database[name] for name in NewDatabase.model_fields},
+                    "permissions": [
+                        created_permission(
+                            record=record,
+                            user=user,
+                            resources=user_resources(
+                                naming=resource_naming,
+                                database_name=prepared_creation.spec.database.name,
                                 user=user,
-                                resources=user_resources(
-                                    naming=resource_naming,
-                                    database_name=prepared_creation.spec.database.name,
-                                    user=user,
-                                ),
-                            ).model_dump()
-                            for user in prepared_creation.spec.users
-                        ],
-                    },
-                }
-            ],
+                            ),
+                        ).model_dump()
+                        for user in prepared_creation.spec.users
+                    ],
+                },
+            },
         }
     )
 

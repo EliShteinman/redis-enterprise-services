@@ -9,15 +9,12 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "takes the service default for the target.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [
-                    {
-                        "environment": "PROD",
-                        "network": "net-a",
-                        "site": "NY",
-                        "cluster": "cluster-a.net-a",
-                    }
-                ],
+                "site": {
+                    "environment": "PROD",
+                    "network": "net-a",
+                    "site": "NY",
+                    "cluster": "cluster-a.net-a",
+                },
             },
             "spec": {
                 "database": {
@@ -47,8 +44,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "description": "snapshot_policy is sent only together with data_persistence snapshot.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [{"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}],
+                "site": {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"},
             },
             "spec": {
                 "database": {
@@ -67,8 +63,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "for the target.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [{"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}],
+                "site": {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"},
             },
             "spec": {
                 "database": {"name": "orders", "memory_size": 1073741824},

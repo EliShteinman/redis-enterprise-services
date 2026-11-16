@@ -3,6 +3,7 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from redis_enterprise_services.config.error_kind import NEEDS_INVESTIGATION
+from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.database_result import DatabaseResult
 from redis_enterprise_services.operations.is_none import is_none
 from redis_enterprise_services.operations.operation_status import (
@@ -32,8 +33,9 @@ class Operation(BaseModel):
         "operation (the database exists, but database is null).",
         examples=["succeeded"],
     )
-    database: DatabaseResult | None = Field(
+    database: DatabaseResult | ActiveActiveDatabaseResult | None = Field(
         default=None,
+        discriminator="kind",
         description="The database as the cluster reported it when the operation ended, when it succeeded. "
         "Otherwise null.",
     )
