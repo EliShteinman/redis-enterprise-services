@@ -18,26 +18,28 @@ from redis_enterprise_services.api.error_handlers import (
 from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
-from redis_enterprise_services.config.settings import Settings, load_settings
+from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
+from redis_enterprise_services.logger.quiet import QuietPathsMiddleware
 from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.telemetry.excluded_urls import excluded_urls
 from redis_enterprise_services.telemetry.telemetry_providers import (
     TelemetryProviders,
     build_telemetry_providers,
 )
 
 
-def create_app() -> FastAPI:
-    settings: Settings = load_settings()
+def create_app(*, settings: Settings) -> FastAPI:
     configure_process(settings=settings)
     app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
     wiring: AppWiring = AppWiring(settings=settings)
     store_in_app_state(app=app, settings=settings, wiring=wiring)
     add_error_handling(app=app, settings=settings.api, public_errors=wiring.public_errors)
     include_routers(app=app)
-    FastAPIInstrumentor.instrument_app(app=app)
+    FastAPIInstrumentor.instrument_app(app=app, excluded_urls=excluded_urls(paths=settings.log.quiet_paths))
+    app.add_middleware(middleware_class=QuietPathsMiddleware, paths=settings.log.quiet_paths)
     return app
 
 
