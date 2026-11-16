@@ -6,10 +6,10 @@ from redis_enterprise_services.operations.remaining_resource import RemainingRes
 
 GUID: str = "d71cefce-4e31-41fd-b654-37cbb2f39a01"
 CLUSTER: dict[str, object] = {
-    "cluster": "cluster-a",
+    "cluster": "cluster-a.net-a",
     "cluster_url": "https://cluster-a.net-a:9443",
     "network": "net-a",
-    "site": "dc1",
+    "site": "NY",
     "environment": "PROD",
     "access": {
         "endpoints": [{"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]}]

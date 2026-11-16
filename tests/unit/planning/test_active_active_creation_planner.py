@@ -1,11 +1,19 @@
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, SecretStr
 
+from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.database_defaults_settings import (
+    ActiveActiveDefaults,
+    DatabaseDefaultsSettings,
+    DatabaseKindDefaults,
+)
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
@@ -15,6 +23,11 @@ from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_results import StepResults
 from redis_enterprise_services.steps.create_crdb import CreatedCrdb
 from redis_enterprise_services.steps.find_local_crdb_instance import LocalCrdbInstance
+
+NY: str = "redis.ny.example.com"
+TLV: str = "redis.tlv.example.com"
+ADMIN: ClusterCredentialsSettings = ClusterCredentialsSettings(username="admin", password=SecretStr("secret"))
+DEFAULT_USER_PASSWORD: SecretStr = SecretStr("default-user-secret")
 
 
 class IdleStep[TInput: BaseModel, TResult: BaseModel]:
@@ -39,7 +52,7 @@ class IdleStep[TInput: BaseModel, TResult: BaseModel]:
 
 
 class BodyWithSecret:
-    def creation_body(self, *, spec: NewDatabase) -> dict[str, JsonValue]:
+    def creation_body(self, *, spec: NewDatabase, cluster: ClusterAddress) -> dict[str, JsonValue]:
         return {"name": spec.name, "memory_size": spec.memory_size, "authentication_redis_pass": "secret"}
 
 
@@ -59,7 +72,16 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     database_body_builder=BodyWithSecret(),
     secret_fields=frozenset({"authentication_redis_pass"}),
-    crdb_creation=CrdbCreationSettings(causal_consistency=False, encryption=False, compression=3),
+    database_defaults=DatabaseDefaults(
+        settings=DatabaseDefaultsSettings(
+            single_site=DatabaseKindDefaults(database={}, persistence_values={}),
+            active_active=ActiveActiveDefaults(
+                database={},
+                persistence_values={},
+                crdb=CrdbCreationSettings(causal_consistency=False, encryption=False, compression=3),
+            ),
+        )
+    ),
     create_crdb_step=IdleStep(),
     find_local_instance_step=IdleStep(),
     create_acl_step=IdleStep(),
@@ -71,10 +93,26 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
 )
 CLUSTERS: list[ConfiguredCluster] = [
     ConfiguredCluster(
-        name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
+        fqdn=NY,
+        network="net-a",
+        environment="DEV",
+        site="ny",
+        type="generic",
+        api_url=f"https://{NY}:9443",
+        credentials=ADMIN,
+        default_user_password=DEFAULT_USER_PASSWORD,
+        crdb_overrides={"compression": 6},
     ),
     ConfiguredCluster(
-        name="c2", network="net-a", environment="DEV", site="dc2", type="generic", api_url="https://c2:9443"
+        fqdn=TLV,
+        network="net-a",
+        environment="DEV",
+        site="tlv",
+        type="generic",
+        api_url=f"https://{TLV}:9443",
+        credentials=ADMIN,
+        default_user_password=DEFAULT_USER_PASSWORD,
+        crdb_overrides={"compression": 1},
     ),
 ]
 SPEC: DatabaseSpec = DatabaseSpec(
@@ -90,9 +128,14 @@ def plan() -> SagaPlan:
 def step_inputs_by_key() -> dict[str, JsonValue]:
     results: StepResults = StepResults()
     results.keep(key="crdb", result=CreatedCrdb(guid="g"))
-    results.keep(key="c1/local-database", result=LocalCrdbInstance(instance_id=1, db_uid=7))
-    results.keep(key="c2/local-database", result=LocalCrdbInstance(instance_id=2, db_uid=4))
-    for key, uid in {"c1/acl/app": 11, "c1/role/app": 12, "c2/acl/app": 21, "c2/role/app": 22}.items():
+    results.keep(key=f"{NY}/local-database", result=LocalCrdbInstance(instance_id=1, db_uid=7))
+    results.keep(key=f"{TLV}/local-database", result=LocalCrdbInstance(instance_id=2, db_uid=4))
+    for key, uid in {
+        f"{NY}/acl/app": 11,
+        f"{NY}/role/app": 12,
+        f"{TLV}/acl/app": 21,
+        f"{TLV}/role/app": 22,
+    }.items():
         results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None, fields={}))
     return {step.key: step.prepare(step_results=results).step_input for step in plan().steps}
 
@@ -100,17 +143,17 @@ def step_inputs_by_key() -> dict[str, JsonValue]:
 def test_the_crdb_comes_first_then_each_site_then_one_permissions_patch_then_the_reads() -> None:
     assert [step.key for step in plan().steps] == [
         "crdb",
-        "c1/local-database",
-        "c2/local-database",
-        "c1/acl/app",
-        "c1/role/app",
-        "c1/user/app",
-        "c2/acl/app",
-        "c2/role/app",
-        "c2/user/app",
+        f"{NY}/local-database",
+        f"{TLV}/local-database",
+        f"{NY}/acl/app",
+        f"{NY}/role/app",
+        f"{NY}/user/app",
+        f"{TLV}/acl/app",
+        f"{TLV}/role/app",
+        f"{TLV}/user/app",
         "permissions",
-        "c1/read-database",
-        "c2/read-database",
+        f"{NY}/read-database",
+        f"{TLV}/read-database",
         "read-crdb",
     ]
 
@@ -118,7 +161,7 @@ def test_the_crdb_comes_first_then_each_site_then_one_permissions_patch_then_the
 def test_each_role_is_limited_to_the_local_database_of_its_site() -> None:
     inputs: dict[str, JsonValue] = step_inputs_by_key()
 
-    assert [inputs[f"{site}/role/app"]["spec"]["database_uids"] for site in ("c1", "c2")] == [[7], [4]]  # type: ignore[index]
+    assert [inputs[f"{site}/role/app"]["spec"]["database_uids"] for site in (NY, TLV)] == [[7], [4]]  # type: ignore[index]
 
 
 def test_the_permissions_patch_pairs_each_instance_with_its_own_role_and_acl() -> None:
@@ -139,14 +182,22 @@ def test_the_crdb_check_expects_the_sync_settings_that_are_sent() -> None:
     assert step_inputs_by_key()["read-crdb"]["expected_settings"] == {  # type: ignore[index]
         "causal_consistency": False,
         "encryption": False,
-        "compression": 3,
+        "compression": 6,
+    }
+
+
+def test_the_crdb_is_created_with_the_crdb_settings_of_the_coordinator() -> None:
+    assert step_inputs_by_key()["crdb"]["settings"] == {  # type: ignore[index]
+        "causal_consistency": False,
+        "encryption": False,
+        "compression": 6,
     }
 
 
 def test_the_plan_locks_the_database_and_users_on_every_site() -> None:
     assert plan().lock_keys == [
-        "https://c1:9443/database/orders",
-        "https://c1:9443/user/app",
-        "https://c2:9443/database/orders",
-        "https://c2:9443/user/app",
+        f"https://{NY}:9443/database/orders",
+        f"https://{NY}:9443/user/app",
+        f"https://{TLV}:9443/database/orders",
+        f"https://{TLV}:9443/user/app",
     ]

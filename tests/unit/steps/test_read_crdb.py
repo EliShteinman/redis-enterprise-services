@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
+from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
@@ -53,8 +53,10 @@ def read_with(
     kept: list[CrdbConfigSnapshot] = []
     ReadCrdbStep(
         repository=repository,
-        target_resolver=SharedCredentialsTargetResolver(
-            credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
+        target_resolver=ConfiguredCredentialsTargetResolver(
+            credentials_by_api_url={
+                "https://cluster-a:9443": ClusterCredentials(username="admin", password=SecretStr("secret"))
+            },
         ),
         secret_fields=frozenset({"authentication_redis_pass"}),
         order_insensitive_fields=frozenset(),
