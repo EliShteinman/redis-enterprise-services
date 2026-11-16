@@ -5,8 +5,8 @@ import pytest
 from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
-from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster.waiting.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
 from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
