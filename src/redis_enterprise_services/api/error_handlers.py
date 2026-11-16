@@ -1,10 +1,10 @@
 import logging
 from collections.abc import Sequence
 from http import HTTPStatus
-from typing import Any
 
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
+from pydantic_core import ErrorDetails
 from starlette.exceptions import HTTPException
 
 from redis_enterprise_services.api.internal_error_report import report_internal_error
@@ -100,7 +100,7 @@ def http_error_code(*, status_code: int) -> RejectionErrorCode:
     return API_ERROR_CODE_BY_HTTP_STATUS.get(status_code, UNKNOWN_HTTP_ERROR_CODE)
 
 
-def field_errors_from(*, error_details: Sequence[Any]) -> list[FieldError]:
+def field_errors_from(*, error_details: Sequence[ErrorDetails]) -> list[FieldError]:
     return [
         FieldError(location=dotted_location(location=detail["loc"]), message=detail["msg"])
         for detail in error_details
