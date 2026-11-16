@@ -142,29 +142,61 @@ file (`log.file`, JSON by default). Requests to `log.quiet_paths` (`/health`) ar
 
 ## Deployment (Helm)
 
-The chart is in `helm/`. The service is installed once and reaches every cluster through the proxy. `domain` is the
-domain it runs in; it builds the image address `<image.registry>.<domain>/<image.repository>` and the route host
-`<route.name>.<domain>`:
+The chart is in `helm/`. The service is installed once per environment and reaches every cluster through the proxy.
+
+- `helm/values.yaml` is the structure of the chart. The values that differ per environment are empty there and
+  required: an install without one of them fails and names it.
+- `helm/my-values.yaml` is a filled example of one environment (PREP), with a comment on every field. Copy it per
+  environment and fill it in.
 
 ```bash
-helm upgrade --install redis-enterprise-services helm --set domain=<domain> -f <secrets>.yaml
+helm upgrade --install redis-enterprise-services helm -f helm/my-values.yaml -f <secrets>.yaml
 ```
 
-- `domain` must be set; the chart does not render without it.
-- `secret` must hold `RES_STATE__URL` and `RES_STATE__KEY_PREFIX`. They become a Secret that the service reads as
-  environment variables; keep the values file that holds them out of git.
-- `config` holds non-secret `RES_*` overrides for the environment.
-- The four files of `helm/files/` are mounted into one directory, `mounts.config` (`/etc/redis-enterprise-services`),
-  and the chart sets `RES_CONFIG_DIR` to it. `defaults.yaml`, `service.yaml` and `redis_api.yaml` come from a
-  ConfigMap. `clusters.yaml` holds the cluster passwords, so it comes from a Secret (`<release>-clusters`): fill it in
-  at deployment and never commit the filled file. Adding a cluster is an edit there and a `helm upgrade`, with no new
-  image.
+What to fill:
+
+| Value | What |
+|---|---|
+| `image.registry` | the registry host the images are pulled from, with its repository path when there is one; the image is `<image.registry>/<image.repository>:<image.tag>` |
+| `image.tag` | the image tag; empty means the `appVersion` of `Chart.yaml` |
+| `imagePullSecrets` | the pull secrets of the namespace that open the registry (`- name: <secret>`); `[]` when none is needed |
+| `route.host` | the full host name the adapter calls the service at |
+| `edge.url` | the URL of the proxy; the service gets it as `RES_EDGE__URL` |
+| `files` | for each of the four files the service reads, the name of the file in `helm/files/` that is mounted under it |
+| `secret.RES_STATE__URL`, `secret.RES_STATE__KEY_PREFIX` | the access to the Redis that keeps the saga state |
+| `secret.ELASTIC_PASSWORD` | the password of the collector's Elasticsearch user, required when `collector.enabled` is true |
+| `collector.enabled`, `collector.elasticsearch` | the sidecar and the Elasticsearch it sends to (endpoint, username) |
+| `config` | non-secret `RES_*` overrides for the environment |
+
+- Every key of `secret` goes into the Secret of the release. Keep the real values out of git: in a second values file
+  that is not committed, as above, or with `--set-string`.
+- The routing header names (`x-network` and the others) are fixed in `helm/files/service.yaml`; they are not values.
+- The four files are mounted into one directory, `mounts.config` (`/etc/redis-enterprise-services`), and the chart
+  sets `RES_CONFIG_DIR` to it. `defaults.yaml`, `service.yaml` and `redis_api.yaml` come from a ConfigMap. The file
+  mapped to `clusters.yaml` holds the cluster passwords, so it comes from a Secret (`<release>-clusters`).
+
+To add the files of an environment, put them in `helm/files/` under their own names and map them in the values file
+of that environment:
+
+```yaml
+files:
+  clusters.yaml: prod-clusters.yaml
+  defaults.yaml: defaults.yaml
+  service.yaml: service.yaml
+  redis_api.yaml: redis_api.yaml
+```
+
+`helm/files/clusters.yaml` stays the explained example with placeholders; a filled clusters file holds passwords and
+is never committed. A name that is not a file in `helm/files/` fails the install. Adding a cluster is an edit of the
+environment's clusters file and a `helm upgrade`, with no new image.
+
 - `terminationGracePeriodSeconds` (600) is a ceiling, the most a rollout waits. On stop the service waits only for the
   operations that are running and exits as soon as they finish, at once when none is. An operation still running after
   600 seconds is cut off.
 - `collector.enabled: true` adds an OpenTelemetry Collector sidecar that sends the JSON log file, the traces and the
-  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username, password). The chart then turns on the log
-  file and the telemetry export of the service by itself. Everything from this service goes to its own data streams:
+  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username; `secret.ELASTIC_PASSWORD`). The chart then
+  turns on the log file and the telemetry export of the service by itself. Everything from this service goes to its
+  own data streams:
   `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
   `metrics-redis_enterprise_services.otel-default`. The Elastic user needs to write to them.
 - The liveness and readiness probes call `/health`.

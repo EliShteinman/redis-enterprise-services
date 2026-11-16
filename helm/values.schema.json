@@ -5,11 +5,13 @@
   "additionalProperties": false,
   "required": [
     "replicaCount",
-    "domain",
     "image",
+    "imagePullSecrets",
     "containerPort",
     "service",
     "route",
+    "edge",
+    "files",
     "mounts",
     "logsSizeLimit",
     "terminationGracePeriodSeconds",
@@ -23,9 +25,6 @@
       "type": "integer",
       "minimum": 1
     },
-    "domain": {
-      "$ref": "#/definitions/optionalHost"
-    },
     "image": {
       "type": "object",
       "additionalProperties": false,
@@ -37,7 +36,7 @@
       ],
       "properties": {
         "registry": {
-          "$ref": "#/definitions/host"
+          "$ref": "#/definitions/registry"
         },
         "repository": {
           "type": "string",
@@ -76,16 +75,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "name",
         "host",
         "tls"
       ],
       "properties": {
-        "name": {
-          "$ref": "#/definitions/dnsLabel"
-        },
         "host": {
-          "$ref": "#/definitions/optionalHost"
+          "$ref": "#/definitions/dnsSubdomain"
         },
         "tls": {
           "type": "object",
@@ -142,17 +137,32 @@
       "$ref": "#/definitions/environment"
     },
     "secret": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/environment"
-        },
-        {
-          "required": [
-            "RES_STATE__URL",
-            "RES_STATE__KEY_PREFIX"
-          ]
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "RES_STATE__URL",
+        "RES_STATE__KEY_PREFIX"
+      ],
+      "patternProperties": {
+        "^RES_[A-Za-z0-9_]+$": {
+          "type": "string",
+          "minLength": 1
         }
-      ]
+      },
+      "properties": {
+        "RES_STATE__URL": {
+          "if": {
+            "minLength": 1
+          },
+          "then": {
+            "pattern": "^rediss?://[^\\s]+$"
+          }
+        },
+        "RES_STATE__KEY_PREFIX": {},
+        "ELASTIC_PASSWORD": {
+          "type": "string"
+        }
+      }
     },
     "collector": {
       "type": "object",
@@ -200,7 +210,6 @@
           "required": [
             "endpoint",
             "username",
-            "password",
             "insecureSkipVerify"
           ],
           "properties": {
@@ -211,9 +220,6 @@
             "username": {
               "type": "string"
             },
-            "password": {
-              "type": "string"
-            },
             "insecureSkipVerify": {
               "type": "boolean"
             }
@@ -222,34 +228,61 @@
         "resources": {
           "$ref": "#/definitions/resources"
         }
-      },
-      "if": {
-        "properties": {
-          "enabled": {
-            "const": true
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "elasticsearch": {
-            "properties": {
-              "endpoint": {
-                "minLength": 1
-              },
-              "username": {
-                "minLength": 1
-              },
-              "password": {
-                "minLength": 1
-              }
-            }
-          }
-        }
       }
     },
     "resources": {
       "$ref": "#/definitions/resources"
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/dnsSubdomain"
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "$ref": "#/definitions/url"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clusters.yaml",
+        "defaults.yaml",
+        "service.yaml",
+        "redis_api.yaml"
+      ],
+      "properties": {
+        "clusters.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "defaults.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "service.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "redis_api.yaml": {
+          "$ref": "#/definitions/fileName"
+        }
+      }
     }
   },
   "definitions": {
@@ -265,18 +298,6 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 65535
-    },
-    "dnsLabel": {
-      "type": "string",
-      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
-    },
-    "host": {
-      "type": "string",
-      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
-    },
-    "optionalHost": {
-      "type": "string",
-      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*)?$"
     },
     "environment": {
       "type": "object",
@@ -318,6 +339,85 @@
             "memory": {
               "$ref": "#/definitions/quantity"
             }
+          }
+        }
+      }
+    },
+    "dnsSubdomain": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+      }
+    },
+    "registry": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*(:[0-9]{1,5})?(/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+      }
+    },
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^https?://[^\\s]+$"
+      }
+    },
+    "fileName": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.yaml$"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "collector": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "collector": {
+        "properties": {
+          "elasticsearch": {
+            "properties": {
+              "endpoint": {
+                "minLength": 1
+              },
+              "username": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "secret": {
+        "required": [
+          "ELASTIC_PASSWORD"
+        ],
+        "properties": {
+          "ELASTIC_PASSWORD": {
+            "minLength": 1
           }
         }
       }

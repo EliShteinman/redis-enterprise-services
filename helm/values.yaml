@@ -1,12 +1,12 @@
 replicaCount: 1
 
-domain: ""
-
 image:
-  registry: artifactory
+  registry: ""
   repository: redis-enterprise-services
   tag: ""
   pullPolicy: IfNotPresent
+
+imagePullSecrets: []
 
 containerPort: 8080
 
@@ -14,11 +14,19 @@ service:
   port: 80
 
 route:
-  name: redis-enterprise-services
   host: ""
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+
+edge:
+  url: ""
+
+files:
+  clusters.yaml: ""
+  defaults.yaml: defaults.yaml
+  service.yaml: service.yaml
+  redis_api.yaml: redis_api.yaml
 
 mounts:
   config: /etc/redis-enterprise-services
@@ -32,7 +40,10 @@ config:
   RES_LOG__LEVEL: INFO
   RES_LOG__CONSOLE_FORMAT: json
 
-secret: {}
+secret:
+  RES_STATE__URL: ""
+  RES_STATE__KEY_PREFIX: ""
+  ELASTIC_PASSWORD: ""
 
 collector:
   enabled: false
@@ -43,7 +54,6 @@ collector:
   elasticsearch:
     endpoint: ""
     username: ""
-    password: ""
     insecureSkipVerify: false
   resources:
     requests:

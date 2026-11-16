@@ -17,11 +17,14 @@ spec:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         checksum/clusters: {{ include (print $.Template.BasePath "/secret-clusters.yaml") . | sha256sum }}
         checksum/collector: {{ include (print $.Template.BasePath "/configmap-collector.yaml") . | sha256sum }}
-        checksum/collector-secret: {{ include (print $.Template.BasePath "/secret-collector.yaml") . | sha256sum }}
       labels:
         {{- include "res.selectorLabels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         runAsNonRoot: true
@@ -42,9 +45,18 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "res.fullname" . }}
-            - secretRef:
-                name: {{ include "res.fullname" . }}
           env:
+            {{- range $key, $value := .Values.secret }}
+            {{- if and $value (hasPrefix "RES_" $key) }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "res.fullname" $ }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            - name: RES_EDGE__URL
+              value: {{ required "edge.url is required: the URL of the proxy that every call to a cluster goes through" .Values.edge.url | quote }}
             - name: RES_CONFIG_DIR
               value: {{ .Values.mounts.config | quote }}
             - name: RES_SERVER__PORT
@@ -89,17 +101,14 @@ spec:
               drop: ["ALL"]
           env:
             - name: ELASTIC_ENDPOINT
-              value: {{ .Values.collector.elasticsearch.endpoint | quote }}
+              value: {{ required "collector.elasticsearch.endpoint is required when collector.enabled is true" .Values.collector.elasticsearch.endpoint | quote }}
             - name: ELASTIC_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "res.fullname" . }}-collector
-                  key: username
+              value: {{ required "collector.elasticsearch.username is required when collector.enabled is true" .Values.collector.elasticsearch.username | quote }}
             - name: ELASTIC_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "res.fullname" . }}-collector
-                  key: password
+                  name: {{ include "res.fullname" . }}
+                  key: ELASTIC_PASSWORD
           resources:
             {{- toYaml .Values.collector.resources | nindent 12 }}
           volumeMounts:

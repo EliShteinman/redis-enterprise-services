@@ -17,22 +17,27 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{- define "res.domain" -}}
-{{- required "domain is required: the domain the service runs in (--set domain=<domain> or a values file)" .Values.domain }}
-{{- end }}
-
-{{- define "res.routeHost" -}}
-{{- .Values.route.host | default (printf "%s.%s" .Values.route.name (include "res.domain" .)) }}
+{{- define "res.registry" -}}
+{{- required "image.registry is required: the registry host the images are pulled from" .Values.image.registry }}
 {{- end }}
 
 {{- define "res.image" -}}
-{{- printf "%s.%s/%s:%s" .Values.image.registry (include "res.domain" .) .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) }}
+{{- printf "%s/%s:%s" (include "res.registry" .) .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) }}
 {{- end }}
 
 {{- define "res.collectorImage" -}}
-{{- printf "%s.%s/%s:%s" .Values.image.registry (include "res.domain" .) .Values.collector.image.repository .Values.collector.image.tag }}
+{{- printf "%s/%s:%s" (include "res.registry" .) .Values.collector.image.repository .Values.collector.image.tag }}
 {{- end }}
 
 {{- define "res.clustersFile" -}}
 clusters.yaml
+{{- end }}
+
+{{- define "res.mappedFile" -}}
+{{- $source := required (printf "files.%s is required: the name of the file in helm/files/ mounted as %s" .name .name) (index .root.Values.files .name) }}
+{{- required (printf "files.%s names %s, which is not a file in helm/files/" .name $source) (.root.Files.Get (printf "files/%s" $source)) }}
+{{- end }}
+
+{{- define "res.secretValue" -}}
+{{- required (printf "secret.%s is required" .name) (index .root.Values.secret .name) }}
 {{- end }}

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "res.labels" . | nindent 4 }}
 spec:
-  host: {{ include "res.routeHost" . }}
+  host: {{ required "route.host is required: the full host name the adapter calls the service at" .Values.route.host }}
   to:
     kind: Service
     name: {{ include "res.fullname" . }}

@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "res.labels" . | nindent 4 }}
 data:
-  {{- range $path, $_ := .Files.Glob "files/*.yaml" }}
-  {{- if ne (base $path) (include "res.clustersFile" $) }}
-  {{ base $path }}: |
-    {{- $.Files.Get $path | nindent 4 }}
+  {{- range $name, $_ := .Values.files }}
+  {{- if ne $name (include "res.clustersFile" $) }}
+  {{ $name }}: |
+    {{- include "res.mappedFile" (dict "root" $ "name" $name) | nindent 4 }}
   {{- end }}
   {{- end }}
