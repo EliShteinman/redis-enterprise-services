@@ -2,9 +2,9 @@ from collections.abc import Callable
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
-from redis_enterprise_services.cluster.status_goal import StatusGoal
-from redis_enterprise_services.cluster.status_reader import StatusReader
+from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.waiting.status_goal import StatusGoal
+from redis_enterprise_services.cluster.waiting.status_reader import StatusReader
 from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
 
 

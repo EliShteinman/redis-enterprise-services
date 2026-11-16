@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 
-from redis_enterprise_services.cluster.safe_to_read_again import is_safe_to_read_again
+from redis_enterprise_services.cluster.waiting.safe_to_read_again import is_safe_to_read_again
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
 logger: logging.Logger = logging.getLogger(name=__name__)

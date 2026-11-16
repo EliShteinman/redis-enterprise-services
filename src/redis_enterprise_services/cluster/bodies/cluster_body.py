@@ -1,6 +1,6 @@
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from redis_enterprise_services.cluster.invalid_field_paths import invalid_field_paths
+from redis_enterprise_services.cluster.bodies.invalid_field_paths import invalid_field_paths
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 
 

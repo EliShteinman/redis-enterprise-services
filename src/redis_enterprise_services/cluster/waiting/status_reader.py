@@ -3,8 +3,8 @@ from collections.abc import Callable
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.json_body import required_string_field
-from redis_enterprise_services.cluster.status_goal import StatusGoal
+from redis_enterprise_services.cluster.bodies.json_body import required_string_field
+from redis_enterprise_services.cluster.waiting.status_goal import StatusGoal
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 
 logger: logging.Logger = logging.getLogger(name=__name__)

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from redis_enterprise_services.cluster.tolerated_reads import ToleratedReads
+from redis_enterprise_services.cluster.waiting.tolerated_reads import ToleratedReads
 from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
 from redis_enterprise_services.timing.deadline_polling import DeadlinePolling
 

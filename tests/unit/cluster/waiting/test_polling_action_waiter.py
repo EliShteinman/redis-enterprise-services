@@ -6,9 +6,9 @@ from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
-from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
-from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
-from redis_enterprise_services.cluster.status_polling import StatusPolling
+from redis_enterprise_services.cluster.waiting.polling_action_waiter import PollingActionWaiter
+from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.redis_api.action_settings import ActionSettings
 from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
