@@ -1,0 +1,60 @@
+replicaCount: 1
+
+domain: ""
+
+image:
+  registry: artifactory
+  repository: redis-enterprise-services
+  tag: ""
+  pullPolicy: IfNotPresent
+
+containerPort: 8080
+
+service:
+  port: 80
+
+route:
+  name: redis-enterprise-services
+  host: ""
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+mounts:
+  config: /etc/redis-enterprise-services
+  logs: /app/logs
+
+logsSizeLimit: 512Mi
+
+terminationGracePeriodSeconds: 600
+
+config:
+  RES_LOG__LEVEL: INFO
+  RES_LOG__CONSOLE_FORMAT: json
+
+secret: {}
+
+collector:
+  enabled: false
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: "0.164.0"
+    pullPolicy: IfNotPresent
+  elasticsearch:
+    endpoint: ""
+    username: ""
+    password: ""
+    insecureSkipVerify: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

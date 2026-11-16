@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "redis-enterprise-services values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "replicaCount",
+    "domain",
+    "image",
+    "containerPort",
+    "service",
+    "route",
+    "mounts",
+    "logsSizeLimit",
+    "terminationGracePeriodSeconds",
+    "config",
+    "secret",
+    "collector",
+    "resources"
+  ],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "domain": {
+      "$ref": "#/definitions/optionalHost"
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry",
+        "repository",
+        "tag",
+        "pullPolicy"
+      ],
+      "properties": {
+        "registry": {
+          "$ref": "#/definitions/host"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+([._/:-][a-z0-9]+)*$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "containerPort": {
+      "$ref": "#/definitions/port"
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port"
+      ],
+      "properties": {
+        "port": {
+          "$ref": "#/definitions/port"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "host",
+        "tls"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/dnsLabel"
+        },
+        "host": {
+          "$ref": "#/definitions/optionalHost"
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "termination",
+            "insecureEdgeTerminationPolicy"
+          ],
+          "properties": {
+            "termination": {
+              "type": "string",
+              "enum": [
+                "edge",
+                "passthrough",
+                "reencrypt"
+              ]
+            },
+            "insecureEdgeTerminationPolicy": {
+              "type": "string",
+              "enum": [
+                "None",
+                "Allow",
+                "Redirect"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "mounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config",
+        "logs"
+      ],
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/absolutePath"
+        },
+        "logs": {
+          "$ref": "#/definitions/absolutePath"
+        }
+      }
+    },
+    "logsSizeLimit": {
+      "$ref": "#/definitions/quantity"
+    },
+    "terminationGracePeriodSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "config": {
+      "$ref": "#/definitions/environment"
+    },
+    "secret": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/environment"
+        },
+        {
+          "required": [
+            "RES_STATE__URL",
+            "RES_STATE__KEY_PREFIX"
+          ]
+        }
+      ]
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "image",
+        "elasticsearch",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+([._/:-][a-z0-9]+)*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "elasticsearch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "endpoint",
+            "username",
+            "password",
+            "insecureSkipVerify"
+          ],
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "pattern": "^(https?://[^\\s]+)?$"
+            },
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "insecureSkipVerify": {
+              "type": "boolean"
+            }
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        }
+      },
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "elasticsearch": {
+            "properties": {
+              "endpoint": {
+                "minLength": 1
+              },
+              "username": {
+                "minLength": 1
+              },
+              "password": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "$ref": "#/definitions/resources"
+    }
+  },
+  "definitions": {
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^/[^\\s]*$"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|Ki|Mi|Gi)?$"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "host": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+    },
+    "optionalHost": {
+      "type": "string",
+      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*)?$"
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^RES_[A-Za-z0-9_]+$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "limits"
+      ],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        }
+      }
+    }
+  }
+}

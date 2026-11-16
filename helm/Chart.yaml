@@ -1,0 +1,6 @@
+apiVersion: v2
+name: redis-enterprise-services
+description: Creates Redis Enterprise databases with their users as one operation that succeeds, rolls back, or stops for manual intervention
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
