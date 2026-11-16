@@ -9,7 +9,8 @@ missing: `docs/overview.md`.
 - Python 3.14 and [uv](https://docs.astral.sh/uv/).
 - A Redis for the saga state, on one shard without sharding, with a user that has `+@all -@dangerous +info ~res:*`
   (`res:` is `state.key_prefix` in `config/state.yaml`).
-- cluster-relay running for each network in `config/edge.yaml` (locally: `http://127.0.0.1:8000/`).
+- The proxy that routes every cluster call by the `x-network` header to cluster-relay; its address is `edge.url` in
+  `config/edge.yaml`.
 - Redis Enterprise clusters listed in `config/clusters.yaml`.
 
 ## Installation
