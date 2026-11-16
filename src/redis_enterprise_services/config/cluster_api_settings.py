@@ -10,6 +10,8 @@ class ClusterFieldSettings(ConfigModel):
     error_code: str
     action_uid: str
     roles_permissions: str
+    name: str
+    memory_size: str
 
 
 class FieldsQuerySettings(ConfigModel):

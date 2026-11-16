@@ -5,6 +5,8 @@ cluster_api:
     error_code: error_code
     action_uid: action_uid
     roles_permissions: roles_permissions
+    name: name
+    memory_size: memory_size
   fields_query:
     name: fields
     separator: ","
