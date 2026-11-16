@@ -8,9 +8,12 @@ missing: `docs/overview.md`.
 
 - Python 3.14 and [uv](https://docs.astral.sh/uv/).
 - A Redis for the saga state, on one shard without sharding, with a user that has `+@all -@dangerous +info ~res:*`
-  (`res:` is `state.key_prefix` in `config/state.yaml`).
-- cluster-relay running for each network in `config/edge.yaml` (locally: `http://127.0.0.1:8000/`).
-- Redis Enterprise clusters listed in `config/clusters.yaml`.
+  (`res:` is the key prefix, `RES_STATE__KEY_PREFIX`).
+- The proxy that routes every cluster call by the `x-network` header to cluster-relay; its address is `edge.url` in
+  `helm/files/service.yaml`.
+- Redis Enterprise clusters listed in `helm/files/clusters.yaml`, as a tree of environment (`dev`, `prod`, `test`),
+  network, site and cluster. A cluster is named by its FQDN. Each level may set the cluster admin user, the password of
+  the database default user and overrides of the database defaults of `helm/files/defaults.yaml`.
 
 ## Installation
 
@@ -23,12 +26,16 @@ uv run pre-commit install
 
 ## Running
 
-Locally, from the project root (host and port come from `config/server.yaml`):
+Locally, from the project root, with the virtual environment that `uv sync` created:
 
 ```bash
-uv run python run.py
+python run_local.py
 curl localhost:8080/health
 ```
+
+It passes `helm/files/` and reads the two variables from `.env`. Fill in the placeholders (`FILL-IN-...` in
+`helm/files/clusters.yaml`, `fill-in-proxy-host` in `helm/files/service.yaml`) with your own values and do not commit
+them.
 
 Create a database (the request is in `docs/contracts/service-api.md`), then ask for its status by the returned
 `trace_id`:
@@ -43,34 +50,79 @@ curl localhost:8080/v1/operations/4bf92f3577b34da6a3ce929d0e0e4736 \
 Every command needs its own trace id: the same trace id again returns the existing operation (`200`) instead of
 starting a new one. The OpenAPI docs, with request examples, are at `/docs`.
 
-In a deployment, uvicorn builds the app through the factory:
-
-```bash
-uv run uvicorn redis_enterprise_services.app:create_app --factory --host 0.0.0.0 --port 8080
-```
-
 ## Configuration
 
-Settings are in `config/`, one YAML file per topic, read from the working directory. Any value can be overridden by
-an environment variable with the `RES_` prefix and `__` between levels, for example:
+Settings are in four files in `helm/files/`. The service reads them from the directory its caller passes; there is no
+default. `run_local.py` passes `helm/files`.
+
+| File | What | Changed when |
+|---|---|---|
+| `helm/files/clusters.yaml` | the clusters, as a tree of environment, network, site and cluster, with their admin users and the settings of each level | a cluster, site or network is added, or a value differs for one place |
+| `helm/files/defaults.yaml` | what a database and its users get when nothing overrides it, and the naming rules | the defaults change |
+| `helm/files/service.yaml` | how the service runs: server, API, logs, telemetry, relay, saga state, errors | the service is tuned |
+| `helm/files/redis_api.yaml` | how the Redis Enterprise REST API is called: paths, fields, waits | Redis changes its API |
+
+Each top-level key in a file is one settings topic. Any value can also be overridden by an environment variable with
+the `RES_` prefix and `__` between levels, for example:
 
 ```bash
 RES_LOG__LEVEL=DEBUG
 ```
 
-Secrets are passed only through environment variables. Required:
+The service needs exactly two environment variables, the access to the Redis that keeps the saga state:
 
-- `RES_STATE__URL`: the connection string of the Redis that keeps the saga state, with its user and password
-  (`redis://user:password@host:port` or `rediss://...`).
-- `RES_DATABASE__DEFAULT_USER_PASSWORD`: the `default_user` password every new database is created with.
-- `RES_CLUSTER_CREDENTIALS__USERNAME`, `RES_CLUSTER_CREDENTIALS__PASSWORD`: the admin user of the clusters.
-- `RES_EDGE__NETWORKS__<network>__FIREWALL__PASSWORD`: only for a network whose `firewall` is set in `config/edge.yaml`.
+- `RES_STATE__URL`: its connection string, with its user and password (`redis://user:password@host:port` or
+  `rediss://...`).
+- `RES_STATE__KEY_PREFIX`: the prefix of every key the service writes there (for example `res:`), the one its Redis
+  user is allowed to use.
 
-Locally they can be kept in a `.env` file instead. Like the YAML files, it is read from the working directory, so run
-the service from the project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed,
-holds only `RES_` variables, and an environment variable with the same name wins over it.
+Locally they can be kept in a `.env` file instead. It is read from the working directory, so run the service from the
+project root: copy `.env.example` to `.env` there and fill it in. `.env` is never committed, holds only `RES_`
+variables, and an environment variable with the same name wins over it.
+
+Every other secret is in `helm/files/clusters.yaml`:
+
+```yaml
+clusters:
+  prod:                                   # environment: dev, prod or test
+    username: admin@example.com           # cluster admin user
+    api_port: 9443
+    default_user_password: <password>     # of the default user of every new database
+    database:
+      version: "8.4"
+    networks:
+      net-a:
+        password: <password>              # the admin password of the clusters of this network
+        sites:
+          NY:
+            clusters:
+              cluster-a.net-a.example.com:
+                type: generic
+              orders.net-a.example.com:
+                type: dedicated
+                password: <password>      # this cluster has its own admin password
+                database:
+                  replication: false
+```
+
+- The key of a cluster is its FQDN. The service calls it at `https://<FQDN>:<api_port>`. A port written in the key
+  (`cluster-a.net-a.example.com:9444`) is used instead of `api_port`.
+- `username`, `password`, `default_user_password`, `api_port` and `database` may be set on the environment, the network,
+  the site and the cluster. The lowest level that sets a value wins.
+- Every cluster must end up with `username`, `password`, `default_user_password` and a port. A cluster without one of
+  them, the same FQDN twice, or a value that cannot apply, stops the service at start with an error that names it.
+- Every call to a cluster uses the admin user of that cluster.
+- `type: generic` clusters are picked by the service when a request asks for `generic`. A `dedicated` cluster is used
+  only when a request names its FQDN.
+
+`helm/files/clusters.yaml` in git holds an example with placeholders: fill it in for your environment and do not
+commit the filled file.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
+
+Logs go to the console, as lines or JSON (`log.console_format`). With `log.file.enabled` they also go to a rotating
+file (`log.file`, JSON by default). Requests to `log.quiet_paths` (`/health`) are left out of the logs below
+`log.quiet_kept_level` (WARNING), and out of the traces and metrics.
 
 ## Tests, lint and type check
 
