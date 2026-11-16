@@ -1,9 +1,9 @@
 from redis_enterprise_services.composition.background_wiring import BackgroundWiring
 from redis_enterprise_services.composition.cluster.cluster_wiring import ClusterWiring
-from redis_enterprise_services.composition.creation.planner_wiring import build_single_site_planner
-from redis_enterprise_services.composition.creation.planning_wiring import (
+from redis_enterprise_services.composition.creation.creation_planner_wiring import build_single_site_planner
+from redis_enterprise_services.composition.creation.names_check_wiring import build_names_check
+from redis_enterprise_services.composition.creation.preparation_wiring import (
     build_database_name_validator,
-    build_names_check,
     build_site_cluster_resolver,
     build_user_names_validator,
     checked_database_defaults,

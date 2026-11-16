@@ -42,7 +42,6 @@ class EdgeResponseReader:
             raise error
         return ClusterResponse(
             status_code=relay_response.status_code,
-            headers=dict(relay_response.headers),
             body=self._decoded_body(relay_response=relay_response),
             cluster_state_id=optional_int_header(
                 headers=relay_response.headers, name=self._settings.headers.cluster_state_id
