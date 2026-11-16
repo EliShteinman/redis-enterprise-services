@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import AfterValidator, Field, SecretStr
+from pydantic import AfterValidator
 
 from redis_enterprise_services.config.database_tag import DatabaseTag
 from redis_enterprise_services.config.repeated_values import reject_repeated
@@ -14,7 +14,6 @@ def reject_repeated_tag_keys(tags: list[DatabaseTag]) -> list[DatabaseTag]:
 
 
 class DatabaseSettings(ResourceSettings):
-    default_user_password: SecretStr = Field(min_length=1)
     default_tags: Annotated[list[DatabaseTag], AfterValidator(reject_repeated_tag_keys)]
     active_status: str
     required_fields: list[str]
