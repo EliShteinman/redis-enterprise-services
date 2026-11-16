@@ -21,6 +21,7 @@ from redis_enterprise_services.exceptions.saga import (
     ResourcesLockedError,
     UnreadableSagaRecordError,
 )
+from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
@@ -165,8 +166,8 @@ def harness(config_dir: Path) -> ExecutionHarness:
 @pytest.fixture
 def created(harness: ExecutionHarness) -> DatabaseResult:
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
-    database: DatabaseResult | None = harness.run_and_save().database
-    assert database is not None
+    database: DatabaseResult | ActiveActiveDatabaseResult | None = harness.run_and_save().database
+    assert isinstance(database, DatabaseResult)
     return database
 
 
@@ -174,24 +175,26 @@ def test_the_top_of_the_tree_comes_from_the_read_back_not_the_request(created: D
     assert (created.name, created.memory_size) == ("orders", 104857700)
 
 
+def test_a_created_database_is_reported_as_single_site(created: DatabaseResult) -> None:
+    assert created.kind == "single_site"
+
+
 def test_a_created_database_names_its_cluster_by_its_fqdn(created: DatabaseResult) -> None:
-    assert created.clusters[0].cluster == PREPARED_CREATION.cluster.fqdn
+    assert created.cluster.cluster == PREPARED_CREATION.cluster.fqdn
 
 
 def test_a_created_database_returns_the_endpoints_the_cluster_reported(created: DatabaseResult) -> None:
-    assert created.clusters[0].access.model_dump()["endpoints"] == [ENDPOINT]
+    assert created.cluster.access.model_dump()["endpoints"] == [ENDPOINT]
 
 
 def test_a_created_database_returns_every_creation_field_as_the_cluster_stored_it(
     created: DatabaseResult,
 ) -> None:
-    assert created.clusters[0].db.settings == {
-        name: READ_BACK_VALUES[name] for name in NewDatabase.model_fields
-    }
+    assert created.cluster.db.settings == {name: READ_BACK_VALUES[name] for name in NewDatabase.model_fields}
 
 
 def test_each_user_comes_back_with_its_acl_and_role_as_one_permission(created: DatabaseResult) -> None:
-    assert created.clusters[0].db.permissions == [
+    assert created.cluster.db.permissions == [
         DatabasePermissionResult(
             user_uid=13,
             user_name="app",
