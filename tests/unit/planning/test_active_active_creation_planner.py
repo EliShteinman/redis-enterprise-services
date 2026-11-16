@@ -70,6 +70,8 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
         error_code="error_code",
         action_uid="action_uid",
         roles_permissions="roles_permissions",
+        name="name",
+        memory_size="memory_size",
     ),
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     database_body_builder=BodyWithSecret(),

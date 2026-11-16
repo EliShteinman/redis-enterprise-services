@@ -1,4 +1,8 @@
+from typing import Literal
+
 from redis_enterprise_services.config.config_model import ConfigModel
+
+type ClusterApiScheme = Literal["http", "https"]
 
 
 class ClusterFieldSettings(ConfigModel):
@@ -6,6 +10,8 @@ class ClusterFieldSettings(ConfigModel):
     error_code: str
     action_uid: str
     roles_permissions: str
+    name: str
+    memory_size: str
 
 
 class FieldsQuerySettings(ConfigModel):
@@ -14,6 +20,7 @@ class FieldsQuerySettings(ConfigModel):
 
 
 class ClusterApiSettings(ConfigModel):
+    scheme: ClusterApiScheme
     fields: ClusterFieldSettings
     fields_query: FieldsQuerySettings
     transient_error_codes: frozenset[str]

@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
+from pydantic import model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -12,6 +13,7 @@ from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.background_settings import BackgroundSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.cluster_flattening import configured_clusters
 from redis_enterprise_services.config.cluster_tree import ClusterTree
 from redis_enterprise_services.config.config_location import config_files
 from redis_enterprise_services.config.crdb_settings import CrdbSettings
@@ -62,6 +64,11 @@ class Settings(BaseSettings):
     operation: OperationSettings
     background: BackgroundSettings
     liveness: LivenessSettings
+
+    @model_validator(mode="after")
+    def reject_clusters_that_cannot_be_configured(self) -> Self:
+        configured_clusters(tree=self.clusters, api_scheme=self.cluster_api.scheme)
+        return self
 
     @classmethod
     def settings_customise_sources(
