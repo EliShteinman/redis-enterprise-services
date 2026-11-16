@@ -57,11 +57,8 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
-**שני routes, ריצה אחת:** לכל סוג route משלו, מודל בקשה משלו (`target.site` מול `target.sites` ו-`spec.crdb`), הכנה משלו
-ובונה תוצאה משלו. המסלול שלמעלה, `OperationStarter`, `CreationExecution`, `CreationOutcomeTranslator`, המנוע, הנעילה והצעדים המקומיים משותפים.
-
-**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `state_wiring.py`) בונה את כל המחלקות הקונקרטיות, ובהן
-`DatabaseCreation` ו-`CrdbCreation`, אחד לכל route. רק `app` מעליה.
+**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `creation_wiring.py`, `state_wiring.py`, `background_wiring.py`, ולצידם ה-builders הקטנים של כל קבוצה) בונה את כל המחלקות הקונקרטיות, ובהן
+`DatabaseCreation` ו-`CrdbCreation`, אחד לכל route. רק `app` ו-`server` מעליה.
 
 ---
 
