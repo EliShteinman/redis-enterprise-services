@@ -187,7 +187,7 @@ files:
   redis_api.yaml: redis_api.yaml
 ```
 
-`helm/files/clusters.yaml` stays the explained example with placeholders; a filled clusters file holds passwords and
+`helm/files/clusters.example.yaml` is the explained example with placeholders; a filled clusters file holds passwords and
 is never committed. A name that is not a file in `helm/files/` fails the install. Adding a cluster is an edit of the
 environment's clusters file and a `helm upgrade`, with no new image.
 

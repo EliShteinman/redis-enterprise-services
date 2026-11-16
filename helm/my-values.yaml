@@ -24,8 +24,8 @@ edge:
 # The file in helm/files/ mounted under each name the service reads.
 files:
   # The clusters of this environment with their passwords, for example prep-clusters.yaml.
-  # clusters.yaml is the explained example with FILL-IN placeholders.
-  clusters.yaml: clusters.yaml
+  # clusters.example.yaml is the explained example with FILL-IN placeholders.
+  clusters.yaml: clusters.example.yaml
   # The database and user defaults.
   defaults.yaml: defaults.yaml
   # How the service runs.
