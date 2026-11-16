@@ -44,5 +44,4 @@ class CrdbSettings(ConfigModel):
     item_path: ItemPath
     list_field: str
     cluster_added_item_fields: frozenset[str]
-    creation: CrdbCreationSettings
     task: CrdbTaskSettings

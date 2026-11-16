@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
+from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.exceptions.cluster import (
@@ -69,7 +69,9 @@ def step(repository: MagicMock, completion_waiter: MagicMock) -> CreateResourceS
     return CreateResourceStep(
         repository=repository,
         completion_waiter=completion_waiter,
-        target_resolver=SharedCredentialsTargetResolver(credentials=CREDENTIALS),
+        target_resolver=ConfiguredCredentialsTargetResolver(
+            credentials_by_api_url={ADDRESS.api_url: CREDENTIALS}
+        ),
     )
 
 
@@ -256,7 +258,7 @@ def test_find_outcome_checks_a_kept_object_against_a_fresh_read(
 ) -> None:
     step.find_outcome(step_input=STEP_INPUT, kept_result=CREATED, keep_result_if_none_kept=ignore_found)
 
-    repository.missing_fields.assert_called_once_with(spec=SPEC, created=READ_BACK)
+    repository.missing_fields.assert_called_once_with(target=TARGET, spec=SPEC, created=READ_BACK)
 
 
 def test_the_saga_keeps_the_object_without_its_secrets(

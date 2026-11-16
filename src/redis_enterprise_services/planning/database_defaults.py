@@ -8,7 +8,6 @@ from redis_enterprise_services.config.database_defaults_settings import (
     DatabaseDefaultsSettings,
     DatabaseKind,
     DatabaseKindDefaults,
-    OverrideSelector,
 )
 from redis_enterprise_services.databases.new_database import (
     PERSISTENCE_MODE_BY_FIELD,
@@ -32,6 +31,7 @@ class DatabaseDefaults:
         kind: DatabaseKind = DatabaseKind.of(active_active=active_active)
         defaults: DatabaseKindDefaults = self._settings.of_kind(kind=kind)
         values: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
+        logger.debug(msg=f"database_defaults.{kind} on cluster {cluster.fqdn}: {values}")
         values.update(requested.model_dump(exclude_none=True))
         try:
             return NewDatabase.model_validate(
@@ -42,7 +42,7 @@ class DatabaseDefaults:
         except ValidationError as error:
             raise ConfigurationError(
                 message=f"the request together with the database_defaults.{kind} values of cluster "
-                f"{cluster.name} is not valid: "
+                f"{cluster.fqdn} is not valid: "
                 f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
             ) from error
 
@@ -77,8 +77,7 @@ def reject_invalid_values_on_cluster(
     merged: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
     try:
         reject_persistence_settings_of_another_mode(
-            base=defaults.values,
-            override=override_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster),
+            base=defaults.database, override=override_values_on_cluster(cluster=cluster, kind=kind)
         )
         reject_invalid_options(
             values=with_persistence_settings_of_its_mode(
@@ -87,7 +86,7 @@ def reject_invalid_values_on_cluster(
         )
     except ConfigurationError as error:
         raise ConfigurationError(
-            message=f"the database_defaults.{kind} values that apply together on cluster {cluster.name}: "
+            message=f"the database_defaults.{kind} values that apply together on cluster {cluster.fqdn}: "
             f"{error.message}"
         ) from error
 
@@ -95,36 +94,13 @@ def reject_invalid_values_on_cluster(
 def merged_default_values(
     *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
-    return {**defaults.values, **override_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)}
+    return {**defaults.database, **override_values_on_cluster(cluster=cluster, kind=kind)}
 
 
-def override_values_on_cluster(
-    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
-) -> dict[str, JsonValue]:
-    labels: dict[str, str] = placement_labels(cluster=cluster)
-    values: dict[str, JsonValue] = {}
-    for override in defaults.overrides:
-        if selector_matches(selector=override.when, labels=labels):
-            logger.debug(
-                msg=f"database_defaults.{kind} for {override.when.model_dump(exclude_none=True)} apply on "
-                f"cluster {cluster.name}"
-            )
-            values.update(override.values)
-    return values
-
-
-def selector_matches(*, selector: OverrideSelector, labels: dict[str, str]) -> bool:
-    return selector.model_dump(exclude_none=True).items() <= labels.items()
-
-
-def placement_labels(*, cluster: ConfiguredCluster) -> dict[str, str]:
-    return {
-        "network": cluster.network,
-        "environment": cluster.environment,
-        "site": cluster.site,
-        "type": cluster.type,
-        "cluster_name": cluster.name,
-    }
+def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind) -> dict[str, JsonValue]:
+    if kind == DatabaseKind.ACTIVE_ACTIVE:
+        return cluster.active_active_database_overrides
+    return cluster.database_overrides
 
 
 def with_persistence_settings_of_its_mode(
@@ -142,15 +118,8 @@ def reject_invalid_default_values(*, defaults: DatabaseKindDefaults) -> None:
     persistence_defaults: list[dict[str, JsonValue]] = [
         {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in defaults.persistence_values.items()
     ]
-    for values in [defaults.values, *persistence_defaults]:
+    for values in [defaults.database, *persistence_defaults]:
         reject_invalid_options(values=values)
-    for override in defaults.overrides:
-        reject_persistence_settings_of_another_mode(base=defaults.values, override=override.values)
-        reject_invalid_options(
-            values=with_persistence_settings_of_its_mode(
-                values={**defaults.values, **override.values}, persistence_values=defaults.persistence_values
-            )
-        )
 
 
 def reject_persistence_settings_of_another_mode(
@@ -162,7 +131,7 @@ def reject_persistence_settings_of_another_mode(
     )
     if foreign:
         raise ConfigurationError(
-            message=f"database defaults override sets {foreign}, which do not apply to persistence {mode}"
+            message=f"database values on a cluster set {foreign}, which do not apply to persistence {mode}"
         )
 
 

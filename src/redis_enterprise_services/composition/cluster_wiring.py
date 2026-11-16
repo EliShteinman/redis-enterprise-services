@@ -1,7 +1,7 @@
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
-    SharedCredentialsTargetResolver,
+    ConfiguredCredentialsTargetResolver,
 )
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.cluster.polling_action_waiter import PollingActionWaiter
@@ -9,6 +9,7 @@ from redis_enterprise_services.cluster.read_again_polling import ReadAgainPollin
 from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.resource_settings import ResourceSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.databases.database_creation_body_builder import DatabaseCreationBodyBuilder
@@ -33,15 +34,17 @@ from redis_enterprise_services.users.models import NewUser
 
 
 class ClusterWiring:
-    def __init__(self, *, settings: Settings, deadline_polling: DeadlinePolling) -> None:
+    def __init__(
+        self, *, settings: Settings, clusters: list[ConfiguredCluster], deadline_polling: DeadlinePolling
+    ) -> None:
         cluster_api_caller: EdgeClusterApiCaller = build_cluster_api_caller(settings=settings)
         read_again_polling: ReadAgainPolling = ReadAgainPolling(
             deadline_polling=deadline_polling,
             transient_error_codes=settings.cluster_api.transient_error_codes,
         )
-        self.target_resolver: ClusterTargetResolver = build_target_resolver(settings=settings)
+        self.target_resolver: ClusterTargetResolver = build_target_resolver(clusters=clusters)
         self.repositories: ClusterRepositories = build_cluster_repositories(
-            settings=settings, cluster_api_caller=cluster_api_caller
+            settings=settings, clusters=clusters, cluster_api_caller=cluster_api_caller
         )
         self.steps: ClusterSteps = ClusterSteps(
             settings=settings,
@@ -125,10 +128,12 @@ class ClusterSteps:
 
 
 def build_cluster_repositories(
-    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
+    *, settings: Settings, clusters: list[ConfiguredCluster], cluster_api_caller: EdgeClusterApiCaller
 ) -> ClusterRepositories:
     return ClusterRepositories(
-        database=build_database_repository(settings=settings, cluster_api_caller=cluster_api_caller),
+        database=build_database_repository(
+            settings=settings, clusters=clusters, cluster_api_caller=cluster_api_caller
+        ),
         acl=rest_repository(
             cluster_api_caller=cluster_api_caller,
             cluster_api_settings=settings.cluster_api,
@@ -162,11 +167,14 @@ def build_cluster_api_caller(*, settings: Settings) -> EdgeClusterApiCaller:
     return EdgeClusterApiCaller(edge_transport=edge_transport, settings=settings.cluster_api)
 
 
-def build_target_resolver(*, settings: Settings) -> ClusterTargetResolver:
-    return SharedCredentialsTargetResolver(
-        credentials=ClusterCredentials(
-            username=settings.cluster_credentials.username, password=settings.cluster_credentials.password
-        )
+def build_target_resolver(*, clusters: list[ConfiguredCluster]) -> ClusterTargetResolver:
+    return ConfiguredCredentialsTargetResolver(
+        credentials_by_api_url={
+            cluster.api_url: ClusterCredentials(
+                username=cluster.credentials.username, password=cluster.credentials.password
+            )
+            for cluster in clusters
+        }
     )
 
 
@@ -181,14 +189,16 @@ def build_action_completion_waiter(
 
 
 def build_database_repository(
-    *, settings: Settings, cluster_api_caller: EdgeClusterApiCaller
+    *, settings: Settings, clusters: list[ConfiguredCluster], cluster_api_caller: EdgeClusterApiCaller
 ) -> EndpointResourceRepository[NewDatabase]:
     return rest_repository(
         cluster_api_caller=cluster_api_caller,
         cluster_api_settings=settings.cluster_api,
         resource=settings.database,
         body_builder=DatabaseCreationBodyBuilder(
-            default_user_password=settings.database.default_user_password,
+            default_user_password_by_api_url={
+                cluster.api_url: cluster.default_user_password for cluster in clusters
+            },
             default_tags=settings.database.default_tags,
         ),
     )
