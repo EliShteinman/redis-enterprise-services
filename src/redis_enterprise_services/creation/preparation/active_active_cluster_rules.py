@@ -1,8 +1,8 @@
+from redis_enterprise_services.cluster.api_host import api_host_of
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.validation.repeated_values import repeated_values
-from redis_enterprise_services.crdbs.creation_body import cluster_fqdn
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
+from redis_enterprise_services.sequences.repeated_values import repeated_values
 
 
 def reject_clusters_that_cannot_share_a_crdb(*, clusters: list[ConfiguredCluster]) -> None:
@@ -29,7 +29,7 @@ def reject_sites_on_one_cluster(*, clusters: list[ConfiguredCluster]) -> None:
 def reject_clusters_that_clash(*, clusters: list[ConfiguredCluster]) -> None:
     for kind, values in (
         ("FQDN", [cluster.fqdn for cluster in clusters]),
-        ("host", [cluster_fqdn(api_url=cluster.api_url) for cluster in clusters]),
+        ("host", [api_host_of(api_url=cluster.api_url) for cluster in clusters]),
     ):
         repeated: set[str] = repeated_values(values=values)
         if repeated:
