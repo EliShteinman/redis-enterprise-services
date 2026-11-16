@@ -15,6 +15,10 @@ class EdgeUnansweredError(EdgeError):
     code: ClassVar[str] = "edge_unanswered"
 
 
+class EdgeUnreachableError(EdgeUnansweredError):
+    code: ClassVar[str] = "edge_unreachable"
+
+
 class EdgeConnectionFailedError(EdgeUnansweredError):
     code: ClassVar[str] = "edge_connection_failed"
 
