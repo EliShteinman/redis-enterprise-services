@@ -5,6 +5,7 @@ class ClusterFieldSettings(ConfigModel):
     status: str
     error_code: str
     action_uid: str
+    roles_permissions: str
 
 
 class FieldsQuerySettings(ConfigModel):

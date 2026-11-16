@@ -18,6 +18,8 @@ database:
     - port
     - addr
   creation_failed_status: creation-failed
+  order_insensitive_fields:
+    - roles_permissions
   default_tags: []
   wait:
     poll_interval_seconds: 1

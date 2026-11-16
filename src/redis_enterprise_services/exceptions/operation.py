@@ -7,3 +7,7 @@ from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesErr
 class OperationNotFoundError(RedisEnterpriseServicesError):
     code: ClassVar[str] = "operation_not_found"
     status_code: ClassVar[int] = HTTPStatus.NOT_FOUND
+
+
+class UnreadableOperationRecordError(RedisEnterpriseServicesError):
+    code: ClassVar[str] = "unreadable_operation_record"
