@@ -113,7 +113,7 @@ def test_a_saga_that_needs_manual_intervention_keeps_its_locks(
     assert client.get(trace.lock_key) == trace_id
 
 
-def test_a_manual_operation_stays_open_without_expiry(
+def test_a_manual_operation_leaves_the_open_set_and_stays_without_expiry(
     client: Redis,
     keys: RedisKeys,
     trace_id: str,
@@ -124,7 +124,7 @@ def test_a_manual_operation_stays_open_without_expiry(
 
     finalize(store, trace, status=OperationStatus.REQUIRES_MANUAL_INTERVENTION, release_locks=False)
 
-    assert (trace.is_open(), client.ttl(keys.operation(trace_id=trace_id))) == (True, -1)
+    assert (trace.is_open(), client.ttl(keys.operation(trace_id=trace_id))) == (False, -1)
 
 
 def test_a_rolled_back_operation_expires_and_leaves_the_open_set(

@@ -157,7 +157,8 @@ class ClusterSteps:
             repository=repositories.crdb,
             task_tracker=crdb_task_tracker,
             target_resolver=target_resolver,
-            list_fields=settings.database.order_insensitive_fields,
+            order_insensitive_fields=settings.database.order_insensitive_fields,
+            fields_defaulting_to_empty_list=settings.database.fields_defaulting_to_empty_list,
         )
         self.read_crdb: ReadCrdbStep = ReadCrdbStep(
             repository=repositories.crdb,
