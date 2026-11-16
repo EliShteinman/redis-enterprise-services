@@ -1,5 +1,5 @@
 from redis_enterprise_services.composition.cluster.cluster_steps import ClusterSteps
-from redis_enterprise_services.composition.crdb_steps import CrdbSteps
+from redis_enterprise_services.composition.cluster.crdb_steps import CrdbSteps
 from redis_enterprise_services.config.defaults.role_management import RoleManagement
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner

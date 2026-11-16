@@ -16,7 +16,7 @@ from redis_enterprise_services.composition.cluster.cluster_waiters import (
     ClusterWaiters,
     build_cluster_waiters,
 )
-from redis_enterprise_services.composition.crdb_steps import CrdbSteps, build_crdb_steps
+from redis_enterprise_services.composition.cluster.crdb_steps import CrdbSteps, build_crdb_steps
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.service.edge_settings import EdgeSettings

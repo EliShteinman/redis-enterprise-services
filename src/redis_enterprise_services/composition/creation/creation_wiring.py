@@ -1,5 +1,6 @@
 from redis_enterprise_services.composition.background_wiring import BackgroundWiring
 from redis_enterprise_services.composition.cluster.cluster_wiring import ClusterWiring
+from redis_enterprise_services.composition.creation.creation_execution_builder import CreationExecutionBuilder
 from redis_enterprise_services.composition.creation.planner_wiring import (
     build_active_active_planner,
     build_single_site_planner,
@@ -11,7 +12,6 @@ from redis_enterprise_services.composition.creation.planning_wiring import (
     build_user_names_validator,
     checked_database_defaults,
 )
-from redis_enterprise_services.composition.creation_execution_builder import CreationExecutionBuilder
 from redis_enterprise_services.composition.state_wiring import StateWiring
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.service.saga_settings import SagaSettings
