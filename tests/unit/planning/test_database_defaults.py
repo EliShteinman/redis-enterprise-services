@@ -6,7 +6,10 @@ from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
+from redis_enterprise_services.planning.database_defaults import (
+    DatabaseDefaults,
+    reject_invalid_defaults_on_any_cluster,
+)
 
 PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
     "aof": {"aof_policy": "appendfsync-every-sec"},
@@ -69,7 +72,7 @@ def test_a_field_sent_as_null_keeps_the_default() -> None:
 )
 def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
-        database_defaults_from(
+        reject_invalid_defaults_on_any_cluster(
             settings=DatabaseDefaultsSettings(database=values, persistence_values={}), clusters=[]
         )
 
@@ -112,12 +115,11 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
 def defaults_checked_on(
     *, configured: ConfiguredCluster, database: dict[str, JsonValue] | None = None
 ) -> DatabaseDefaults:
-    return database_defaults_from(
-        settings=DatabaseDefaultsSettings(
-            database=database or {"data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
-        ),
-        clusters=[configured],
+    settings: DatabaseDefaultsSettings = DatabaseDefaultsSettings(
+        database=database or {"data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
     )
+    reject_invalid_defaults_on_any_cluster(settings=settings, clusters=[configured])
+    return DatabaseDefaults(settings=settings)
 
 
 def test_a_cluster_may_set_the_policy_of_the_default_mode() -> None:
