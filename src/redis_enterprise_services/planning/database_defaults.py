@@ -53,15 +53,14 @@ def issue_text(*, issue: ErrorDetails) -> str:
     return f"{location}: {cause}" if location else f"{cause}"
 
 
-def database_defaults_from(
+def reject_invalid_defaults_on_any_cluster(
     *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
-) -> DatabaseDefaults:
+) -> None:
     for kind in DatabaseKind:
         defaults: DatabaseKindDefaults = settings.of_kind(kind=kind)
         reject_invalid_default_values_of_kind(defaults=defaults, kind=kind)
         for cluster in clusters:
             reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
-    return DatabaseDefaults(settings=settings)
 
 
 def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: DatabaseKind) -> None:

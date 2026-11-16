@@ -3,9 +3,11 @@ import re
 from pydantic import field_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
+from redis_enterprise_services.config.item_path import ApiPath
 
 
 class ApiSettings(ConfigModel):
+    liveness_path: ApiPath
     validation_error_message: str
     internal_error_message: str
     unexpected_error_message: str

@@ -39,7 +39,7 @@ class RestResourceEndpoint(ResourceEndpoint):
     def start_creation(
         self, *, target: ClusterTarget, creation_body: dict[str, JsonValue]
     ) -> CreatedResource:
-        requested_name: JsonValue = creation_body.get("name")
+        requested_name: JsonValue = creation_body.get(self._cluster_api_settings.fields.name)
         logger.info(msg=f"creating {self._settings.collection_path} {requested_name}")
         response_body: JsonValue = self._cluster_api_caller.send(
             target=target, method="POST", path=self._settings.collection_path, body=creation_body
