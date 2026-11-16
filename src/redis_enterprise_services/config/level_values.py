@@ -4,11 +4,11 @@ from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.port import Port
 
 
-class ClusterActiveActiveValues(ConfigModel):
+class ActiveActiveDatabaseValues(ConfigModel):
     database: dict[str, JsonValue] = Field(default_factory=dict)
 
 
-class ActiveActiveValues(ClusterActiveActiveValues):
+class ActiveActiveValues(ActiveActiveDatabaseValues):
     crdb: dict[str, JsonValue] = Field(default_factory=dict)
 
 
@@ -20,9 +20,9 @@ class LevelValues(ConfigModel):
     database: dict[str, JsonValue] = Field(default_factory=dict)
 
 
-class SharedLevelValues(LevelValues):
+class EnvironmentOrNetworkValues(LevelValues):
     active_active: ActiveActiveValues = Field(default_factory=ActiveActiveValues)
 
 
-class ClusterValues(LevelValues):
-    active_active: ClusterActiveActiveValues = Field(default_factory=ClusterActiveActiveValues)
+class SiteOrClusterValues(LevelValues):
+    active_active: ActiveActiveDatabaseValues = Field(default_factory=ActiveActiveDatabaseValues)
