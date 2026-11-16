@@ -190,12 +190,11 @@ PlannedStep(
 | מפתח | סוג | תוכן | TTL |
 |---|---|---|---|
 | `res:saga:{saga_id}` | JSON | ה-saga record | 7 ימים אחרי `succeeded` או `rolled_back`. אחרת בלי |
-| `res:sagas:unfinished` | set | Sagas שעוד רצים או מחכים לטיפול ידני. אינדקס לטיפול ידני | |
 | `res:lock:{api_url}/database/{db}` | string | ה-`saga_id` שמחזיק בנעילה | בלי |
 | `res:lock:{api_url}/user/{user}` | string | כנ"ל, לכל יוזר שהפקודה יוצרת | בלי |
 | `res:locks:{saga_id}` | set | מפתחות הנעילה שה-Saga מחזיק. מתמלא בנעילה ומתרוקן בשחרור | בלי |
 | `res:operation:{trace_id}` | JSON | הפעולה, כפי ששאילתת הסטטוס מחזירה אותה | 7 ימים ב-`succeeded`, `rejected`, `rolled_back`. אחרת בלי |
-| `res:operations:open` | set | פעולות שעוד לא הסתיימו, לזיהוי קריסה | |
+| `res:operations:open` | set | פעולות ב-`running`, לזיהוי קריסה. פעולה יוצאת מה-set כשהסטטוס שלה כבר לא `running`, גם כשהיא `requires_manual_intervention` ונשמרת בלי TTL | |
 | `res:heartbeat:{trace_id}` | string | קיים כל עוד ה-pod שמריץ את הפעולה חי | 60 שניות, מתחדש כל 10 |
 
 **סקריפטי Lua.** כל שינוי שנוגע ביותר ממפתח אחד הוא סקריפט אחד:
@@ -204,9 +203,8 @@ PlannedStep(
 |---|---|
 | נעילה | נועל את כל המפתחות, או אף אחד אם אחד תפוס, ומוסיף אותם ל-`locks:{saga_id}` |
 | שחרור | מוחק רק מפתחות שה-`saga_id` שלו מחזיק, ומוציא אותם מ-`locks:{saga_id}` |
-| שמירת record | כותב את ה-record, ומעדכן את `sagas:unfinished` ואת ה-TTL לפי הסטטוס |
 | התחלת פעולה | אם יש רשומה לאותו trace, מחזיר אותה ולא כותב. אחרת כותב `running`, מוסיף ל-`operations:open` ויוצר heartbeat |
-| שמירת פעולה | כותב את הפעולה, ומעדכן את `operations:open` ואת ה-TTL |
+| שמירת פעולה | כותב את הפעולה עם ה-TTL לפי הסטטוס, ומשאיר אותה ב-`operations:open` רק כשהיא `running` |
 | heartbeat | מחדש את המפתחות של כל הפעולות של ה-pod |
 | סימון נטושה | סעיף 9 |
 
@@ -273,6 +271,8 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 | ה-Saga כבר הסתיים (הקריסה הייתה לפני שמירת הפעולה) | `rolled_back` ⇐ הפעולה `rolled_back` עם `internal_error`, כי ה-record מראה שהכול בוטל. `succeeded` ⇐ הפעולה `requires_manual_intervention`, כי את עץ ה-DB אי אפשר לבנות כאן. `requires_manual_intervention` ⇐ אותו סטטוס, והנעילה נשארת. ה-record לא משתנה. ב-`succeeded` וב-`rolled_back` הנעילות שב-`locks:{saga_id}` משתחררות, אם הן עדיין שלו, כי אין מה לתקן בקלאסטר |
 | אין רשומת פעולה (`operation:{trace_id}` חסר) | ה-trace יוצא מ-`operations:open`, לוג WARNING. הנעילות וה-saga record לא נוגעים |
 
+כל סימון מוציא את הפעולה מ-`operations:open`, גם כשהיא `requires_manual_intervention` ונשמרת בלי TTL.
+
 **מקרים ידועים:**
 - **אין saga record = ה-Saga לא התחיל.** record של Saga שהסתיים נמחק אחרי 7 ימים (`state.finished_ttl_seconds`). אם
   ה-pod נפל לפני ששמר את הפעולה, ואף סריקה לא רצה 7 ימים (השירות כולו למטה), הסריקה הבאה תסמן `rejected` אף שה-DB
@@ -292,12 +292,12 @@ record שהשתנה בינתיים ⇐ WARNING, והסריקה הבאה תבדו
 ## 10. טיפול ידני
 
 1. קוראים את `res:saga:{saga_id}`: אילו צעדים `done`, איזה `unresolved` או `compensation_failed`, ומה הקלט
-   והתוצאה שלהם. את הפעולות שמחכות מוצאים ב-`operations:open`. כשה-Saga עצמו הסתיים (`succeeded` או `rolled_back`)
-   ורק הפעולה סומנה ידנית, ה-record לא ב-`sagas:unfinished` ונמחק אחרי 7 ימים (`state.finished_ttl_seconds`), ואחר כך
-   נשארת רק רשומת הפעולה.
+   והתוצאה שלהם. את הפעולות שמחכות מוצאים לפי ה-`trace_id` שבלוג או בשאילתת הסטטוס: `operations:open` מחזיק רק
+   פעולות ב-`running`. כשה-Saga עצמו הסתיים (`succeeded` או `rolled_back`) ורק הפעולה סומנה ידנית, ה-record נמחק
+   אחרי 7 ימים (`state.finished_ttl_seconds`), ואחר כך נשארת רק רשומת הפעולה.
 2. בודקים בקלאסטר מה קיים לפי השמות שבקלט, ומשלימים או מוחקים ידנית.
 3. מוחקים את מפתחות הנעילה של ה-`saga_id` (הרשימה ב-`locks:{saga_id}`) ואת ה-set, רק כשהקלאסטר במצב נקי או מלא.
-4. מוציאים את ה-trace מ-`sagas:unfinished` ומ-`operations:open`, ומעדכנים את `operation:{trace_id}` לתוצאה.
+4. מעדכנים את `operation:{trace_id}` לתוצאה.
 
 אין עדיין כלי לזה. זה נעשה ב-`redis-cli` של מי שמורשה.
 
