@@ -9,12 +9,13 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import creation_route, liveness_route, operation_route
+from redis_enterprise_services.api import creation_route, operation_route
 from redis_enterprise_services.api.error_handlers import (
     HttpErrorHandler,
     ServiceErrorHandler,
     ValidationErrorHandler,
 )
+from redis_enterprise_services.api.liveness_route import liveness_router
 from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
@@ -36,9 +37,10 @@ def create_app(*, settings: Settings) -> FastAPI:
     wiring: AppWiring = AppWiring(settings=settings)
     store_in_app_state(app=app, settings=settings, wiring=wiring)
     add_error_handling(app=app, settings=settings.api, public_errors=wiring.public_errors)
-    include_routers(app=app)
-    FastAPIInstrumentor.instrument_app(app=app, excluded_urls=excluded_urls(paths=settings.log.quiet_paths))
-    app.add_middleware(middleware_class=QuietPathsMiddleware, paths=settings.log.quiet_paths)
+    include_routers(app=app, liveness_path=settings.api.liveness_path)
+    quiet_paths: frozenset[str] = frozenset({settings.api.liveness_path})
+    FastAPIInstrumentor.instrument_app(app=app, excluded_urls=excluded_urls(paths=quiet_paths))
+    app.add_middleware(middleware_class=QuietPathsMiddleware, paths=quiet_paths)
     return app
 
 
@@ -53,8 +55,8 @@ def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -
     app.state.operation_store = wiring.operation_store
 
 
-def include_routers(*, app: FastAPI) -> None:
-    app.include_router(router=liveness_route.router)
+def include_routers(*, app: FastAPI, liveness_path: str) -> None:
+    app.include_router(router=liveness_router(path=liveness_path))
     app.include_router(router=creation_route.router)
     app.include_router(router=operation_route.router)
 
