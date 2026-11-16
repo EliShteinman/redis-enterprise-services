@@ -1,6 +1,13 @@
 import pytest
+from pydantic import BaseModel, ValidationError
 
-from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
+from redis_enterprise_services.saga.contract.saga_record import (
+    SagaRecord,
+    SagaStatus,
+    StepError,
+    StepRecord,
+    StepStatus,
+)
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 
 
@@ -53,3 +60,16 @@ def test_only_steps_whose_resource_may_remain_are_not_rolled_back(
     )
 
     assert bool(record.not_rolled_back_steps()) is left_behind
+
+
+class PortInput(BaseModel):
+    port: int
+
+
+def test_an_input_validation_error_names_the_invalid_fields_without_their_values() -> None:
+    with pytest.raises(expected_exception=ValidationError) as raised:
+        PortInput.model_validate(obj={"port": "secret-value"})
+
+    step_error: StepError = StepError.from_input_validation_error(error=raised.value)
+
+    assert step_error.message == "cannot build the input: invalid fields ['port']"
