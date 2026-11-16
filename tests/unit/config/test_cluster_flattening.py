@@ -170,16 +170,20 @@ def test_a_single_site_value_on_any_level_never_reaches_active_active() -> None:
     assert configured.active_active_database_overrides == {"eviction_policy": "noeviction"}
 
 
-def test_crdb_values_of_the_site_beat_those_of_the_levels_above_it() -> None:
+def test_crdb_values_of_the_network_beat_those_of_the_environment() -> None:
     configured: ConfiguredCluster = only_cluster(
         tree=a_tree(
-            environment={"active_active": {"crdb": {"compression": 1}}},
+            environment={"active_active": {"crdb": {"compression": 1, "encryption": True}}},
             network={"active_active": {"crdb": {"compression": 4}}},
-            site={"active_active": {"crdb": {"compression": 6}}},
         )
     )
 
-    assert configured.crdb_overrides == {"compression": 6}
+    assert configured.crdb_overrides == {"compression": 4, "encryption": True}
+
+
+def test_crdb_values_on_a_site_are_refused_when_the_config_loads() -> None:
+    with pytest.raises(expected_exception=ValidationError, match="crdb"):
+        a_tree(site={"active_active": {"crdb": {"compression": 6}}})
 
 
 @pytest.mark.parametrize(

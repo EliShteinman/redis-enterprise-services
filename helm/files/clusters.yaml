@@ -1,7 +1,7 @@
 # One file for every cluster: environment -> network -> site -> cluster (its FQDN).
 # username, password, default_user_password, api_port, database and active_active.database
 # may be set on any level; the lowest level that sets a value wins.
-# active_active.crdb may be set on the environment, the network or the site.
+# active_active.crdb may be set only on the environment or the network, not on a site or a cluster.
 # The network name is sent as is in the x-network header.
 clusters:
   prod:
