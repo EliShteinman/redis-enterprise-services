@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
@@ -5,7 +7,7 @@ from redis_enterprise_services.cluster_access.http_method import HttpMethod
 
 
 class ClusterRequest(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     method: HttpMethod
     url: str
@@ -17,7 +19,7 @@ class ClusterRequest(BaseModel):
 
 
 class ClusterResponse(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     status_code: int
     headers: dict[str, str]
