@@ -1,4 +1,4 @@
-from redis_enterprise_services.creation.planning.creation_planning import CreationPlanning
+from redis_enterprise_services.creation.planning.creation_saga_planning import CreationSagaPlanning
 from redis_enterprise_services.creation.preparation.prepared_active_active_creation import (
     PreparedActiveActiveCreation,
 )
@@ -8,7 +8,7 @@ from redis_enterprise_services.planning.placement.crdb_coordinator import coordi
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 
-class ActiveActiveCreationPlanning(CreationPlanning[PreparedActiveActiveCreation]):
+class ActiveActiveCreationSagaPlanning(CreationSagaPlanning[PreparedActiveActiveCreation]):
     def __init__(self, *, names_check: CreationNamesCheck, planner: ActiveActiveCreationPlanner) -> None:
         self._names_check: CreationNamesCheck = names_check
         self._planner: ActiveActiveCreationPlanner = planner

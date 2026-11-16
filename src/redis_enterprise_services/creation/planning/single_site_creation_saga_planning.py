@@ -1,11 +1,11 @@
-from redis_enterprise_services.creation.planning.creation_planning import CreationPlanning
+from redis_enterprise_services.creation.planning.creation_saga_planning import CreationSagaPlanning
 from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 
 
-class SingleSiteCreationPlanning(CreationPlanning[PreparedCreation]):
+class SingleSiteCreationSagaPlanning(CreationSagaPlanning[PreparedCreation]):
     def __init__(self, *, names_check: CreationNamesCheck, planner: SingleSiteCreationPlanner) -> None:
         self._names_check: CreationNamesCheck = names_check
         self._planner: SingleSiteCreationPlanner = planner

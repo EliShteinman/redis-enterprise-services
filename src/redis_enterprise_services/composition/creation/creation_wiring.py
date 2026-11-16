@@ -18,11 +18,11 @@ from redis_enterprise_services.config.service.saga_settings import SagaSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.creation.crdb_creation import CrdbCreation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
-from redis_enterprise_services.creation.planning.active_active_creation_planning import (
-    ActiveActiveCreationPlanning,
+from redis_enterprise_services.creation.planning.active_active_creation_saga_planning import (
+    ActiveActiveCreationSagaPlanning,
 )
-from redis_enterprise_services.creation.planning.single_site_creation_planning import (
-    SingleSiteCreationPlanning,
+from redis_enterprise_services.creation.planning.single_site_creation_saga_planning import (
+    SingleSiteCreationSagaPlanning,
 )
 from redis_enterprise_services.creation.preparation.active_active_preparation import ActiveActivePreparation
 from redis_enterprise_services.creation.preparation.creation_preparation import CreationPreparation
@@ -96,7 +96,7 @@ class CreationWiring:
                 database_defaults=self._database_defaults,
             ),
             execution=self._execution_builder.build(
-                planning=SingleSiteCreationPlanning(
+                saga_planning=SingleSiteCreationSagaPlanning(
                     names_check=self._names_check,
                     planner=build_single_site_planner(
                         role_management=self._settings.user_resources.role_management,
@@ -125,7 +125,7 @@ class CreationWiring:
                 database_defaults=self._database_defaults,
             ),
             execution=self._execution_builder.build(
-                planning=ActiveActiveCreationPlanning(
+                saga_planning=ActiveActiveCreationSagaPlanning(
                     names_check=self._names_check,
                     planner=build_active_active_planner(
                         role_management=self._settings.user_resources.role_management,

@@ -11,8 +11,8 @@ from redis_enterprise_services.config.service.operation_settings import Operatio
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.planning.single_site_creation_planning import (
-    SingleSiteCreationPlanning,
+from redis_enterprise_services.creation.planning.single_site_creation_saga_planning import (
+    SingleSiteCreationSagaPlanning,
 )
 from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
 from redis_enterprise_services.creation.results.single_site_record_reader import SingleSiteRecordReader
@@ -145,7 +145,7 @@ class ExecutionHarness:
         self.saga_record_reader: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.saga_record_reader.find.return_value = None
         self.execution: CreationExecution[PreparedCreation] = CreationExecution(
-            planning=SingleSiteCreationPlanning(
+            saga_planning=SingleSiteCreationSagaPlanning(
                 names_check=CreationNamesCheck(
                     name_check_scope=ChosenClusterScope(),
                     name_availability=self.name_availability,

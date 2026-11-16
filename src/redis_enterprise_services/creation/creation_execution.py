@@ -3,7 +3,7 @@ from collections.abc import Callable
 from functools import partial
 
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.planning.creation_planning import CreationPlanning
+from redis_enterprise_services.creation.planning.creation_saga_planning import CreationSagaPlanning
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.operations.errors.public_error import PublicError
@@ -25,14 +25,14 @@ class CreationExecution[TPrepared]:
     def __init__(
         self,
         *,
-        planning: CreationPlanning[TPrepared],
+        saga_planning: CreationSagaPlanning[TPrepared],
         saga_executor: SagaExecutor,
         outcome_translator: CreationOutcomeTranslator[TPrepared],
         public_errors: PublicErrors,
         saga_record_reader: SagaRecordReader,
         operation_store: OperationStore,
     ) -> None:
-        self._planning: CreationPlanning[TPrepared] = planning
+        self._saga_planning: CreationSagaPlanning[TPrepared] = saga_planning
         self._saga_executor: SagaExecutor = saga_executor
         self._outcome_translator: CreationOutcomeTranslator[TPrepared] = outcome_translator
         self._public_errors: PublicErrors = public_errors
@@ -47,7 +47,9 @@ class CreationExecution[TPrepared]:
         return operation
 
     def _run_saga_and_translate_outcome(self, *, trace_id: str, prepared_creation: TPrepared) -> Operation:
-        fallback_cluster_url: str = self._planning.fallback_cluster_url(prepared_creation=prepared_creation)
+        fallback_cluster_url: str = self._saga_planning.fallback_cluster_url(
+            prepared_creation=prepared_creation
+        )
         try:
             record: SagaRecord = self._run_saga(trace_id=trace_id, prepared_creation=prepared_creation)
         except RedisEnterpriseServicesError as error:
@@ -84,8 +86,10 @@ class CreationExecution[TPrepared]:
     def _run_saga(self, *, trace_id: str, prepared_creation: TPrepared) -> SagaRecord:
         return self._saga_executor.run(
             saga_id=trace_id,
-            plan=self._planning.plan(trace_id=trace_id, prepared_creation=prepared_creation),
-            check_before_start=partial(self._planning.ensure_names_free, prepared_creation=prepared_creation),
+            plan=self._saga_planning.plan(trace_id=trace_id, prepared_creation=prepared_creation),
+            check_before_start=partial(
+                self._saga_planning.ensure_names_free, prepared_creation=prepared_creation
+            ),
         )
 
     def _operation_after_saga_error(

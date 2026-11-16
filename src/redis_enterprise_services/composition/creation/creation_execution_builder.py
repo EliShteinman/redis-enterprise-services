@@ -1,6 +1,6 @@
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.planning.creation_planning import CreationPlanning
+from redis_enterprise_services.creation.planning.creation_saga_planning import CreationSagaPlanning
 from redis_enterprise_services.creation.results.creation_record_reader import CreationRecordReader
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -23,10 +23,13 @@ class CreationExecutionBuilder:
         self._operation_store: OperationStore = operation_store
 
     def build[TPrepared](
-        self, *, planning: CreationPlanning[TPrepared], record_reader: CreationRecordReader[TPrepared]
+        self,
+        *,
+        saga_planning: CreationSagaPlanning[TPrepared],
+        record_reader: CreationRecordReader[TPrepared],
     ) -> CreationExecution[TPrepared]:
         return CreationExecution(
-            planning=planning,
+            saga_planning=saga_planning,
             saga_executor=self._saga_executor,
             outcome_translator=CreationOutcomeTranslator(
                 record_reader=record_reader, public_errors=self._public_errors
