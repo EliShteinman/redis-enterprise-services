@@ -1,7 +1,9 @@
 import pytest
 from fastapi.openapi.models import Example
 
-from redis_enterprise_services.api.create_database_request_examples import CREATE_DATABASE_REQUEST_EXAMPLES
+from redis_enterprise_services.api.request_examples.create_database_request_examples import (
+    CREATE_DATABASE_REQUEST_EXAMPLES,
+)
 from redis_enterprise_services.creation.requests.create_database_request import CreateDatabaseRequest
 
 

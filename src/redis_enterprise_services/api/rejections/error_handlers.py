@@ -7,17 +7,17 @@ from fastapi.exceptions import RequestValidationError
 from pydantic_core import ErrorDetails
 from starlette.exceptions import HTTPException
 
-from redis_enterprise_services.api.internal_error_report import report_internal_error
-from redis_enterprise_services.api.rejection_error import FieldError, RejectionError
-from redis_enterprise_services.api.rejection_error_code import (
+from redis_enterprise_services.api.rejections.internal_error_report import report_internal_error
+from redis_enterprise_services.api.rejections.rejection_error import FieldError, RejectionError
+from redis_enterprise_services.api.rejections.rejection_error_code import (
     API_ERROR_CODE_BY_HTTP_STATUS,
     API_ERROR_CODE_BY_INTERNAL_CODE,
     UNKNOWN_HTTP_ERROR_CODE,
     VALIDATION_ERROR_CODE,
     RejectionErrorCode,
 )
-from redis_enterprise_services.api.rejection_response import rejection_response
-from redis_enterprise_services.api.service_rejection import ServiceRejection, service_rejection
+from redis_enterprise_services.api.rejections.rejection_response import rejection_response
+from redis_enterprise_services.api.rejections.service_rejection import ServiceRejection, service_rejection
 from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors

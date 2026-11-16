@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from redis_enterprise_services.api.rejected_operation import RejectedOperation
-from redis_enterprise_services.api.rejected_request import RejectedRequest
+from redis_enterprise_services.api.rejections.rejected_operation import RejectedOperation
+from redis_enterprise_services.api.rejections.rejected_request import RejectedRequest
 
 
 def rejection_openapi_responses(

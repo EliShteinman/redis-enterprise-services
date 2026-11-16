@@ -4,9 +4,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
-from redis_enterprise_services.api.internal_error_report import report_internal_error
-from redis_enterprise_services.api.rejection_error import RejectionError
-from redis_enterprise_services.api.rejection_response import rejection_response
+from redis_enterprise_services.api.rejections.internal_error_report import report_internal_error
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejection_response import rejection_response
 from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 

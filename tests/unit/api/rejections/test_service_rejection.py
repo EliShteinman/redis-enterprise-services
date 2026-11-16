@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
-from redis_enterprise_services.api.rejection_error_code import RejectionErrorCode
-from redis_enterprise_services.api.service_rejection import ServiceRejection, service_rejection
+from redis_enterprise_services.api.rejections.rejection_error_code import RejectionErrorCode
+from redis_enterprise_services.api.rejections.service_rejection import ServiceRejection, service_rejection
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 
 INTERNAL_ERROR_MESSAGE: str = "internal error"

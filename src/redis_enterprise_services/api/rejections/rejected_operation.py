@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.api.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
 from redis_enterprise_services.operations.operation_status import OperationStatus
 
 

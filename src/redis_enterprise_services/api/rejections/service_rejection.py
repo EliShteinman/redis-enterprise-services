@@ -2,8 +2,8 @@ from http import HTTPStatus
 
 from pydantic import BaseModel
 
-from redis_enterprise_services.api.rejection_error import RejectionError
-from redis_enterprise_services.api.rejection_error_code import RejectionErrorCode
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejection_error_code import RejectionErrorCode
 from redis_enterprise_services.config.public_errors.error_kind import ErrorKind
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.operations.errors.public_errors import INTERNAL_ERROR_CODE

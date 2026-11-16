@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends, Path
 
 from redis_enterprise_services.api.app_state_dependencies import api_settings_from_app_state
-from redis_enterprise_services.api.ensure_matches import ensure_matches
+from redis_enterprise_services.api.tracing.ensure_matches import ensure_matches
 from redis_enterprise_services.config.service.api_settings import ApiSettings
 
 TRACE_ID_LOCATION: tuple[str, str] = ("path", "trace_id")

@@ -1,6 +1,6 @@
 import re
 
-from redis_enterprise_services.api.field_validation_error import field_validation_error
+from redis_enterprise_services.api.tracing.field_validation_error import field_validation_error
 
 
 def ensure_matches(*, value: str, pattern: re.Pattern[str], location: tuple[str, str], message: str) -> None:

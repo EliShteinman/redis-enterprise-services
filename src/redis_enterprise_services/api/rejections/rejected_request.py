@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from redis_enterprise_services.api.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
 
 
 class RejectedRequest(BaseModel):

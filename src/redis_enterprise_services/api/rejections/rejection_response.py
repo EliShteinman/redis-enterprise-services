@@ -4,10 +4,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from redis_enterprise_services.api.command_route import is_command_request
-from redis_enterprise_services.api.rejected_operation import RejectedOperation
-from redis_enterprise_services.api.rejected_request import RejectedRequest
-from redis_enterprise_services.api.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejected_operation import RejectedOperation
+from redis_enterprise_services.api.rejections.rejected_request import RejectedRequest
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
+from redis_enterprise_services.api.routes.command_route import is_command_request
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.telemetry.trace_id import current_trace_id_or_zeros
 

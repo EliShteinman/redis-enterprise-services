@@ -3,9 +3,9 @@ import json
 from fastapi import Request
 from fastapi.routing import APIRoute
 
-from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
-from redis_enterprise_services.api.rejection_error import RejectionError
-from redis_enterprise_services.api.rejection_response import rejection_response
+from redis_enterprise_services.api.rejections.rejection_error import RejectionError
+from redis_enterprise_services.api.rejections.rejection_response import rejection_response
+from redis_enterprise_services.api.routes.command_route import COMMAND_ROUTE_TAG
 
 ERROR: RejectionError = RejectionError(code="validation_error", kind="customer_fixable", message="invalid")
 

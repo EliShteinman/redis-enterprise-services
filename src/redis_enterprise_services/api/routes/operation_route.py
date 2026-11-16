@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from redis_enterprise_services.api.app_state_dependencies import operation_store_from_app_state
-from redis_enterprise_services.api.operation_json_response import operation_json_response
-from redis_enterprise_services.api.rejection_openapi_responses import OPERATION_ROUTE_REJECTION_RESPONSES
-from redis_enterprise_services.api.trace_id_path import checked_trace_id
-from redis_enterprise_services.api.traceparent_header import require_traceparent
+from redis_enterprise_services.api.rejections.rejection_openapi_responses import (
+    OPERATION_ROUTE_REJECTION_RESPONSES,
+)
+from redis_enterprise_services.api.routes.operation_json_response import operation_json_response
+from redis_enterprise_services.api.tracing.trace_id_path import checked_trace_id
+from redis_enterprise_services.api.tracing.traceparent_header import require_traceparent
 from redis_enterprise_services.exceptions.operation import OperationNotFoundError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_store import OperationStore
