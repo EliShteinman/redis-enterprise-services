@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from redis import Redis
 
-from redis_enterprise_services.config.state_settings import LockSettings
+from redis_enterprise_services.config.service.state_settings import LockSettings
 from redis_enterprise_services.exceptions.saga import ResourcesLockedError
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_saga_lock import RedisSagaLock

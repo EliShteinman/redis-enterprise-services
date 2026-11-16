@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field, SecretStr
 
-from redis_enterprise_services.config.database_tag import DatabaseTag
+from redis_enterprise_services.config.redis_api.database_tag import DatabaseTag
 from redis_enterprise_services.databases.new_database import NewDatabase
 
 
