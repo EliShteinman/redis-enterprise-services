@@ -1,6 +1,8 @@
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.defaults.naming_settings import NamingSettings, RedisNameRulesSettings
+from redis_enterprise_services.creation.preparation.active_active_preparation import ActiveActivePreparation
+from redis_enterprise_services.creation.preparation.creation_preparation import CreationPreparation
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -12,6 +14,39 @@ from redis_enterprise_services.planning.spec.database_defaults import DatabaseDe
 from redis_enterprise_services.planning.spec.database_defaults_validation import (
     reject_invalid_defaults_on_any_cluster,
 )
+
+
+class PreparationWiring:
+    def __init__(
+        self,
+        *,
+        naming: NamingSettings,
+        resource_naming: UserResourceNaming,
+        clusters: list[ConfiguredCluster],
+        database_defaults: DatabaseDefaults,
+    ) -> None:
+        self._name_validator: NameValidator = build_database_name_validator(naming=naming)
+        self._user_names_validator: UserNamesValidator = build_user_names_validator(
+            redis_names=naming.redis, resource_naming=resource_naming
+        )
+        self._site_cluster_resolver: SiteClusterResolver = build_site_cluster_resolver(clusters=clusters)
+        self._database_defaults: DatabaseDefaults = database_defaults
+
+    def creation_preparation(self) -> CreationPreparation:
+        return CreationPreparation(
+            name_validator=self._name_validator,
+            user_names_validator=self._user_names_validator,
+            site_cluster_resolver=self._site_cluster_resolver,
+            database_defaults=self._database_defaults,
+        )
+
+    def active_active_preparation(self) -> ActiveActivePreparation:
+        return ActiveActivePreparation(
+            name_validator=self._name_validator,
+            user_names_validator=self._user_names_validator,
+            site_cluster_resolver=self._site_cluster_resolver,
+            database_defaults=self._database_defaults,
+        )
 
 
 def checked_database_defaults(

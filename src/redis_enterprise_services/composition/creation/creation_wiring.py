@@ -7,9 +7,7 @@ from redis_enterprise_services.composition.creation.creation_planner_wiring impo
 )
 from redis_enterprise_services.composition.creation.names_check_wiring import build_names_check
 from redis_enterprise_services.composition.creation.preparation_wiring import (
-    build_database_name_validator,
-    build_site_cluster_resolver,
-    build_user_names_validator,
+    PreparationWiring,
     checked_database_defaults,
 )
 from redis_enterprise_services.composition.state_wiring import StateWiring
@@ -24,8 +22,6 @@ from redis_enterprise_services.creation.planning.active_active_creation_saga_pla
 from redis_enterprise_services.creation.planning.single_site_creation_saga_planning import (
     SingleSiteCreationSagaPlanning,
 )
-from redis_enterprise_services.creation.preparation.active_active_preparation import ActiveActivePreparation
-from redis_enterprise_services.creation.preparation.creation_preparation import CreationPreparation
 from redis_enterprise_services.creation.results.active_active_record_reader import ActiveActiveRecordReader
 from redis_enterprise_services.creation.results.single_site_record_reader import SingleSiteRecordReader
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
@@ -54,11 +50,16 @@ class CreationWiring:
         sleeper: Sleeper,
     ) -> None:
         self._settings: Settings = settings
-        self._clusters: list[ConfiguredCluster] = clusters
         self._cluster_wiring: ClusterWiring = cluster_wiring
         self._resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
         self._database_defaults: DatabaseDefaults = checked_database_defaults(
             settings=settings.database_defaults, clusters=clusters
+        )
+        self._preparation_wiring: PreparationWiring = PreparationWiring(
+            naming=settings.naming,
+            resource_naming=self._resource_naming,
+            clusters=clusters,
+            database_defaults=self._database_defaults,
         )
         self._names_check: CreationNamesCheck = build_names_check(
             repositories=cluster_wiring.repositories,
@@ -87,14 +88,7 @@ class CreationWiring:
 
     def _database_creation(self) -> DatabaseCreation:
         return DatabaseCreation(
-            preparation=CreationPreparation(
-                name_validator=build_database_name_validator(naming=self._settings.naming),
-                user_names_validator=build_user_names_validator(
-                    redis_names=self._settings.naming.redis, resource_naming=self._resource_naming
-                ),
-                site_cluster_resolver=build_site_cluster_resolver(clusters=self._clusters),
-                database_defaults=self._database_defaults,
-            ),
+            preparation=self._preparation_wiring.creation_preparation(),
             execution=self._execution_builder.build(
                 saga_planning=SingleSiteCreationSagaPlanning(
                     names_check=self._names_check,
@@ -116,14 +110,7 @@ class CreationWiring:
 
     def _crdb_creation(self) -> CrdbCreation:
         return CrdbCreation(
-            preparation=ActiveActivePreparation(
-                name_validator=build_database_name_validator(naming=self._settings.naming),
-                user_names_validator=build_user_names_validator(
-                    redis_names=self._settings.naming.redis, resource_naming=self._resource_naming
-                ),
-                site_cluster_resolver=build_site_cluster_resolver(clusters=self._clusters),
-                database_defaults=self._database_defaults,
-            ),
+            preparation=self._preparation_wiring.active_active_preparation(),
             execution=self._execution_builder.build(
                 saga_planning=ActiveActiveCreationSagaPlanning(
                     names_check=self._names_check,
