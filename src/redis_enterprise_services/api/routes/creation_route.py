@@ -3,9 +3,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends
 
-from redis_enterprise_services.api.accepted_operation_openapi_response import (
-    ACCEPTED_OPERATION_OPENAPI_RESPONSE,
-)
 from redis_enterprise_services.api.app_state_dependencies import database_creation_from_app_state
 from redis_enterprise_services.api.rejections.rejection_openapi_responses import (
     CREATION_ROUTE_REJECTION_RESPONSES,
@@ -14,6 +11,9 @@ from redis_enterprise_services.api.request_examples.create_database_request_exam
     CREATE_DATABASE_REQUEST_EXAMPLES,
 )
 from redis_enterprise_services.api.routes.accepted_operation import AcceptedOperation
+from redis_enterprise_services.api.routes.accepted_operation_openapi_response import (
+    ACCEPTED_OPERATION_OPENAPI_RESPONSE,
+)
 from redis_enterprise_services.api.routes.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.tracing.traceparent_header import require_traceparent
 from redis_enterprise_services.creation.database_creation import DatabaseCreation

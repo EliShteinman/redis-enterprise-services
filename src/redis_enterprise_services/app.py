@@ -9,14 +9,13 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import crdb_creation_route
 from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
 from redis_enterprise_services.api.rejections.error_handlers import (
     HttpErrorHandler,
     ServiceErrorHandler,
     ValidationErrorHandler,
 )
-from redis_enterprise_services.api.routes import creation_route, operation_route
+from redis_enterprise_services.api.routes import crdb_creation_route, creation_route, operation_route
 from redis_enterprise_services.api.routes.liveness_route import liveness_router
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.service.api_settings import ApiSettings

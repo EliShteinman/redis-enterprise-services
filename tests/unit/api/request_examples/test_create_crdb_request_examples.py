@@ -2,7 +2,9 @@ import pytest
 from fastapi.openapi.models import Example
 from pydantic import ValidationError
 
-from redis_enterprise_services.api.create_crdb_request_examples import CREATE_CRDB_REQUEST_EXAMPLES
+from redis_enterprise_services.api.request_examples.create_crdb_request_examples import (
+    CREATE_CRDB_REQUEST_EXAMPLES,
+)
 from redis_enterprise_services.api.request_examples.create_database_request_examples import (
     CREATE_DATABASE_REQUEST_EXAMPLES,
 )
