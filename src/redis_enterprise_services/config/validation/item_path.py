@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, Field
 
-from redis_enterprise_services.config.template_placeholders import reject_placeholders_other_than
+from redis_enterprise_services.config.validation.template_placeholders import reject_placeholders_other_than
 
 ITEM_PLACEHOLDERS: frozenset[str] = frozenset({"uid"})
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import get_args
 
 import redis_enterprise_services.exceptions as exceptions_package
-from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 
