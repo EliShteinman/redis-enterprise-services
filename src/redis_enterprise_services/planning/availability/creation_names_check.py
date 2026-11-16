@@ -2,7 +2,7 @@ from redis_enterprise_services.config.clusters.cluster_inventory import Configur
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 
 class CreationNamesCheck:

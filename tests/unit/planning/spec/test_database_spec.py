@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec, DatabaseUserSpec
 
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 

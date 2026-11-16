@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 
 ACCEPTED_BY_REDIS: list[str] = [
     "+@all ~*",

@@ -9,11 +9,11 @@ from redis_enterprise_services.config.clusters.cluster_inventory import (
 )
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import NoMatchingClusterError
-from redis_enterprise_services.planning.cluster_chooser import ClusterChooser
-from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
-from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
-from redis_enterprise_services.planning.site_placement import SitePlacement
+from redis_enterprise_services.planning.placement.cluster_chooser import ClusterChooser
+from redis_enterprise_services.planning.placement.cluster_directory import ClusterDirectory
+from redis_enterprise_services.planning.placement.single_candidate_chooser import SingleCandidateChooser
+from redis_enterprise_services.planning.placement.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
 
 
 def cluster(

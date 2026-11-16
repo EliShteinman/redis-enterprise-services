@@ -1,4 +1,4 @@
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 
 DATABASE_STEP_KEY: str = "database"
 PERMISSIONS_STEP_KEY: str = "permissions"

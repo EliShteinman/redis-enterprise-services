@@ -1,5 +1,5 @@
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.planning.availability.name_lookup import NameLookup
+from redis_enterprise_services.planning.availability.lookups.name_lookup import NameLookup
 from redis_enterprise_services.resources.resource_name_lister import ResourceNameLister
 
 

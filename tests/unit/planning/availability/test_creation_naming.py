@@ -1,11 +1,11 @@
 from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
-from redis_enterprise_services.planning.database_spec import (
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_spec import (
     DatabaseSpec,
     DatabaseUserSpec,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
 
 def test_the_requested_names_are_the_database_then_each_users_acl_role_and_user() -> None:

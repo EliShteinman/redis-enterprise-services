@@ -2,9 +2,9 @@ import logging
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.cluster_chooser import ClusterChooser
-from redis_enterprise_services.planning.no_matching_cluster import raise_if_no_candidates
-from redis_enterprise_services.planning.site_placement import SitePlacement
+from redis_enterprise_services.planning.placement.cluster_chooser import ClusterChooser
+from redis_enterprise_services.planning.placement.no_matching_cluster import raise_if_no_candidates
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

@@ -2,9 +2,13 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from redis_enterprise_services.planning.creation_step_keys import acl_step_key, role_step_key, user_step_key
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.keys.creation_step_keys import (
+    acl_step_key,
+    role_step_key,
+    user_step_key,
+)
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 
 
 class UserResource(BaseModel):

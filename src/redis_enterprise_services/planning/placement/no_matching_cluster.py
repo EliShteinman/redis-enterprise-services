@@ -2,7 +2,7 @@ import logging
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NoMatchingClusterError
-from redis_enterprise_services.planning.site_placement import SitePlacement
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

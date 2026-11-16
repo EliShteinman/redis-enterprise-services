@@ -1,5 +1,5 @@
-from redis_enterprise_services.planning.availability.name_lookup import NameLookup
-from redis_enterprise_services.planning.name_kind import NameKind
+from redis_enterprise_services.planning.availability.lookups.name_lookup import NameLookup
+from redis_enterprise_services.planning.planned.name_kind import NameKind
 
 
 class NameLookupsByKind:

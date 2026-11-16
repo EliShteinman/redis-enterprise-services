@@ -2,11 +2,11 @@ from typing import ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from redis_enterprise_services.planning.creation_step_keys import DATABASE_STEP_KEY, PERMISSIONS_STEP_KEY
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
-from redis_enterprise_services.planning.name_kind import NameKind
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import user_resources
+from redis_enterprise_services.planning.keys.creation_step_keys import DATABASE_STEP_KEY, PERMISSIONS_STEP_KEY
+from redis_enterprise_services.planning.planned.name_kind import NameKind
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resources import user_resources
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 type PlannedResourceType = NameKind | Literal["permissions"]
 

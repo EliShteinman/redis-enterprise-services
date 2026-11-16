@@ -1,6 +1,6 @@
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
-from redis_enterprise_services.planning.lock_keys import database_lock_key, user_lock_key
+from redis_enterprise_services.planning.keys.lock_keys import database_lock_key, user_lock_key
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 
 def creation_lock_keys(*, clusters: list[ConfiguredCluster], spec: DatabaseSpec) -> list[str]:
