@@ -1,5 +1,6 @@
 import importlib
 import pkgutil
+from pathlib import Path
 from typing import get_args
 
 import redis_enterprise_services.exceptions as exceptions_package
@@ -21,14 +22,19 @@ def import_all_exception_codes() -> set[str]:
     return {error.code for error in every_subclass(RedisEnterpriseServicesError)}
 
 
-def test_every_mapped_exception_code_belongs_to_an_exception() -> None:
-    assert set(load_settings().operation.public_code_by_internal_code) <= import_all_exception_codes()
+def test_every_mapped_exception_code_belongs_to_an_exception(config_dir: Path) -> None:
+    assert (
+        set(load_settings(config_dir=config_dir).operation.public_code_by_internal_code)
+        <= import_all_exception_codes()
+    )
 
 
-def test_every_exception_code_has_a_public_error_code() -> None:
-    mapped: set[str] = set(load_settings().operation.public_code_by_internal_code)
+def test_every_exception_code_has_a_public_error_code(config_dir: Path) -> None:
+    mapped: set[str] = set(load_settings(config_dir=config_dir).operation.public_code_by_internal_code)
     assert import_all_exception_codes() - CODES_WITHOUT_PUBLIC_MAPPING <= mapped
 
 
-def test_every_public_error_code_has_a_kind() -> None:
-    assert set(get_args(PublicErrorCode.__value__)) <= set(load_settings().operation.error_kind_by_code)
+def test_every_public_error_code_has_a_kind(config_dir: Path) -> None:
+    assert set(get_args(PublicErrorCode.__value__)) <= set(
+        load_settings(config_dir=config_dir).operation.error_kind_by_code
+    )

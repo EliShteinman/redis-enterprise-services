@@ -1,0 +1,17 @@
+# One file for every cluster: environment -> network -> site -> cluster (its FQDN).
+# username, password, default_user_password, api_port and database may be set on any level;
+# the lowest level that sets a value wins.
+# The network name is sent as is in the x-network header.
+clusters:
+  prod:
+    username: FILL-IN-CLUSTER-ADMIN-USERNAME
+    password: FILL-IN-CLUSTER-ADMIN-PASSWORD
+    default_user_password: FILL-IN-DATABASE-DEFAULT-USER-PASSWORD
+    api_port: 9443
+    networks:
+      FILL-IN-NETWORK:
+        sites:
+          FILL-IN-SITE:
+            clusters:
+              FILL-IN-CLUSTER-FQDN:
+                type: generic

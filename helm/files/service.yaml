@@ -1,0 +1,138 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+
+api:
+  validation_error_message: the request does not match the contract
+  internal_error_message: internal error
+  unexpected_error_message: "unexpected {error_type}: {error}"
+  traceparent_pattern: "^(?!ff)[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$"
+  traceparent_error_message: the traceparent header is not in the W3C format
+  trace_id_pattern: "^(?!0{32})[0-9a-f]{32}$"
+  trace_id_error_message: the trace_id is not 32 lowercase hex characters, or it is all zeros
+
+log:
+  level: INFO
+  line_format: "%(asctime)s | %(levelname)-8s | %(name)s | trace_id=%(otelTraceID)s | %(message)s"
+  line_format_defaults:
+    otelTraceID: "0"
+  date_format: "%Y-%m-%dT%H:%M:%S%z"
+  stream: ext://sys.stdout
+  console_format: line
+  json_dropped_fields:
+    - color_message
+  file:
+    enabled: false
+    format: json
+    path: logs/app.log
+    max_bytes: 10485760
+    backup_count: 5
+    encoding: utf-8
+  root_propagating_loggers:
+    - uvicorn
+    - uvicorn.error
+    - uvicorn.access
+  quiet_paths:
+    - /health
+  quiet_kept_level: WARNING
+
+telemetry:
+  service_name: redis-enterprise-services
+  export_enabled: false
+  otlp_endpoint: https://fill-in-otlp-host:4318
+  metrics_export_interval_ms: 60000
+  traces_path: /v1/traces
+  metrics_path: /v1/metrics
+
+edge:
+  url: https://fill-in-proxy-host/
+  connect_timeout_seconds: 5
+  request_timeout_seconds: 35
+  headers:
+    cluster_method: x-cluster-method
+    cluster_url: x-cluster-url
+    cluster_authorization: x-cluster-authorization
+    content_type: content-type
+    edge_error_code: x-edge-error
+    cluster_status_code: x-edge-cluster-status
+    cluster_state_id: cluster-state-id
+    crdb_task_id: x-task-id
+    result_ttl_seconds: x-result-ttl
+    network: x-network
+  request_content_type: application/json
+  error_codes:
+    invalid_request: invalid_request
+    connection_failed: connection_failed
+    response_rejected: response_rejected
+
+state:
+  socket_timeout_seconds: 5
+  finished_ttl_seconds: 604800
+  lock:
+    wait_timeout_seconds: 30
+    poll_interval_seconds: 1
+
+saga:
+  step_retry:
+    attempts: 3
+    backoff_step_seconds: 2
+  compensation_retry:
+    attempts: 5
+    backoff_step_seconds: 2
+
+background:
+  max_workers: 4
+
+liveness:
+  heartbeat_interval_seconds: 10
+  heartbeat_ttl_seconds: 60
+  min_heartbeats_per_ttl: 3
+  abandoned_sweep_interval_seconds: 60
+
+operation:
+  public_code_by_internal_code:
+    name_taken: name_taken
+    resources_locked: resources_locked
+    invalid_name: invalid_name
+    no_matching_cluster: no_matching_cluster
+    edge_connection_failed: cluster_unavailable
+    edge_outcome_unknown: cluster_unavailable
+    edge_rejected_response: cluster_unavailable
+    edge_rejected_request: internal_error
+    unreadable_cluster_response: cluster_unavailable
+    incomplete_cluster_object: cluster_request_failed
+    cluster_rejected_request: cluster_request_failed
+    database_creation_failed: cluster_request_failed
+    cluster_action_failed: cluster_request_failed
+    cluster_action_timeout: cluster_timeout
+    database_activation_timeout: cluster_timeout
+    database_deletion_timeout: cluster_timeout
+    duplicate_resource_name: internal_error
+    unrestorable_fields: internal_error
+    update_outcome_unclear: internal_error
+    configuration_error: configuration_error
+    invalid_plan: internal_error
+    missing_step_result: internal_error
+    step_needs_manual_intervention: internal_error
+    missing_step_record: internal_error
+    unreadable_saga_record: internal_error
+    unreadable_operation_record: internal_error
+  public_codes_with_cluster_details:
+    - cluster_request_failed
+    - cluster_unavailable
+    - cluster_timeout
+  error_kind_by_code:
+    name_taken: customer_fixable
+    invalid_name: customer_fixable
+    no_matching_cluster: customer_fixable
+    resources_locked: known_failure
+    cluster_unavailable: known_failure
+    cluster_request_failed: known_failure
+    cluster_timeout: known_failure
+    configuration_error: known_failure
+    internal_error: needs_investigation
+    validation_error: customer_fixable
+    operation_not_found: known_failure
+    not_found: needs_investigation
+    method_not_allowed: needs_investigation
+    http_error: needs_investigation

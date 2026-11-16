@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -49,8 +50,12 @@ def cluster_api_caller_answering(*, action_body: JsonValue) -> MagicMock:
     return api
 
 
-def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
-    settings: Settings = load_settings()
+@pytest.fixture
+def settings(config_dir: Path) -> Settings:
+    return load_settings(config_dir=config_dir)
+
+
+def waiter(*, cluster_api_caller: MagicMock, settings: Settings) -> PollingActionWaiter:
     action_settings: ActionSettings = settings.action.model_copy(update={"wait": SHORT_WAIT})
     simulated_time: SimulatedTime = SimulatedTime()
     return PollingActionWaiter(
@@ -66,26 +71,30 @@ def waiter(*, cluster_api_caller: MagicMock) -> PollingActionWaiter:
     )
 
 
-def waiter_answering(*, action_body: JsonValue) -> PollingActionWaiter:
-    return waiter(cluster_api_caller=cluster_api_caller_answering(action_body=action_body))
+def waiter_answering(*, action_body: JsonValue, settings: Settings) -> PollingActionWaiter:
+    return waiter(cluster_api_caller=cluster_api_caller_answering(action_body=action_body), settings=settings)
 
 
-def test_a_completed_action_ends_the_wait_after_asking_for_that_action() -> None:
+def test_a_completed_action_ends_the_wait_after_asking_for_that_action(settings: Settings) -> None:
     api: MagicMock = cluster_api_caller_answering(action_body={"status": "completed"})
 
-    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+        target=TARGET, action_uid=ACTION_UID
+    )
 
     assert api.send.call_args.kwargs["path"].endswith(ACTION_UID)
 
 
-def test_an_unknown_relay_outcome_while_reading_the_action_is_read_again() -> None:
+def test_an_unknown_relay_outcome_while_reading_the_action_is_read_again(settings: Settings) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = [
         EdgeOutcomeUnknownError(message="relay timed out"),
         SuccessfulClusterResponse(body={"status": "completed"}, cluster_state_id=None),
     ]
 
-    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+        target=TARGET, action_uid=ACTION_UID
+    )
 
     assert api.send.call_count == 2
 
@@ -98,6 +107,7 @@ def test_an_unknown_relay_outcome_while_reading_the_action_is_read_again() -> No
     ],
 )
 def test_a_transient_cluster_rejection_while_reading_the_action_is_read_again(
+    settings: Settings,
     transient_rejection: ClusterRejectedRequestError,
 ) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
@@ -106,61 +116,73 @@ def test_a_transient_cluster_rejection_while_reading_the_action_is_read_again(
         SuccessfulClusterResponse(body={"status": "completed"}, cluster_state_id=None),
     ]
 
-    waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+    waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+        target=TARGET, action_uid=ACTION_UID
+    )
 
     assert api.send.call_count == 2
 
 
-def test_a_permanent_cluster_rejection_while_reading_the_action_fails_at_once() -> None:
+def test_a_permanent_cluster_rejection_while_reading_the_action_fails_at_once(settings: Settings) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = ClusterRejectedRequestError(
         message="not found", cluster_status_code=404, cluster_error_code=None
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError):
-        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
 
 
-def test_a_relay_rejected_action_response_fails_at_once() -> None:
+def test_a_relay_rejected_action_response_fails_at_once(settings: Settings) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = EdgeRejectedResponseError(message="schema", cluster_status_code=200)
 
     with pytest.raises(expected_exception=EdgeRejectedResponseError):
-        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
 
 
 @pytest.mark.parametrize(
     argnames="action_body",
     argvalues=[{"status": "failed"}, {"status": "cancelled"}, {"status": "aborted"}],
 )
-def test_an_action_that_ended_without_completing_fails_at_once(action_body: JsonValue) -> None:
+def test_an_action_that_ended_without_completing_fails_at_once(
+    settings: Settings, action_body: JsonValue
+) -> None:
     with pytest.raises(expected_exception=ClusterActionFailedError):
-        waiter_answering(action_body=action_body).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter_answering(action_body=action_body, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
 
 
-def test_a_running_action_times_out() -> None:
+def test_a_running_action_times_out(settings: Settings) -> None:
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
-        waiter_answering(action_body={"status": "running"}).wait_until_completed(
+        waiter_answering(action_body={"status": "running"}, settings=settings).wait_until_completed(
             target=TARGET, action_uid=ACTION_UID
         )
 
 
-def test_an_action_answer_without_a_status_is_unreadable() -> None:
+def test_an_action_answer_without_a_status_is_unreadable(settings: Settings) -> None:
     with pytest.raises(expected_exception=UnreadableClusterResponseError):
-        waiter_answering(action_body={"progress": "100"}).wait_until_completed(
+        waiter_answering(action_body={"progress": "100"}, settings=settings).wait_until_completed(
             target=TARGET, action_uid=ACTION_UID
         )
 
 
-def test_a_wait_in_which_no_read_succeeded_reports_the_last_read_error() -> None:
+def test_a_wait_in_which_no_read_succeeded_reports_the_last_read_error(settings: Settings) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     api.send.side_effect = EdgeOutcomeUnknownError(message="relay timed out")
 
     with pytest.raises(expected_exception=EdgeOutcomeUnknownError):
-        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
 
 
-def test_a_wait_with_a_read_that_succeeded_still_times_out() -> None:
+def test_a_wait_with_a_read_that_succeeded_still_times_out(settings: Settings) -> None:
     api: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     running: SuccessfulClusterResponse = SuccessfulClusterResponse(
         body={"status": "running"}, cluster_state_id=None
@@ -168,13 +190,17 @@ def test_a_wait_with_a_read_that_succeeded_still_times_out() -> None:
     api.send.side_effect = [running, *([EdgeOutcomeUnknownError(message="relay timed out")] * 10)]
 
     with pytest.raises(expected_exception=ClusterActionTimeoutError):
-        waiter(cluster_api_caller=api).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter(cluster_api_caller=api, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
 
 
-def test_a_completed_action_returns_the_whole_action_the_cluster_reported() -> None:
+def test_a_completed_action_returns_the_whole_action_the_cluster_reported(settings: Settings) -> None:
     action: dict[str, JsonValue] = {"status": "completed", "progress": "100", "name": "SMUpdateBDB"}
 
     assert (
-        waiter_answering(action_body=action).wait_until_completed(target=TARGET, action_uid=ACTION_UID)
+        waiter_answering(action_body=action, settings=settings).wait_until_completed(
+            target=TARGET, action_uid=ACTION_UID
+        )
         == action
     )
