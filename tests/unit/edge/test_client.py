@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 from unittest.mock import create_autospec
 
 import pytest
@@ -35,8 +36,8 @@ REQUEST: ClusterRequest = ClusterRequest(
 
 
 @pytest.fixture
-def settings() -> EdgeSettings:
-    return load_settings().edge
+def settings(config_dir: Path) -> EdgeSettings:
+    return load_settings(config_dir=config_dir).edge
 
 
 def relay_response(*, status_code: int, headers: dict[str, str], body: bytes = b"{}") -> requests.Response:
