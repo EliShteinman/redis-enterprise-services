@@ -10,7 +10,7 @@ from redis_enterprise_services.operations.operation_status import OperationStatu
 from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.active_active_planned_resources import SitePlannedResource
+from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepError, StepRecord
 
 logger: logging.Logger = logging.getLogger(name=__name__)

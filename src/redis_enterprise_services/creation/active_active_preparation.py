@@ -77,7 +77,7 @@ class ActiveActivePreparation:
     ) -> None:
         differing: list[str] = differing_fields(
             values=[
-                self._database_defaults.crdb_settings(coordinator=cluster, requested=requested)
+                self._database_defaults.crdb_settings(cluster=cluster, requested=requested)
                 for cluster in clusters
             ],
         )

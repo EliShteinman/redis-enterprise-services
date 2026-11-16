@@ -3,7 +3,7 @@ from typing import Protocol
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.database_result import DatabaseResult
-from redis_enterprise_services.planning.active_active_planned_resources import SitePlannedResource
+from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 

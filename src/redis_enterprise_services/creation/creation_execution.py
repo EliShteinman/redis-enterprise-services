@@ -18,6 +18,8 @@ from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
+UNREADABLE_REMAINING_RESOURCES: None = None
+
 
 class CreationExecution[TPrepared]:
     def __init__(
@@ -137,12 +139,12 @@ class CreationExecution[TPrepared]:
                 trace_id=trace_id,
                 status=OperationStatus.REQUIRES_MANUAL_INTERVENTION,
                 error=self._public_errors.unexpected_error(error=error),
-                not_rolled_back=self._remaining_resources_or_none(
+                not_rolled_back=self._remaining_resources_if_readable(
                     trace_id=trace_id, prepared_creation=prepared_creation, record=record
                 ),
             )
 
-    def _remaining_resources_or_none(
+    def _remaining_resources_if_readable(
         self, *, trace_id: str, prepared_creation: TPrepared, record: SagaRecord
     ) -> list[RemainingResource] | None:
         try:
@@ -153,7 +155,7 @@ class CreationExecution[TPrepared]:
             logger.critical(
                 msg=f"what saga {trace_id} left on the cluster cannot be read either", exc_info=True
             )
-            return None
+            return UNREADABLE_REMAINING_RESOURCES
 
 
 def rejected_operation(*, trace_id: str, error: PublicError) -> Operation:
