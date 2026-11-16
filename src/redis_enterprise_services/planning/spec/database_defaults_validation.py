@@ -10,11 +10,11 @@ from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.spec.database_defaults import (
     DATA_PERSISTENCE_FIELD,
-    issue_text,
     merged_default_values,
     override_values_on_cluster,
     with_persistence_settings_of_its_mode,
 )
+from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
 
 def reject_invalid_defaults_on_any_cluster(
@@ -80,6 +80,5 @@ def reject_invalid_options(*, values: dict[str, JsonValue]) -> None:
         DatabaseOptions.model_validate(obj=values)
     except ValidationError as error:
         raise ConfigurationError(
-            message=f"database defaults {sorted(values)} are not valid: "
-            f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
+            message=f"database defaults {sorted(values)} are not valid: {issues_text(error=error)}"
         ) from error

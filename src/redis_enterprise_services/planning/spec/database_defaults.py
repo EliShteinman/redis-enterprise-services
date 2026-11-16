@@ -1,7 +1,6 @@
 import logging
 
 from pydantic import JsonValue, ValidationError
-from pydantic_core import ErrorDetails
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.defaults.database_defaults_settings import (
@@ -11,6 +10,7 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
 )
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -38,15 +38,8 @@ class DatabaseDefaults:
         except ValidationError as error:
             raise ConfigurationError(
                 message=f"the request together with the database_defaults.{kind} values of cluster "
-                f"{cluster.fqdn} is not valid: "
-                f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
+                f"{cluster.fqdn} is not valid: {issues_text(error=error)}"
             ) from error
-
-
-def issue_text(*, issue: ErrorDetails) -> str:
-    cause: object = issue.get("ctx", {}).get("error", issue["msg"])
-    location: str = ".".join(str(part) for part in issue["loc"])
-    return f"{location}: {cause}" if location else f"{cause}"
 
 
 def merged_default_values(
