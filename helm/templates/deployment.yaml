@@ -30,6 +30,40 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      {{- if .Values.collector.enabled }}
+      initContainers:
+        - name: collector
+          image: {{ include "res.collectorImage" . | quote }}
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          restartPolicy: Always
+          args: ["--config=/etc/otelcol/config.yaml"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: ELASTIC_ENDPOINT
+              value: {{ required "collector.elasticsearch.endpoint is required when collector.enabled is true" .Values.collector.elasticsearch.endpoint | quote }}
+            - name: ELASTIC_USERNAME
+              value: {{ required "collector.elasticsearch.username is required when collector.enabled is true" .Values.collector.elasticsearch.username | quote }}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "res.fullname" . }}
+                  key: ELASTIC_PASSWORD
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: collector
+              mountPath: /etc/otelcol
+              readOnly: true
+            - name: collector-state
+              mountPath: /var/lib/otelcol/file_storage
+            - name: logs
+              mountPath: {{ .Values.mounts.logs }}
+              readOnly: true
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "res.image" . | quote }}
@@ -89,38 +123,6 @@ spec:
               readOnly: true
             - name: logs
               mountPath: {{ .Values.mounts.logs }}
-        {{- if .Values.collector.enabled }}
-        - name: collector
-          image: {{ include "res.collectorImage" . | quote }}
-          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
-          args: ["--config=/etc/otelcol/config.yaml"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          env:
-            - name: ELASTIC_ENDPOINT
-              value: {{ required "collector.elasticsearch.endpoint is required when collector.enabled is true" .Values.collector.elasticsearch.endpoint | quote }}
-            - name: ELASTIC_USERNAME
-              value: {{ required "collector.elasticsearch.username is required when collector.enabled is true" .Values.collector.elasticsearch.username | quote }}
-            - name: ELASTIC_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "res.fullname" . }}
-                  key: ELASTIC_PASSWORD
-          resources:
-            {{- toYaml .Values.collector.resources | nindent 12 }}
-          volumeMounts:
-            - name: collector
-              mountPath: /etc/otelcol
-              readOnly: true
-            - name: collector-state
-              mountPath: /var/lib/otelcol/file_storage
-            - name: logs
-              mountPath: {{ .Values.mounts.logs }}
-              readOnly: true
-        {{- end }}
       volumes:
         - name: config
           projected:

@@ -195,7 +195,9 @@ environment's clusters file and a `helm upgrade`, with no new image.
   operations that are running and exits as soon as they finish, at once when none is. An operation still running after
   600 seconds is cut off.
 - `collector.enabled: true` adds an OpenTelemetry Collector sidecar that sends the JSON log file, the traces and the
-  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username; `secret.ELASTIC_PASSWORD`). The chart then
+  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username; `secret.ELASTIC_PASSWORD`). It runs as a
+  native sidecar (an init container with `restartPolicy: Always`, Kubernetes 1.29 or later): it starts before the
+  service and stops after it, so it keeps sending the logs while the service waits for its operations. The chart then
   turns on the log file and the telemetry export of the service by itself. Everything from this service goes to its
   own data streams:
   `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
