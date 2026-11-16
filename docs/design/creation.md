@@ -30,16 +30,16 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 | שלב | אתר אחד | Active-Active | תיקייה |
 |---|---|---|---|
 | נתיב | `POST /v1/databases/create` | `POST /v1/crdbs/create` | |
-| route | `start_database_creation_once` (`creation_route.py`) | `start_crdb_creation_once` (`crdb_creation_route.py`) | `api/` |
-| מודל הבקשה | `CreateDatabaseRequest`: `CreateDatabaseTarget` (`site`) ו-`DatabaseSpec` | `CreateCrdbRequest`: `CreateCrdbTarget` (`sites`) ו-`ActiveActiveSpec` (`DatabaseSpec` ועוד `crdb: CrdbSpec`) | `creation/`, `planning/` |
+| route | `start_database_creation_once` (`creation_route.py`) | `start_crdb_creation_once` (`crdb_creation_route.py`) | `api/routes/` |
+| מודל הבקשה | `CreateDatabaseRequest`: `CreateDatabaseTarget` (`site`) ו-`DatabaseSpec` | `CreateCrdbRequest`: `CreateCrdbTarget` (`sites`) ו-`ActiveActiveSpec` (`DatabaseSpec` ועוד `crdb: CrdbSpec`) | `creation/requests/`, `planning/spec/` |
 | מה שה-route קורא לו | `DatabaseCreation` | `CrdbCreation` | `creation/` |
-| הכנה | `CreationPreparation` | `ActiveActivePreparation`, עם הכללים של `active_active_cluster_rules.py` | `creation/` |
-| מה שההכנה מחזירה | `PreparedCreation` (`cluster`, `spec`) | `PreparedActiveActiveCreation` (`clusters`, `spec`) | `creation/` |
+| הכנה | `CreationPreparation` | `ActiveActivePreparation`, עם הכללים של `active_active_cluster_rules.py` | `creation/preparation/` |
+| מה שההכנה מחזירה | `PreparedCreation` (`cluster`, `spec`) | `PreparedActiveActiveCreation` (`clusters`, `spec`) | `creation/preparation/` |
 | ריצה ברקע | `CreationExecution[PreparedCreation]` | `CreationExecution[PreparedActiveActiveCreation]` | `creation/` |
-| `CreationPlanning` | `SingleSiteCreationPlanning` | `ActiveActiveCreationPlanning` | `creation/` |
+| `CreationPlanning` | `SingleSiteCreationPlanning` | `ActiveActiveCreationPlanning` | `creation/planning/` |
 | מפרק | `SingleSiteCreationPlanner` | `ActiveActiveCreationPlanner` | `planning/` |
-| `CreationRecordReader` | `SingleSiteRecordReader` (`created_database_result.py`) | `ActiveActiveRecordReader` (`created_active_active_result.py`) | `creation/` |
-| מודל התוצאה | `DatabaseResult` | `ActiveActiveDatabaseResult`: `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר | `operations/` |
+| `CreationRecordReader` | `SingleSiteRecordReader` (`created_database_result.py`) | `ActiveActiveRecordReader` (`created_active_active_result.py`) | `creation/results/` |
+| מודל התוצאה | `DatabaseResult` | `ActiveActiveDatabaseResult`: `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר | `operations/results/` |
 
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
@@ -47,11 +47,11 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 | `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation`, `ActiveActivePreparation` | `creation/preparation/` | כל מה שאפשר לבדוק בלי הקלאסטר. מחזירה את הבקשה המוכנה: `PreparedCreation` או `PreparedActiveActiveCreation` |
 | `CreationExecution[TPrepared]` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית. מחלקה אחת לשני הסוגים, גנרית על סוג הבקשה המוכנה |
-| `CreationPlanning[TPrepared]` | `creation/` | ממשק: הבקשה המוכנה ⇐ תוכנית צעדים (`plan`), בדיקת השמות הפנויים (`ensure_names_free`) והקלאסטר שנרשם בשגיאה שאין לה קלאסטר (`fallback_cluster_url`). המימושים: `SingleSiteCreationPlanning` ו-`ActiveActiveCreationPlanning`, שקוראים למפרק ול-`CreationNamesCheck` |
+| `CreationPlanning[TPrepared]` | `creation/planning/` | ממשק: הבקשה המוכנה ⇐ תוכנית צעדים (`plan`), בדיקת השמות הפנויים (`ensure_names_free`) והקלאסטר שנרשם בשגיאה שאין לה קלאסטר (`fallback_cluster_url`). המימושים: `SingleSiteCreationPlanning` ו-`ActiveActiveCreationPlanning`, שקוראים למפרק ול-`CreationNamesCheck` |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
 | `ActiveActiveCreationPlanner` | `planning/` | בקשת Active-Active ⇐ תוכנית צעדים לכל האתרים ומפתחות נעילה בכל אתר |
 | `CreationOutcomeTranslator[TPrepared]` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל. גם הוא מחלקה אחת, גנרית על סוג הבקשה המוכנה |
-| `CreationRecordReader[TPrepared]` | `creation/` | ממשק: מה שרק הסוג יודע לקרוא מה-record: עץ ה-DB (`database_result`), המשאבים שהתוכנית יוצרת (`planned_resources`) והקלאסטר של כל צעד (`cluster_of_step`). המימושים: `SingleSiteRecordReader` ו-`ActiveActiveRecordReader` |
+| `CreationRecordReader[TPrepared]` | `creation/results/` | ממשק: מה שרק הסוג יודע לקרוא מה-record: עץ ה-DB (`database_result`), המשאבים שהתוכנית יוצרת (`planned_resources`) והקלאסטר של כל צעד (`cluster_of_step`). המימושים: `SingleSiteRecordReader` ו-`ActiveActiveRecordReader` |
 
 ![שכבת creation](../diagrams/04-layer-creation.drawio.svg)
 
@@ -256,7 +256,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 אובייקט `crdb` עם ה-`guid` וההגדרות של ה-CRDB, ו-`clusters[]` עם ענף לכל קלאסטר, שכולל גם `instance_id` ו-`compression`.
 `GET /v1/operations/{trace_id}` משותף לשני הסוגים: `Operation.database` הוא `DatabaseResult` או `ActiveActiveDatabaseResult`, וה-`kind` מבדיל ביניהם.
 
-**מחלקות:** ה-route `start_crdb_creation_once` (`api/crdb_creation_route.py`) מקבל `CreateCrdbRequest` (`CreateCrdbTarget`, ו-`ActiveActiveSpec` עם `CrdbSpec`) וקורא ל-`CrdbCreation`.
+**מחלקות:** ה-route `start_crdb_creation_once` (`api/routes/crdb_creation_route.py`) מקבל `CreateCrdbRequest` (`CreateCrdbTarget`, ו-`ActiveActiveSpec` עם `CrdbSpec`) וקורא ל-`CrdbCreation`.
 `ActiveActivePreparation` מחזירה `PreparedActiveActiveCreation`, ו-`CreationExecution` רץ עם `ActiveActiveCreationPlanning` ו-`ActiveActiveRecordReader`. התוצאה היא
 `ActiveActiveDatabaseResult`, עם `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר.
 המפרק הוא `ActiveActiveCreationPlanner`, והצעדים ב-`steps/`: `CreateCrdbStep`, `FindLocalCrdbInstanceStep`,
@@ -321,7 +321,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 - **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. `PATCH /v1/crdbs` נשלח בלי `cluster-state-id`, כך שההרשאות
   ב-AA נשענות על הנעילה בלבד, והנעילה מגינה רק מפני הרצות של השירות הזה, לא מפני שינוי מה-UI או מכלי אחר.
   **פתוח:** האם `PATCH /v1/crdbs` מכבד `cluster-state-id` (לא נבדק).
-- **תוצאה** (`created_active_active_result.py`): `crdb` מקריאת ה-CRDB (צעד N+3), וענף לכל אתר, לפי סדר ה-`sites`, מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role
+- **תוצאה** (`creation/results/created_active_active_result.py`): `crdb` מקריאת ה-CRDB (צעד N+3), וענף לכל אתר, לפי סדר ה-`sites`, מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role
   שנוצרו בו. ה-instances של ה-CRDB לא חוזרים כרשימה נפרדת: השירות מתאים כל instance לענף שלו לפי `cluster_url` (בלי
   רישיות, ועם הפורט ברירת המחדל של הסכמה), שם את `instance_id` ו-`compression` שלו בענף, ובודק שכל instance שייך
   לאחד הענפים. `not_rolled_back` מראה כל משאב באתר שלו,
