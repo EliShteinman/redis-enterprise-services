@@ -1,8 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
 from redis_enterprise_services.operations.results.database_result import DatabaseResult
 
 CLUSTER: dict[str, object] = {

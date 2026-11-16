@@ -3,7 +3,6 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from redis_enterprise_services.config.public_errors.error_kind import NEEDS_INVESTIGATION
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.is_none import is_none
 from redis_enterprise_services.operations.operation_status import (
@@ -13,6 +12,9 @@ from redis_enterprise_services.operations.operation_status import (
     OperationStatus,
 )
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
 from redis_enterprise_services.operations.results.database_result import DatabaseResult
 
 

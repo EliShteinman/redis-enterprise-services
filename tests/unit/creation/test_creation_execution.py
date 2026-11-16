@@ -20,11 +20,13 @@ from redis_enterprise_services.exceptions.saga import (
     ResourcesLockedError,
     UnreadableSagaRecordError,
 )
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
 from redis_enterprise_services.operations.results.database_result import (
     DatabasePermissionResult,
     DatabaseResult,
