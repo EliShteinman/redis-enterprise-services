@@ -15,14 +15,13 @@ RULES: list[NameRule] = configured_name_rules(
     )
 )
 CONTEXT: NamingContext = NamingContext(
-    active_active=False,
-    sites=[SitePlacement(network="net-a", site="ny", environment="PROD", cluster="generic")],
+    site=SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")
 )
 
 
 class EndsWithSiteRule:
     def violation(self, *, name: str, context: NamingContext) -> NameViolation | None:
-        site: str = context.sites[0].site
+        site: str = context.site.site
         return (
             None if name.endswith(site) else NameViolation(rule_id="site_suffix", message=f"ends with {site}")
         )

@@ -8,6 +8,7 @@ from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTar
 from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError, CrdbTaskFailedError
@@ -27,6 +28,7 @@ class CreateCrdbInput(BaseModel):
     coordinator: ClusterAddress
     members: list[ClusterAddress]
     database: NewDatabase
+    settings: CrdbCreationSettings
     task_id: str
 
     @model_validator(mode="after")
@@ -66,6 +68,7 @@ class CreateCrdbStep(SagaStep[CreateCrdbInput, CreatedCrdb]):
                 coordinator=coordinator,
                 members=members,
                 database=step_input.database,
+                settings=step_input.settings,
                 task_id=step_input.task_id,
             ),
             task_id=step_input.task_id,

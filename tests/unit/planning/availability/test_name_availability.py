@@ -1,9 +1,10 @@
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
+from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.exceptions.planning import NameTakenError
@@ -28,14 +29,24 @@ class CountingLister:
         ]
 
 
-def cluster(*, name: str) -> ConfiguredCluster:
+ADMIN: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))
+
+
+def cluster(*, fqdn: str) -> ConfiguredCluster:
     return ConfiguredCluster(
-        name=name, network="net-a", environment="PROD", site="dc1", type="generic", api_url=f"https://{name}"
+        fqdn=fqdn,
+        network="net-a",
+        environment="PROD",
+        site="ny",
+        type="generic",
+        api_url=f"https://{fqdn}",
+        credentials=ClusterCredentialsSettings(username=ADMIN.username, password=ADMIN.password),
+        default_user_password=SecretStr("default-user-secret"),
     )
 
 
-C1: ConfiguredCluster = cluster(name="c1")
-C2: ConfiguredCluster = cluster(name="c2")
+C1: ConfiguredCluster = cluster(fqdn="c1")
+C2: ConfiguredCluster = cluster(fqdn="c2")
 NAMES: list[RequestedName] = [
     RequestedName(kind="database", name="orders"),
     RequestedName(kind="user", name="app"),
@@ -56,8 +67,8 @@ def availability(
             role=lookup(lister=CountingLister(url_name_pairs=set())),
             user=lookup(lister=user_lister),
         ),
-        target_resolver=SharedCredentialsTargetResolver(
-            credentials=ClusterCredentials(username="admin", password=SecretStr("secret"))
+        target_resolver=ConfiguredCredentialsTargetResolver(
+            credentials_by_api_url={configured.api_url: ADMIN for configured in (C1, C2)}
         ),
     )
 

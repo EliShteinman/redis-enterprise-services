@@ -1,35 +1,18 @@
 from enum import StrEnum
-from typing import Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import JsonValue
 
-from redis_enterprise_services.config.cluster_inventory import ClusterType, Environment
 from redis_enterprise_services.config.config_model import ConfigModel
-
-
-class OverrideSelector(ConfigModel):
-    network: str | None = Field(default=None, min_length=1)
-    environment: Environment | None = None
-    site: str | None = Field(default=None, min_length=1)
-    type: ClusterType | None = None
-    cluster_name: str | None = Field(default=None, min_length=1)
-
-    @model_validator(mode="after")
-    def reject_empty_selector(self) -> Self:
-        if not self.model_dump(exclude_none=True):
-            raise ValueError("an override matches on at least one label")
-        return self
-
-
-class DefaultsOverride(ConfigModel):
-    when: OverrideSelector
-    values: dict[str, JsonValue] = Field(min_length=1)
+from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
 
 
 class DatabaseKindDefaults(ConfigModel):
-    values: dict[str, JsonValue]
+    database: dict[str, JsonValue]
     persistence_values: dict[str, dict[str, JsonValue]]
-    overrides: list[DefaultsOverride]
+
+
+class ActiveActiveDefaults(DatabaseKindDefaults):
+    crdb: CrdbCreationSettings
 
 
 class DatabaseKind(StrEnum):
@@ -43,7 +26,7 @@ class DatabaseKind(StrEnum):
 
 class DatabaseDefaultsSettings(ConfigModel):
     single_site: DatabaseKindDefaults
-    active_active: DatabaseKindDefaults
+    active_active: ActiveActiveDefaults
 
     def of_kind(self, *, kind: DatabaseKind) -> DatabaseKindDefaults:
         match kind:

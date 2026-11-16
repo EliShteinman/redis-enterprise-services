@@ -38,7 +38,7 @@ def active_active_planned_resources(
     for cluster in clusters:
         for user in spec.users:
             for resource in site_user_resources(
-                naming=resource_naming, database_name=database_name, user=user, cluster_name=cluster.name
+                naming=resource_naming, database_name=database_name, user=user, cluster_fqdn=cluster.fqdn
             ).in_creation_order():
                 planned[resource.step_key] = SitePlannedResource(
                     cluster=cluster,
@@ -57,16 +57,16 @@ def active_active_planned_resources(
 
 
 def site_user_resources(
-    *, naming: UserResourceNaming, database_name: str, user: DatabaseUserSpec, cluster_name: str
+    *, naming: UserResourceNaming, database_name: str, user: DatabaseUserSpec, cluster_fqdn: str
 ) -> UserResources:
     resources: UserResources = user_resources(naming=naming, database_name=database_name, user=user)
     return UserResources(
-        acl=on_site_resource(cluster_name=cluster_name, resource=resources.acl),
-        role=on_site_resource(cluster_name=cluster_name, resource=resources.role),
-        user=on_site_resource(cluster_name=cluster_name, resource=resources.user),
+        acl=on_site_resource(cluster_fqdn=cluster_fqdn, resource=resources.acl),
+        role=on_site_resource(cluster_fqdn=cluster_fqdn, resource=resources.role),
+        user=on_site_resource(cluster_fqdn=cluster_fqdn, resource=resources.user),
     )
 
 
-def on_site_resource(*, cluster_name: str, resource: UserResource) -> UserResource:
-    site_step_key: str = on_site(cluster_name=cluster_name, step_key=resource.step_key)
+def on_site_resource(*, cluster_fqdn: str, resource: UserResource) -> UserResource:
+    site_step_key: str = on_site(cluster_fqdn=cluster_fqdn, step_key=resource.step_key)
     return resource.model_copy(update={"step_key": site_step_key})

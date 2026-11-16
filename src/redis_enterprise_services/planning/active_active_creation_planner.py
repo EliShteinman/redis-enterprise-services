@@ -12,6 +12,7 @@ from redis_enterprise_services.config.role_management import RoleManagement
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
+from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
 from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
 from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
@@ -30,6 +31,7 @@ from redis_enterprise_services.planning.creation_step_keys import (
     READ_DATABASE_STEP_KEY,
     on_site,
 )
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.user_resources import UserResources
@@ -67,7 +69,7 @@ class ActiveActiveCreationPlanner:
         resource_naming: UserResourceNaming,
         database_body_builder: CreationBodyBuilder[NewDatabase],
         secret_fields: frozenset[str],
-        crdb_creation: CrdbCreationSettings,
+        database_defaults: DatabaseDefaults,
         create_crdb_step: SagaStep[CreateCrdbInput, CreatedCrdb],
         find_local_instance_step: SagaStep[FindLocalCrdbInstanceInput, LocalCrdbInstance],
         create_acl_step: SagaStep[CreateResourceInput[NewAcl], CreatedResource],
@@ -82,7 +84,7 @@ class ActiveActiveCreationPlanner:
         self._resource_naming: UserResourceNaming = resource_naming
         self._database_body_builder: CreationBodyBuilder[NewDatabase] = database_body_builder
         self._secret_fields: frozenset[str] = secret_fields
-        self._crdb_creation: CrdbCreationSettings = crdb_creation
+        self._database_defaults: DatabaseDefaults = database_defaults
         self._create_crdb_step: SagaStep[CreateCrdbInput, CreatedCrdb] = create_crdb_step
         self._find_local_instance_step: SagaStep[FindLocalCrdbInstanceInput, LocalCrdbInstance] = (
             find_local_instance_step
@@ -96,17 +98,20 @@ class ActiveActiveCreationPlanner:
         self._read_database_step: SagaStep[ReadDatabaseInput, DatabaseFieldsSnapshot] = read_database_step
         self._read_crdb_step: SagaStep[ReadCrdbInput, CrdbConfigSnapshot] = read_crdb_step
 
-    def plan(self, *, saga_id: str, clusters: list[ConfiguredCluster], spec: DatabaseSpec) -> SagaPlan:
+    def plan(self, *, saga_id: str, clusters: list[ConfiguredCluster], spec: ActiveActiveSpec) -> SagaPlan:
+        settings: CrdbCreationSettings = self._database_defaults.crdb_settings(
+            coordinator=coordinator_of(clusters=clusters), requested=spec.crdb
+        )
         steps: list[PreparableStep] = [
-            self._crdb_step(saga_id=saga_id, clusters=clusters, database=spec.database),
+            self._crdb_step(saga_id=saga_id, clusters=clusters, database=spec.database, settings=settings),
             *(self._local_database_step(cluster=cluster) for cluster in clusters),
             *(step for cluster in clusters for step in self._user_steps(cluster=cluster, spec=spec)),
             *self._permissions_steps(saga_id=saga_id, clusters=clusters, spec=spec),
             *(self._read_database_step_on(cluster=cluster, spec=spec) for cluster in clusters),
-            self._read_crdb_planned_step(clusters=clusters, database=spec.database),
+            self._read_crdb_planned_step(clusters=clusters, database=spec.database, settings=settings),
         ]
         logger.info(
-            msg=f"Active-Active database {spec.database.name} on {[cluster.name for cluster in clusters]} "
+            msg=f"Active-Active database {spec.database.name} on {[cluster.fqdn for cluster in clusters]} "
             f"plans {len(steps)} steps"
         )
         return SagaPlan(
@@ -123,7 +128,12 @@ class ActiveActiveCreationPlanner:
         )
 
     def _crdb_step(
-        self, *, saga_id: str, clusters: list[ConfiguredCluster], database: NewDatabase
+        self,
+        *,
+        saga_id: str,
+        clusters: list[ConfiguredCluster],
+        database: NewDatabase,
+        settings: CrdbCreationSettings,
     ) -> PreparableStep:
         return PlannedStep(
             key=CRDB_STEP_KEY,
@@ -134,6 +144,7 @@ class ActiveActiveCreationPlanner:
                     coordinator=address_of(cluster=coordinator_of(clusters=clusters)),
                     members=[address_of(cluster=cluster) for cluster in clusters],
                     database=database,
+                    settings=settings,
                     task_id=crdb_task_id(saga_id=saga_id, step_key=CRDB_STEP_KEY),
                 ),
             ),
@@ -141,7 +152,7 @@ class ActiveActiveCreationPlanner:
 
     def _local_database_step(self, *, cluster: ConfiguredCluster) -> PreparableStep:
         return PlannedStep(
-            key=on_site(cluster_name=cluster.name, step_key=LOCAL_DATABASE_STEP_KEY),
+            key=on_site(cluster_fqdn=cluster.fqdn, step_key=LOCAL_DATABASE_STEP_KEY),
             step=self._find_local_instance_step,
             build_input=partial(local_instance_input, address=address_of(cluster=cluster)),
         )
@@ -157,7 +168,7 @@ class ActiveActiveCreationPlanner:
                     naming=self._resource_naming,
                     database_name=spec.database.name,
                     user=user,
-                    cluster_name=cluster.name,
+                    cluster_fqdn=cluster.fqdn,
                 ),
             )
         ]
@@ -183,7 +194,7 @@ class ActiveActiveCreationPlanner:
                     self._role_input,
                     address=address,
                     role_name=resources.role.name,
-                    cluster_name=cluster.name,
+                    cluster_fqdn=cluster.fqdn,
                 ),
             ),
             PlannedStep(
@@ -196,7 +207,7 @@ class ActiveActiveCreationPlanner:
         ]
 
     def _role_input(
-        self, *, step_results: StepResults, address: ClusterAddress, role_name: str, cluster_name: str
+        self, *, step_results: StepResults, address: ClusterAddress, role_name: str, cluster_fqdn: str
     ) -> CreateResourceInput[NewRole]:
         return CreateResourceInput(
             cluster=address,
@@ -204,7 +215,7 @@ class ActiveActiveCreationPlanner:
                 name=role_name,
                 management=self._role_management,
                 database_uids=[
-                    local_instance_of(step_results=step_results, cluster_name=cluster_name).db_uid
+                    local_instance_of(step_results=step_results, cluster_fqdn=cluster_fqdn).db_uid
                 ],
             ),
         )
@@ -241,7 +252,7 @@ class ActiveActiveCreationPlanner:
             coordinator=coordinator,
             guid=created_crdb_of(step_results=step_results).guid,
             values_by_instance={
-                local_instance_of(step_results=step_results, cluster_name=cluster.name).instance_id: (
+                local_instance_of(step_results=step_results, cluster_fqdn=cluster.fqdn).instance_id: (
                     self._permission_values(step_results=step_results, cluster=cluster, spec=spec)
                 )
                 for cluster in clusters
@@ -251,7 +262,7 @@ class ActiveActiveCreationPlanner:
 
     def _read_database_step_on(self, *, cluster: ConfiguredCluster, spec: DatabaseSpec) -> PreparableStep:
         return PlannedStep(
-            key=on_site(cluster_name=cluster.name, step_key=READ_DATABASE_STEP_KEY),
+            key=on_site(cluster_fqdn=cluster.fqdn, step_key=READ_DATABASE_STEP_KEY),
             step=self._read_database_step,
             build_input=partial(self._read_database_input, cluster=cluster, spec=spec),
         )
@@ -261,14 +272,14 @@ class ActiveActiveCreationPlanner:
     ) -> ReadDatabaseInput:
         return ReadDatabaseInput(
             cluster=address_of(cluster=cluster),
-            uid=local_instance_of(step_results=step_results, cluster_name=cluster.name).db_uid,
+            uid=local_instance_of(step_results=step_results, cluster_fqdn=cluster.fqdn).db_uid,
             expected_values=self._permission_values(step_results=step_results, cluster=cluster, spec=spec)
             if spec.users
             else {},
         )
 
     def _read_crdb_planned_step(
-        self, *, clusters: list[ConfiguredCluster], database: NewDatabase
+        self, *, clusters: list[ConfiguredCluster], database: NewDatabase, settings: CrdbCreationSettings
     ) -> PreparableStep:
         return PlannedStep(
             key=READ_CRDB_STEP_KEY,
@@ -277,9 +288,12 @@ class ActiveActiveCreationPlanner:
                 read_crdb_input,
                 coordinator=address_of(cluster=coordinator_of(clusters=clusters)),
                 expected_config=without_fields(
-                    fields=self._database_body_builder.creation_body(spec=database), names=self._secret_fields
+                    fields=self._database_body_builder.creation_body(
+                        spec=database, cluster=address_of(cluster=coordinator_of(clusters=clusters))
+                    ),
+                    names=self._secret_fields,
                 ),
-                expected_settings=self._crdb_creation,
+                expected_settings=settings,
             ),
         )
 
@@ -296,7 +310,7 @@ class ActiveActiveCreationPlanner:
                             naming=self._resource_naming,
                             database_name=spec.database.name,
                             user=user,
-                            cluster_name=cluster.name,
+                            cluster_fqdn=cluster.fqdn,
                         )
                         for user in spec.users
                     ],
@@ -309,9 +323,9 @@ def created_crdb_of(*, step_results: StepResults) -> CreatedCrdb:
     return step_results.result_of(key=CRDB_STEP_KEY, result_type=CreatedCrdb)
 
 
-def local_instance_of(*, step_results: StepResults, cluster_name: str) -> LocalCrdbInstance:
+def local_instance_of(*, step_results: StepResults, cluster_fqdn: str) -> LocalCrdbInstance:
     return step_results.result_of(
-        key=on_site(cluster_name=cluster_name, step_key=LOCAL_DATABASE_STEP_KEY),
+        key=on_site(cluster_fqdn=cluster_fqdn, step_key=LOCAL_DATABASE_STEP_KEY),
         result_type=LocalCrdbInstance,
     )
 

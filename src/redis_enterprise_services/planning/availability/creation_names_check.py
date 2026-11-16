@@ -25,7 +25,7 @@ class CreationNamesCheck:
 
     def ensure_free_on_every_site(self, *, clusters: list[ConfiguredCluster], spec: DatabaseSpec) -> None:
         to_check: dict[str, ConfiguredCluster] = {
-            checked.name: checked
+            checked.fqdn: checked
             for cluster in clusters
             for checked in self._name_check_scope.clusters_to_check(chosen=cluster)
         }

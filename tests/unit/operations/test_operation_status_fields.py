@@ -31,21 +31,18 @@ def test_an_error_that_does_not_fit_the_status_is_refused(
 
 DATABASE: DatabaseResult = DatabaseResult.model_validate(
     {
+        "kind": "single_site",
         "name": "orders",
         "memory_size": 1,
-        "active_active": False,
-        "crdb_guid": None,
-        "clusters": [
-            {
-                "cluster": "c",
-                "cluster_url": "https://c:9443",
-                "network": "n",
-                "site": "s",
-                "environment": "DEV",
-                "access": {"endpoints": [{"dns_name": "d", "port": 1, "addr": ["10.0.0.1"]}]},
-                "db": {"db_uid": 1, "settings": {}, "permissions": []},
-            }
-        ],
+        "cluster": {
+            "cluster": "c",
+            "cluster_url": "https://c:9443",
+            "network": "n",
+            "site": "s",
+            "environment": "DEV",
+            "access": {"endpoints": [{"dns_name": "d", "port": 1, "addr": ["10.0.0.1"]}]},
+            "db": {"db_uid": 1, "settings": {}, "permissions": []},
+        },
     }
 )
 REMAINING: RemainingResource = RemainingResource(

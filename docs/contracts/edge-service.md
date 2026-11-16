@@ -3,7 +3,7 @@
 מה redis-enterprise-services מצפה לקבל משירות הקצה (cluster-relay): שירות שיושב ברשת של הקלאסטרים, מקבל מאיתנו
 בקשה אחת לכל קריאה ל-REST API של קלאסטר, ומעביר אותה. ההתאמה של שירות הקצה לחוזה באחריות הבעלים שלו.
 
-שמות ה-headers וקודי השגיאה נטענים מ-`config/edge.yaml`, ואפשר להחליף אותם בלי שינוי קוד.
+שמות ה-headers וקודי השגיאה נטענים מ-`helm/files/service.yaml`, ואפשר להחליף אותם בלי שינוי קוד.
 
 ---
 
@@ -15,7 +15,7 @@ header של סיסמת ה-DataPower של אותה רשת, ו-header של Host ע
 
 | # | דרישה |
 |---|---|
-| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`) |
+| C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`). הרשתות הן הרמה השנייה בעץ של `helm/files/clusters.yaml`, והשם נשלח כמו שהוא |
 | C0b | את האימות מול ה-DataPower מוסיף הפרוקסי (ה-NGINX). השירות לא שולח פרטי גישה לחומת האש |
 | C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
 | C0e | אם הכתובת ב-HTTPS, התעודה לא נבדקת. שגיאת TLS יכולה לקרות גם אחרי שהבקשה נשלחה (חומת האש מפענחת ומצפינה מחדש) |
@@ -38,7 +38,7 @@ POST <edge.url>                                     (ה-NGINX)
 x-network: <רשת>
 x-cluster-method: PUT
 x-cluster-url: https://<cluster>:9443/v1/bdbs/7
-x-cluster-authorization: Basic <credentials>
+x-cluster-authorization: Basic <credentials>   (המשתמש המנהל של אותו קלאסטר, מ-helm/files/clusters.yaml)
 traceparent: 00-<trace-id>-<span-id>-<flags>
 content-type: application/json
 cluster-state-id: 155          (אופציונלי)
