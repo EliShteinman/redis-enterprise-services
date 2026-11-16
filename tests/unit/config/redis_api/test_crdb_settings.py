@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbTaskSettings
 
 TASK: dict[str, object] = {
     "item_path": "/v1/crdb_tasks/{uid}",

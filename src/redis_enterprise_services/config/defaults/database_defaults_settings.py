@@ -3,7 +3,7 @@ from enum import StrEnum
 from pydantic import JsonValue
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 
 
 class DatabaseKindDefaults(ConfigModel):
