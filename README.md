@@ -33,9 +33,9 @@ python run_local.py
 curl localhost:8080/health
 ```
 
-It passes `helm/files/` and reads the two variables from `.env`. Fill in the placeholders (`FILL-IN-...` in
-`helm/files/clusters.yaml`, `fill-in-proxy-host` in `helm/files/service.yaml`) with your own values and do not commit
-them.
+It passes `helm/files/` and reads the two variables from `.env`. Copy `helm/files/clusters.example.yaml` to
+`helm/files/clusters.yaml` and fill it in, and replace `fill-in-proxy-host` in `helm/files/service.yaml` with your proxy;
+do not commit either.
 
 Create a database (the request is in `docs/contracts/service-api.md`), then ask for its status by the returned
 `trace_id`:
@@ -131,8 +131,9 @@ clusters:
 - `type: generic` clusters are picked by the service when a request asks for `generic`. A `dedicated` cluster is used
   only when a request names its FQDN.
 
-`helm/files/clusters.yaml` in git holds an example with placeholders: fill it in for your environment and do not
-commit the filled file.
+Git holds only `helm/files/clusters.example.yaml`, an example with placeholders. Copy it to `helm/files/clusters.yaml`
+(or to a file per environment, such as `prep-clusters.yaml`) and fill it in; files ending in `clusters.yaml` in
+`helm/files/` are ignored by git.
 
 Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, to `telemetry.otlp_endpoint`.
 
