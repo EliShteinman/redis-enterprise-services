@@ -68,6 +68,7 @@ type = "layers"
 containers = ["redis_enterprise_services"]
 exhaustive = true
 layers = [
+    "server",
     "app",
     "composition",
     "api",
