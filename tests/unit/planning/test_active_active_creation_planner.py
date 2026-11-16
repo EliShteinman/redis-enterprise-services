@@ -1,7 +1,6 @@
 from pydantic import BaseModel, JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
@@ -17,6 +16,18 @@ from redis_enterprise_services.planning.active_active_spec import ActiveActiveSp
 from redis_enterprise_services.planning.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.planning.step_factories.crdb_permission_step_factory import (
+    CrdbPermissionStepFactory,
+)
+from redis_enterprise_services.planning.step_factories.crdb_step_factory import CrdbStepFactory
+from redis_enterprise_services.planning.step_factories.read_crdb_step_factory import ReadCrdbStepFactory
+from redis_enterprise_services.planning.step_factories.read_database_step_factory import (
+    ReadDatabaseStepFactory,
+)
+from redis_enterprise_services.planning.step_factories.role_permission_values import RolePermissionValues
+from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
+    UserResourceStepFactory,
+)
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
@@ -63,19 +74,9 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
     role_name_template="{database}-{user}-role",
     role_management="db_viewer",
 )
+PERMISSION_VALUES: RolePermissionValues = RolePermissionValues(roles_permissions_field="roles_permissions")
 PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
-    role_management=USER_RESOURCES.role_management,
-    cluster_fields=ClusterFieldSettings(
-        status="status",
-        error_code="error_code",
-        action_uid="action_uid",
-        roles_permissions="roles_permissions",
-        name="name",
-        memory_size="memory_size",
-    ),
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-    database_body_builder=BodyWithSecret(),
-    secret_fields=frozenset({"authentication_redis_pass"}),
     database_defaults=DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
             single_site=DatabaseKindDefaults(database={}, persistence_values={}),
@@ -86,14 +87,24 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
             ),
         )
     ),
-    create_crdb_step=IdleStep(),
-    find_local_instance_step=IdleStep(),
-    create_acl_step=IdleStep(),
-    create_role_step=IdleStep(),
-    create_user_step=IdleStep(),
-    update_instances_step=IdleStep(),
-    read_database_step=IdleStep(),
-    read_crdb_step=IdleStep(),
+    crdb_steps=CrdbStepFactory(create_crdb_step=IdleStep(), find_local_instance_step=IdleStep()),
+    user_resource_steps=UserResourceStepFactory(
+        role_management=USER_RESOURCES.role_management,
+        create_acl_step=IdleStep(),
+        create_role_step=IdleStep(),
+        create_user_step=IdleStep(),
+    ),
+    permission_steps=CrdbPermissionStepFactory(
+        update_instances_step=IdleStep(), permission_values=PERMISSION_VALUES
+    ),
+    read_database_steps=ReadDatabaseStepFactory(
+        read_database_step=IdleStep(), permission_values=PERMISSION_VALUES
+    ),
+    read_crdb_steps=ReadCrdbStepFactory(
+        read_crdb_step=IdleStep(),
+        database_body_builder=BodyWithSecret(),
+        secret_fields=frozenset({"authentication_redis_pass"}),
+    ),
 )
 CLUSTERS: list[ConfiguredCluster] = [
     ConfiguredCluster(
