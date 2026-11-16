@@ -16,6 +16,7 @@ from redis_enterprise_services.databases.new_database import (
     NewDatabase,
 )
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.crdb_spec import CrdbSpec
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -47,8 +48,12 @@ class DatabaseDefaults:
                 f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
             ) from error
 
-    def crdb_settings(self, *, coordinator: ConfiguredCluster) -> CrdbCreationSettings:
-        return crdb_settings_on_cluster(settings=self._settings, cluster=coordinator)
+    def crdb_settings(
+        self, *, coordinator: ConfiguredCluster, requested: CrdbSpec | None
+    ) -> CrdbCreationSettings:
+        return crdb_settings_on_cluster(
+            settings=self._settings, cluster=coordinator, requested_values=values_sent_in(requested=requested)
+        )
 
 
 def issue_text(*, issue: ErrorDetails) -> str:
@@ -66,7 +71,7 @@ def database_defaults_from(
         for cluster in clusters:
             reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
     for cluster in clusters:
-        crdb_settings_on_cluster(settings=settings, cluster=cluster)
+        crdb_settings_on_cluster(settings=settings, cluster=cluster, requested_values={})
     return DatabaseDefaults(settings=settings)
 
 
@@ -109,16 +114,21 @@ def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind
     return cluster.database_overrides
 
 
+def values_sent_in(*, requested: CrdbSpec | None) -> dict[str, JsonValue]:
+    return {} if requested is None else requested.model_dump(mode="json", exclude_none=True)
+
+
 def crdb_settings_on_cluster(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, requested_values: dict[str, JsonValue]
 ) -> CrdbCreationSettings:
     try:
         return CrdbCreationSettings.model_validate(
-            obj={**settings.active_active.crdb.model_dump(), **cluster.crdb_overrides}
+            obj={**settings.active_active.crdb.model_dump(), **cluster.crdb_overrides, **requested_values}
         )
     except ValidationError as error:
         raise ConfigurationError(
-            message=f"the CRDB settings that apply on cluster {cluster.fqdn} are not valid: "
+            message=f"the request together with the database_defaults.active_active.crdb values of cluster "
+            f"{cluster.fqdn} is not valid: "
             f"{'; '.join(issue_text(issue=issue) for issue in error.errors(include_input=False))}"
         ) from error
 

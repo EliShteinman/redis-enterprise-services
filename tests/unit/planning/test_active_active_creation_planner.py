@@ -13,8 +13,10 @@ from redis_enterprise_services.config.database_defaults_settings import (
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
+from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
+from redis_enterprise_services.planning.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
-from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
+from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
@@ -115,17 +117,17 @@ CLUSTERS: list[ConfiguredCluster] = [
         crdb_overrides={"compression": 1},
     ),
 ]
-SPEC: DatabaseSpec = DatabaseSpec(
+SPEC: ActiveActiveSpec = ActiveActiveSpec(
     database=NewDatabase(name="orders", memory_size=104857600),
     users=[DatabaseUserSpec(name="app", password="p1-passw0rd", acl_rule="+@all ~orders:*")],
 )
 
 
-def plan() -> SagaPlan:
-    return PLANNER.plan(saga_id="trace-1", clusters=CLUSTERS, spec=SPEC)
+def plan(*, spec: ActiveActiveSpec = SPEC) -> SagaPlan:
+    return PLANNER.plan(saga_id="trace-1", clusters=CLUSTERS, spec=spec)
 
 
-def step_inputs_by_key() -> dict[str, JsonValue]:
+def step_inputs_by_key(*, spec: ActiveActiveSpec = SPEC) -> dict[str, JsonValue]:
     results: StepResults = StepResults()
     results.keep(key="crdb", result=CreatedCrdb(guid="g"))
     results.keep(key=f"{NY}/local-database", result=LocalCrdbInstance(instance_id=1, db_uid=7))
@@ -137,7 +139,7 @@ def step_inputs_by_key() -> dict[str, JsonValue]:
         f"{TLV}/role/app": 22,
     }.items():
         results.keep(key=key, result=CreatedResource(uid=uid, name=key, action_uid=None, fields={}))
-    return {step.key: step.prepare(step_results=results).step_input for step in plan().steps}
+    return {step.key: step.prepare(step_results=results).step_input for step in plan(spec=spec).steps}
 
 
 def test_the_crdb_comes_first_then_each_site_then_one_permissions_patch_then_the_reads() -> None:
@@ -192,6 +194,27 @@ def test_the_crdb_is_created_with_the_crdb_settings_of_the_coordinator() -> None
         "encryption": False,
         "compression": 6,
     }
+
+
+SPEC_WITH_CRDB: ActiveActiveSpec = SPEC.model_copy(
+    update={"crdb": CrdbSpec(causal_consistency=True, compression=2)}
+)
+REQUESTED_OVER_CONFIGURED: dict[str, JsonValue] = {
+    "causal_consistency": True,
+    "encryption": False,
+    "compression": 2,
+}
+
+
+def test_the_crdb_is_created_with_the_crdb_settings_of_the_request() -> None:
+    assert step_inputs_by_key(spec=SPEC_WITH_CRDB)["crdb"]["settings"] == REQUESTED_OVER_CONFIGURED  # type: ignore[index]
+
+
+def test_the_crdb_check_expects_the_crdb_settings_of_the_request() -> None:
+    assert (
+        step_inputs_by_key(spec=SPEC_WITH_CRDB)["read-crdb"]["expected_settings"]  # type: ignore[index]
+        == REQUESTED_OVER_CONFIGURED
+    )
 
 
 def test_the_plan_locks_the_database_and_users_on_every_site() -> None:

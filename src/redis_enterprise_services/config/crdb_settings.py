@@ -6,6 +6,9 @@ from redis_enterprise_services.config.config_model import ConfigModel
 from redis_enterprise_services.config.item_path import ApiPath, ItemPath
 from redis_enterprise_services.config.wait_settings import WaitSettings
 
+MIN_CRDB_COMPRESSION: int = 0
+MAX_CRDB_COMPRESSION: int = 6
+
 
 class CrdbTaskSettings(ConfigModel):
     item_path: ItemPath
@@ -36,7 +39,7 @@ class CrdbTaskSettings(ConfigModel):
 class CrdbCreationSettings(ConfigModel):
     causal_consistency: bool
     encryption: bool
-    compression: int = Field(ge=0, le=6)
+    compression: int = Field(ge=MIN_CRDB_COMPRESSION, le=MAX_CRDB_COMPRESSION)
 
 
 class CrdbSettings(ConfigModel):

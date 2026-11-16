@@ -11,6 +11,7 @@ from redis_enterprise_services.config.database_defaults_settings import (
 )
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
 
 ADMIN: ClusterCredentialsSettings = ClusterCredentialsSettings(username="admin", password=SecretStr("secret"))
@@ -237,7 +238,24 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
 
 
 def test_the_crdb_values_of_the_coordinator_beat_the_crdb_defaults() -> None:
-    assert DEFAULTS.crdb_settings(coordinator=cluster(crdb={"compression": 6})).compression == 6
+    assert (
+        DEFAULTS.crdb_settings(coordinator=cluster(crdb={"compression": 6}), requested=None).compression == 6
+    )
+
+
+def test_a_requested_crdb_value_beats_the_configured_one() -> None:
+    assert (
+        DEFAULTS.crdb_settings(
+            coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
+        ).compression
+        == 1
+    )
+
+
+def test_a_crdb_field_left_out_of_the_request_comes_from_config() -> None:
+    assert DEFAULTS.crdb_settings(
+        coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
+    ) == CrdbCreationSettings(causal_consistency=True, encryption=False, compression=6)
 
 
 def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> None:
