@@ -19,8 +19,8 @@ from redis_enterprise_services.exceptions.cluster import (
     UnreadableClusterResponseError,
 )
 from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
-from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
-from redis_enterprise_services.steps.create_crdb import CreateCrdbInput, CreateCrdbStep, CreatedCrdb
+from redis_enterprise_services.steps.crdb.crdb_task_tracker import CrdbTaskTracker
+from redis_enterprise_services.steps.crdb.create_crdb import CreateCrdbInput, CreateCrdbStep, CreatedCrdb
 
 GUID: str = "d71cefce-4e31-41fd-b654-37cbb2f39a01"
 STEP_INPUT: CreateCrdbInput = CreateCrdbInput(

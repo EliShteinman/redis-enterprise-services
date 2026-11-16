@@ -10,7 +10,7 @@ from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreatio
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
-from redis_enterprise_services.steps.read_crdb import CrdbConfigSnapshot, ReadCrdbInput, ReadCrdbStep
+from redis_enterprise_services.steps.crdb.read_crdb import CrdbConfigSnapshot, ReadCrdbInput, ReadCrdbStep
 
 SENT: dict[str, JsonValue] = {
     "name": "orders",

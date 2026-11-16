@@ -2,7 +2,7 @@ import pytest
 
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
-from redis_enterprise_services.steps.find_local_crdb_instance import local_instance
+from redis_enterprise_services.steps.crdb.find_local_crdb_instance import local_instance
 
 
 def crdb_with(*, db_uid: str | None) -> Crdb:

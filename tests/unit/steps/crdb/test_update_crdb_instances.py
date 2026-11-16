@@ -16,9 +16,9 @@ from redis_enterprise_services.exceptions.cluster import (
     UnrestorableFieldsError,
     UpdateOutcomeUnclearError,
 )
-from redis_enterprise_services.steps.crdb_task_tracker import CrdbTaskTracker
-from redis_enterprise_services.steps.undo_task_id import undo_task_id
-from redis_enterprise_services.steps.update_crdb_instances import (
+from redis_enterprise_services.steps.crdb.crdb_task_tracker import CrdbTaskTracker
+from redis_enterprise_services.steps.crdb.undo_task_id import undo_task_id
+from redis_enterprise_services.steps.crdb.update_crdb_instances import (
     CrdbInstancesSnapshot,
     UpdateCrdbInstancesInput,
     UpdateCrdbInstancesStep,
