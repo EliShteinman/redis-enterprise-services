@@ -19,7 +19,7 @@ class UnexpectedErrorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         try:
             return await call_next(request)
-        except Exception as error:  # noqa: BLE001 - logged with its traceback by report_internal_error
+        except Exception as error:
             report_internal_error(error=error, message="unexpected error")
             unexpected_error: PublicError = self._public_errors.unexpected_error(error=error)
             return rejection_response(
