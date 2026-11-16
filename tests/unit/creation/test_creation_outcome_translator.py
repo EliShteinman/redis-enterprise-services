@@ -53,7 +53,7 @@ def translator(config_dir: Path) -> CreationOutcomeTranslator:
                 error_kind_by_code={"cluster_request_failed": "known_failure"},
             ),
             internal_error_message="internal error",
-            unexpected_error_message="unexpected {error_type}: {error}",
+            unexpected_error_message="internal error: unexpected {error_type}",
         ),
     )
 
