@@ -20,8 +20,8 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
  │   ├─ התחלה אטומית: running + heartbeat
  │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
  └─ ברקע: CreationExecution.run_and_save
-     ├─ CreationPlanning.plan: תוכנית צעדים
-     ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים (CreationPlanning.ensure_names_free) ⇐ צעדים
+     ├─ CreationSagaPlanning.plan: תוכנית צעדים
+     ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים (CreationSagaPlanning.ensure_names_free) ⇐ צעדים
      └─ CreationOutcomeTranslator: התוצאה ⇐ OperationStore
 ```
 
@@ -36,7 +36,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 | הכנה | `CreationPreparation` | `ActiveActivePreparation`, עם הכללים של `active_active_cluster_rules.py` | `creation/preparation/` |
 | מה שההכנה מחזירה | `PreparedCreation` (`cluster`, `spec`) | `PreparedActiveActiveCreation` (`clusters`, `spec`) | `creation/preparation/` |
 | ריצה ברקע | `CreationExecution[PreparedCreation]` | `CreationExecution[PreparedActiveActiveCreation]` | `creation/` |
-| `CreationPlanning` | `SingleSiteCreationPlanning` | `ActiveActiveCreationPlanning` | `creation/planning/` |
+| `CreationSagaPlanning` | `SingleSiteCreationSagaPlanning` | `ActiveActiveCreationSagaPlanning` | `creation/planning/` |
 | מפרק | `SingleSiteCreationPlanner` | `ActiveActiveCreationPlanner` | `planning/` |
 | `CreationRecordReader` | `SingleSiteRecordReader` (`created_database_result.py`) | `ActiveActiveRecordReader` (`created_active_active_result.py`) | `creation/results/` |
 | מודל התוצאה | `DatabaseResult` | `ActiveActiveDatabaseResult`: `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר | `operations/results/` |
@@ -47,7 +47,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 | `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
 | `CreationPreparation`, `ActiveActivePreparation` | `creation/preparation/` | כל מה שאפשר לבדוק בלי הקלאסטר. מחזירה את הבקשה המוכנה: `PreparedCreation` או `PreparedActiveActiveCreation` |
 | `CreationExecution[TPrepared]` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית. מחלקה אחת לשני הסוגים, גנרית על סוג הבקשה המוכנה |
-| `CreationPlanning[TPrepared]` | `creation/planning/` | ממשק: הבקשה המוכנה ⇐ תוכנית צעדים (`plan`), בדיקת השמות הפנויים (`ensure_names_free`) והקלאסטר שנרשם בשגיאה שאין לה קלאסטר (`fallback_cluster_url`). המימושים: `SingleSiteCreationPlanning` ו-`ActiveActiveCreationPlanning`, שקוראים למפרק ול-`CreationNamesCheck` |
+| `CreationSagaPlanning[TPrepared]` | `creation/planning/` | ממשק: הבקשה המוכנה ⇐ תוכנית צעדים (`plan`), בדיקת השמות הפנויים (`ensure_names_free`) והקלאסטר שנרשם בשגיאה שאין לה קלאסטר (`fallback_cluster_url`). המימושים: `SingleSiteCreationSagaPlanning` ו-`ActiveActiveCreationSagaPlanning`, שקוראים למפרק ול-`CreationNamesCheck` |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
 | `ActiveActiveCreationPlanner` | `planning/` | בקשת Active-Active ⇐ תוכנית צעדים לכל האתרים ומפתחות נעילה בכל אתר |
 | `CreationOutcomeTranslator[TPrepared]` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל. גם הוא מחלקה אחת, גנרית על סוג הבקשה המוכנה |
@@ -257,7 +257,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 `GET /v1/operations/{trace_id}` משותף לשני הסוגים: `Operation.database` הוא `DatabaseResult` או `ActiveActiveDatabaseResult`, וה-`kind` מבדיל ביניהם.
 
 **מחלקות:** ה-route `start_crdb_creation_once` (`api/routes/crdb_creation_route.py`) מקבל `CreateCrdbRequest` (`CreateCrdbTarget`, ו-`ActiveActiveSpec` עם `CrdbSpec`) וקורא ל-`CrdbCreation`.
-`ActiveActivePreparation` מחזירה `PreparedActiveActiveCreation`, ו-`CreationExecution` רץ עם `ActiveActiveCreationPlanning` ו-`ActiveActiveRecordReader`. התוצאה היא
+`ActiveActivePreparation` מחזירה `PreparedActiveActiveCreation`, ו-`CreationExecution` רץ עם `ActiveActiveCreationSagaPlanning` ו-`ActiveActiveRecordReader`. התוצאה היא
 `ActiveActiveDatabaseResult`, עם `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר.
 המפרק הוא `ActiveActiveCreationPlanner`, והצעדים ב-`steps/`: `CreateCrdbStep`, `FindLocalCrdbInstanceStep`,
 `UpdateCrdbInstancesStep` ו-`ReadCrdbStep`, ועוד `CreateResourceStep` ו-`ReadDatabaseStep` לכל אתר.

@@ -106,6 +106,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
 | מנוע ופעולות | `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה |
 | תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |
+| עזר | `sequences` | פונקציות טהורות על רשימות (`repeated_values`), בלי תלות באף חבילה אחרת |
 
 - המנוע (`saga/`) גנרי: הוא לא מכיר קלאסטר, DB או שירות קצה.
 - המשאבים והתעבורה לא מכירים את ה-Saga.
