@@ -2,7 +2,7 @@ from functools import partial
 
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.role_management import RoleManagement
+from redis_enterprise_services.config.defaults.role_management import RoleManagement
 from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.step_factories.step_inputs import (
     UidFromStepResults,

@@ -2,7 +2,7 @@ import logging.config
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.config.log_settings import LogFileSettings, LogSettings
+from redis_enterprise_services.config.service.log_settings import LogFileSettings, LogSettings
 from redis_enterprise_services.logger.json_formatter import JsonFormatter
 from redis_enterprise_services.logger.quiet import QuietRequestFilter
 

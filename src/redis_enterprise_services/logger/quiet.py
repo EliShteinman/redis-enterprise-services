@@ -3,7 +3,7 @@ from contextvars import ContextVar, Token
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from redis_enterprise_services.config.log_settings import LogLevel
+from redis_enterprise_services.config.service.log_settings import LogLevel
 
 quiet_request: ContextVar[bool] = ContextVar("quiet_request", default=False)
 

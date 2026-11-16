@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.lock_keys import database_lock_key, user_lock_key
 

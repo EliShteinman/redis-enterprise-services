@@ -1,6 +1,6 @@
 import pytest
 
-from redis_enterprise_services.config.naming_settings import NameRulesSettings
+from redis_enterprise_services.config.defaults.naming_settings import NameRulesSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_rule import NameRule

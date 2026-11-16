@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.database_spec import (

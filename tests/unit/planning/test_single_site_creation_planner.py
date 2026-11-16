@@ -1,9 +1,9 @@
 import pytest
 from pydantic import BaseModel, JsonValue, SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY
 from redis_enterprise_services.planning.database_spec import (

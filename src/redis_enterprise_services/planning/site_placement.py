@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.cluster_inventory import Environment
+from redis_enterprise_services.config.clusters.cluster_inventory import Environment
 
 
 class SitePlacement(BaseModel):

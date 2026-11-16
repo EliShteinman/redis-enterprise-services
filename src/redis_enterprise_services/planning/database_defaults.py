@@ -2,8 +2,8 @@ import logging
 
 from pydantic import JsonValue, ValidationError
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import (
     PERSISTENCE_MODE_BY_FIELD,
     DatabaseOptions,

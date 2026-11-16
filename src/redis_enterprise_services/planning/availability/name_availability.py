@@ -2,7 +2,7 @@ import logging
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.availability.requested_name import RequestedName

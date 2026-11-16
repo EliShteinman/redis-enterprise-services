@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_check_scope import NameCheckScope

@@ -1,7 +1,7 @@
 import logging
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.creation_lock_keys import creation_lock_keys
 from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY

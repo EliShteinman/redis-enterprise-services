@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import JsonValue
 
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.steps.read_database import (

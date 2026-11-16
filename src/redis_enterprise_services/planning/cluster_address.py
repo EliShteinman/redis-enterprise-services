@@ -1,5 +1,5 @@
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 
 
 def address_of(*, cluster: ConfiguredCluster) -> ClusterAddress:

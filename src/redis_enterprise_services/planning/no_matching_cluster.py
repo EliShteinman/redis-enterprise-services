@@ -1,6 +1,6 @@
 import logging
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.exceptions.planning import NoMatchingClusterError
 from redis_enterprise_services.planning.site_placement import SitePlacement
 

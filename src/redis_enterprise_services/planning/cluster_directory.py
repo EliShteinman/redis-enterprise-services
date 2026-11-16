@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.cluster_inventory import GENERIC_CLUSTER, ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import GENERIC_CLUSTER, ConfiguredCluster
 from redis_enterprise_services.planning.site_placement import SitePlacement
 
 

@@ -1,9 +1,9 @@
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.database_defaults import (

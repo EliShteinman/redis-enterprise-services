@@ -1,8 +1,8 @@
 import pytest
 from pydantic import SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import (
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import (
     ClusterType,
     ConfiguredCluster,
     Environment,

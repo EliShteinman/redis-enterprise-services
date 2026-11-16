@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 
 
 class UserResourceNaming:

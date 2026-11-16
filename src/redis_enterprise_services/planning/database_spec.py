@@ -3,8 +3,8 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.repeated_values import repeated_values
-from redis_enterprise_services.config.user_resources_settings import NAME_SEPARATOR
+from redis_enterprise_services.config.defaults.user_resources_settings import NAME_SEPARATOR
+from redis_enterprise_services.config.validation.repeated_values import repeated_values
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.acl_rule_syntax import (
     ACL_RULE_PATTERN,
