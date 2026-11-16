@@ -47,6 +47,7 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF", "BLE", "S", "ANN"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S106"]
 "src/redis_enterprise_services/background/periodic_thread.py" = ["BLE001"]
+"src/redis_enterprise_services/api/middleware/unexpected_error_middleware.py" = ["BLE001"]
 "src/redis_enterprise_services/creation/creation_execution.py" = ["BLE001"]
 
 [tool.pytest.ini_options]
