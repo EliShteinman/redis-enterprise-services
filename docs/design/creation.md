@@ -1,6 +1,6 @@
 # יצירת DB: איך בקשה רצה
 
-מה קורה מרגע ש-`POST /v1/databases/create` מגיע ועד שהתוצאה נשמרת. החוזה עצמו (שדות, קודים): `contracts/service-api.md`.
+מה קורה מרגע ש-`POST /v1/databases/create` (אתר אחד) או `POST /v1/crdbs/create` (Active-Active, סעיף 6) מגיע ועד שהתוצאה נשמרת. החוזה עצמו (שדות, קודים): `contracts/service-api.md`.
 המנוע, ה-Redis וההתאוששות: `saga-engine-and-state.md`.
 
 **בנוי:** יצירה באתר אחד ויצירת Active-Active (סעיף 6). **לא בנוי:** `planned.md`.
@@ -39,6 +39,9 @@ POST /v1/databases/create
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
+**שני routes, ריצה אחת:** לכל סוג route משלו, מודל בקשה משלו (`target.site` מול `target.sites` ו-`spec.crdb`), הכנה משלו
+ובונה תוצאה משלו. המסלול שלמעלה, המנוע, הנעילה והצעדים המקומיים משותפים.
+
 **נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `state_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
 
 ---
@@ -52,7 +55,7 @@ POST /v1/databases/create
    והאתר של קלאסטר הם המקום שלו בעץ. המפתח של קלאסטר הוא ה-FQDN שלו, ואין לו שם נפרד. כתובת ה-API נבנית ממנו:
    `https://<FQDN>:<api_port>`, ופורט שכתוב במפתח עצמו (`cluster-a.net-a.example.com:9444`) קודם ל-`api_port`. לקלאסטר
    יש `type`. הקונפיג נדחה בעלייה אם FQDN חוזר (בכל הקובץ), אם כתובת API חוזרת, או אם ה-FQDN של קלאסטר `dedicated` הוא
-   `generic`. הבקשה שולחת `environment`, `network`, `site`, וב-`cluster` את `generic` או FQDN של קלאסטר `dedicated`:
+   `generic`. הבקשה שולחת ב-`target.site` אובייקט אחד: `environment`, `network`, `site`, וב-`cluster` את `generic` או FQDN של קלאסטר `dedicated`:
    - FQDN: הקלאסטר מסוג `dedicated` עם אותם סביבה, רשת, אתר ו-FQDN.
    - `generic`: כל הקלאסטרים ה-generic באותם סביבה, רשת ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
@@ -95,8 +98,8 @@ POST /v1/databases/create
    ```
 
    - בכל רמה (סביבה, רשת, אתר, קלאסטר) מותרים `username`, `password`, `default_user_password`, `api_port`,
-     `database` ו-`active_active.database`. `active_active.crdb` מותר רק ברמת סביבה, רשת ואתר, לא בקלאסטר בודד, כי
-     CRDB פרוס על כמה קלאסטרים. בכל ערך, הרמה הנמוכה ביותר שכתבה אותו קובעת.
+     `database` ו-`active_active.database`. `active_active.crdb` מותר רק ברמת סביבה ורשת, לא באתר ולא בקלאסטר בודד, כי
+     CRDB פרוס על כמה אתרים באותה רשת. בכל ערך, הרמה הנמוכה ביותר שכתבה אותו קובעת.
    - **פרטי גישה לקלאסטר:** כל קלאסטר חייב לצאת עם `username` ו-`password` של המשתמש המנהל, מהרמה שלו או מרמה
      מעליו (כל אחד מהם בנפרד). הם משמשים לכל קריאה אליו, וגם לפרטים שלו ב-CRDB. אין פרטי גישה כלליים מחוץ לעץ.
      קלאסטר בלי אחד מהם, בלי `default_user_password` או בלי פורט עוצר את השירות בעלייה, עם שגיאה שנוקבת בקלאסטר
@@ -111,7 +114,8 @@ POST /v1/databases/create
    - הסדר לכל סוג: ברירת המחדל שלו, אחריה אותו סוג בסביבה, ברשת, באתר ובקלאסטר (`database`, וב-Active-Active
      `active_active.database`). הרמה הנמוכה ביותר שכתבה ערך קובעת. בסוף השדות שהבקשה שלחה ולא כ-`null`. התוצאה
      עוברת ולידציה ב-`NewDatabase`.
-   - הגדרות ה-CRDB: `active_active.crdb` של ברירות המחדל, אחריו של הסביבה, של הרשת ושל האתר של הקלאסטר המתאם.
+   - הגדרות ה-CRDB (`causal_consistency`, `encryption`, `compression`): `active_active.crdb` של ברירות המחדל, אחריו של
+     הסביבה ושל הרשת. בסוף השדות שהבקשה שלחה ב-`spec.crdb` ולא כ-`null`: ערך מהבקשה קודם לקונפיג.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - **שדות של מצב שמירה:** `aof_policy` שייך ל-`aof` ו-`snapshot_policy` ל-`snapshot`. אחרי המיזוג נקבע
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` של הסט של אותו סוג אם הבקשה
@@ -120,10 +124,10 @@ POST /v1/databases/create
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
      קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
-4. **ב-Active-Active:** כל אתר עובר את שלב 2 לבד. אחר כך, לפני ברירות המחדל: כל האתרים באותה רשת (אחרת
+4. **ב-Active-Active** (`POST /v1/crdbs/create`, `target.sites`): כל אתר עובר את שלב 2 לבד. אחר כך, לפני ברירות המחדל: כל האתרים באותה רשת (אחרת
    `mixed_networks`), כל אתר על קלאסטר אחר (אחרת `duplicate_sites`), וקלאסטרים שונים ב-FQDN אחר, ב-host אחר ועם אותה
    `default_user_password` (אחרת `configuration_error`: הקונפיג של הקלאסטרים, לא הבקשה). רק אז כל אתר עובר את שלב 3,
-   וכל האתרים חייבים לצאת עם אותן הגדרות (אחרת `configuration_error`, עם שמות השדות השונים). סעיף 6.
+   וכל האתרים חייבים לצאת עם אותן הגדרות, של ה-DB ושל ה-CRDB (אחרת `configuration_error`, עם שמות השדות השונים). סעיף 6.
 
 כל מה שבשלב הזה לא נוגע בקלאסטר, ולכן כשל בו הוא תשובה מיידית, ושום דבר לא נשמר.
 
@@ -192,7 +196,7 @@ POST /v1/databases/create
 
 | מה קרה | הפעולה |
 |---|---|
-| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`): ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
+| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`), `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
 | שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `unexpected <type>: <text>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |
@@ -228,7 +232,11 @@ POST /v1/databases/create
 
 ## 6. Active-Active
 
-**חוזה:** `active_active: true` עם כמה `sites`. `crdb_guid` הוא ה-guid של ה-CRDB, ו-`clusters[]` כולל ענף לכל קלאסטר.
+**חוזה** (`service-api.md` סעיף 3א): route נפרד, `POST /v1/crdbs/create`, בלי שדה שבוחר סוג. `target.sites` הוא רשימה של אתר אחד
+או יותר, מאותו אובייקט אתר כמו ביצירה באתר אחד, והראשון מתאם. `spec` הוא `{crdb, database, users}`: `spec.crdb` לא חובה,
+ומחזיק את `causal_consistency`, `encryption` ו-`compression` (ערך מהבקשה קודם לקונפיג, סעיף 2). בתוצאה `kind: "active_active"`,
+אובייקט `crdb` עם ה-`guid` וההגדרות של ה-CRDB, ו-`clusters[]` עם ענף לכל קלאסטר, שכולל גם `instance_id` ו-`compression`.
+`GET /v1/operations/{trace_id}` משותף לשני הסוגים.
 המפרק הוא `ActiveActiveCreationPlanner`, והצעדים ב-`steps/`: `CreateCrdbStep`, `FindLocalCrdbInstanceStep`,
 `UpdateCrdbInstancesStep` ו-`ReadCrdbStep`, ועוד `CreateResourceStep` ו-`ReadDatabaseStep` לכל אתר.
 
@@ -291,7 +299,10 @@ POST /v1/databases/create
 - **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. `PATCH /v1/crdbs` נשלח בלי `cluster-state-id`, כך שההרשאות
   ב-AA נשענות על הנעילה בלבד, והנעילה מגינה רק מפני הרצות של השירות הזה, לא מפני שינוי מה-UI או מכלי אחר.
   **פתוח:** האם `PATCH /v1/crdbs` מכבד `cluster-state-id` (לא נבדק).
-- **תוצאה:** ענף לכל אתר מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role שנוצרו בו. `not_rolled_back` מראה כל משאב באתר שלו,
+- **תוצאה:** `crdb` מקריאת ה-CRDB (צעד N+3), וענף לכל אתר, לפי סדר ה-`sites`, מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role
+  שנוצרו בו. ה-instances של ה-CRDB לא חוזרים כרשימה נפרדת: השירות מתאים כל instance לענף שלו לפי `cluster_url` (בלי
+  רישיות, ועם הפורט ברירת המחדל של הסכמה), שם את `instance_id` ו-`compression` שלו בענף, ובודק שכל instance שייך
+  לאחד הענפים. `not_rolled_back` מראה כל משאב באתר שלו,
   ו-CRDB שנשאר עם `crdb_guid`. מפתח של צעד באתר מתחיל ב-FQDN של הקלאסטר (`cluster-a.net-a.example.com/acl/app`).
 - **בדיקה מול המעבדה (2026-11-14):** יצירה דרך השירות על שני אתרים עם יוזר עברה תוך כ-21 שניות; ACL שנדחה ביטל הכל,
   כולל ה-CRDB, בלי שאריות; שום בקשה או תשובה לא נחסמה בחומת האש. Active-Active על אתר אחד (2026-11-15) עבר תוך
