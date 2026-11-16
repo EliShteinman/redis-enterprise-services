@@ -6,9 +6,8 @@ from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.operation_settings import OperationSettings
-from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
@@ -128,7 +127,7 @@ def saga_record_with_steps(*, status: SagaStatus, step_status: StepStatus) -> Sa
 
 
 class ExecutionHarness:
-    def __init__(self, *, database_settings: DatabaseSettings) -> None:
+    def __init__(self, *, settings: Settings) -> None:
         self.name_availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.saga_executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.operation_store: MagicMock = create_autospec(spec=OperationStore, instance=True)
@@ -146,7 +145,8 @@ class ExecutionHarness:
             outcome_translator=CreationOutcomeTranslator(
                 resource_naming=UserResourceNaming(settings=USER_RESOURCES),
                 public_errors=PUBLIC_ERRORS,
-                database_settings=database_settings,
+                database_settings=settings.database,
+                cluster_fields=settings.cluster_api.fields,
             ),
             public_errors=PUBLIC_ERRORS,
             saga_record_reader=self.saga_record_reader,
@@ -159,7 +159,7 @@ class ExecutionHarness:
 
 @pytest.fixture
 def harness(config_dir: Path) -> ExecutionHarness:
-    return ExecutionHarness(database_settings=load_settings(config_dir=config_dir).database)
+    return ExecutionHarness(settings=load_settings(config_dir=config_dir))
 
 
 @pytest.fixture
