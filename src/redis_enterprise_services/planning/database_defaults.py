@@ -3,10 +3,7 @@ import logging
 from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_defaults_settings import (
-    DatabaseDefaultsSettings,
-    OverrideClusterSelector,
-)
+from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import (
     PERSISTENCE_MODE_BY_FIELD,
     DatabaseOptions,
@@ -25,6 +22,7 @@ class DatabaseDefaults:
 
     def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
         values: dict[str, JsonValue] = merged_default_values(settings=self._settings, cluster=cluster)
+        logger.debug(msg=f"database_defaults on cluster {cluster.fqdn}: {values}")
         values.update(requested.model_dump(exclude_none=True))
         return NewDatabase.model_validate(
             obj=with_persistence_settings_of_its_mode(
@@ -48,7 +46,7 @@ def reject_invalid_values_on_cluster(
     merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
     try:
         reject_persistence_settings_of_another_mode(
-            base=settings.values, override=override_values_on_cluster(settings=settings, cluster=cluster)
+            base=settings.database, override=cluster.database_overrides
         )
         reject_invalid_options(
             values=with_persistence_settings_of_its_mode(
@@ -57,39 +55,15 @@ def reject_invalid_values_on_cluster(
         )
     except ConfigurationError as error:
         raise ConfigurationError(
-            message=f"the database defaults that apply together on cluster {cluster.name}: {error.message}"
+            message=f"the database_defaults values that apply together on cluster {cluster.fqdn}: "
+            f"{error.message}"
         ) from error
 
 
 def merged_default_values(
     *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
-    return {**settings.values, **override_values_on_cluster(settings=settings, cluster=cluster)}
-
-
-def override_values_on_cluster(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
-) -> dict[str, JsonValue]:
-    values: dict[str, JsonValue] = {}
-    for override in settings.overrides:
-        if selector_matches(selector=override.when, cluster=cluster):
-            logger.debug(msg=f"defaults for {override.when} apply to cluster {cluster.name}")
-            values.update(override.values)
-    return values
-
-
-def selector_matches(*, selector: OverrideClusterSelector, cluster: ConfiguredCluster) -> bool:
-    return selector.model_dump(exclude_none=True).items() <= cluster_labels(cluster=cluster).items()
-
-
-def cluster_labels(*, cluster: ConfiguredCluster) -> dict[str, str]:
-    return {
-        "network": cluster.network,
-        "environment": cluster.environment,
-        "site": cluster.site,
-        "type": cluster.type,
-        "cluster_name": cluster.name,
-    }
+    return {**settings.database, **cluster.database_overrides}
 
 
 def with_persistence_settings_of_its_mode(
@@ -107,15 +81,8 @@ def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None
     persistence_defaults: list[dict[str, JsonValue]] = [
         {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in settings.persistence_values.items()
     ]
-    for values in [settings.values, *persistence_defaults]:
+    for values in [settings.database, *persistence_defaults]:
         reject_invalid_options(values=values)
-    for override in settings.overrides:
-        reject_persistence_settings_of_another_mode(base=settings.values, override=override.values)
-        reject_invalid_options(
-            values=with_persistence_settings_of_its_mode(
-                values={**settings.values, **override.values}, persistence_values=settings.persistence_values
-            )
-        )
 
 
 def reject_persistence_settings_of_another_mode(
@@ -127,7 +94,7 @@ def reject_persistence_settings_of_another_mode(
     )
     if foreign:
         raise ConfigurationError(
-            message=f"database defaults override sets {foreign}, which do not apply to persistence {mode}"
+            message=f"database values on a cluster set {foreign}, which do not apply to persistence {mode}"
         )
 
 

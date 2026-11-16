@@ -16,5 +16,5 @@ class SiteClusterResolver:
     def resolve(self, *, placement: SitePlacement) -> ConfiguredCluster:
         candidates: list[ConfiguredCluster] = self._directory.candidates_for(placement=placement)
         chosen: ConfiguredCluster = self._chooser.choose(placement=placement, candidates=candidates)
-        logger.info(msg=f"{placement.describe()} resolves to cluster {chosen.name}")
+        logger.info(msg=f"{placement.describe()} resolves to cluster {chosen.fqdn}")
         return chosen
