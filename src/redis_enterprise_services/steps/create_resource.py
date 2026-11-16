@@ -45,7 +45,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
     ) -> None:
         target: ClusterTarget = self._target_resolver.target_for(address=step_input.cluster)
         created: CreatedResource = self._repository.start_creation(target=target, spec=step_input.spec)
-        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=created)
+        missing: list[str] = self._repository.missing_fields(
+            target=target, spec=step_input.spec, created=created
+        )
         keep_result(result=self._repository.without_secrets(created=created))
         raise_if_incomplete(created=created, missing=missing)
         self._completion_waiter.wait_for_pending_creation(target=target, resource=created)
@@ -63,7 +65,9 @@ class CreateResourceStep[TSpec: NamedSpec](SagaStep[CreateResourceInput[TSpec], 
         )
         if current is None:
             return None
-        missing: list[str] = self._repository.missing_fields(spec=step_input.spec, created=current)
+        missing: list[str] = self._repository.missing_fields(
+            target=target, spec=step_input.spec, created=current
+        )
         kept: CreatedResource = kept_result or self._repository.without_secrets(created=current)
         keep_result_if_none_kept(result=kept)
         raise_if_incomplete(created=current, missing=missing)

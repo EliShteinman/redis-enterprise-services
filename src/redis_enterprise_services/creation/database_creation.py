@@ -13,11 +13,11 @@ class DatabaseCreation:
         self,
         *,
         preparation: CreationPreparation,
-        execution: CreationExecution,
+        execution: CreationExecution[PreparedCreation],
         operation_starter: OperationStarter,
     ) -> None:
         self._preparation: CreationPreparation = preparation
-        self._execution: CreationExecution = execution
+        self._execution: CreationExecution[PreparedCreation] = execution
         self._operation_starter: OperationStarter = operation_starter
 
     def start_once(self, *, trace_id: str, creation_request: CreateDatabaseRequest) -> None:

@@ -1,0 +1,57 @@
+database_defaults:
+  single_site:
+    database:
+      version: "8.4"
+      replication: true
+      data_persistence: aof
+      shards_placement: dense
+      proxy_policy: all-master-shards
+      sharding: false
+      shards_count: 1
+      slave_ha: false
+      eviction_policy: volatile-lru
+    persistence_values:
+      aof:
+        aof_policy: appendfsync-every-sec
+      snapshot:
+        snapshot_policy: [{secs: 3600, writes: 1}]
+  active_active:
+    database:
+      version: "8.4"
+      replication: true
+      data_persistence: aof
+      shards_placement: dense
+      proxy_policy: all-master-shards
+      sharding: false
+      shards_count: 1
+      slave_ha: false
+      eviction_policy: noeviction
+    persistence_values:
+      aof:
+        aof_policy: appendfsync-every-sec
+      snapshot:
+        snapshot_policy: [{secs: 3600, writes: 1}]
+    crdb:
+      causal_consistency: false
+      encryption: false
+      compression: 3
+
+naming:
+  database:
+    pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+    max_length: 20
+  redis:
+    database:
+      pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+      max_length: 64
+    user:
+      pattern: "^[ !#-%'-;=?-~]+$"
+      max_length: 255
+    acl_and_role:
+      pattern: "^[a-zA-Z0-9_ ()\\[\\]@,.;#-]+$"
+      max_length: 255
+
+user_resources:
+  acl_name_template: "{database}-{user}-acl"
+  role_name_template: "{database}-{user}-role"
+  role_management: db_viewer

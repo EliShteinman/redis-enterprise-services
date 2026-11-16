@@ -1,13 +1,10 @@
 import logging
 
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.crdbs.creation_body import cluster_fqdn
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
-from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError
-from redis_enterprise_services.planning.database_defaults import DATA_PERSISTENCE_FIELD, DatabaseDefaults
+from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -35,79 +32,13 @@ class CreationPreparation:
         context: NamingContext = creation_request.target.naming_context()
         self._name_validator.ensure_valid(name=requested_database.name, context=context)
         self._user_names_validator.ensure_valid(spec=creation_request.spec, context=context)
-        clusters: list[ConfiguredCluster] = [
-            self._site_cluster_resolver.resolve(placement=site) for site in creation_request.target.sites
-        ]
-        reject_mixed_networks(clusters=clusters)
-        reject_sites_on_one_cluster(clusters=clusters)
-        reject_clusters_that_clash(clusters=clusters)
-        filled_database: NewDatabase = self._same_database_on_every_site(
-            clusters=clusters,
-            requested=requested_database,
-            active_active=creation_request.target.active_active,
+        cluster: ConfiguredCluster = self._site_cluster_resolver.resolve(
+            placement=creation_request.target.site
         )
-        logger.info(
-            msg=f"creating {filled_database.name} on {[cluster.name for cluster in clusters]} is prepared"
+        filled_database: NewDatabase = self._database_defaults.fill_in(
+            cluster=cluster, requested=requested_database, active_active=False
         )
+        logger.info(msg=f"creating {filled_database.name} on {cluster.fqdn} is prepared")
         return PreparedCreation(
-            clusters=clusters,
-            active_active=creation_request.target.active_active,
-            spec=creation_request.spec.with_database(database=filled_database),
+            cluster=cluster, spec=creation_request.spec.with_database(database=filled_database)
         )
-
-    def _same_database_on_every_site(
-        self, *, clusters: list[ConfiguredCluster], requested: NewDatabase, active_active: bool
-    ) -> NewDatabase:
-        filled: list[NewDatabase] = [
-            self._database_defaults.fill_in(cluster=cluster, requested=requested, active_active=active_active)
-            for cluster in clusters
-        ]
-        differing: list[str] = differences_to_report(differing=differing_fields(databases=filled))
-        if differing:
-            raise ConfigurationError(
-                message=f"the database defaults give {differing} different values on "
-                f"{[cluster.name for cluster in clusters]}"
-            )
-        return filled[0]
-
-
-def differing_fields(*, databases: list[NewDatabase]) -> list[str]:
-    return [
-        name
-        for name in NewDatabase.model_fields
-        if any(getattr(database, name) != getattr(databases[0], name) for database in databases)
-    ]
-
-
-def differences_to_report(*, differing: list[str]) -> list[str]:
-    if DATA_PERSISTENCE_FIELD in differing:
-        return sorted(name for name in differing if name not in PERSISTENCE_MODE_BY_FIELD)
-    return sorted(differing)
-
-
-def reject_mixed_networks(*, clusters: list[ConfiguredCluster]) -> None:
-    networks: set[str] = {cluster.network for cluster in clusters}
-    if len(networks) > 1:
-        raise MixedNetworksError(message=f"the sites are on more than one network: {sorted(networks)}")
-
-
-def reject_sites_on_one_cluster(*, clusters: list[ConfiguredCluster]) -> None:
-    repeated: list[str] = repeated_values(values=[cluster.api_url for cluster in clusters])
-    if repeated:
-        raise DuplicateSitesError(message=f"more than one site resolves to the same cluster: {repeated}")
-
-
-def reject_clusters_that_clash(*, clusters: list[ConfiguredCluster]) -> None:
-    for kind, values in (
-        ("cluster name", [cluster.name for cluster in clusters]),
-        ("host", [cluster_fqdn(api_url=cluster.api_url) for cluster in clusters]),
-    ):
-        repeated: list[str] = repeated_values(values=values)
-        if repeated:
-            raise ConfigurationError(
-                message=f"different clusters of one Active-Active database share a {kind}: {repeated}"
-            )
-
-
-def repeated_values(*, values: list[str]) -> list[str]:
-    return sorted({value for value in values if values.count(value) > 1})

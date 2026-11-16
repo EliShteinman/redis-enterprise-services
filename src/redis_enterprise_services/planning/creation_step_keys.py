@@ -21,5 +21,5 @@ def user_step_key(*, user: DatabaseUserSpec) -> str:
     return f"user/{user.name}"
 
 
-def on_site(*, cluster_name: str, step_key: str) -> str:
-    return f"{cluster_name}{SITE_KEY_SEPARATOR}{step_key}"
+def on_site(*, cluster_fqdn: str, step_key: str) -> str:
+    return f"{cluster_fqdn}{SITE_KEY_SEPARATOR}{step_key}"

@@ -1,5 +1,6 @@
 import secrets
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -20,11 +21,11 @@ def itest_lock_keys(*, trace_id: str) -> list[str]:
 
 
 @pytest.fixture(scope="session")
-def settings() -> Settings:
+def settings(config_dir: Path) -> Settings:
     try:
-        return load_settings()
+        return load_settings(config_dir=config_dir)
     except ValidationError as error:
-        pytest.skip(reason=f"the settings of the local clusters cannot be loaded: {error}")
+        pytest.skip(reason=f"the settings cannot be loaded: {error}")
 
 
 @pytest.fixture(scope="session")

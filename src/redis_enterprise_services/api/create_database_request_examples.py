@@ -2,22 +2,19 @@ from fastapi.openapi.models import Example
 
 CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
     "full": {
-        "summary": "Every field: a sharded database with two users, on a named cluster",
+        "summary": "Every field: a sharded database with two users, on a dedicated cluster named by its FQDN",
         "description": "Every field the request accepts, except snapshot_policy, which is sent only "
         "with data_persistence snapshot (see the snapshot example). Only target, spec.database.name and "
         "spec.database.memory_size are required; any other database field that is left out "
         "takes the service default for the target.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [
-                    {
-                        "network": "net-a",
-                        "site": "dc1",
-                        "environment": "PROD",
-                        "cluster": "cluster-a",
-                    }
-                ],
+                "site": {
+                    "environment": "PROD",
+                    "network": "net-a",
+                    "site": "NY",
+                    "cluster": "cluster-a.net-a",
+                },
             },
             "spec": {
                 "database": {
@@ -68,8 +65,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "description": "snapshot_policy is sent only together with data_persistence snapshot.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [{"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}],
+                "site": {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"},
             },
             "spec": {
                 "database": {
@@ -88,8 +84,7 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
         "for the target.",
         "value": {
             "target": {
-                "active_active": False,
-                "sites": [{"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}],
+                "site": {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"},
             },
             "spec": {
                 "database": {"name": "orders", "memory_size": 1073741824},

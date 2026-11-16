@@ -2,12 +2,22 @@ from redis_enterprise_services.background.periodic_thread import PeriodicThread
 from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
 from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
 from redis_enterprise_services.composition.state_wiring import StateWiring
+from redis_enterprise_services.config.cluster_flattening import configured_clusters
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.creation.active_active_creation_planning import ActiveActiveCreationPlanning
+from redis_enterprise_services.creation.active_active_preparation import ActiveActivePreparation
+from redis_enterprise_services.creation.active_active_record_reader import ActiveActiveRecordReader
+from redis_enterprise_services.creation.crdb_creation import CrdbCreation
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
+from redis_enterprise_services.creation.creation_planning import CreationPlanning
 from redis_enterprise_services.creation.creation_preparation import CreationPreparation
+from redis_enterprise_services.creation.creation_record_reader import CreationRecordReader
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
+from redis_enterprise_services.creation.single_site_creation_planning import SingleSiteCreationPlanning
+from redis_enterprise_services.creation.single_site_record_reader import SingleSiteRecordReader
 from redis_enterprise_services.liveness.in_process_operation_heartbeats import InProcessOperationHeartbeats
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -22,7 +32,7 @@ from redis_enterprise_services.planning.availability.listed_name_lookup import L
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.database_defaults import database_defaults_from
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -55,12 +65,14 @@ class AppWiring:
             heartbeat_store=state_wiring.heartbeat_store
         )
         public_errors: PublicErrors = build_public_errors(settings=settings)
-        self.public_errors: PublicErrors = public_errors
-        self.operation_store: OperationStore = state_wiring.operation_store
-        self.database_creation: DatabaseCreation = build_database_creation(
+        clusters: list[ConfiguredCluster] = configured_clusters(tree=settings.clusters)
+        parts: CreationParts = CreationParts(
             settings=settings,
+            clusters=clusters,
             state_wiring=state_wiring,
-            cluster_wiring=ClusterWiring(settings=settings, deadline_polling=deadline_polling),
+            cluster_wiring=ClusterWiring(
+                settings=settings, clusters=clusters, deadline_polling=deadline_polling
+            ),
             operation_starter=build_operation_starter(
                 state_wiring=state_wiring,
                 task_runner=task_runner,
@@ -70,6 +82,10 @@ class AppWiring:
             public_errors=public_errors,
             sleeper=sleeper,
         )
+        self.public_errors: PublicErrors = public_errors
+        self.operation_store: OperationStore = state_wiring.operation_store
+        self.database_creation: DatabaseCreation = build_database_creation(parts=parts)
+        self.crdb_creation: CrdbCreation = build_crdb_creation(parts=parts)
         self._state_wiring: StateWiring = state_wiring
         self._task_runner: ThreadPoolTaskRunner = task_runner
         self._operation_heartbeat_thread: PeriodicThread = build_operation_heartbeat_thread(
@@ -133,71 +149,123 @@ def build_abandoned_sweep_thread(
     )
 
 
-def build_database_creation(
-    *,
-    settings: Settings,
-    state_wiring: StateWiring,
-    cluster_wiring: ClusterWiring,
-    operation_starter: OperationStarter,
-    public_errors: PublicErrors,
-    sleeper: Sleeper,
-) -> DatabaseCreation:
-    user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
-    return DatabaseCreation(
-        preparation=build_creation_preparation(settings=settings, resource_naming=user_resource_naming),
-        execution=CreationExecution(
-            names_check=build_names_check(
-                cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
-            ),
-            planner=build_planner(
-                settings=settings, cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
-            ),
-            active_active_planner=build_active_active_planner(
-                settings=settings, cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
-            ),
-            saga_executor=build_saga_executor(
-                settings=settings,
-                saga_lock=state_wiring.saga_lock,
-                saga_record_writer=state_wiring.saga_record_store,
-                sleeper=sleeper,
-            ),
-            outcome_translator=CreationOutcomeTranslator(
-                resource_naming=user_resource_naming,
-                public_errors=public_errors,
-                database_settings=settings.database,
-            ),
-            public_errors=public_errors,
-            saga_record_reader=state_wiring.saga_record_store,
-            operation_store=state_wiring.operation_store,
-        ),
-        operation_starter=operation_starter,
-    )
-
-
-def build_creation_preparation(
-    *, settings: Settings, resource_naming: UserResourceNaming
-) -> CreationPreparation:
-    redis_names: RedisNameRulesSettings = settings.naming.redis
-    return CreationPreparation(
-        name_validator=NameValidator(
+class CreationParts:
+    def __init__(
+        self,
+        *,
+        settings: Settings,
+        clusters: list[ConfiguredCluster],
+        state_wiring: StateWiring,
+        cluster_wiring: ClusterWiring,
+        operation_starter: OperationStarter,
+        public_errors: PublicErrors,
+        sleeper: Sleeper,
+    ) -> None:
+        redis_names: RedisNameRulesSettings = settings.naming.redis
+        self.settings: Settings = settings
+        self.state_wiring: StateWiring = state_wiring
+        self.cluster_wiring: ClusterWiring = cluster_wiring
+        self.operation_starter: OperationStarter = operation_starter
+        self.public_errors: PublicErrors = public_errors
+        self.resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
+        self.database_defaults: DatabaseDefaults = database_defaults_from(
+            settings=settings.database_defaults, clusters=clusters
+        )
+        self.name_validator: NameValidator = NameValidator(
             rules=[
                 *configured_name_rules(settings=redis_names.database),
                 *configured_name_rules(settings=settings.naming.database),
             ]
-        ),
-        user_names_validator=UserNamesValidator(
+        )
+        self.user_names_validator: UserNamesValidator = UserNamesValidator(
             user_name_validator=NameValidator(rules=configured_name_rules(settings=redis_names.user)),
             acl_and_role_name_validator=NameValidator(
                 rules=configured_name_rules(settings=redis_names.acl_and_role)
             ),
-            resource_naming=resource_naming,
+            resource_naming=self.resource_naming,
+        )
+        self.site_cluster_resolver: SiteClusterResolver = SiteClusterResolver(
+            directory=ClusterDirectory(clusters=clusters), chooser=SingleCandidateChooser()
+        )
+        self.names_check: CreationNamesCheck = build_names_check(
+            cluster_wiring=cluster_wiring, user_resource_naming=self.resource_naming
+        )
+        self.saga_executor: SagaExecutor = build_saga_executor(
+            settings=settings,
+            saga_lock=state_wiring.saga_lock,
+            saga_record_writer=state_wiring.saga_record_store,
+            sleeper=sleeper,
+        )
+
+
+def build_database_creation(*, parts: CreationParts) -> DatabaseCreation:
+    return DatabaseCreation(
+        preparation=CreationPreparation(
+            name_validator=parts.name_validator,
+            user_names_validator=parts.user_names_validator,
+            site_cluster_resolver=parts.site_cluster_resolver,
+            database_defaults=parts.database_defaults,
         ),
-        site_cluster_resolver=SiteClusterResolver(
-            directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
+        execution=build_creation_execution(
+            parts=parts,
+            planning=SingleSiteCreationPlanning(
+                names_check=parts.names_check,
+                planner=build_planner(
+                    settings=parts.settings,
+                    cluster_wiring=parts.cluster_wiring,
+                    user_resource_naming=parts.resource_naming,
+                ),
+            ),
+            record_reader=SingleSiteRecordReader(
+                resource_naming=parts.resource_naming, database_settings=parts.settings.database
+            ),
         ),
-        database_defaults=database_defaults_from(
-            settings=settings.database_defaults, clusters=settings.clusters
+        operation_starter=parts.operation_starter,
+    )
+
+
+def build_crdb_creation(*, parts: CreationParts) -> CrdbCreation:
+    return CrdbCreation(
+        preparation=ActiveActivePreparation(
+            name_validator=parts.name_validator,
+            user_names_validator=parts.user_names_validator,
+            site_cluster_resolver=parts.site_cluster_resolver,
+            database_defaults=parts.database_defaults,
         ),
+        execution=build_creation_execution(
+            parts=parts,
+            planning=ActiveActiveCreationPlanning(
+                names_check=parts.names_check,
+                planner=build_active_active_planner(
+                    settings=parts.settings,
+                    cluster_wiring=parts.cluster_wiring,
+                    user_resource_naming=parts.resource_naming,
+                    database_defaults=parts.database_defaults,
+                ),
+            ),
+            record_reader=ActiveActiveRecordReader(
+                resource_naming=parts.resource_naming, database_settings=parts.settings.database
+            ),
+        ),
+        operation_starter=parts.operation_starter,
+    )
+
+
+def build_creation_execution[TPrepared](
+    *,
+    parts: CreationParts,
+    planning: CreationPlanning[TPrepared],
+    record_reader: CreationRecordReader[TPrepared],
+) -> CreationExecution[TPrepared]:
+    return CreationExecution(
+        planning=planning,
+        saga_executor=parts.saga_executor,
+        outcome_translator=CreationOutcomeTranslator(
+            record_reader=record_reader, public_errors=parts.public_errors
+        ),
+        public_errors=parts.public_errors,
+        saga_record_reader=parts.state_wiring.saga_record_store,
+        operation_store=parts.state_wiring.operation_store,
     )
 
 
@@ -241,7 +309,11 @@ def build_planner(
 
 
 def build_active_active_planner(
-    *, settings: Settings, cluster_wiring: ClusterWiring, user_resource_naming: UserResourceNaming
+    *,
+    settings: Settings,
+    cluster_wiring: ClusterWiring,
+    user_resource_naming: UserResourceNaming,
+    database_defaults: DatabaseDefaults,
 ) -> ActiveActiveCreationPlanner:
     return ActiveActiveCreationPlanner(
         role_management=settings.user_resources.role_management,
@@ -249,7 +321,7 @@ def build_active_active_planner(
         resource_naming=user_resource_naming,
         database_body_builder=cluster_wiring.repositories.database_body_builder,
         secret_fields=frozenset(settings.database.secret_fields),
-        crdb_creation=settings.crdb.creation,
+        database_defaults=database_defaults,
         create_crdb_step=cluster_wiring.steps.create_crdb,
         find_local_instance_step=cluster_wiring.steps.find_local_crdb_instance,
         create_acl_step=cluster_wiring.steps.create_acl,
