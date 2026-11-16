@@ -6,7 +6,7 @@ from pydantic import JsonValue, SecretStr
 from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.operation_settings import OperationSettings
-from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
@@ -38,9 +38,11 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
 
 @pytest.fixture
 def translator(config_dir: Path) -> CreationOutcomeTranslator:
+    settings: Settings = load_settings(config_dir=config_dir)
     return CreationOutcomeTranslator(
         resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-        database_settings=load_settings(config_dir=config_dir).database,
+        database_settings=settings.database,
+        cluster_fields=settings.cluster_api.fields,
         public_errors=PublicErrors(
             settings=OperationSettings(
                 public_code_by_internal_code={
