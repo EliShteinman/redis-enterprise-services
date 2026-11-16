@@ -35,7 +35,7 @@ def created_database_result(
             "crdb_guid": None,
             "clusters": [
                 {
-                    "cluster": cluster.name,
+                    "cluster": cluster.fqdn,
                     "cluster_url": cluster.api_url,
                     "network": cluster.network,
                     "site": cluster.site,

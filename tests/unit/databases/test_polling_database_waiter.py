@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -36,8 +37,8 @@ def fields_reader() -> MagicMock:
 
 
 @pytest.fixture
-def waiter(fields_reader: MagicMock) -> PollingDatabaseWaiter:
-    settings: Settings = load_settings()
+def waiter(fields_reader: MagicMock, config_dir: Path) -> PollingDatabaseWaiter:
+    settings: Settings = load_settings(config_dir=config_dir)
     short_wait: WaitSettings = WaitSettings(poll_interval_seconds=0.001, timeout_seconds=0.05)
     database_settings: DatabaseSettings = settings.database.model_copy(update={"wait": short_wait})
     read_again_polling: ReadAgainPolling = ReadAgainPolling(

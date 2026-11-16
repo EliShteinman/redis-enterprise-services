@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
@@ -15,13 +17,13 @@ from redis_enterprise_services.planning.user_resource_naming import UserResource
 
 CONTEXT: NamingContext = NamingContext(
     active_active=False,
-    sites=[SitePlacement(network="net-a", site="ny", environment="PROD", cluster="generic")],
+    sites=[SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")],
 )
 
 
 @pytest.fixture
-def validator() -> UserNamesValidator:
-    rules: RedisNameRulesSettings = load_settings().naming.redis
+def validator(config_dir: Path) -> UserNamesValidator:
+    rules: RedisNameRulesSettings = load_settings(config_dir=config_dir).naming.redis
     return UserNamesValidator(
         user_name_validator=NameValidator(rules=configured_name_rules(settings=rules.user)),
         acl_and_role_name_validator=NameValidator(rules=configured_name_rules(settings=rules.acl_and_role)),

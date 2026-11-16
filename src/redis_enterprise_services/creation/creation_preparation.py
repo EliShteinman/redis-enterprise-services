@@ -38,7 +38,7 @@ class CreationPreparation:
         filled_database: NewDatabase = self._database_defaults.fill_in(
             cluster=cluster, requested=requested_database
         )
-        logger.info(msg=f"creating {filled_database.name} on {cluster.name} is prepared")
+        logger.info(msg=f"creating {filled_database.name} on {cluster.fqdn} is prepared")
         return PreparedCreation(
             cluster=cluster, spec=creation_request.spec.with_database(database=filled_database)
         )

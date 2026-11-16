@@ -1,5 +1,9 @@
-from pydantic import JsonValue
+from pathlib import Path
 
+import pytest
+from pydantic import JsonValue, SecretStr
+
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import load_settings
@@ -32,10 +36,11 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
 )
 
 
-def translator() -> CreationOutcomeTranslator:
+@pytest.fixture
+def translator(config_dir: Path) -> CreationOutcomeTranslator:
     return CreationOutcomeTranslator(
         resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-        database_settings=load_settings().database,
+        database_settings=load_settings(config_dir=config_dir).database,
         public_errors=PublicErrors(
             settings=OperationSettings(
                 public_code_by_internal_code={
@@ -55,7 +60,14 @@ def translator() -> CreationOutcomeTranslator:
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
     cluster=ConfiguredCluster(
-        name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
+        fqdn="c1",
+        network="net-a",
+        environment="DEV",
+        site="ny",
+        type="generic",
+        api_url="https://c1:9443",
+        credentials=ClusterCredentialsSettings(username="admin", password=SecretStr("secret")),
+        default_user_password=SecretStr("default-user-secret"),
     ),
     spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
@@ -93,8 +105,10 @@ def step_record(
     )
 
 
-def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped_at: str) -> Operation:
-    return translator().operation_from_ended_record(
+def translated_operation(
+    *, translator: CreationOutcomeTranslator, status: SagaStatus, steps: list[StepRecord], stopped_at: str
+) -> Operation:
+    return translator.operation_from_ended_record(
         trace_id="trace-1",
         prepared_creation=PREPARED_CREATION,
         record=SagaRecord(saga_id="trace-1", status=status, steps=steps, stopped_at=stopped_at),
@@ -102,8 +116,11 @@ def translated_operation(*, status: SagaStatus, steps: list[StepRecord], stopped
     )
 
 
-def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopped_it() -> None:
+def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopped_it(
+    translator: CreationOutcomeTranslator,
+) -> None:
     operation: Operation = translated_operation(
+        translator=translator,
         status=SagaStatus.ROLLED_BACK,
         steps=[
             step_record(key="database", status=StepStatus.COMPENSATED, uid=7, error=REJECTED_BY_CLUSTER),
@@ -124,8 +141,11 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
     )
 
 
-def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> None:
+def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back(
+    translator: CreationOutcomeTranslator,
+) -> None:
     operation: Operation = translated_operation(
+        translator=translator,
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
             step_record(key="database", status=StepStatus.DONE, uid=7),
@@ -156,8 +176,9 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back() -> 
     ]
 
 
-def test_the_permissions_left_behind_report_the_database_uid() -> None:
+def test_the_permissions_left_behind_report_the_database_uid(translator: CreationOutcomeTranslator) -> None:
     operation: Operation = translated_operation(
+        translator=translator,
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[
             step_record(key="database", status=StepStatus.DONE, uid=7),
@@ -172,8 +193,9 @@ def test_the_permissions_left_behind_report_the_database_uid() -> None:
     assert operation.not_rolled_back is not None and operation.not_rolled_back[-1].uid == 7
 
 
-def test_an_interrupted_creation_reports_an_internal_error() -> None:
+def test_an_interrupted_creation_reports_an_internal_error(translator: CreationOutcomeTranslator) -> None:
     operation: Operation = translated_operation(
+        translator=translator,
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
         steps=[step_record(key="database", status=StepStatus.UNRESOLVED)],
         stopped_at="database",
