@@ -14,9 +14,9 @@ from redis_enterprise_services.exceptions.cluster import (
 )
 from redis_enterprise_services.exceptions.edge import (
     EdgeConnectionFailedError,
-    EdgeError,
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
+    EdgeUnansweredError,
 )
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
@@ -42,7 +42,7 @@ TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
 )
 
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
-    EdgeError,
+    EdgeUnansweredError,
     ClusterActionTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseDeletionTimeoutError,
