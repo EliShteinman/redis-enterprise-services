@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import ClassVar
 
 from pydantic_settings import (
@@ -11,8 +12,8 @@ from redis_enterprise_services.config.action_settings import ActionSettings
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.background_settings import BackgroundSettings
 from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredClusters
+from redis_enterprise_services.config.cluster_tree import ClusterTree
+from redis_enterprise_services.config.config_location import config_files
 from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.edge_settings import EdgeSettings
@@ -28,33 +29,9 @@ from redis_enterprise_services.config.state_settings import StateSettings
 from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 
-YAML_FILES: tuple[str, ...] = (
-    "config/log.yaml",
-    "config/api.yaml",
-    "config/telemetry.yaml",
-    "config/edge.yaml",
-    "config/action.yaml",
-    "config/acl.yaml",
-    "config/cluster_api.yaml",
-    "config/database.yaml",
-    "config/saga.yaml",
-    "config/state.yaml",
-    "config/role.yaml",
-    "config/user.yaml",
-    "config/server.yaml",
-    "config/clusters.yaml",
-    "config/database_defaults.yaml",
-    "config/user_resources.yaml",
-    "config/naming.yaml",
-    "config/operation.yaml",
-    "config/background.yaml",
-    "config/liveness.yaml",
-)
-
 
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        yaml_file=YAML_FILES,
         env_file=".env",
         env_file_encoding="utf-8",
         env_prefix="RES_",
@@ -76,14 +53,13 @@ class Settings(BaseSettings):
     role: RoleSettings
     user: ResourceSettings
     server: ServerSettings
-    clusters: ConfiguredClusters
+    clusters: ClusterTree
     database_defaults: DatabaseDefaultsSettings
     user_resources: UserResourcesSettings
     naming: NamingSettings
     operation: OperationSettings
     background: BackgroundSettings
     liveness: LivenessSettings
-    cluster_credentials: ClusterCredentialsSettings
 
     @classmethod
     def settings_customise_sources(
@@ -102,5 +78,10 @@ class Settings(BaseSettings):
         )
 
 
-def load_settings() -> Settings:
-    return Settings()  # pyright: ignore[reportCallIssue]
+def load_settings(*, config_dir: Path) -> Settings:
+    class SettingsFromFiles(Settings):
+        model_config: ClassVar[SettingsConfigDict] = Settings.model_config | SettingsConfigDict(
+            yaml_file=config_files(config_dir=config_dir)
+        )
+
+    return SettingsFromFiles()  # pyright: ignore[reportCallIssue]

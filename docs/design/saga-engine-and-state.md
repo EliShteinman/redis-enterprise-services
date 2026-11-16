@@ -48,8 +48,8 @@ class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
 - **`step_input` ו-`result` הם מודלי Pydantic,** ועותק שלהם נשמר ב-record. המנוע מחזיק את האובייקטים בזיכרון; ה-record
   לא נקרא בחזרה כדי להמשיך ריצה.
 - **`step_input` מחזיק רק כתובת קלאסטר** (רשת ו-URL), בלי פרטי גישה. הצעד מקבל אותם בזמן הריצה מ-
-  `ClusterTargetResolver`, ולכן הם לא מגיעים ל-record. היום `SharedCredentialsTargetResolver` נותן את אותם פרטי admin
-  לכל קלאסטר.
+  `ClusterTargetResolver`, ולכן הם לא מגיעים ל-record. `ConfiguredCredentialsTargetResolver` נותן לכל קלאסטר את
+  המשתמש המנהל שלו מ-`helm/files/clusters.yaml`.
 - **`keep_result`** נקרא ברגע שהתוצאה ידועה, לפני ההמתנה לסיום הפעולה בקלאסטר. צעד שיש לו תוצאה מבוטל גם אם לא הגיע
   ל-`done`. בתוך ניסיון נשמרת רק התוצאה הראשונה, כך ש-`find_outcome` לא מחליף את מה ש-`execute` שמר. ניסיון חוזר
   אחרי שגיאה זמנית, ש-`find_outcome` קבע שלא בוצעה, מתחיל בלי התוצאה הקודמת (`forget_result`, WARNING בלוג) ושומר
@@ -141,7 +141,7 @@ PlannedStep(
 - **שגיאות של ה-Redis של המצב הן לא שגיאות של הפרויקט.** הן לא נעטפות, כדי שהמנוע לא יבטל וישחרר נעילה כשהוא לא
   יכול לכתוב record. הן עולות, וה-Saga נעצר.
 
-**ניסיונות חוזרים** (`config/saga.yaml`): `step_retry` (3 ניסיונות) לצעדים, `compensation_retry` (5) לביטולים. בין ניסיון
+**ניסיונות חוזרים** (`helm/files/service.yaml`): `step_retry` (3 ניסיונות) לצעדים, `compensation_retry` (5) לביטולים. בין ניסיון
 לניסיון יש המתנה של `backoff_step_seconds` (2) כפול מספר הניסיון שנכשל: בצעד 2 ואז 4 שניות, ובביטול 2, 4, 6 ו-8 שניות.
 ביטול מנסה שוב רק על שגיאה זמנית או לא ידועה. ביטול שנכשל ⇐ `compensation_failed`, והמנוע ממשיך לבטל את השאר, כי כל
 ביטול שמצליח מצמצם את מה שנשאר. בסוף: `requires_manual_intervention` ולוג `CRITICAL`.
@@ -183,7 +183,7 @@ PlannedStep(
 
 ה-Redis של המצב הוא Redis Enterprise של צוות אחר, ונחשב זמין. אין טיפול בנפילה שלו.
 
-**מפתחות.** כולם נבנים במקום אחד (`RedisKeys`) עם prefix מהקונפיג (`res:`). ה-prefix נדרש כי ה-ACL של המשתמש מתיר
+**מפתחות.** כולם נבנים במקום אחד (`RedisKeys`) עם prefix ממשתנה הסביבה `RES_STATE__KEY_PREFIX` (כאן `res:`). ה-prefix נדרש כי ה-ACL של המשתמש מתיר
 רק אותו. אין hash tag: ה-DB של המצב הוא shard אחד בלי sharding, ולכן סקריפט Lua יכול לגעת בכל מפתח. hash tag אחד היה
 שם את כל המפתחות ב-slot אחד, בלי שום פיזור.
 
@@ -211,7 +211,7 @@ PlannedStep(
 | סימון נטושה | סעיף 9 |
 
 **חיבור:** `redis-py` סינכרוני, מ-connection string אחד (`redis://` או `rediss://`, עם המשתמש והסיסמה) שמגיע רק
-מ-`RES_STATE__URL`, כי יש בו סיסמה. ה-prefix נשאר נפרד ב-`config/state.yaml`, והוא חייב להתאים ל-ACL שצוות ה-Redis נותן:
+מ-`RES_STATE__URL`, כי יש בו סיסמה. ה-prefix מגיע בנפרד מ-`RES_STATE__KEY_PREFIX`, בלי ערך ב-YAML, והוא חייב להתאים ל-ACL שצוות ה-Redis נותן:
 המשתמש צריך `+@all -@dangerous +info ~res:*`.
 
 ---
@@ -257,7 +257,7 @@ PlannedStep(
 **heartbeat.** סקריפט ההתחלה של פעולה כותב גם `heartbeat:{trace_id}`, כך שאין רגע שבו פעולה פתוחה בלי heartbeat, גם
 כשהיא מחכה בתור. `InProcessOperationHeartbeats` (`liveness/`, מממש את הממשק `OperationHeartbeats` ש-`OperationStarter` תלוי בו) רושם את הפעולה של ה-pod, ו-thread אחד (`PeriodicThread`) מחדש את המפתחות של
 כל הפעולות שלו בסקריפט אחד. כשהמשימה מסתיימת, גם בשגיאה, המפתח נמחק. החידוש והמחיקה רצים תחת אותה נעילה, כך שחידוש
-לא מחזיר מפתח שנמחק. הקונפיג (`config/liveness.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
+לא מחזיר מפתח שנמחק. הקונפיג (`helm/files/service.yaml`) דורש לפחות `min_heartbeats_per_ttl` (3) חידושים בתוך TTL אחד.
 
 **הסריקה.** כל pod מריץ `AbandonedSweep` (`recovery/`) כל `abandoned_sweep_interval_seconds` (60). הסריקה הראשונה רצה אחרי
 מרווח אחד, לא בעלייה. היא לוקחת מ-`operations:open` פעולות ב-`running` בלי heartbeat, קוראת את ה-saga record של כל
