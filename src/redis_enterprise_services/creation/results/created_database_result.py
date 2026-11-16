@@ -1,5 +1,6 @@
 from pydantic import JsonValue
 
+from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseKind
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
@@ -26,7 +27,7 @@ def created_database_result(
     ).values
     return DatabaseResult.model_validate(
         obj={
-            "kind": "single_site",
+            "kind": DatabaseKind.SINGLE_SITE,
             "name": database[cluster_fields.name],
             "memory_size": database[cluster_fields.memory_size],
             "cluster": database_cluster_result(
