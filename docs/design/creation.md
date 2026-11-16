@@ -12,41 +12,62 @@
 ![קבלה](../diagrams/12-flow-find-or-start.drawio.svg)
 
 ```
-POST /v1/databases/create
+POST /v1/databases/create                              (Active-Active: POST /v1/crdbs/create)
  ├─ ולידציה של הגוף (Pydantic) ו-traceparent           ⇐ 422 מיד
- ├─ OperationStarter.start_once
+ ├─ DatabaseCreation.start_once ⇐ OperationStarter.start_once
  │   ├─ יש פעולה לאותו trace?                           ⇐ 202, שום דבר לא מתחיל
- │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד
+ │   ├─ CreationPreparation: שם, קלאסטר, ברירות מחדל     ⇐ 422 / 500 מיד, אחרת PreparedCreation
  │   ├─ התחלה אטומית: running + heartbeat
  │   └─ העברה ל-ThreadPoolTaskRunner                          ⇐ 202
- └─ ברקע: CreationExecution
-     ├─ SingleSiteCreationPlanner או ActiveActiveCreationPlanner: תוכנית צעדים
-     ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים ⇐ צעדים
+ └─ ברקע: CreationExecution.run_and_save
+     ├─ CreationPlanning.plan: תוכנית צעדים
+     ├─ SagaExecutor: נעילה ⇐ בדיקת שמות פנויים (CreationPlanning.ensure_names_free) ⇐ צעדים
      └─ CreationOutcomeTranslator: התוצאה ⇐ OperationStore
 ```
 
+**לכל סוג המחלקות שלו.** אותו מסלול רץ בשני הסוגים, וכל שלב בו הוא מחלקה של הסוג:
+
+| שלב | אתר אחד | Active-Active | תיקייה |
+|---|---|---|---|
+| נתיב | `POST /v1/databases/create` | `POST /v1/crdbs/create` | |
+| route | `start_database_creation_once` (`creation_route.py`) | `start_crdb_creation_once` (`crdb_creation_route.py`) | `api/` |
+| מודל הבקשה | `CreateDatabaseRequest`: `CreateDatabaseTarget` (`site`) ו-`DatabaseSpec` | `CreateCrdbRequest`: `CreateCrdbTarget` (`sites`) ו-`ActiveActiveSpec` (`DatabaseSpec` ועוד `crdb: CrdbSpec`) | `creation/`, `planning/` |
+| מה שה-route קורא לו | `DatabaseCreation` | `CrdbCreation` | `creation/` |
+| הכנה | `CreationPreparation` | `ActiveActivePreparation`, עם הכללים של `active_active_cluster_rules.py` | `creation/` |
+| מה שההכנה מחזירה | `PreparedCreation` (`cluster`, `spec`) | `PreparedActiveActiveCreation` (`clusters`, `spec`) | `creation/` |
+| ריצה ברקע | `CreationExecution[PreparedCreation]` | `CreationExecution[PreparedActiveActiveCreation]` | `creation/` |
+| `CreationPlanning` | `SingleSiteCreationPlanning` | `ActiveActiveCreationPlanning` | `creation/` |
+| מפרק | `SingleSiteCreationPlanner` | `ActiveActiveCreationPlanner` | `planning/` |
+| `CreationRecordReader` | `SingleSiteRecordReader` (`created_database_result.py`) | `ActiveActiveRecordReader` (`created_active_active_result.py`) | `creation/` |
+| מודל התוצאה | `DatabaseResult` | `ActiveActiveDatabaseResult`: `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר | `operations/` |
+
 | רכיב | תיקייה | מה הוא עושה |
 |---|---|---|
-| `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.start_once` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
+| `DatabaseCreation`, `CrdbCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.start_once` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
 | `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
-| `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
-| `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
+| `CreationPreparation`, `ActiveActivePreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר. מחזירה את הבקשה המוכנה: `PreparedCreation` או `PreparedActiveActiveCreation` |
+| `CreationExecution[TPrepared]` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית. מחלקה אחת לשני הסוגים, גנרית על סוג הבקשה המוכנה |
+| `CreationPlanning[TPrepared]` | `creation/` | ממשק: הבקשה המוכנה ⇐ תוכנית צעדים (`plan`), בדיקת השמות הפנויים (`ensure_names_free`) והקלאסטר שנרשם בשגיאה שאין לה קלאסטר (`fallback_cluster_url`). המימושים: `SingleSiteCreationPlanning` ו-`ActiveActiveCreationPlanning`, שקוראים למפרק ול-`CreationNamesCheck` |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
 | `ActiveActiveCreationPlanner` | `planning/` | בקשת Active-Active ⇐ תוכנית צעדים לכל האתרים ומפתחות נעילה בכל אתר |
-| `CreationOutcomeTranslator` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
+| `CreationOutcomeTranslator[TPrepared]` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל. גם הוא מחלקה אחת, גנרית על סוג הבקשה המוכנה |
+| `CreationRecordReader[TPrepared]` | `creation/` | ממשק: מה שרק הסוג יודע לקרוא מה-record: עץ ה-DB (`database_result`), המשאבים שהתוכנית יוצרת (`planned_resources`) והקלאסטר של כל צעד (`cluster_of_step`). המימושים: `SingleSiteRecordReader` ו-`ActiveActiveRecordReader` |
 
 ![שכבת creation](../diagrams/04-layer-creation.drawio.svg)
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
 **שני routes, ריצה אחת:** לכל סוג route משלו, מודל בקשה משלו (`target.site` מול `target.sites` ו-`spec.crdb`), הכנה משלו
-ובונה תוצאה משלו. המסלול שלמעלה, המנוע, הנעילה והצעדים המקומיים משותפים.
+ובונה תוצאה משלו. המסלול שלמעלה, `OperationStarter`, `CreationExecution`, `CreationOutcomeTranslator`, המנוע, הנעילה והצעדים המקומיים משותפים.
 
-**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `state_wiring.py`) בונה את כל המחלקות הקונקרטיות. רק `app` מעליה.
+**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `state_wiring.py`) בונה את כל המחלקות הקונקרטיות, ובהן
+`DatabaseCreation` ו-`CrdbCreation`, אחד לכל route. רק `app` מעליה.
 
 ---
 
 ## 2. ההכנה (לפני `202`)
+
+`CreationPreparation` באתר אחד, `ActiveActivePreparation` ב-Active-Active (שלב 4).
 
 ![קלאסטר וברירות מחדל](../diagrams/13-flow-cluster-and-defaults.drawio.svg)
 
@@ -124,9 +145,9 @@ POST /v1/databases/create
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
      קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
-4. **ב-Active-Active** (`POST /v1/crdbs/create`, `target.sites`): כל אתר עובר את שלב 2 לבד. אחר כך, לפני ברירות המחדל: כל האתרים באותה רשת (אחרת
+4. **ב-Active-Active** (`POST /v1/crdbs/create`, `target.sites`, `ActiveActivePreparation`): כל אתר עובר את שלב 2 לבד. אחר כך, לפני ברירות המחדל: כל האתרים באותה רשת (אחרת
    `mixed_networks`), כל אתר על קלאסטר אחר (אחרת `duplicate_sites`), וקלאסטרים שונים ב-FQDN אחר, ב-host אחר ועם אותה
-   `default_user_password` (אחרת `configuration_error`: הקונפיג של הקלאסטרים, לא הבקשה). רק אז כל אתר עובר את שלב 3,
+   `default_user_password` (אחרת `configuration_error`: הקונפיג של הקלאסטרים, לא הבקשה). הכללים האלה ב-`active_active_cluster_rules.py`. רק אז כל אתר עובר את שלב 3,
    וכל האתרים חייבים לצאת עם אותן הגדרות, של ה-DB ושל ה-CRDB (אחרת `configuration_error`, עם שמות השדות השונים). סעיף 6.
 
 כל מה שבשלב הזה לא נוגע בקלאסטר, ולכן כשל בו הוא תשובה מיידית, ושום דבר לא נשמר.
@@ -196,7 +217,7 @@ POST /v1/databases/create
 
 | מה קרה | הפעולה |
 |---|---|
-| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`), `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
+| ה-Saga הצליח | `succeeded` עם עץ ה-DB, שה-`CreationRecordReader` של הסוג בונה. באתר אחד (`SingleSiteRecordReader`, `created_database_result.py`): `DatabaseResult` עם `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם. ב-Active-Active (`ActiveActiveRecordReader`, `created_active_active_result.py`): `ActiveActiveDatabaseResult`, סעיף 6 |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
 | שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `unexpected <type>: <text>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |
@@ -204,7 +225,7 @@ POST /v1/databases/create
 | record שאי אפשר לבנות ממנו את התוצאה (למשל uid חסר) | `requires_manual_intervention` עם `internal_error`, וה-`message` הוא `unexpected <type>: <text>`. `not_rolled_back` מופיע כשאפשר לבנות אותו מה-record |
 
 - **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
-  `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB (ב-Active-Active ה-uid הוא `null`, ו-`crdb_guid` מזהה את הפריט).
+  `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית (`CreationRecordReader.planned_resources`), וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB (ב-Active-Active ה-uid הוא `null`, ו-`crdb_guid` מזהה את הפריט).
   `last_error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
 - **קודים ציבוריים** (`PublicErrors`, `helm/files/service.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
   `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`public_codes_with_cluster_details`.
@@ -236,7 +257,11 @@ POST /v1/databases/create
 או יותר, מאותו אובייקט אתר כמו ביצירה באתר אחד, והראשון מתאם. `spec` הוא `{crdb, database, users}`: `spec.crdb` לא חובה,
 ומחזיק את `causal_consistency`, `encryption` ו-`compression` (ערך מהבקשה קודם לקונפיג, סעיף 2). בתוצאה `kind: "active_active"`,
 אובייקט `crdb` עם ה-`guid` וההגדרות של ה-CRDB, ו-`clusters[]` עם ענף לכל קלאסטר, שכולל גם `instance_id` ו-`compression`.
-`GET /v1/operations/{trace_id}` משותף לשני הסוגים.
+`GET /v1/operations/{trace_id}` משותף לשני הסוגים: `Operation.database` הוא `DatabaseResult` או `ActiveActiveDatabaseResult`, וה-`kind` מבדיל ביניהם.
+
+**מחלקות:** ה-route `start_crdb_creation_once` (`api/crdb_creation_route.py`) מקבל `CreateCrdbRequest` (`CreateCrdbTarget`, ו-`ActiveActiveSpec` עם `CrdbSpec`) וקורא ל-`CrdbCreation`.
+`ActiveActivePreparation` מחזירה `PreparedActiveActiveCreation`, ו-`CreationExecution` רץ עם `ActiveActiveCreationPlanning` ו-`ActiveActiveRecordReader`. התוצאה היא
+`ActiveActiveDatabaseResult`, עם `CrdbResult` ו-`ActiveActiveClusterResult` לכל קלאסטר.
 המפרק הוא `ActiveActiveCreationPlanner`, והצעדים ב-`steps/`: `CreateCrdbStep`, `FindLocalCrdbInstanceStep`,
 `UpdateCrdbInstancesStep` ו-`ReadCrdbStep`, ועוד `CreateResourceStep` ו-`ReadDatabaseStep` לכל אתר.
 
@@ -299,7 +324,7 @@ POST /v1/databases/create
 - **נעילה:** את ה-DB ואת היוזרים בכל קלאסטר משתתף. `PATCH /v1/crdbs` נשלח בלי `cluster-state-id`, כך שההרשאות
   ב-AA נשענות על הנעילה בלבד, והנעילה מגינה רק מפני הרצות של השירות הזה, לא מפני שינוי מה-UI או מכלי אחר.
   **פתוח:** האם `PATCH /v1/crdbs` מכבד `cluster-state-id` (לא נבדק).
-- **תוצאה:** `crdb` מקריאת ה-CRDB (צעד N+3), וענף לכל אתר, לפי סדר ה-`sites`, מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role
+- **תוצאה** (`created_active_active_result.py`): `crdb` מקריאת ה-CRDB (צעד N+3), וענף לכל אתר, לפי סדר ה-`sites`, מה-DB המקומי שלו, עם היוזר, ה-ACL וה-role
   שנוצרו בו. ה-instances של ה-CRDB לא חוזרים כרשימה נפרדת: השירות מתאים כל instance לענף שלו לפי `cluster_url` (בלי
   רישיות, ועם הפורט ברירת המחדל של הסכמה), שם את `instance_id` ו-`compression` שלו בענף, ובודק שכל instance שייך
   לאחד הענפים. `not_rolled_back` מראה כל משאב באתר שלו,
