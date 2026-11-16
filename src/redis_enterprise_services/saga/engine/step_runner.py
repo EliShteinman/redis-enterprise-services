@@ -59,6 +59,7 @@ class StepRunner:
             mark_input_build_failed(step=step, recorder=recorder, error=StepError.from_exception(error=error))
             return None
         except ValidationError as error:
+            logger.error(msg=f"the input of step {step.key} is not valid: {error}")
             mark_input_build_failed(
                 step=step, recorder=recorder, error=StepError.from_input_validation_error(error=error)
             )
