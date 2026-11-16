@@ -20,6 +20,7 @@ from redis_enterprise_services.exceptions.edge import (
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
     EdgeUnansweredError,
+    EdgeUnreachableError,
 )
 from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
@@ -43,9 +44,10 @@ FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     *CLUSTER_REPORTED_FAILURE_ERRORS,
 )
 
-NEVER_SENT_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (EdgeConnectionFailedError,)
+NEVER_SENT_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (EdgeUnreachableError,)
 
 TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    EdgeUnreachableError,
     EdgeConnectionFailedError,
     EdgeOutcomeUnknownError,
 )
