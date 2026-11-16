@@ -12,7 +12,7 @@ from redis_enterprise_services.config.cluster_tree_entries import (
     EnvironmentEntries,
     TreeEnvironment,
 )
-from redis_enterprise_services.config.level_values import ClusterValues, SharedLevelValues
+from redis_enterprise_services.config.level_values import EnvironmentOrNetworkValues, SiteOrClusterValues
 from redis_enterprise_services.config.repeated_values import reject_repeated
 
 ENVIRONMENT_OF_TREE_KEY: dict[TreeEnvironment, Environment] = {"dev": "DEV", "prod": "PROD", "test": "TEST"}
@@ -25,11 +25,12 @@ class ClusterInTree(BaseModel):
     network: str
     site: str
     fqdn: str
-    levels_above: list[SharedLevelValues]
+    environment_and_network: list[EnvironmentOrNetworkValues]
+    site_entry: SiteOrClusterValues
     entry: ClusterEntry
 
-    def levels(self) -> list[SharedLevelValues | ClusterValues]:
-        return [*self.levels_above, self.entry]
+    def levels(self) -> list[EnvironmentOrNetworkValues | SiteOrClusterValues]:
+        return [*self.environment_and_network, self.site_entry, self.entry]
 
 
 def configured_clusters(*, tree: EnvironmentEntries) -> list[ConfiguredCluster]:
@@ -51,13 +52,14 @@ def walk(*, tree: EnvironmentEntries) -> Iterator[ClusterInTree]:
                         network=network_name,
                         site=site_name,
                         fqdn=fqdn,
-                        levels_above=[environment, network, site],
+                        environment_and_network=[environment, network],
+                        site_entry=site,
                         entry=entry,
                     )
 
 
 def configured_cluster(*, cluster: ClusterInTree) -> ConfiguredCluster:
-    levels: list[SharedLevelValues | ClusterValues] = cluster.levels()
+    levels: list[EnvironmentOrNetworkValues | SiteOrClusterValues] = cluster.levels()
     return ConfiguredCluster(
         fqdn=cluster.fqdn,
         environment=cluster.environment,
@@ -86,7 +88,7 @@ def configured_cluster(*, cluster: ClusterInTree) -> ConfiguredCluster:
         ),
         database_overrides=merged(layers=[level.database for level in levels]),
         active_active_database_overrides=merged(layers=[level.active_active.database for level in levels]),
-        crdb_overrides=merged(layers=[level.active_active.crdb for level in cluster.levels_above]),
+        crdb_overrides=merged(layers=[level.active_active.crdb for level in cluster.environment_and_network]),
     )
 
 

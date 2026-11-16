@@ -1,9 +1,7 @@
-from typing import ClassVar, Self
-from uuid import UUID
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue
 
-from redis_enterprise_services.config.base_url import comparable_url
 from redis_enterprise_services.config.cluster_inventory import Environment
 
 
@@ -74,101 +72,14 @@ class DatabaseClusterResult(BaseModel):
     db: ClusterDatabaseResult = Field(description="The database on this cluster, as the cluster stored it.")
 
 
-class CrdbInstanceResult(BaseModel):
-    cluster_url: str = Field(
-        description="The API address of the cluster of this instance, the same as the cluster_url of that "
-        "cluster in clusters.",
-        examples=["https://cluster-a.net-a:9443"],
-    )
-    instance_id: int = Field(description="The instance id inside the CRDB.", examples=[1])
-    compression: int = Field(
-        description="The compression level of the sync from this instance (0-6), as sent and checked.",
-        examples=[3],
-    )
-
-
-class CrdbResult(BaseModel):
-    default_db_config: dict[str, JsonValue] = Field(
-        description="The database settings every site shares, as the CRDB stored them: the settings the "
-        "service sent, without the secrets, plus the few the cluster fills in itself (port, module_list, "
-        "tls_mode, and isSystem on every tag).",
-        examples=[
-            {"name": "orders", "memory_size": 1073741824, "eviction_policy": "noeviction", "port": 12000}
-        ],
-    )
-    causal_consistency: bool = Field(
-        description="Whether updates reach every site in the order they depend on each other, as sent and "
-        "checked.",
-        examples=[False],
-    )
-    encryption: bool = Field(
-        description="Whether the sync between the sites is encrypted, as sent and checked.",
-        examples=[False],
-    )
-    featureset_version: int | None = Field(
-        description="The CRDB feature set version, set by Redis; null when the cluster did not report it.",
-        examples=[12],
-    )
-    protocol_version: int | None = Field(
-        description="The CRDB sync protocol version, set by Redis; null when the cluster did not report it.",
-        examples=[1],
-    )
-    instances: list[CrdbInstanceResult] = Field(
-        min_length=1, description="One entry per site of the CRDB, in the order the CRDB lists them."
-    )
-
-
 class DatabaseResult(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(json_schema_serialization_defaults_required=True)
-
+    kind: Literal["single_site"] = Field(
+        description="The kind of the database: single_site, a database on one cluster. The value is the "
+        "name of the kind in the service configuration.",
+        examples=["single_site"],
+    )
     name: str = Field(description="The database name, as the cluster stored it.", examples=["orders"])
     memory_size: int = Field(
         description="The memory limit in bytes, as the cluster stored it.", examples=[1073741824]
     )
-    active_active: bool = Field(description="Whether the database is Active-Active.", examples=[True])
-    crdb_guid: UUID | None = Field(
-        description="The Active-Active database id. Null for a single-site database.",
-        examples=["d71cefce-4e31-41fd-b654-37cbb2f39a01"],
-    )
-    crdb: CrdbResult | None = Field(
-        default=None,
-        description="Only for Active-Active: the settings of the CRDB itself, as it stored them. Null for a "
-        "single-site database.",
-    )
-    clusters: list[DatabaseClusterResult] = Field(
-        min_length=1,
-        description="One entry per cluster that holds the database: one for a single-site database, one per "
-        "site, in the order of the request, for an Active-Active one.",
-    )
-
-    @model_validator(mode="after")
-    def reject_active_active_fields_that_disagree(self) -> Self:
-        has_crdb_guid: bool = self.crdb_guid is not None
-        has_crdb: bool = self.crdb is not None
-        if has_crdb_guid != self.active_active or has_crdb != self.active_active:
-            raise ValueError(
-                f"active_active, crdb_guid and crdb must all show the same kind of database, but "
-                f"active_active is {self.active_active}, crdb_guid is {'set' if has_crdb_guid else 'null'} "
-                f"and crdb is {'set' if has_crdb else 'null'}"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def reject_crdb_instances_that_are_not_the_clusters(self) -> Self:
-        if self.crdb is None:
-            return self
-        instance_urls: list[str] = sorted(
-            comparable_url(url=instance.cluster_url) for instance in self.crdb.instances
-        )
-        cluster_urls: list[str] = sorted(comparable_url(url=cluster.cluster_url) for cluster in self.clusters)
-        if instance_urls != cluster_urls:
-            raise ValueError(
-                f"the CRDB instances are on {instance_urls}, but the database clusters are {cluster_urls}"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def reject_more_than_one_cluster_for_a_single_site(self) -> Self:
-        if not self.active_active and len(self.clusters) != 1:
-            raise ValueError(f"a single-site database has exactly one cluster, not {len(self.clusters)}")
-        return self
+    cluster: DatabaseClusterResult = Field(description="The cluster that holds the database.")
