@@ -1,7 +1,7 @@
 from pydantic import Field, JsonValue, SecretStr
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.port import Port
+from redis_enterprise_services.config.validation.port import Port
 
 
 class LevelValues(ConfigModel):

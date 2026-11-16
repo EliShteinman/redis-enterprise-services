@@ -1,9 +1,9 @@
 import pytest
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from redis_enterprise_services.config.cluster_flattening import configured_clusters
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.cluster_tree import ClusterTree
+from redis_enterprise_services.config.clusters.cluster_flattening import configured_clusters
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_tree import ClusterTree
 
 TREE: TypeAdapter[ClusterTree] = TypeAdapter(ClusterTree)
 SECRETS: dict[str, JsonValue] = {

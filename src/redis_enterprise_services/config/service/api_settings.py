@@ -3,7 +3,7 @@ import re
 from pydantic import field_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.item_path import ApiPath
+from redis_enterprise_services.config.validation.item_path import ApiPath
 
 
 class ApiSettings(ConfigModel):

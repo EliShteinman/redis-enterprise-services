@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import model_validator
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.error_kind import ErrorKind
-from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.config.public_errors.error_kind import ErrorKind
+from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 
 
 class OperationSettings(ConfigModel):

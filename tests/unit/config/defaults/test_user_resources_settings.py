@@ -1,6 +1,6 @@
 import pytest
 
-from redis_enterprise_services.config.user_resources_settings import (
+from redis_enterprise_services.config.defaults.user_resources_settings import (
     reject_template_without_database_user_placeholders,
 )
 

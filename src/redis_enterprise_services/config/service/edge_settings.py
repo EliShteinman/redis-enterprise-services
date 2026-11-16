@@ -1,7 +1,7 @@
 from pydantic import PositiveFloat
 
-from redis_enterprise_services.config.base_url import RelayUrl
 from redis_enterprise_services.config.config_model import ConfigModel
+from redis_enterprise_services.config.validation.base_url import RelayUrl
 
 
 class EdgeHeaderSettings(ConfigModel):
