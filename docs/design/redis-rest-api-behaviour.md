@@ -1,7 +1,7 @@
 # ה-REST API של Redis Enterprise: מה העיצוב נשען עליו
 
 התנהגויות של [Redis Software REST API](https://redis.io/docs/latest/operate/rs/references/rest-api/) שהתיעוד לא עונה
-עליהן, או שהעיצוב תלוי בהן. כולן נבדקו מול Redis Enterprise 8.x בקלאסטרים המקומיים (`docker/`), רובן גם דרך
+עליהן, או שהעיצוב תלוי בהן. כולן נבדקו מול Redis Enterprise 8.x בקלאסטרים המקומיים, רובן גם דרך
 cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 
 ---
