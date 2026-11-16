@@ -1,19 +1,12 @@
 import pytest
-from pydantic import JsonValue
+from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
-from redis_enterprise_services.config.database_defaults_settings import (
-    DatabaseDefaultsSettings,
-    DefaultsOverride,
-    OverrideClusterSelector,
-)
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.database_defaults import (
-    DatabaseDefaults,
-    cluster_labels,
-    database_defaults_from,
-)
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
 
 PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
     "aof": {"aof_policy": "appendfsync-every-sec"},
@@ -21,84 +14,50 @@ PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
 }
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
-        values={"replication": True, "data_persistence": "aof"},
-        persistence_values=PERSISTENCE_VALUES,
-        overrides=[
-            DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values={"replication": False})
-        ],
+        database={"replication": True, "data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
     )
 )
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 
 
-def cluster(*, environment: Environment) -> ConfiguredCluster:
+def cluster(*, database: dict[str, JsonValue] | None = None) -> ConfiguredCluster:
     return ConfiguredCluster(
-        name="c1",
+        fqdn="c1",
         network="net-a",
-        environment=environment,
-        site="dc1",
+        environment="PROD",
+        site="ny",
         type="generic",
         api_url="https://c1:9443",
+        credentials=ClusterCredentialsSettings(username="admin", password=SecretStr("secret")),
+        default_user_password=SecretStr("default-user-secret"),
+        database_overrides=database or {},
     )
 
 
-def test_the_general_defaults_fill_what_the_request_left_out() -> None:
-    database: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=REQUESTED)
+def test_the_defaults_fill_what_the_request_left_out() -> None:
+    database: NewDatabase = DEFAULTS.fill_in(cluster=cluster(), requested=REQUESTED)
 
     assert (database.replication, database.data_persistence) == (True, "aof")
 
 
-def test_an_override_applies_where_its_labels_match() -> None:
-    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is False
+def test_a_value_set_on_the_cluster_beats_the_default() -> None:
+    filled: NewDatabase = DEFAULTS.fill_in(
+        cluster=cluster(database={"replication": False}), requested=REQUESTED
+    )
+
+    assert filled.replication is False
 
 
 def test_the_request_beats_every_default() -> None:
     requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=True)
 
-    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=requested).replication is True
-
-
-def test_a_later_override_beats_an_earlier_one() -> None:
-    defaults: DatabaseDefaults = DatabaseDefaults(
-        settings=DatabaseDefaultsSettings(
-            values={},
-            persistence_values={},
-            overrides=[
-                DefaultsOverride(
-                    when=OverrideClusterSelector(environment="DEV"), values={"shards_placement": "dense"}
-                ),
-                DefaultsOverride(
-                    when=OverrideClusterSelector(site="dc1"), values={"shards_placement": "sparse"}
-                ),
-            ],
-        )
-    )
-
-    assert (
-        defaults.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).shards_placement == "sparse"
-    )
-
-
-def test_an_override_applies_only_when_all_its_labels_match() -> None:
-    defaults: DatabaseDefaults = DatabaseDefaults(
-        settings=DatabaseDefaultsSettings(
-            values={"replication": True},
-            persistence_values={},
-            overrides=[
-                DefaultsOverride(
-                    when=OverrideClusterSelector(environment="DEV", site="dc2"), values={"replication": False}
-                )
-            ],
-        )
-    )
-
-    assert defaults.fill_in(cluster=cluster(environment="DEV"), requested=REQUESTED).replication is True
+    assert DEFAULTS.fill_in(cluster=cluster(database={"replication": False}), requested=requested).replication
 
 
 def test_a_field_sent_as_null_keeps_the_default() -> None:
     requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, replication=None)
 
-    assert DEFAULTS.fill_in(cluster=cluster(environment="DEV"), requested=requested).replication is False
+    assert DEFAULTS.fill_in(cluster=cluster(), requested=requested).replication is True
 
 
 @pytest.mark.parametrize(
@@ -111,19 +70,8 @@ def test_a_field_sent_as_null_keeps_the_default() -> None:
 def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         database_defaults_from(
-            settings=DatabaseDefaultsSettings(
-                values={},
-                persistence_values={},
-                overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="DEV"), values=values)],
-            ),
-            clusters=[],
+            settings=DatabaseDefaultsSettings(database=values, persistence_values={}), clusters=[]
         )
-
-
-def test_every_override_selector_field_is_a_cluster_label() -> None:
-    assert set(OverrideClusterSelector.model_fields) == set(
-        cluster_labels(cluster=cluster(environment="DEV"))
-    )
 
 
 @pytest.mark.parametrize(
@@ -141,7 +89,7 @@ def test_only_the_settings_of_the_chosen_persistence_mode_are_filled_in(
         obj={"name": "orders", "memory_size": 104857600, "data_persistence": data_persistence}
     )
 
-    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=requested)
+    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(), requested=requested)
 
     assert (filled.aof_policy, filled.snapshot_policy) == (aof_policy, snapshot_policy)
 
@@ -156,63 +104,55 @@ def test_a_requested_persistence_setting_beats_the_default_of_its_mode() -> None
         }
     )
 
-    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(environment="PROD"), requested=requested)
+    filled: NewDatabase = DEFAULTS.fill_in(cluster=cluster(), requested=requested)
 
     assert filled.snapshot_policy == [SnapshotRule(secs=60, writes=100)]
 
 
-def defaults_with_override(*, values: dict[str, JsonValue]) -> DatabaseDefaults:
+def defaults_checked_on(
+    *, configured: ConfiguredCluster, database: dict[str, JsonValue] | None = None
+) -> DatabaseDefaults:
     return database_defaults_from(
         settings=DatabaseDefaultsSettings(
-            values={"data_persistence": "aof"},
-            persistence_values=PERSISTENCE_VALUES,
-            overrides=[DefaultsOverride(when=OverrideClusterSelector(environment="PROD"), values=values)],
+            database=database or {"data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
         ),
-        clusters=[cluster(environment="PROD")],
+        clusters=[configured],
     )
 
 
-def test_an_override_may_set_only_the_policy_of_the_default_mode() -> None:
-    defaults: DatabaseDefaults = defaults_with_override(values={"aof_policy": "appendfsync-always"})
+def test_a_cluster_may_set_the_policy_of_the_default_mode() -> None:
+    configured: ConfiguredCluster = cluster(database={"aof_policy": "appendfsync-always"})
 
-    assert defaults.fill_in(cluster=cluster(environment="PROD"), requested=REQUESTED).aof_policy == (
-        "appendfsync-always"
+    filled: NewDatabase = defaults_checked_on(configured=configured).fill_in(
+        cluster=configured, requested=REQUESTED
     )
 
-
-def test_an_override_with_the_policy_of_another_mode_stops_at_startup() -> None:
-    with pytest.raises(expected_exception=ConfigurationError):
-        defaults_with_override(values={"snapshot_policy": [{"secs": 60, "writes": 1}]})
+    assert filled.aof_policy == "appendfsync-always"
 
 
-def test_an_override_that_turns_persistence_off_drops_the_base_policy_at_startup() -> None:
-    database_defaults_from(
-        settings=DatabaseDefaultsSettings(
-            values={"data_persistence": "aof", "aof_policy": "appendfsync-every-sec"},
-            persistence_values={},
-            overrides=[
-                DefaultsOverride(
-                    when=OverrideClusterSelector(environment="DEV"), values={"data_persistence": "disabled"}
-                )
-            ],
+@pytest.mark.parametrize(
+    argnames="configured",
+    argvalues=[
+        pytest.param(
+            cluster(database={"snapshot_policy": [{"secs": 60, "writes": 1}]}), id="other-mode-policy"
         ),
-        clusters=[cluster(environment="DEV")],
+        pytest.param(
+            cluster(database={"sharding": False, "shard_key_regex": [{"regex": "(?<tag>.*)"}]}),
+            id="clashing-values",
+        ),
+    ],
+)
+def test_values_on_a_cluster_that_cannot_apply_stop_at_startup(configured: ConfiguredCluster) -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        defaults_checked_on(configured=configured)
+
+
+def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None:
+    configured: ConfiguredCluster = cluster(database={"data_persistence": "disabled"})
+    defaults: DatabaseDefaults = defaults_checked_on(
+        configured=configured, database={"data_persistence": "aof", "aof_policy": "appendfsync-always"}
     )
 
+    filled: NewDatabase = defaults.fill_in(cluster=configured, requested=REQUESTED)
 
-def test_overrides_that_are_valid_alone_but_clash_on_one_cluster_stop_at_startup() -> None:
-    with pytest.raises(expected_exception=ConfigurationError):
-        database_defaults_from(
-            settings=DatabaseDefaultsSettings(
-                values={},
-                persistence_values={},
-                overrides=[
-                    DefaultsOverride(
-                        when=OverrideClusterSelector(environment="PROD"),
-                        values={"sharding": True, "shard_key_regex": [{"regex": "(?<tag>.*)"}]},
-                    ),
-                    DefaultsOverride(when=OverrideClusterSelector(site="dc1"), values={"sharding": False}),
-                ],
-            ),
-            clusters=[cluster(environment="PROD")],
-        )
+    assert (filled.data_persistence, filled.aof_policy) == ("disabled", None)

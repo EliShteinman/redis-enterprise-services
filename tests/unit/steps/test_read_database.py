@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import JsonValue
 
@@ -11,8 +13,8 @@ from redis_enterprise_services.steps.read_database import (
 
 
 @pytest.fixture
-def settings() -> DatabaseSettings:
-    return load_settings().database
+def settings(config_dir: Path) -> DatabaseSettings:
+    return load_settings(config_dir=config_dir).database
 
 
 @pytest.fixture
