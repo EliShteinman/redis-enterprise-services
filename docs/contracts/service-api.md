@@ -53,10 +53,7 @@
 ```json
 {
   "target": {
-    "active_active": false,
-    "sites": [
-      {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}
-    ]
+    "site": {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}
   },
   "spec": {
     "database": {"name": "orders", "memory_size": 1073741824},
@@ -71,12 +68,11 @@
 
 | שדה | סוג | חובה | הערה |
 |---|---|---|---|
-| `active_active` | `false` | ✅ | `true` עוד לא נתמך |
-| `sites` | list | ✅ | איבר אחד בדיוק |
-| `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
-| `sites[].network` | str | ✅ | שם הרשת, כמו בקונפיג של השירות |
-| `sites[].site` | str | ✅ | שם האתר, כמו בקונפיג של השירות |
-| `sites[].cluster` | str | ✅ | `generic`, או ה-FQDN של קלאסטר ייעודי, כפי שהוא כתוב בקונפיג של השירות |
+| `site` | object | ✅ | אובייקט אחד: האתר שבו ה-DB נוצר |
+| `site.environment` | `DEV` / `PROD` / `TEST` | ✅ | |
+| `site.network` | str | ✅ | שם הרשת, כמו בקונפיג של השירות |
+| `site.site` | str | ✅ | שם האתר, כמו בקונפיג של השירות |
+| `site.cluster` | str | ✅ | `generic`, או ה-FQDN של קלאסטר ייעודי, כפי שהוא כתוב בקונפיג של השירות |
 
 **איך נמצא הקלאסטר:** הבקשה מתארת את הקלאסטר ולא יודעת את הכתובת שלו. השירות מתרגם אותו לכתובת לפי
 `helm/files/clusters.yaml`, באותם `environment`, `network` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, וב-FQDN
@@ -173,46 +169,43 @@
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "status": "succeeded",
   "database": {
+    "kind": "single_site",
     "name": "orders",
     "memory_size": 1073741824,
-    "active_active": false,
-    "crdb_guid": null,
-    "clusters": [
-      {
-        "cluster": "cluster-a.net-a", "cluster_url": "https://cluster-a.net-a:9443",
-        "environment": "PROD", "network": "net-a", "site": "NY",
-        "access": {
-          "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
-        },
-        "db": {
-          "db_uid": 7,
-          "settings": {"name": "orders", "memory_size": 1073741824, "version": "8.4.0", "replication": true,
-                       "data_persistence": "aof", "aof_policy": "appendfsync-every-sec", "…": "…"},
-          "permissions": [
-            {"user_uid": 12, "user_name": "app", "user_password": "S3cure-Passw0rd",
-             "acl_uid": 9, "acl_rule": "+@all ~orders:*", "role_uid": 4, "role_name": "orders-app-role"}
-          ]
-        }
+    "cluster": {
+      "cluster": "cluster-a.net-a", "cluster_url": "https://cluster-a.net-a:9443",
+      "environment": "PROD", "network": "net-a", "site": "NY",
+      "access": {
+        "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
+      },
+      "db": {
+        "db_uid": 7,
+        "settings": {"name": "orders", "memory_size": 1073741824, "version": "8.4.0", "replication": true,
+                     "data_persistence": "aof", "aof_policy": "appendfsync-every-sec", "…": "…"},
+        "permissions": [
+          {"user_uid": 12, "user_name": "app", "user_password": "S3cure-Passw0rd",
+           "acl_uid": 9, "acl_rule": "+@all ~orders:*", "role_uid": 4, "role_name": "orders-app-role"}
+        ]
       }
-    ]
+    }
   }
 }
 ```
 
 כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
 ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster` (ה-FQDN של הקלאסטר), `cluster_url`, `environment`, `network` ו-`site` מגיעים
-מהקונפיג. `active_active: false` ו-`crdb_guid: null` קבועים עד Active-Active.
+מהקונפיג. `kind` הוא תמיד `single_site`.
 
 | שדה | הערה |
 |---|---|
+| `database.kind` | סוג ה-DB. ב-route הזה תמיד `single_site` |
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
-| `database.crdb_guid` | ה-id של Active-Active. `null` ל-DB באתר אחד |
-| `database.clusters[]` | ענף לכל קלאסטר. היום קלאסטר אחד |
-| `clusters[].cluster` | ה-FQDN של הקלאסטר, כפי שהוא כתוב בקונפיג |
-| `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
-| `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
-| `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
-| `clusters[].db.permissions[]` | לכל יוזר: היוזר, ה-ACL וה-role שלו, שנוצרים ונמחקים יחד, כל אחד עם ה-uid שלו. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף |
+| `database.cluster` | אובייקט אחד: הקלאסטר שעליו ה-DB נוצר |
+| `cluster.cluster` | ה-FQDN של הקלאסטר, כפי שהוא כתוב בקונפיג |
+| `cluster.access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
+| `cluster.db.db_uid` | ה-uid של ה-DB בקלאסטר |
+| `cluster.db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
+| `cluster.db.permissions[]` | לכל יוזר: היוזר, ה-ACL וה-role שלו, שנוצרים ונמחקים יחד, כל אחד עם ה-uid שלו. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף |
 
 **מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
 פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB
@@ -357,10 +350,10 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
-| Active-Active | `active_active: true` עם כמה `sites`. `crdb_guid` יהיה ה-UUID של ה-CRDB, ו-`clusters[]` יכיל ענף לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
+| Active-Active | route נפרד, `POST /v1/crdbs/create`, עם `target: {sites: [...]}`. היצירה באתר אחד לא משתנה. בתוצאה `kind: "active_active"`, אובייקט `crdb` ו-`clusters[]` עם ענף לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
 | `Location` בתשובת `202` | כותרת לראוט הסטטוס: בסיס הכתובת מהקונפיג, והנתיב מהשירות |
-| עריכה ומחיקה: היעד | `target: {active_active, crdb_guid, clusters}` (עם ה-`db_uid` וה-uids של כל ענף), מהתוצאה של היצירה, שונה מה-`target` של יצירה |
-| עריכה ומחיקה: קודים | `database_not_found`, `clusters_mismatch`, `sites_diverged` בסטטוס (`rejected`) |
+| עריכה ומחיקה: היעד | יעד לכל סוג, מהתוצאה של היצירה, שונה מה-`target` של יצירה. באתר אחד: `target: {cluster_url, db_uid}`. ב-Active-Active: `target: {crdb_guid, clusters}` |
+| עריכה ומחיקה: קודים | `database_not_found` בסטטוס (`rejected`). ב-Active-Active גם `clusters_mismatch` ו-`sites_diverged` |
 | עריכת DB | `POST /v1/databases/update` |
 | עריכת יוזרים | `POST /v1/databases/users`, עם רשימת היוזרים המלאה. סיסמה חסרה או מיותרת ⇐ `422 password_rules` |
 | מחיקה | `POST /v1/databases/delete` |
