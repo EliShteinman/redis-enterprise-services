@@ -51,7 +51,7 @@ POST /v1/databases/create
    והאתר של קלאסטר הם המקום שלו בעץ. המפתח של קלאסטר הוא ה-FQDN שלו, ואין לו שם נפרד. כתובת ה-API נבנית ממנו:
    `https://<FQDN>:<api_port>`, ופורט שכתוב במפתח עצמו (`cluster-a.net-a.example.com:9444`) קודם ל-`api_port`. לקלאסטר
    יש `type`. הקונפיג נדחה בעלייה אם FQDN חוזר (בכל הקובץ), אם כתובת API חוזרת, או אם ה-FQDN של קלאסטר `dedicated` הוא
-   `generic`. הבקשה שולחת `environment`, `network`, `site`, וב-`cluster` את `generic` או FQDN של קלאסטר `dedicated`:
+   `generic`. הבקשה שולחת ב-`target.site` אובייקט אחד: `environment`, `network`, `site`, וב-`cluster` את `generic` או FQDN של קלאסטר `dedicated`:
    - FQDN: הקלאסטר מסוג `dedicated` עם אותם סביבה, רשת, אתר ו-FQDN.
    - `generic`: כל הקלאסטרים ה-generic באותם סביבה, רשת ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
@@ -170,7 +170,7 @@ POST /v1/databases/create
 
 | מה קרה | הפעולה |
 |---|---|
-| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`): ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
+| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`), `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
 | שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `unexpected <type>: <text>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |

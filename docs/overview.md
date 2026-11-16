@@ -46,7 +46,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
-- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד (`target.site`, אתר אחד) מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
   הדריסות של הסביבה, הרשת, האתר והקלאסטר.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
   ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר.
@@ -55,7 +55,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
   - תוצאה לא ידועה (timeout, שירות קצה שלא ענה) נבדקת בקלאסטר לפני ניסיון חוזר.
   - ביטול רק אחרי כישלון ודאי. כל השאר ⇐ `requires_manual_intervention`, והנעילה נשארת.
 - **התאוששות:** heartbeat לכל פעולה, וסריקה בכל pod שמסמנת פעולות של pod שנפל.
-- **תוצאה:** עץ ה-DB, שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
+- **תוצאה:** עץ ה-DB (`kind: "single_site"`, קלאסטר אחד), שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
 - **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay. הלוג לקונסול כשורה או כ-JSON,
   ואפשר גם קובץ JSON מתחלף. `/health` לא נכנס ללוגים מתחת ל-WARNING, ולא ל-traces ול-metrics.
 
@@ -72,7 +72,7 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 |---|---|
 | בחירת קלאסטר | היום קלאסטר `generic` אחד לכל יעד. בחירה בין כמה לפי מקום (dry_run) |
 | הזדהות | אין הזדהות מול השירות |
-| Active-Active | יצירה, עריכה ומחיקה של CRDB |
+| Active-Active | יצירה, עריכה ומחיקה של CRDB. היצירה ב-route נפרד, `POST /v1/crdbs/create` |
 | מחיקה | מחיקת DB עם היוזרים שלו |
 | עריכה | עריכת DB ועריכת רשימת היוזרים |
 | קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
