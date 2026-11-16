@@ -1,6 +1,7 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseKind
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterFieldSettings
 from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.preparation.prepared_active_active_creation import (
@@ -9,11 +10,13 @@ from redis_enterprise_services.creation.preparation.prepared_active_active_creat
 from redis_enterprise_services.creation.results.crdb_instance_of_cluster import crdb_instance_of_cluster
 from redis_enterprise_services.creation.results.created_crdb_guid import created_crdb_guid
 from redis_enterprise_services.creation.results.created_permission import created_permission
+from redis_enterprise_services.creation.results.database_cluster_result import database_cluster_result
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
-from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveClusterResult,
     ActiveActiveDatabaseResult,
 )
+from redis_enterprise_services.operations.results.database_result import DatabasePermissionResult
 from redis_enterprise_services.planning.keys.creation_step_keys import (
     READ_CRDB_STEP_KEY,
     READ_DATABASE_STEP_KEY,
@@ -22,7 +25,6 @@ from redis_enterprise_services.planning.keys.creation_step_keys import (
 from redis_enterprise_services.planning.planned.active_active_planned_resources import site_user_resources
 from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.spec.active_active_spec import ActiveActiveSpec
-from redis_enterprise_services.resources.models import NamedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 from redis_enterprise_services.steps.crdb.read_crdb import CrdbConfigSnapshot, CrdbInstanceSettings
 
@@ -43,7 +45,7 @@ def created_active_active_result(
     ]
     return ActiveActiveDatabaseResult.model_validate(
         obj={
-            "kind": "active_active",
+            "kind": DatabaseKind.ACTIVE_ACTIVE,
             "name": databases[0][cluster_fields.name],
             "memory_size": databases[0][cluster_fields.memory_size],
             "crdb": {
@@ -84,7 +86,7 @@ def permissions_on(
     spec: ActiveActiveSpec,
     record: SagaRecord,
     resource_naming: UserResourceNaming,
-) -> list[JsonValue]:
+) -> list[DatabasePermissionResult]:
     return [
         created_permission(
             record=record,
@@ -95,7 +97,7 @@ def permissions_on(
                 user=user,
                 cluster_fqdn=cluster.fqdn,
             ),
-        ).model_dump()
+        )
         for user in spec.users
     ]
 
@@ -106,20 +108,12 @@ def cluster_result(
     instance: CrdbInstanceSettings,
     database: dict[str, JsonValue],
     endpoints_field: str,
-    permissions: list[JsonValue],
-) -> JsonValue:
-    return {
-        "cluster": cluster.fqdn,
-        "cluster_url": cluster.api_url,
-        "network": cluster.network,
-        "site": cluster.site,
-        "environment": cluster.environment,
-        "instance_id": instance.id,
-        "compression": instance.compression,
-        "access": {"endpoints": database[endpoints_field]},
-        "db": {
-            "db_uid": NamedResource.model_validate(obj=database).uid,
-            "settings": {name: database[name] for name in NewDatabase.model_fields},
-            "permissions": permissions,
-        },
-    }
+    permissions: list[DatabasePermissionResult],
+) -> ActiveActiveClusterResult:
+    return ActiveActiveClusterResult(
+        **database_cluster_result(
+            cluster=cluster, database=database, endpoints_field=endpoints_field, permissions=permissions
+        ).model_dump(),
+        instance_id=instance.id,
+        compression=instance.compression,
+    )

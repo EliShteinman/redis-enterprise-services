@@ -1,16 +1,8 @@
-from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
-from redis_enterprise_services.composition.cluster.cluster_repositories import ClusterRepositories
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.defaults.naming_settings import NamingSettings, RedisNameRulesSettings
-from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
-from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
-from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
-from redis_enterprise_services.planning.availability.lookups.combined_name_lookup import CombinedNameLookup
-from redis_enterprise_services.planning.availability.lookups.crdb_name_lookup import CrdbNameLookup
-from redis_enterprise_services.planning.availability.lookups.listed_name_lookup import ListedNameLookup
-from redis_enterprise_services.planning.availability.lookups.name_lookups_by_kind import NameLookupsByKind
-from redis_enterprise_services.planning.availability.name_availability import NameAvailability
+from redis_enterprise_services.creation.preparation.active_active_preparation import ActiveActivePreparation
+from redis_enterprise_services.creation.preparation.creation_preparation import CreationPreparation
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -18,10 +10,43 @@ from redis_enterprise_services.planning.placement.cluster_directory import Clust
 from redis_enterprise_services.planning.placement.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.placement.site_cluster_resolver import SiteClusterResolver
 from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.spec.database_defaults import (
-    DatabaseDefaults,
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.spec.database_defaults_validation import (
     reject_invalid_defaults_on_any_cluster,
 )
+
+
+class PreparationWiring:
+    def __init__(
+        self,
+        *,
+        naming: NamingSettings,
+        resource_naming: UserResourceNaming,
+        clusters: list[ConfiguredCluster],
+        database_defaults: DatabaseDefaults,
+    ) -> None:
+        self._name_validator: NameValidator = build_database_name_validator(naming=naming)
+        self._user_names_validator: UserNamesValidator = build_user_names_validator(
+            redis_names=naming.redis, resource_naming=resource_naming
+        )
+        self._site_cluster_resolver: SiteClusterResolver = build_site_cluster_resolver(clusters=clusters)
+        self._database_defaults: DatabaseDefaults = database_defaults
+
+    def creation_preparation(self) -> CreationPreparation:
+        return CreationPreparation(
+            name_validator=self._name_validator,
+            user_names_validator=self._user_names_validator,
+            site_cluster_resolver=self._site_cluster_resolver,
+            database_defaults=self._database_defaults,
+        )
+
+    def active_active_preparation(self) -> ActiveActivePreparation:
+        return ActiveActivePreparation(
+            name_validator=self._name_validator,
+            user_names_validator=self._user_names_validator,
+            site_cluster_resolver=self._site_cluster_resolver,
+            database_defaults=self._database_defaults,
+        )
 
 
 def checked_database_defaults(
@@ -55,30 +80,4 @@ def build_user_names_validator(
 def build_site_cluster_resolver(*, clusters: list[ConfiguredCluster]) -> SiteClusterResolver:
     return SiteClusterResolver(
         directory=ClusterDirectory(clusters=clusters), chooser=SingleCandidateChooser()
-    )
-
-
-def build_names_check(
-    *,
-    repositories: ClusterRepositories,
-    target_resolver: ClusterTargetResolver,
-    resource_naming: UserResourceNaming,
-) -> CreationNamesCheck:
-    return CreationNamesCheck(
-        name_check_scope=ChosenClusterScope(),
-        name_availability=NameAvailability(
-            lookups=NameLookupsByKind(
-                database=CombinedNameLookup(
-                    lookups=[
-                        ListedNameLookup(lister=repositories.database),
-                        CrdbNameLookup(repository=repositories.crdb),
-                    ]
-                ),
-                acl=ListedNameLookup(lister=repositories.acl),
-                role=ListedNameLookup(lister=repositories.role),
-                user=ListedNameLookup(lister=repositories.user),
-            ),
-            target_resolver=target_resolver,
-        ),
-        creation_naming=CreationNaming(resource_naming=resource_naming),
     )
