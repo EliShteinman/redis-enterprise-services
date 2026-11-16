@@ -77,8 +77,8 @@ Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, t
 uv run pytest
 ```
 
-`tests/integration/` runs the Redis scripts against the saga-state Redis of the local clusters (see Local clusters),
-with the `RES_STATE__*` settings. Without that Redis or those settings, the tests are skipped.
+`tests/integration/` runs the Redis scripts against the saga-state Redis given by the `RES_STATE__*` settings. Without
+that Redis or those settings, the tests are skipped.
 
 ```bash
 uv run ruff check . && uv run ruff format .
@@ -86,30 +86,3 @@ uv run basedpyright
 ```
 
 The lint commands run in pre-commit; the tests do not.
-
-## Local clusters
-
-`docker/compose.yaml` runs two Redis Enterprise clusters, for local development only. Copy `docker/.env.example` to
-`docker/.env` and fill in the passwords. Put the Redis Software license in `docker/license/license.txt` (never
-committed). The bootstrap jobs send every cluster call through cluster-relay (`BOOTSTRAP_RELAY_URL`, by default
-`http://host.docker.internal:8000/`), so start the relay first, on the host: the jobs reach each node at
-`https://localhost:<mapped port>` through it. On Linux Docker Engine the relay must listen on an address the containers
-reach (for example `0.0.0.0`), not only `127.0.0.1`. Then:
-
-```bash
-docker compose -f docker/compose.yaml up -d
-```
-
-The service logs in to these clusters with `RES_CLUSTER_CREDENTIALS__USERNAME` and `RES_CLUSTER_CREDENTIALS__PASSWORD`,
-so set them to `CLUSTER_ADMIN_USERNAME` and `CLUSTER_ADMIN_PASSWORD` from `docker/.env`.
-
-To use another subnet, change `NETWORK_SUBNET`, `NETWORK_DYNAMIC_IP_RANGE` and the three `*_IP` values together in
-`docker/.env`.
-
-The saga-state Redis is not created by the compose file. Create it once on cluster1 (its mapped ports are
-12000-12010):
-
-- a database listening on port `12005`, without sharding;
-- an ACL `+@all -@dangerous +info ~res:*` (`res:` is `state.key_prefix`), a role with that ACL on the database, and a
-  user `saga-service` with that role;
-- `RES_STATE__URL=redis://saga-service:<password>@localhost:12005`.
