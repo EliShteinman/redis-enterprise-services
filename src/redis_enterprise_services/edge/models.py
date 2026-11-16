@@ -22,6 +22,5 @@ class ClusterResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     status_code: int
-    headers: dict[str, str]
     body: JsonValue | None
     cluster_state_id: int | None

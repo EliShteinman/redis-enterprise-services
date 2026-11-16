@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from functools import partial
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
 from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
@@ -48,15 +49,20 @@ class OperationStarter:
                 task=self._operation_heartbeats.stopping_heartbeat_when_done(
                     trace_id=trace_id, task=prepared_run.task
                 ),
+                on_cancelled=partial(
+                    self._reject_cancelled, trace_id=trace_id, task_name=prepared_run.task_name
+                ),
             )
         except RuntimeError as submit_error:
-            self._reject_unsubmitted(
-                trace_id=trace_id, task_name=prepared_run.task_name, submit_error=submit_error
-            )
+            logger.critical(msg=f"{prepared_run.task_name} cannot run in the background: {submit_error!r}")
+            self._reject_never_run(trace_id=trace_id)
             raise
 
-    def _reject_unsubmitted(self, *, trace_id: str, task_name: str, submit_error: RuntimeError) -> None:
-        logger.critical(msg=f"{task_name} cannot run in the background: {submit_error!r}")
+    def _reject_cancelled(self, *, trace_id: str, task_name: str) -> None:
+        logger.warning(msg=f"{task_name} never ran, the service is shutting down: {trace_id} is rejected")
+        self._reject_never_run(trace_id=trace_id)
+
+    def _reject_never_run(self, *, trace_id: str) -> None:
         self._store.save(
             operation=Operation.rejected(trace_id=trace_id, error=self._public_errors.internal_error())
         )
