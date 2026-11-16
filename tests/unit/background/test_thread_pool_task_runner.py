@@ -1,7 +1,7 @@
 from contextvars import ContextVar, Token
 
 from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
-from redis_enterprise_services.config.background_settings import BackgroundSettings
+from redis_enterprise_services.config.service.background_settings import BackgroundSettings
 
 REQUEST_TRACE: ContextVar[str] = ContextVar("request_trace", default="none")
 

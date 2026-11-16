@@ -7,7 +7,7 @@ from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCalle
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.status_goal import StatusGoal
 from redis_enterprise_services.cluster.status_polling import StatusPolling
-from redis_enterprise_services.config.action_settings import ActionSettings
+from redis_enterprise_services.config.redis_api.action_settings import ActionSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,

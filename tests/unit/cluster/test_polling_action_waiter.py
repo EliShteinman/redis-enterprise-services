@@ -10,9 +10,9 @@ from redis_enterprise_services.cluster.polling_action_waiter import PollingActio
 from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
 from redis_enterprise_services.cluster.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.action_settings import ActionSettings
+from redis_enterprise_services.config.redis_api.action_settings import ActionSettings
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
