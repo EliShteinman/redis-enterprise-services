@@ -72,7 +72,7 @@ PUBLIC_ERRORS: PublicErrors = PublicErrors(
         error_kind_by_code={},
     ),
     internal_error_message="internal error",
-    unexpected_error_message="unexpected {error_type}: {error}",
+    unexpected_error_message="internal error: unexpected {error_type}",
 )
 UID_BY_STEP_KEY: dict[str, int] = {
     "database": 7,
@@ -251,17 +251,19 @@ def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_messa
     assert operation.error is not None and operation.error.message == "internal error"
 
 
-def test_an_unexpected_error_before_the_saga_runs_shows_its_type_and_text(harness: ExecutionHarness) -> None:
+def test_an_unexpected_error_before_the_saga_runs_shows_its_type_without_its_text(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug in planning")
 
     operation: Operation = harness.run_and_save()
 
     assert (
-        operation.error is not None and operation.error.message == "unexpected RuntimeError: bug in planning"
+        operation.error is not None and operation.error.message == "internal error: unexpected RuntimeError"
     )
 
 
-def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text(
+def test_an_unexpected_error_after_the_saga_started_shows_its_type_without_its_text(
     harness: ExecutionHarness,
 ) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
@@ -270,8 +272,7 @@ def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text(
     operation: Operation = harness.run_and_save()
 
     assert (
-        operation.error is not None
-        and operation.error.message == "unexpected RuntimeError: bug while finishing"
+        operation.error is not None and operation.error.message == "internal error: unexpected RuntimeError"
     )
 
 
@@ -311,7 +312,7 @@ def test_an_unreadable_record_keeps_the_error_that_stopped_the_saga(harness: Exe
     operation: Operation = harness.run_and_save()
 
     assert operation.error is not None
-    assert operation.error.message == "unexpected RuntimeError: bug while finishing"
+    assert operation.error.message == "internal error: unexpected RuntimeError"
 
 
 def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_intervention(

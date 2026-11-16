@@ -15,17 +15,17 @@ ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigatio
 
 
 @pytest.mark.parametrize(
-    argnames=("status", "ttl_seconds"),
+    argnames=("status", "ttl_seconds", "is_tracked"),
     argvalues=[
-        (OperationStatus.SUCCEEDED, 600),
-        (OperationStatus.REJECTED, 600),
-        (OperationStatus.ROLLED_BACK, 600),
-        (OperationStatus.RUNNING, 0),
-        (OperationStatus.REQUIRES_MANUAL_INTERVENTION, 0),
+        (OperationStatus.SUCCEEDED, 600, False),
+        (OperationStatus.REJECTED, 600, False),
+        (OperationStatus.ROLLED_BACK, 600, False),
+        (OperationStatus.RUNNING, 0, True),
+        (OperationStatus.REQUIRES_MANUAL_INTERVENTION, 0, False),
     ],
 )
-def test_only_an_operation_in_an_expiring_status_is_stored_with_the_expiry(
-    status: OperationStatus, ttl_seconds: int
+def test_only_a_cleanly_ended_operation_expires_and_only_a_running_one_stays_open(
+    status: OperationStatus, ttl_seconds: int, is_tracked: bool
 ) -> None:
     record_writer: MagicMock = create_autospec(spec=TrackedRecordWriter, instance=True)
     store: RedisOperationStore = RedisOperationStore(
@@ -39,7 +39,8 @@ def test_only_an_operation_in_an_expiring_status_is_stored_with_the_expiry(
     error: PublicError | None = None if status in STATUSES_WITHOUT_ERROR else ERROR
     store.save(operation=Operation(trace_id="trace-1", status=status, error=error))
 
-    assert record_writer.save.call_args.kwargs["ttl_seconds"] == ttl_seconds
+    saved: dict[str, object] = record_writer.save.call_args.kwargs
+    assert (saved["ttl_seconds"], saved["is_tracked"]) == (ttl_seconds, is_tracked)
 
 
 def test_an_unreadable_operation_record_raises_a_project_error() -> None:

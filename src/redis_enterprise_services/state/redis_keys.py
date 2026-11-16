@@ -5,9 +5,6 @@ class RedisKeys:
     def saga_record(self, *, saga_id: str) -> str:
         return f"{self._key_prefix}saga:{saga_id}"
 
-    def unfinished_saga_ids(self) -> str:
-        return f"{self._key_prefix}sagas:unfinished"
-
     def operation(self, *, trace_id: str) -> str:
         return f"{self._key_prefix}operation:{trace_id}"
 
