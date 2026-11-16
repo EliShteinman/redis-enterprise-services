@@ -13,7 +13,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from redis_enterprise_services.config.telemetry_settings import TelemetrySettings
+from redis_enterprise_services.config.service.telemetry_settings import TelemetrySettings
 
 
 class TelemetryProviders:

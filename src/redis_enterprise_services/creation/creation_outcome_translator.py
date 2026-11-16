@@ -1,22 +1,22 @@
 import logging
 
-from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_database_result import created_database_result
 from redis_enterprise_services.creation.created_resources import created_uid_or_none
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.operations.database_result import DatabaseResult
+from redis_enterprise_services.operations.errors.public_error import PublicError
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.planned_resources import (
+from redis_enterprise_services.operations.results.database_result import DatabaseResult
+from redis_enterprise_services.planning.planned.planned_resources import (
     PlannedResource,
     planned_resources_by_step_key,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepError, StepRecord
 
 logger: logging.Logger = logging.getLogger(name=__name__)

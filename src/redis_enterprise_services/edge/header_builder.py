@@ -1,6 +1,6 @@
 import base64
 
-from redis_enterprise_services.config.edge_settings import EdgeHeaderSettings, EdgeSettings
+from redis_enterprise_services.config.service.edge_settings import EdgeHeaderSettings, EdgeSettings
 from redis_enterprise_services.edge.encoding import TEXT_ENCODING
 from redis_enterprise_services.edge.models import ClusterRequest
 

@@ -1,14 +1,14 @@
 import logging
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
-from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.placement.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
