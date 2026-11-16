@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, call, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.cluster.cluster_target_resolver import SharedCredentialsTargetResolver
+from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress, ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.databases.database_activation_waiter import DatabaseActivationWaiter
@@ -46,7 +46,9 @@ def step(repository: MagicMock, activation_waiter: MagicMock) -> UpdateDatabaseS
     return UpdateDatabaseStep(
         repository=repository,
         activation_waiter=activation_waiter,
-        target_resolver=SharedCredentialsTargetResolver(credentials=CREDENTIALS),
+        target_resolver=ConfiguredCredentialsTargetResolver(
+            credentials_by_api_url={ADDRESS.api_url: CREDENTIALS}
+        ),
         order_insensitive_fields=frozenset(),
     )
 

@@ -1,9 +1,12 @@
+from pathlib import Path
 from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
-from pydantic import JsonValue
+from pydantic import JsonValue, SecretStr
 
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.database_settings import DatabaseSettings
 from redis_enterprise_services.config.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
@@ -40,7 +43,14 @@ from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
 
 PREPARED_CREATION: PreparedCreation = PreparedCreation(
     cluster=ConfiguredCluster(
-        name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
+        fqdn="c1",
+        network="net-a",
+        environment="DEV",
+        site="ny",
+        type="generic",
+        api_url="https://c1:9443",
+        credentials=ClusterCredentialsSettings(username="admin", password=SecretStr("secret")),
+        default_user_password=SecretStr("default-user-secret"),
     ),
     spec=DatabaseSpec(
         database=NewDatabase(name="orders", memory_size=104857600),
@@ -118,7 +128,7 @@ def saga_record_with_steps(*, status: SagaStatus, step_status: StepStatus) -> Sa
 
 
 class ExecutionHarness:
-    def __init__(self) -> None:
+    def __init__(self, *, database_settings: DatabaseSettings) -> None:
         self.name_availability: MagicMock = create_autospec(spec=NameAvailability, instance=True)
         self.saga_executor: MagicMock = create_autospec(spec=SagaExecutor, instance=True)
         self.operation_store: MagicMock = create_autospec(spec=OperationStore, instance=True)
@@ -136,7 +146,7 @@ class ExecutionHarness:
             outcome_translator=CreationOutcomeTranslator(
                 resource_naming=UserResourceNaming(settings=USER_RESOURCES),
                 public_errors=PUBLIC_ERRORS,
-                database_settings=load_settings().database,
+                database_settings=database_settings,
             ),
             public_errors=PUBLIC_ERRORS,
             saga_record_reader=self.saga_record_reader,
@@ -148,8 +158,12 @@ class ExecutionHarness:
 
 
 @pytest.fixture
-def created() -> DatabaseResult:
-    harness: ExecutionHarness = ExecutionHarness()
+def harness(config_dir: Path) -> ExecutionHarness:
+    return ExecutionHarness(database_settings=load_settings(config_dir=config_dir).database)
+
+
+@pytest.fixture
+def created(harness: ExecutionHarness) -> DatabaseResult:
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
     database: DatabaseResult | None = harness.run_and_save().database
     assert database is not None
@@ -158,6 +172,10 @@ def created() -> DatabaseResult:
 
 def test_the_top_of_the_tree_comes_from_the_read_back_not_the_request(created: DatabaseResult) -> None:
     assert (created.name, created.memory_size) == ("orders", 104857700)
+
+
+def test_a_created_database_names_its_cluster_by_its_fqdn(created: DatabaseResult) -> None:
+    assert created.clusters[0].cluster == PREPARED_CREATION.cluster.fqdn
 
 
 def test_a_created_database_returns_the_endpoints_the_cluster_reported(created: DatabaseResult) -> None:
@@ -194,9 +212,8 @@ def test_each_user_comes_back_with_its_acl_and_role_as_one_permission(created: D
     ],
 )
 def test_a_failed_saga_ends_with_its_status_and_no_database(
-    status: SagaStatus, step_status: StepStatus
+    harness: ExecutionHarness, status: SagaStatus, step_status: StepStatus
 ) -> None:
-    harness: ExecutionHarness = ExecutionHarness()
     harness.saga_executor.run.return_value = saga_record_with_steps(status=status, step_status=step_status)
 
     operation: Operation = harness.run_and_save()
@@ -204,8 +221,7 @@ def test_a_failed_saga_ends_with_its_status_and_no_database(
     assert (operation.status.value, operation.database) == (status.value, None)
 
 
-def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_taken_names_reject_the_creation_before_the_saga_runs(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.side_effect = NameTakenError(message="database orders exists on c1")
 
     operation: Operation = harness.run_and_save()
@@ -216,8 +232,9 @@ def test_taken_names_reject_the_creation_before_the_saga_runs() -> None:
     )
 
 
-def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_message() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_message(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = InvalidPlanError(message="details of the plan")
 
     operation: Operation = harness.run_and_save()
@@ -225,8 +242,7 @@ def test_an_internal_error_before_the_saga_runs_is_rejected_with_the_fixed_messa
     assert operation.error is not None and operation.error.message == "internal error"
 
 
-def test_an_unexpected_error_before_the_saga_runs_shows_its_type_and_text() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_an_unexpected_error_before_the_saga_runs_shows_its_type_and_text(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug in planning")
 
     operation: Operation = harness.run_and_save()
@@ -236,8 +252,9 @@ def test_an_unexpected_error_before_the_saga_runs_shows_its_type_and_text() -> N
     )
 
 
-def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
     harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
 
@@ -249,8 +266,9 @@ def test_an_unexpected_error_after_the_saga_started_shows_its_type_and_text() ->
     )
 
 
-def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = NameTakenError(message="raised after the first step")
     harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION
@@ -259,16 +277,16 @@ def test_a_project_error_after_the_saga_started_is_not_reported_as_rejected() ->
     assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
-def test_a_record_still_stored_as_running_is_reported_as_manual_intervention() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_record_still_stored_as_running_is_reported_as_manual_intervention(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
     harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
 
     assert harness.run_and_save().status is OperationStatus.REQUIRES_MANUAL_INTERVENTION
 
 
-def test_a_project_error_that_interrupted_the_saga_keeps_its_message() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_project_error_that_interrupted_the_saga_keeps_its_message(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.side_effect = NameTakenError(message="raised after the first step")
     harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(status=SagaStatus.RUNNING)
 
@@ -277,8 +295,7 @@ def test_a_project_error_that_interrupted_the_saga_keeps_its_message() -> None:
     assert operation.error is not None and operation.error.message == "raised after the first step"
 
 
-def test_an_unreadable_record_keeps_the_error_that_stopped_the_saga() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_an_unreadable_record_keeps_the_error_that_stopped_the_saga(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
     harness.saga_record_reader.find.side_effect = UnreadableSagaRecordError(message="unreadable")
 
@@ -288,8 +305,9 @@ def test_an_unreadable_record_keeps_the_error_that_stopped_the_saga() -> None:
     assert operation.error.message == "unexpected RuntimeError: bug while finishing"
 
 
-def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_intervention() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_intervention(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug while finishing")
     harness.saga_record_reader.find.side_effect = UnreadableSagaRecordError(message="unreadable")
 
@@ -303,8 +321,9 @@ def test_a_record_that_cannot_be_read_after_a_saga_error_is_reported_as_manual_i
         ResourcesLockedError(message="orders is locked"),
     ],
 )
-def test_the_final_operation_is_stored(executor_result: SagaRecord | RedisEnterpriseServicesError) -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_the_final_operation_is_stored(
+    harness: ExecutionHarness, executor_result: SagaRecord | RedisEnterpriseServicesError
+) -> None:
     harness.saga_executor.run.side_effect = [executor_result]
 
     operation: Operation = harness.run_and_save()
@@ -312,8 +331,7 @@ def test_the_final_operation_is_stored(executor_result: SagaRecord | RedisEnterp
     harness.operation_store.save.assert_called_once_with(operation=operation)
 
 
-def test_an_unexpected_error_before_the_saga_starts_rejects_the_operation() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_an_unexpected_error_before_the_saga_starts_rejects_the_operation(harness: ExecutionHarness) -> None:
     harness.planner.plan.side_effect = RuntimeError("bug")
 
     operation: Operation = harness.run_and_save()
@@ -330,8 +348,7 @@ def succeeded_record_with_an_unreadable_read_back() -> SagaRecord:
     return record
 
 
-def test_a_result_that_cannot_be_translated_needs_manual_intervention() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_result_that_cannot_be_translated_needs_manual_intervention(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.return_value = succeeded_record_with_an_unreadable_read_back()
 
     operation: Operation = harness.run_and_save()
@@ -342,8 +359,9 @@ def test_a_result_that_cannot_be_translated_needs_manual_intervention() -> None:
     )
 
 
-def test_a_succeeded_saga_whose_result_cannot_be_built_lists_what_it_created() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_succeeded_saga_whose_result_cannot_be_built_lists_what_it_created(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.return_value = succeeded_record_with_an_unreadable_read_back()
 
     operation: Operation = harness.run_and_save()
@@ -358,8 +376,9 @@ def test_a_succeeded_saga_whose_result_cannot_be_built_lists_what_it_created() -
     ]
 
 
-def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back(
+    harness: ExecutionHarness,
+) -> None:
     harness.saga_executor.run.side_effect = RuntimeError("bug")
     harness.saga_record_reader.find.return_value = saga_record_with_every_step_done(
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION
@@ -377,8 +396,7 @@ def test_a_saga_stopped_by_an_unexpected_error_lists_what_was_not_rolled_back() 
     ]
 
 
-def test_the_check_before_start_looks_for_taken_names() -> None:
-    harness: ExecutionHarness = ExecutionHarness()
+def test_the_check_before_start_looks_for_taken_names(harness: ExecutionHarness) -> None:
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
 
     harness.run_and_save()

@@ -1,7 +1,8 @@
 import pytest
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, SecretStr
 
 from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
@@ -63,7 +64,14 @@ PLANNER: SingleSiteCreationPlanner = SingleSiteCreationPlanner(
     read_database_step=IdleStep(),
 )
 CLUSTER: ConfiguredCluster = ConfiguredCluster(
-    name="c1", network="net-a", environment="DEV", site="dc1", type="generic", api_url="https://c1:9443"
+    fqdn="c1",
+    network="net-a",
+    environment="DEV",
+    site="ny",
+    type="generic",
+    api_url="https://c1:9443",
+    credentials=ClusterCredentialsSettings(username="admin", password=SecretStr("secret")),
+    default_user_password=SecretStr("default-user-secret"),
 )
 DATABASE: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 USERS: list[DatabaseUserSpec] = [

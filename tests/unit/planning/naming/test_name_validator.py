@@ -16,7 +16,7 @@ RULES: list[NameRule] = configured_name_rules(
 )
 CONTEXT: NamingContext = NamingContext(
     active_active=False,
-    sites=[SitePlacement(network="net-a", site="ny", environment="PROD", cluster="generic")],
+    sites=[SitePlacement(environment="PROD", network="net-a", site="ny", cluster="generic")],
 )
 
 

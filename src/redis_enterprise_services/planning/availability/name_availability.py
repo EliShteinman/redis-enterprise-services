@@ -30,14 +30,14 @@ class NameAvailability:
 
     def ensure_free(self, *, clusters: list[ConfiguredCluster], requested_names: list[RequestedName]) -> None:
         raise_if_any_taken(taken=self.find_taken_names(clusters=clusters, requested_names=requested_names))
-        logger.info(msg=f"{len(requested_names)} names are free on {[cluster.name for cluster in clusters]}")
+        logger.info(msg=f"{len(requested_names)} names are free on {[cluster.fqdn for cluster in clusters]}")
 
     def _find_taken_on_cluster(
         self, *, cluster: ConfiguredCluster, by_kind: dict[NameKind, set[str]]
     ) -> list[TakenName]:
         target: ClusterTarget = self._target_resolver.target_for(address=address_of(cluster=cluster))
         return taken_names(
-            cluster_name=cluster.name, existing_by_kind=self._existing_by_kind(target=target, by_kind=by_kind)
+            cluster_fqdn=cluster.fqdn, existing_by_kind=self._existing_by_kind(target=target, by_kind=by_kind)
         )
 
     def _existing_by_kind(
@@ -49,9 +49,9 @@ class NameAvailability:
         }
 
 
-def taken_names(*, cluster_name: str, existing_by_kind: dict[NameKind, set[str]]) -> list[TakenName]:
+def taken_names(*, cluster_fqdn: str, existing_by_kind: dict[NameKind, set[str]]) -> list[TakenName]:
     return [
-        TakenName(kind=kind, name=name, cluster_name=cluster_name)
+        TakenName(kind=kind, name=name, cluster_fqdn=cluster_fqdn)
         for kind, existing in existing_by_kind.items()
         for name in sorted(existing)
     ]

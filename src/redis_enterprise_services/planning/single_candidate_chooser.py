@@ -13,9 +13,9 @@ class SingleCandidateChooser(ClusterChooser):
     def choose(self, *, placement: SitePlacement, candidates: list[ConfiguredCluster]) -> ConfiguredCluster:
         raise_if_no_candidates(placement=placement, candidates=candidates)
         if len(candidates) > 1:
-            names: list[str] = [candidate.name for candidate in candidates]
+            fqdns: list[str] = [candidate.fqdn for candidate in candidates]
             message: str = (
-                f"{placement.describe()} has several generic clusters {names}, and no way to choose"
+                f"{placement.describe()} has several generic clusters {fqdns}, and no way to choose"
             )
             logger.error(msg=message)
             raise ConfigurationError(message=message)

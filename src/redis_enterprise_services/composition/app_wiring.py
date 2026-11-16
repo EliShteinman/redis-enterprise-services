@@ -2,6 +2,8 @@ from redis_enterprise_services.background.periodic_thread import PeriodicThread
 from redis_enterprise_services.background.thread_pool_task_runner import ThreadPoolTaskRunner
 from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
 from redis_enterprise_services.composition.state_wiring import StateWiring
+from redis_enterprise_services.config.cluster_flattening import configured_clusters
+from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
@@ -19,7 +21,7 @@ from redis_enterprise_services.planning.availability.listed_name_lookup import L
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.database_defaults import database_defaults_from
+from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
@@ -52,12 +54,16 @@ class AppWiring:
             heartbeat_store=state_wiring.heartbeat_store
         )
         public_errors: PublicErrors = build_public_errors(settings=settings)
+        clusters: list[ConfiguredCluster] = configured_clusters(tree=settings.clusters)
         self.public_errors: PublicErrors = public_errors
         self.operation_store: OperationStore = state_wiring.operation_store
         self.database_creation: DatabaseCreation = build_database_creation(
             settings=settings,
+            clusters=clusters,
             state_wiring=state_wiring,
-            cluster_wiring=ClusterWiring(settings=settings, deadline_polling=deadline_polling),
+            cluster_wiring=ClusterWiring(
+                settings=settings, clusters=clusters, deadline_polling=deadline_polling
+            ),
             operation_starter=build_operation_starter(
                 state_wiring=state_wiring,
                 task_runner=task_runner,
@@ -133,6 +139,7 @@ def build_abandoned_sweep_thread(
 def build_database_creation(
     *,
     settings: Settings,
+    clusters: list[ConfiguredCluster],
     state_wiring: StateWiring,
     cluster_wiring: ClusterWiring,
     operation_starter: OperationStarter,
@@ -141,7 +148,12 @@ def build_database_creation(
 ) -> DatabaseCreation:
     user_resource_naming: UserResourceNaming = UserResourceNaming(settings=settings.user_resources)
     return DatabaseCreation(
-        preparation=build_creation_preparation(settings=settings, resource_naming=user_resource_naming),
+        preparation=build_creation_preparation(
+            settings=settings,
+            resource_naming=user_resource_naming,
+            clusters=clusters,
+            database_defaults=database_defaults_from(settings=settings.database_defaults, clusters=clusters),
+        ),
         execution=CreationExecution(
             names_check=build_names_check(
                 cluster_wiring=cluster_wiring, user_resource_naming=user_resource_naming
@@ -169,7 +181,11 @@ def build_database_creation(
 
 
 def build_creation_preparation(
-    *, settings: Settings, resource_naming: UserResourceNaming
+    *,
+    settings: Settings,
+    resource_naming: UserResourceNaming,
+    clusters: list[ConfiguredCluster],
+    database_defaults: DatabaseDefaults,
 ) -> CreationPreparation:
     redis_names: RedisNameRulesSettings = settings.naming.redis
     return CreationPreparation(
@@ -187,11 +203,9 @@ def build_creation_preparation(
             resource_naming=resource_naming,
         ),
         site_cluster_resolver=SiteClusterResolver(
-            directory=ClusterDirectory(clusters=settings.clusters), chooser=SingleCandidateChooser()
+            directory=ClusterDirectory(clusters=clusters), chooser=SingleCandidateChooser()
         ),
-        database_defaults=database_defaults_from(
-            settings=settings.database_defaults, clusters=settings.clusters
-        ),
+        database_defaults=database_defaults,
     )
 
 
