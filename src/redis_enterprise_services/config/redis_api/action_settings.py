@@ -1,6 +1,6 @@
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.item_path import ItemPath
-from redis_enterprise_services.config.wait_settings import WaitSettings
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
+from redis_enterprise_services.config.validation.item_path import ItemPath
 
 
 class ActionSettings(ConfigModel):

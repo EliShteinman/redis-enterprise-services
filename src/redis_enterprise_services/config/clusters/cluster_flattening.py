@@ -3,17 +3,17 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from redis_enterprise_services.config.base_url import comparable_url
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_fqdn import api_url_of
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster, Environment
-from redis_enterprise_services.config.cluster_tree_entries import (
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_fqdn import api_url_of
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster, Environment
+from redis_enterprise_services.config.clusters.cluster_tree_entries import (
     ClusterEntry,
     EnvironmentEntries,
     TreeEnvironment,
 )
-from redis_enterprise_services.config.level_values import LevelValues
-from redis_enterprise_services.config.repeated_values import reject_repeated
+from redis_enterprise_services.config.clusters.level_values import LevelValues
+from redis_enterprise_services.config.validation.base_url import comparable_url
+from redis_enterprise_services.config.validation.repeated_values import reject_repeated
 
 ENVIRONMENT_OF_TREE_KEY: dict[TreeEnvironment, Environment] = {"dev": "DEV", "prod": "PROD", "test": "TEST"}
 

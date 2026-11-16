@@ -1,7 +1,7 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from redis_enterprise_services.config.item_path import ItemPath
+from redis_enterprise_services.config.validation.item_path import ItemPath
 
 
 @pytest.mark.parametrize(
