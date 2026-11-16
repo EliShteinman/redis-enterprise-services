@@ -1,7 +1,7 @@
 from typing import get_args
 
-from redis_enterprise_services.config.error_kind import ErrorKind
-from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.config.public_errors.error_kind import ErrorKind
+from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 from redis_enterprise_services.operations.public_error import ERROR_KIND_MEANINGS, PUBLIC_ERROR_CODE_MEANINGS
 
 

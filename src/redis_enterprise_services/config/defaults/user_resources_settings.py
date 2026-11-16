@@ -3,8 +3,8 @@ from typing import Annotated
 from pydantic import AfterValidator
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.role_management import RoleManagement
-from redis_enterprise_services.config.template_placeholders import reject_placeholders_other_than
+from redis_enterprise_services.config.defaults.role_management import RoleManagement
+from redis_enterprise_services.config.validation.template_placeholders import reject_placeholders_other_than
 
 NAME_PLACEHOLDERS: frozenset[str] = frozenset({"database", "user"})
 NAME_SEPARATOR: str = "-"

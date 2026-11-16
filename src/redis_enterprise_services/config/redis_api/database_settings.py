@@ -2,10 +2,10 @@ from typing import Annotated
 
 from pydantic import AfterValidator
 
-from redis_enterprise_services.config.database_tag import DatabaseTag
-from redis_enterprise_services.config.repeated_values import reject_repeated
-from redis_enterprise_services.config.resource_settings import ResourceSettings
-from redis_enterprise_services.config.wait_settings import WaitSettings
+from redis_enterprise_services.config.redis_api.database_tag import DatabaseTag
+from redis_enterprise_services.config.redis_api.resource_settings import ResourceSettings
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
+from redis_enterprise_services.config.validation.repeated_values import reject_repeated
 
 
 def reject_repeated_tag_keys(tags: list[DatabaseTag]) -> list[DatabaseTag]:

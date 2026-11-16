@@ -2,10 +2,10 @@ from typing import Literal
 
 from pydantic import Field, JsonValue, SecretStr
 
-from redis_enterprise_services.config.base_url import BaseUrl
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_fqdn import ClusterFqdn
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_fqdn import ClusterFqdn
 from redis_enterprise_services.config.config_model import ConfigModel
+from redis_enterprise_services.config.validation.base_url import BaseUrl
 
 type Environment = Literal["DEV", "PROD", "TEST"]
 type ClusterType = Literal["generic", "dedicated"]

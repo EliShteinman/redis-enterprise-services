@@ -2,9 +2,9 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from redis_enterprise_services.config.cluster_fqdn import ClusterFqdn
-from redis_enterprise_services.config.cluster_inventory import GENERIC_CLUSTER, ClusterType
-from redis_enterprise_services.config.level_values import LevelValues
+from redis_enterprise_services.config.clusters.cluster_fqdn import ClusterFqdn
+from redis_enterprise_services.config.clusters.cluster_inventory import GENERIC_CLUSTER, ClusterType
+from redis_enterprise_services.config.clusters.level_values import LevelValues
 
 
 class ClusterEntry(LevelValues):

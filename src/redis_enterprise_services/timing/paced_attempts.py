@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from redis_enterprise_services.config.saga_settings import RetrySettings
+from redis_enterprise_services.config.service.saga_settings import RetrySettings
 from redis_enterprise_services.timing.sleeper import Sleeper
 
 

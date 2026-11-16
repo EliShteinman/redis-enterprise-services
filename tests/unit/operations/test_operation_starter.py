@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from redis_enterprise_services.background.background_task_runner import BackgroundTaskRunner
-from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
 from redis_enterprise_services.operations.operation import Operation

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import SecretStr, TypeAdapter, ValidationError
 
-from redis_enterprise_services.config.redis_connection_url import RedisConnectionUrl
+from redis_enterprise_services.config.validation.redis_connection_url import RedisConnectionUrl
 
 
 @pytest.mark.parametrize(

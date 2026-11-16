@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, JsonValue
 
-from redis_enterprise_services.config.cluster_inventory import Environment
+from redis_enterprise_services.config.clusters.cluster_inventory import Environment
 
 
 class DatabasePermissionResult(BaseModel):

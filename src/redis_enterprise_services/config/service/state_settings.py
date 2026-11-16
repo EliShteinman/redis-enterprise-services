@@ -1,7 +1,7 @@
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PositiveInt
 
 from redis_enterprise_services.config.config_model import ConfigModel
-from redis_enterprise_services.config.redis_connection_url import RedisConnectionUrl
+from redis_enterprise_services.config.validation.redis_connection_url import RedisConnectionUrl
 
 
 class LockSettings(ConfigModel):
