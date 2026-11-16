@@ -30,7 +30,12 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **השירות לעולם לא פונה ישירות לקלאסטר.** כל קריאה עוברת דרך cluster-relay של הרשת, מאחורי חומת אש
   (`contracts/edge-service.md`).
 - **השירות לא בודק הרשאות עסקיות.** הבקשה כבר אושרה ב-UI.
-- **אין ערכים בקוד.** כל ערך בקונפיג (`config/*.yaml`, עם דריסה ממשתני סביבה `RES_`), וסודות רק ממשתני סביבה.
+- **אין ערכים בקוד.** כל ערך בקונפיג, בארבעה קבצים ב-`helm/files/`: `clusters.yaml` (הקלאסטרים), `defaults.yaml`
+  (`database_defaults`, `naming`, `user_resources`), `service.yaml` (השירות עצמו: `server`, `api`, `log`, `telemetry`, `edge`,
+  `state`, `saga`, `background`, `liveness`, `operation`) ו-`redis_api.yaml` (ה-REST API של הקלאסטר: `cluster_api`,
+  `action`, `database`, `acl`, `role`, `user`). השירות קורא אותם מהתיקייה שמעבירים לו (`RES_CONFIG_DIR` בתמונה,
+  ו-`run_local.py` מעביר את `helm/files`), ואין תיקיית ברירת מחדל. הסודות של הקלאסטרים ב-`clusters.yaml`, והגישה
+  ל-Redis של מצב ה-saga רק ממשתני הסביבה `RES_STATE__URL` ו-`RES_STATE__KEY_PREFIX`.
 
 ---
 
@@ -41,7 +46,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 - **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
-- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`config/clusters.yaml`, וברירות מחדל לפי תוויות של הקלאסטר.
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
+  הדריסות של הסביבה, הרשת, האתר והקלאסטר.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
   ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר.
 - **בטיחות:**
@@ -50,7 +56,8 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
   - ביטול רק אחרי כישלון ודאי. כל השאר ⇐ `requires_manual_intervention`, והנעילה נשארת.
 - **התאוששות:** heartbeat לכל פעולה, וסריקה בכל pod שמסמנת פעולות של pod שנפל.
 - **תוצאה:** עץ ה-DB, שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
-- **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay.
+- **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay. הלוג לקונסול כשורה או כ-JSON,
+  ואפשר גם קובץ JSON מתחלף. `/health` לא נכנס ללוגים מתחת ל-WARNING, ולא ל-traces ול-metrics.
 
 **נבדק מול קלאסטר אמיתי:** הצלחה עם הרשאות שנבדקו בחיבור ל-DB, כשל בכל אחד מששת הצעדים שהסתיים בביטול מלא,
 בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5).
@@ -69,7 +76,6 @@ UI -> middle service -> redis-enterprise-services  ->   auth    ->  cluster-rela
 | מחיקה | מחיקת DB עם היוזרים שלו |
 | עריכה | עריכת DB ועריכת רשימת היוזרים |
 | קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
-| פרטי גישה לכל קלאסטר | היום פרטי admin אחד לכל הקלאסטרים |
 | `Location` בתשובת `202` | השירות לא מחזיר כתובת לראוט הסטטוס; שירות הביניים בונה אותה מה-`trace_id` |
 | טיפול ידני | אין כלי. נעשה ב-`redis-cli` (`design/saga-engine-and-state.md` סעיף 10) |
 

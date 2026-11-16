@@ -46,38 +46,63 @@ POST /v1/databases/create
 
 ![קלאסטר וברירות מחדל](../diagrams/13-flow-cluster-and-defaults.drawio.svg)
 
-1. **שם ה-DB** לפי `config/naming.yaml`. אחרת `invalid_name`.
-2. **הקלאסטר** (`SiteClusterResolver`) מתוך `config/clusters.yaml`: רשימה שטוחה, ולכל קלאסטר `name`, `network`,
-   `environment`, `site`, `type` ו-`api_url`. ההתאמה היא לפי השדות, ולכן אין היררכיה קבועה בין רשת, סביבה ואתר.
-   הקונפיג נדחה בעלייה אם `api_url` חוזר, אם הצירוף של `network`, `environment`, `site` ו-`name` חוזר, או אם קלאסטר
-   `dedicated` נקרא `generic`. הבקשה שולחת ב-`cluster` את `generic` או שם של קלאסטר `dedicated`:
-   - שם: הקלאסטר מסוג `dedicated` עם אותם רשת, סביבה, אתר ושם.
-   - `generic`: כל הקלאסטרים ה-generic באותם רשת, סביבה ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
+1. **שם ה-DB** לפי `helm/files/defaults.yaml`. אחרת `invalid_name`.
+2. **הקלאסטר** (`SiteClusterResolver`) מתוך `helm/files/clusters.yaml`: עץ של סביבה, רשת, אתר וקלאסטר. הסביבה, הרשת
+   והאתר של קלאסטר הם המקום שלו בעץ. המפתח של קלאסטר הוא ה-FQDN שלו, ואין לו שם נפרד. כתובת ה-API נבנית ממנו:
+   `https://<FQDN>:<api_port>`, ופורט שכתוב במפתח עצמו (`cluster-a.net-a.example.com:9444`) קודם ל-`api_port`. לקלאסטר
+   יש `type`. הקונפיג נדחה בעלייה אם FQDN חוזר (בכל הקובץ), אם כתובת API חוזרת, או אם ה-FQDN של קלאסטר `dedicated` הוא
+   `generic`. הבקשה שולחת `environment`, `network`, `site`, וב-`cluster` את `generic` או FQDN של קלאסטר `dedicated`:
+   - FQDN: הקלאסטר מסוג `dedicated` עם אותם סביבה, רשת, אתר ו-FQDN.
+   - `generic`: כל הקלאסטרים ה-generic באותם סביבה, רשת ואתר הם מועמדים, ו-`ClusterChooser` בוחר. המימוש היום,
      `SingleCandidateChooser`, דורש מועמד אחד בדיוק. כמה ⇐ `configuration_error`. בחירה בין כמה: `planned.md`.
    - אין קלאסטר מתאים ⇐ `no_matching_cluster`.
-3. **ברירות מחדל** (`DatabaseDefaults`, `config/database_defaults.yaml`):
+3. **ברירות מחדל** (`DatabaseDefaults`): הבסיס ב-`helm/files/defaults.yaml`, והדריסות לפי מקום ב-`helm/files/clusters.yaml`:
 
    ```yaml
    database_defaults:
-     values: {version: "8.4", replication: true, data_persistence: aof, ...}
+     database: {version: "8.4", replication: true, data_persistence: aof, ...}
      persistence_values:
        aof: {aof_policy: appendfsync-every-sec}
        snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
-     overrides:
-       - when: {environment: DEV}
-         values: {replication: false}
+
+   clusters:
+     prod:                                  # סביבה (dev, prod, test)
+       username: admin@example.com          # המשתמש המנהל של הקלאסטרים
+       api_port: 9443
+       default_user_password: <password>    # הסיסמה של default_user בכל DB חדש
+       database: {replication: true}
+       networks:
+         net-a:                             # רשת
+           password: <password>             # סיסמת המנהל של הקלאסטרים ברשת הזו
+           sites:
+             NY:                            # אתר
+               database: {version: "8.2"}
+               clusters:
+                 cluster-a.net-a.example.com:   # קלאסטר: ה-FQDN שלו
+                   type: generic
+                 orders.net-a.example.com:
+                   type: dedicated
+                   password: <password>     # לקלאסטר הזה סיסמת מנהל משלו
+                   database: {replication: false}
    ```
 
-   - הסדר: `values`, אחריהן כל דריסה שה-`when` שלה מתאים לקלאסטר שנבחר (לפי הסדר ברשימה), ובסוף השדות שהבקשה
-     שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
-   - `when` מתאים לפי כל צירוף של `network`, `environment`, `site`, `type` ו-`cluster_name`.
+   - בכל רמה (סביבה, רשת, אתר, קלאסטר) מותרים `username`, `password`, `default_user_password`, `api_port` ו-`database`.
+     בכל ערך, הרמה הנמוכה ביותר שכתבה אותו קובעת.
+   - **פרטי גישה לקלאסטר:** כל קלאסטר חייב לצאת עם `username` ו-`password` של המשתמש המנהל, מהרמה שלו או מרמה
+     מעליו (כל אחד מהם בנפרד). הם משמשים לכל קריאה אליו. אין פרטי גישה כלליים מחוץ לעץ. קלאסטר בלי אחד מהם, בלי
+     `default_user_password` או בלי פורט עוצר את השירות בעלייה, עם שגיאה שנוקבת בקלאסטר ובהגדרה החסרה.
+   - **הסיסמה של `default_user`:** `default_user_password` של הקלאסטר שעליו ה-DB נוצר.
+   - **סודות:** הקובץ מחזיק סיסמאות. משתני הסביבה היחידים שהשירות צריך הם הגישה ל-Redis של מצב ה-saga:
+     `RES_STATE__URL` ו-`RES_STATE__KEY_PREFIX`.
+   - הסדר: `database` של ברירות המחדל, אחריו `database` של הסביבה, הרשת, האתר והקלאסטר. הרמה הנמוכה ביותר שכתבה
+     ערך קובעת. בסוף השדות שהבקשה שלחה ולא כ-`null`. התוצאה עוברת ולידציה ב-`NewDatabase`.
    - הדריסה היא לפי שדה ברמה העליונה. לשדות של ה-DB אין אובייקטים מקוננים שצריך למזג.
    - **שדות של מצב שמירה:** `aof_policy` שייך ל-`aof` ו-`snapshot_policy` ל-`snapshot`. אחרי המיזוג נקבע
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` שלו אם הבקשה
      לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
      שלהם, אחרת `422 validation_error`.
-   - בעלייה: תווית לא מוכרת, או ערך שלא עובר את `DatabaseOptions`, עוצרים את השירות. כך גם ברירות המחדל שחלות יחד
-     על כל קלאסטר בקונפיג: שתי דריסות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
+   - בעלייה: ערך שלא עובר את `DatabaseOptions` עוצר את השירות. כך גם הערכים שחלים יחד על כל קלאסטר בקונפיג: שתי
+     רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
 כל מה שבשלב הזה לא נוגע בקלאסטר, ולכן כשל בו הוא תשובה מיידית, ושום דבר לא נשמר.
 
@@ -112,7 +137,7 @@ POST /v1/databases/create
 - כל הצעדים הפיכים. אין pivot, ולכן כשל ודאי בכל שלב מחזיר את הקלאסטר למצב שלפני הבקשה.
 - ה-role נוצר אחרי ה-DB כי `resources` חייב uid של DB קיים, והיוזר אחרי ה-role כי הוא חייב role.
 - ה-uids עוברים בין צעדים דרך ה-`StepResults` (`saga-engine-and-state.md` סעיף 3).
-- שמות ה-ACL וה-role וה-`management` מ-`config/user_resources.yaml`.
+- שמות ה-ACL וה-role וה-`management` מ-`helm/files/defaults.yaml`.
 - ביצירת ACL, role ו-user, אם התשובה כוללת `action_uid`, הצעד מחכה ל-`/v1/actions/{uid}` עד `completed`.
 - **המתנה בקלאסטר:** כל המתנה קוראת את המצב כל `poll_interval_seconds` עד `timeout_seconds` (`database.wait`,
   `action.wait`), ובודקת פעם אחרונה בדיוק בסוף הזמן. קריאה שנכשלה בשגיאה שבטוח לקרוא אחריה שוב (שירות קצה שלא התחבר
@@ -120,7 +145,7 @@ POST /v1/databases/create
   אחרת עוצרת את ההמתנה. אם הזמן נגמר ⇐ `cluster_action_timeout`, `database_activation_timeout` או
   `database_deletion_timeout` (בחוזה: `cluster_timeout`). אם אף קריאה לא הצליחה עד סוף הזמן, מדווחת שגיאת הקריאה
   האחרונה במקום ה-timeout, למשל `cluster_unavailable`.
-- גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (הסיסמה של `default_user` מ-Secret) ו-`tags`
+- גוף ה-DB כולל גם `default_user: true`, `authentication_redis_pass` (`default_user_password` של הקלאסטר, מ-`helm/files/clusters.yaml`) ו-`tags`
   (`database.default_tags`). הסיסמה מתווספת רק ברגע השליחה, ולא נכנסת לקלט של הצעד או ל-record.
 
 **שמות.** כל ACL ו-role שייכים ליוזר אחד ב-DB אחד. שם יוזר עם `-` נדחה בולידציה, כי אחרת שתי בקשות שונות יכולות לקבל
@@ -155,7 +180,7 @@ POST /v1/databases/create
 - **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית, וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB.
   `last_error` הוא `"<code>: <message>"` של השגיאה האחרונה: של הביטול אם נכשל, אחרת של הצעד, עם הקוד הציבורי.
-- **קודים ציבוריים** (`PublicErrors`, `config/operation.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
+- **קודים ציבוריים** (`PublicErrors`, `helm/files/service.yaml`): כל קוד פנימי ממופה לקוד מהחוזה. קוד בלי מיפוי ⇐
   `internal_error` ו-WARNING. `cluster_url` ו-`cluster_error_code` נוספים רק לקודים שב-`public_codes_with_cluster_details`.
   לכל קוד ציבורי יש `kind` (`error_kind_by_code`); קוד בלי סוג ⇐ `needs_investigation` ו-WARNING. `Operation.failed`
   נותן ל-`requires_manual_intervention` תמיד `needs_investigation`.

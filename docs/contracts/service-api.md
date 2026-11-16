@@ -55,7 +55,7 @@
   "target": {
     "active_active": false,
     "sites": [
-      {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"}
+      {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"}
     ]
   },
   "spec": {
@@ -73,14 +73,14 @@
 |---|---|---|---|
 | `active_active` | `false` | ✅ | `true` עוד לא נתמך |
 | `sites` | list | ✅ | איבר אחד בדיוק |
-| `sites[].network` | str | ✅ | |
-| `sites[].site` | str | ✅ | |
 | `sites[].environment` | `DEV` / `PROD` / `TEST` | ✅ | |
-| `sites[].cluster` | str | ✅ | `generic`, או שם של קלאסטר ייעודי |
+| `sites[].network` | str | ✅ | שם הרשת, כמו בקונפיג של השירות |
+| `sites[].site` | str | ✅ | שם האתר, כמו בקונפיג של השירות |
+| `sites[].cluster` | str | ✅ | `generic`, או ה-FQDN של קלאסטר ייעודי, כפי שהוא כתוב בקונפיג של השירות |
 
 **איך נמצא הקלאסטר:** הבקשה מתארת את הקלאסטר ולא יודעת את הכתובת שלו. השירות מתרגם אותו לכתובת לפי
-`config/clusters.yaml`, באותם `network`, `environment` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, ובשם קלאסטר
-הקלאסטר מסוג `dedicated` עם השם הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
+`helm/files/clusters.yaml`, באותם `environment`, `network` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, וב-FQDN
+הקלאסטר מסוג `dedicated` עם ה-FQDN הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
@@ -111,7 +111,8 @@
 (`naming.redis.database`). השירות מחמיר לעד 20 תווים (`naming.database`). אחרת ⇐ `422 invalid_name`, והכללים שהופרו
 ב-`error.message`.
 
-**ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`config/database_defaults.yaml`).
+**ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`helm/files/defaults.yaml`).
+סביבה, רשת, אתר או קלאסטר ב-`helm/files/clusters.yaml` יכולים לדרוס כל ערך.
 אם אין לשירות ברירת מחדל לשדה, ה-DB נוצר עם ברירת המחדל של Redis. היום:
 
 | שדה | ברירת מחדל |
@@ -178,8 +179,8 @@
     "crdb_guid": null,
     "clusters": [
       {
-        "cluster": "cluster-a", "cluster_url": "https://cluster-a.net-a:9443",
-        "network": "net-a", "site": "dc1", "environment": "PROD",
+        "cluster": "cluster-a.net-a", "cluster_url": "https://cluster-a.net-a:9443",
+        "environment": "PROD", "network": "net-a", "site": "NY",
         "access": {
           "endpoints": [ {"dns_name": "redis-12000.cluster-a.net-a", "port": 12000, "addr": ["10.0.0.5"]} ]
         },
@@ -199,7 +200,7 @@
 ```
 
 כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
-ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster`, `cluster_url`, `network`, `site` ו-`environment` מגיעים
+ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster` (ה-FQDN של הקלאסטר), `cluster_url`, `environment`, `network` ו-`site` מגיעים
 מהקונפיג. `active_active: false` ו-`crdb_guid: null` קבועים עד Active-Active.
 
 | שדה | הערה |
@@ -207,7 +208,7 @@
 | `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
 | `database.crdb_guid` | ה-id של Active-Active. `null` ל-DB באתר אחד |
 | `database.clusters[]` | ענף לכל קלאסטר. היום קלאסטר אחד |
-| `clusters[].cluster` | שם הקלאסטר מהקונפיג |
+| `clusters[].cluster` | ה-FQDN של הקלאסטר, כפי שהוא כתוב בקונפיג |
 | `clusters[].access.endpoints[]` | איך מתחברים: `dns_name`, `port`, `addr`. לפחות אחד, וכל אחד מלא |
 | `clusters[].db.db_uid` | ה-uid של ה-DB בקלאסטר |
 | `clusters[].db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
@@ -344,7 +345,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. רק שג
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
 `http_error`); בפועל `invalid_name` ו-`no_matching_cluster` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
-את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`config/operation.yaml`.
+את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`helm/files/service.yaml`.
 
 ---
 

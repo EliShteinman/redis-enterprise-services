@@ -57,13 +57,16 @@ class ClusterDatabaseResult(BaseModel):
 
 
 class DatabaseClusterResult(BaseModel):
-    cluster: str = Field(description="The cluster name, as configured.", examples=["cluster-a"])
+    cluster: str = Field(
+        description="The FQDN of the cluster, as written in the service configuration.",
+        examples=["cluster-a.net-a"],
+    )
     cluster_url: str = Field(
         description="The API address of the cluster.",
         examples=["https://cluster-a.net-a:9443"],
     )
     network: str = Field(description="The network of the cluster.", examples=["net-a"])
-    site: str = Field(description="The site of the cluster.", examples=["dc1"])
+    site: str = Field(description="The site of the cluster.", examples=["NY"])
     environment: Environment = Field(description="The environment of the cluster.", examples=["PROD"])
     access: DatabaseAccessResult = Field(description="How clients connect to the database on this cluster.")
     db: ClusterDatabaseResult = Field(description="The database on this cluster, as the cluster stored it.")
