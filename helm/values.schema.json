@@ -93,9 +93,7 @@
             "termination": {
               "type": "string",
               "enum": [
-                "edge",
-                "passthrough",
-                "reencrypt"
+                "edge"
               ]
             },
             "insecureEdgeTerminationPolicy": {
