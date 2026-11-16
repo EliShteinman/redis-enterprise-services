@@ -50,7 +50,14 @@ class StepError(BaseModel):
 
     @classmethod
     def from_input_validation_error(cls, *, error: ValidationError) -> Self:
-        return cls(code=RedisEnterpriseServicesError.code, message=f"cannot build the input: {error}")
+        return cls(
+            code=RedisEnterpriseServicesError.code,
+            message=f"cannot build the input: invalid fields {invalid_input_locations(error=error)}",
+        )
+
+
+def invalid_input_locations(*, error: ValidationError) -> list[str]:
+    return [".".join(str(part) for part in detail["loc"]) for detail in error.errors(include_input=False)]
 
 
 class StepRecord(BaseModel):
