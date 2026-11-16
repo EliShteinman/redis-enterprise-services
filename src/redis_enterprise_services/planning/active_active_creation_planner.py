@@ -2,16 +2,18 @@ import logging
 from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
-from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
-from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
-from redis_enterprise_services.planning.cluster_address import address_of
-from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
-from redis_enterprise_services.planning.creation_lock_keys import creation_lock_keys
-from redis_enterprise_services.planning.creation_step_keys import READ_DATABASE_STEP_KEY, on_site
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.planning.keys.creation_lock_keys import creation_lock_keys
+from redis_enterprise_services.planning.keys.creation_step_keys import READ_DATABASE_STEP_KEY, on_site
+from redis_enterprise_services.planning.placement.cluster_address import address_of
+from redis_enterprise_services.planning.placement.crdb_coordinator import coordinator_of
+from redis_enterprise_services.planning.planned.active_active_planned_resources import site_user_resources
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resources import UserResources
+from redis_enterprise_services.planning.spec.active_active_spec import ActiveActiveSpec
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.step_factories.crdb_permission_step_factory import (
     CrdbPermissionStepFactory,
 )
@@ -26,8 +28,6 @@ from redis_enterprise_services.planning.step_factories.read_database_step_factor
 from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
     UserResourceStepFactory,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResources
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 

@@ -3,9 +3,11 @@ from fastapi.openapi.models import Example
 from pydantic import ValidationError
 
 from redis_enterprise_services.api.create_crdb_request_examples import CREATE_CRDB_REQUEST_EXAMPLES
-from redis_enterprise_services.api.create_database_request_examples import CREATE_DATABASE_REQUEST_EXAMPLES
-from redis_enterprise_services.creation.create_crdb_request import CreateCrdbRequest
-from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
+from redis_enterprise_services.api.request_examples.create_database_request_examples import (
+    CREATE_DATABASE_REQUEST_EXAMPLES,
+)
+from redis_enterprise_services.creation.requests.create_crdb_request import CreateCrdbRequest
+from redis_enterprise_services.creation.requests.create_database_request import CreateDatabaseRequest
 
 
 @pytest.mark.parametrize(

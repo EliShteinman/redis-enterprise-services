@@ -3,19 +3,19 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends
 
-from redis_enterprise_services.api.accepted_operation import AcceptedOperation
 from redis_enterprise_services.api.accepted_operation_openapi_response import (
     ACCEPTED_OPERATION_OPENAPI_RESPONSE,
 )
 from redis_enterprise_services.api.app_state_dependencies import crdb_creation_from_app_state
-from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.create_crdb_request_examples import CREATE_CRDB_REQUEST_EXAMPLES
-from redis_enterprise_services.api.rejection_openapi_responses import (
+from redis_enterprise_services.api.rejections.rejection_openapi_responses import (
     CRDB_CREATION_ROUTE_REJECTION_RESPONSES,
 )
-from redis_enterprise_services.api.traceparent_header import require_traceparent
+from redis_enterprise_services.api.routes.accepted_operation import AcceptedOperation
+from redis_enterprise_services.api.routes.command_route import COMMAND_ROUTE_TAG
+from redis_enterprise_services.api.tracing.traceparent_header import require_traceparent
 from redis_enterprise_services.creation.crdb_creation import CrdbCreation
-from redis_enterprise_services.creation.create_crdb_request import CreateCrdbRequest
+from redis_enterprise_services.creation.requests.create_crdb_request import CreateCrdbRequest
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 router: APIRouter = APIRouter(

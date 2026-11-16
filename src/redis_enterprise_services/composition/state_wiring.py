@@ -1,7 +1,7 @@
 from redis import Redis
 
-from redis_enterprise_services.config.liveness_settings import LivenessSettings
-from redis_enterprise_services.config.state_settings import StateSettings
+from redis_enterprise_services.config.service.liveness_settings import LivenessSettings
+from redis_enterprise_services.config.service.state_settings import StateSettings
 from redis_enterprise_services.state.redis_abandoned_store import RedisAbandonedStore
 from redis_enterprise_services.state.redis_client import build_redis_client
 from redis_enterprise_services.state.redis_heartbeat_store import RedisHeartbeatStore
