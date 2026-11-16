@@ -1,9 +1,9 @@
 from pydantic import SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.creation.crdb_instance_of_cluster import crdb_instance_of_cluster
-from redis_enterprise_services.steps.read_crdb import CrdbInstanceSettings
+from redis_enterprise_services.steps.crdb.read_crdb import CrdbInstanceSettings
 
 CLUSTER: ConfiguredCluster = ConfiguredCluster(
     fqdn="cluster-a.example.com",

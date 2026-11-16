@@ -3,7 +3,7 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.creation.active_active_cluster_rules import (
     reject_clusters_that_cannot_share_a_crdb,
 )
@@ -11,11 +11,11 @@ from redis_enterprise_services.creation.create_crdb_request import CreateCrdbReq
 from redis_enterprise_services.creation.prepared_active_active_creation import PreparedActiveActiveCreation
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.crdb_spec import CrdbSpec
-from redis_enterprise_services.planning.database_defaults import DATA_PERSISTENCE_FIELD, DatabaseDefaults
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
-from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.placement.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
+from redis_enterprise_services.planning.spec.database_defaults import DATA_PERSISTENCE_FIELD, DatabaseDefaults
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

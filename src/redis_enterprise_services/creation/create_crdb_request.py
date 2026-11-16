@@ -2,9 +2,9 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
-from redis_enterprise_services.planning.site_placement import SitePlacement
+from redis_enterprise_services.planning.placement.site_placement import SitePlacement
+from redis_enterprise_services.planning.spec.active_active_spec import ActiveActiveSpec
 
 
 class CreateCrdbTarget(BaseModel):

@@ -3,10 +3,10 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY
-from redis_enterprise_services.planning.planned_resources import PlannedResource
+from redis_enterprise_services.planning.keys.creation_step_keys import CRDB_STEP_KEY
+from redis_enterprise_services.planning.planned.planned_resources import PlannedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
-from redis_enterprise_services.steps.create_crdb import CreatedCrdb
+from redis_enterprise_services.steps.crdb.create_crdb import CreatedCrdb
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

@@ -1,5 +1,5 @@
 from redis_enterprise_services.creation.creation_planning import CreationPlanning
-from redis_enterprise_services.creation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan

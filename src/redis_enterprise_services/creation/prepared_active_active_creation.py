@@ -2,8 +2,8 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.planning.spec.active_active_spec import ActiveActiveSpec
 
 
 class PreparedActiveActiveCreation(BaseModel):

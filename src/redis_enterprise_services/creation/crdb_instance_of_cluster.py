@@ -1,7 +1,7 @@
-from redis_enterprise_services.config.base_url import is_same_url
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.validation.base_url import is_same_url
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError
-from redis_enterprise_services.steps.read_crdb import CrdbInstanceSettings
+from redis_enterprise_services.steps.crdb.read_crdb import CrdbInstanceSettings
 
 
 def crdb_instance_of_cluster(

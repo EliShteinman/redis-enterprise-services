@@ -1,21 +1,23 @@
-from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.created_active_active_result import created_active_active_result
 from redis_enterprise_services.creation.creation_record_reader import CreationRecordReader
 from redis_enterprise_services.creation.prepared_active_active_creation import PreparedActiveActiveCreation
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
-from redis_enterprise_services.planning.active_active_planned_resources import (
-    active_active_planned_resources,
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
 )
-from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
-from redis_enterprise_services.planning.creation_step_keys import (
+from redis_enterprise_services.planning.keys.creation_step_keys import (
     LOCAL_DATABASE_STEP_KEY,
     READ_DATABASE_STEP_KEY,
     on_site,
 )
-from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.placement.crdb_coordinator import coordinator_of
+from redis_enterprise_services.planning.planned.active_active_planned_resources import (
+    active_active_planned_resources,
+)
+from redis_enterprise_services.planning.planned.site_planned_resource import SitePlannedResource
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
 
 DATABASE_STEP_KEYS_ON_A_SITE: tuple[str, ...] = (LOCAL_DATABASE_STEP_KEY, READ_DATABASE_STEP_KEY)

@@ -1,5 +1,5 @@
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.repeated_values import repeated_values
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.validation.repeated_values import repeated_values
 from redis_enterprise_services.crdbs.creation_body import cluster_fqdn
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.exceptions.planning import DuplicateSitesError, MixedNetworksError

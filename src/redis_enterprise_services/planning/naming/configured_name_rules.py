@@ -1,4 +1,4 @@
-from redis_enterprise_services.config.naming_settings import NameRulesSettings
+from redis_enterprise_services.config.defaults.naming_settings import NameRulesSettings
 from redis_enterprise_services.planning.naming.max_length_rule import MaxLengthRule
 from redis_enterprise_services.planning.naming.name_rule import NameRule
 from redis_enterprise_services.planning.naming.pattern_rule import PatternRule

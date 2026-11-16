@@ -1,26 +1,28 @@
 from pydantic import JsonValue
 
-from redis_enterprise_services.config.cluster_api_settings import ClusterFieldSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterFieldSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.creation.crdb_instance_of_cluster import crdb_instance_of_cluster
 from redis_enterprise_services.creation.created_crdb_guid import created_crdb_guid
-from redis_enterprise_services.creation.created_permission import created_permission
 from redis_enterprise_services.creation.prepared_active_active_creation import PreparedActiveActiveCreation
+from redis_enterprise_services.creation.results.created_permission import created_permission
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
-from redis_enterprise_services.planning.active_active_planned_resources import site_user_resources
-from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
-from redis_enterprise_services.planning.creation_step_keys import (
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
+from redis_enterprise_services.planning.keys.creation_step_keys import (
     READ_CRDB_STEP_KEY,
     READ_DATABASE_STEP_KEY,
     on_site,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.active_active_planned_resources import site_user_resources
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.active_active_spec import ActiveActiveSpec
 from redis_enterprise_services.resources.models import NamedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
-from redis_enterprise_services.steps.read_crdb import CrdbConfigSnapshot, CrdbInstanceSettings
+from redis_enterprise_services.steps.crdb.read_crdb import CrdbConfigSnapshot, CrdbInstanceSettings
 
 
 def created_active_active_result(

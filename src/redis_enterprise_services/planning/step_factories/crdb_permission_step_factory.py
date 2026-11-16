@@ -1,19 +1,19 @@
 from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
-from redis_enterprise_services.planning.creation_step_keys import PERMISSIONS_STEP_KEY
+from redis_enterprise_services.planning.keys.crdb_task_ids import crdb_task_id
+from redis_enterprise_services.planning.keys.creation_step_keys import PERMISSIONS_STEP_KEY
+from redis_enterprise_services.planning.planned.user_resources import UserResources
 from redis_enterprise_services.planning.step_factories.crdb_step_factory import (
     created_crdb_of,
     local_instance_of,
 )
 from redis_enterprise_services.planning.step_factories.role_permission_values import RolePermissionValues
-from redis_enterprise_services.planning.user_resources import UserResources
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 from redis_enterprise_services.saga.plan.step_results import StepResults
-from redis_enterprise_services.steps.update_crdb_instances import (
+from redis_enterprise_services.steps.crdb.update_crdb_instances import (
     CrdbInstancesSnapshot,
     UpdateCrdbInstancesInput,
 )

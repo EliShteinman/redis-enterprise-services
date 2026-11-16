@@ -3,7 +3,7 @@ from typing import Protocol
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.databases.new_database import NewDatabase
 
