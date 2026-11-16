@@ -220,9 +220,9 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
 | ה-Saga הצליח | `succeeded` עם עץ ה-DB, שה-`CreationRecordReader` של הסוג בונה. באתר אחד (`SingleSiteRecordReader`, `created_database_result.py`): `DatabaseResult` עם `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם. ב-Active-Active (`ActiveActiveRecordReader`, `created_active_active_result.py`): `ActiveActiveDatabaseResult`, סעיף 6 |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
-| שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `unexpected <type>: <text>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |
-| שגיאה לא צפויה לפני שה-Saga התחיל | אין saga record ⇐ `rejected` עם `internal_error`, וה-`message` הוא `unexpected <type>: <text>` |
-| record שאי אפשר לבנות ממנו את התוצאה (למשל uid חסר) | `requires_manual_intervention` עם `internal_error`, וה-`message` הוא `unexpected <type>: <text>`. `not_rolled_back` מופיע כשאפשר לבנות אותו מה-record |
+| שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `internal error: unexpected <type>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |
+| שגיאה לא צפויה לפני שה-Saga התחיל | אין saga record ⇐ `rejected` עם `internal_error`, וה-`message` הוא `internal error: unexpected <type>` |
+| record שאי אפשר לבנות ממנו את התוצאה (למשל uid חסר) | `requires_manual_intervention` עם `internal_error`, וה-`message` הוא `internal error: unexpected <type>`. `not_rolled_back` מופיע כשאפשר לבנות אותו מה-record |
 
 - **`not_rolled_back`** (`CreationOutcomeTranslator`): כל צעד שנשאר `done`, `unresolved`, `compensating` או
   `compensation_failed`, עם הסוג, השם והקלאסטר מהתוכנית (`CreationRecordReader.planned_resources`), וה-uid מהתוצאה. ב-`permissions` השם וה-uid הם של ה-DB (ב-Active-Active ה-uid הוא `null`, ו-`crdb_guid` מזהה את הפריט).

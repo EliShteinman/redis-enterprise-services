@@ -16,7 +16,7 @@ PUBLIC_ERRORS: PublicErrors = PublicErrors(
         error_kind_by_code={"cluster_request_failed": "known_failure", "name_taken": "customer_fixable"},
     ),
     internal_error_message="internal error",
-    unexpected_error_message="unexpected {error_type}: {error}",
+    unexpected_error_message="internal error: unexpected {error_type}",
 )
 
 
@@ -60,10 +60,10 @@ def test_a_code_without_a_kind_is_published_as_needs_investigation() -> None:
     assert PUBLIC_ERRORS.from_code(internal_code="invalid_plan", message="m").kind == "needs_investigation"
 
 
-def test_an_unexpected_error_shows_its_type_and_text() -> None:
+def test_an_unexpected_error_shows_its_type_without_its_text() -> None:
     published: PublicError = PUBLIC_ERRORS.unexpected_error(error=KeyError("missing-key"))
 
-    assert published.message == "unexpected KeyError: 'missing-key'"
+    assert published.message == "internal error: unexpected KeyError"
 
 
 def test_the_cluster_an_error_came_from_wins_over_the_cluster_the_caller_assumed() -> None:
