@@ -11,6 +11,7 @@ SECRETS: dict[str, JsonValue] = {
     "password": "admin-secret",
     "default_user_password": "default-user-secret",
 }
+API_SCHEME: str = "https"
 
 
 def a_cluster(**values: JsonValue) -> dict[str, JsonValue]:
@@ -52,7 +53,7 @@ def a_tree(
 
 
 def only_cluster(*, tree: ClusterTree) -> ConfiguredCluster:
-    [configured] = configured_clusters(tree=tree)
+    [configured] = configured_clusters(tree=tree, api_scheme=API_SCHEME)
     return configured
 
 
@@ -134,16 +135,15 @@ def test_the_lowest_level_that_sets_a_secret_wins_for_each_secret_on_its_own() -
 @pytest.mark.parametrize(
     argnames="missing", argvalues=["username", "password", "default_user_password", "api_port"]
 )
-def test_a_cluster_without_a_value_it_needs_on_any_level_is_refused_when_the_config_loads(
-    missing: str,
-) -> None:
+def test_a_cluster_without_a_value_it_needs_on_any_level_is_refused(missing: str) -> None:
     data: dict[str, JsonValue] = tree_data()
     environment: JsonValue = data["prod"]
     assert isinstance(environment, dict)
     del environment[missing]
+    tree: ClusterTree = TREE.validate_python(data)
 
-    with pytest.raises(expected_exception=ValidationError, match=f"cluster c1.net-a has no {missing}"):
-        TREE.validate_python(data)
+    with pytest.raises(expected_exception=ValueError, match=f"cluster c1.net-a has no {missing}"):
+        configured_clusters(tree=tree, api_scheme=API_SCHEME)
 
 
 @pytest.mark.parametrize(
@@ -168,14 +168,14 @@ def test_a_cluster_entry_that_cannot_be_used_is_refused_when_the_config_loads(
         pytest.param("c1.net-a", "c1.net-a:9443", id="same-api-url"),
     ],
 )
-def test_the_same_cluster_twice_is_refused_when_the_config_loads(first_fqdn: str, second_fqdn: str) -> None:
-    data: dict[str, JsonValue] = tree_data(clusters={first_fqdn: a_cluster(), second_fqdn: a_cluster()})
+def test_the_same_cluster_twice_is_refused(first_fqdn: str, second_fqdn: str) -> None:
+    tree: ClusterTree = a_tree(clusters={first_fqdn: a_cluster(), second_fqdn: a_cluster()})
 
-    with pytest.raises(expected_exception=ValidationError):
-        TREE.validate_python(data)
+    with pytest.raises(expected_exception=ValueError, match="configured more than once"):
+        configured_clusters(tree=tree, api_scheme=API_SCHEME)
 
 
-def test_the_same_fqdn_in_two_networks_is_refused_when_the_config_loads() -> None:
+def test_the_same_fqdn_in_two_networks_is_refused() -> None:
     data: dict[str, JsonValue] = {
         "prod": {
             **SECRETS,
@@ -185,9 +185,10 @@ def test_the_same_fqdn_in_two_networks_is_refused_when_the_config_loads() -> Non
             },
         }
     }
+    tree: ClusterTree = TREE.validate_python(data)
 
-    with pytest.raises(expected_exception=ValidationError):
-        TREE.validate_python(data)
+    with pytest.raises(expected_exception=ValueError, match="configured more than once"):
+        configured_clusters(tree=tree, api_scheme=API_SCHEME)
 
 
 def test_an_empty_tree_is_refused_when_the_config_loads() -> None:

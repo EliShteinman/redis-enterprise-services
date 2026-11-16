@@ -32,8 +32,10 @@ class ClusterInTree(BaseModel):
         return [*self.levels_above, self.entry]
 
 
-def configured_clusters(*, tree: EnvironmentEntries) -> list[ConfiguredCluster]:
-    clusters: list[ConfiguredCluster] = [configured_cluster(cluster=cluster) for cluster in walk(tree=tree)]
+def configured_clusters(*, tree: EnvironmentEntries, api_scheme: str) -> list[ConfiguredCluster]:
+    clusters: list[ConfiguredCluster] = [
+        configured_cluster(cluster=cluster, api_scheme=api_scheme) for cluster in walk(tree=tree)
+    ]
     reject_repeated(what="cluster FQDNs", values=[cluster.fqdn.lower() for cluster in clusters])
     reject_repeated(
         what="cluster API URLs", values=[comparable_url(url=cluster.api_url) for cluster in clusters]
@@ -56,7 +58,7 @@ def walk(*, tree: EnvironmentEntries) -> Iterator[ClusterInTree]:
                     )
 
 
-def configured_cluster(*, cluster: ClusterInTree) -> ConfiguredCluster:
+def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> ConfiguredCluster:
     levels: list[LevelValues] = cluster.levels()
     return ConfiguredCluster(
         fqdn=cluster.fqdn,
@@ -65,7 +67,9 @@ def configured_cluster(*, cluster: ClusterInTree) -> ConfiguredCluster:
         site=cluster.site,
         type=cluster.entry.type,
         api_url=api_url_of(
-            fqdn=cluster.fqdn, api_port=lowest_set(values=[level.api_port for level in levels])
+            scheme=api_scheme,
+            fqdn=cluster.fqdn,
+            api_port=lowest_set(values=[level.api_port for level in levels]),
         ),
         credentials=ClusterCredentialsSettings(
             username=required(
