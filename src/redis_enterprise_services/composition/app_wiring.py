@@ -2,7 +2,6 @@ from redis_enterprise_services.composition.background_wiring import BackgroundWi
 from redis_enterprise_services.composition.cluster.cluster_wiring import ClusterWiring
 from redis_enterprise_services.composition.creation.creation_wiring import CreationWiring
 from redis_enterprise_services.composition.state_wiring import StateWiring
-from redis_enterprise_services.config.clusters.cluster_flattening import configured_clusters
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
@@ -20,9 +19,7 @@ class AppWiring:
     def __init__(self, *, settings: Settings) -> None:
         sleeper: SystemSleeper = SystemSleeper()
         deadline_polling: DeadlinePolling = DeadlinePolling(clock=MonotonicClock(), sleeper=sleeper)
-        clusters: list[ConfiguredCluster] = configured_clusters(
-            tree=settings.clusters, api_scheme=settings.cluster_api.scheme
-        )
+        clusters: list[ConfiguredCluster] = settings.flattened_clusters()
         self.public_errors: PublicErrors = build_public_errors(operation=settings.operation, api=settings.api)
         self._state_wiring: StateWiring = StateWiring(
             state=settings.state, liveness=settings.liveness, deadline_polling=deadline_polling

@@ -17,9 +17,9 @@ from redis_enterprise_services.exceptions.cluster import (
 )
 from redis_enterprise_services.exceptions.edge import (
     EdgeConnectionFailedError,
-    EdgeError,
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
+    EdgeUnansweredError,
 )
 from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
@@ -43,13 +43,15 @@ FAILED_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     *CLUSTER_REPORTED_FAILURE_ERRORS,
 )
 
+NEVER_SENT_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (EdgeConnectionFailedError,)
+
 TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     EdgeConnectionFailedError,
     EdgeOutcomeUnknownError,
 )
 
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
-    EdgeError,
+    EdgeUnansweredError,
     ClusterActionTimeoutError,
     CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
@@ -69,6 +71,8 @@ class ClusterFailureClassifier(FailureClassifier):
             return self._classify_rejection(error=error)
         if isinstance(error, FAILED_ERRORS):
             return FailureCategory.FAILED
+        if isinstance(error, NEVER_SENT_ERRORS):
+            return FailureCategory.TRANSIENT
         if isinstance(error, OUTCOME_UNKNOWN_ERRORS):
             return FailureCategory.OUTCOME_UNKNOWN
         return FailureCategory.FAILED

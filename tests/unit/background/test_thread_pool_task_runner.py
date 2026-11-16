@@ -11,7 +11,9 @@ def test_a_background_task_runs_in_the_context_of_the_request_that_submitted_it(
     runner: ThreadPoolTaskRunner = ThreadPoolTaskRunner(settings=BackgroundSettings(max_workers=1))
     token: Token[str] = REQUEST_TRACE.set("trace-1")
 
-    runner.submit(task_name="create orders", task=lambda: seen.append(REQUEST_TRACE.get()))
+    runner.submit(
+        task_name="create orders", task=lambda: seen.append(REQUEST_TRACE.get()), on_cancelled=lambda: None
+    )
     runner.close()
     REQUEST_TRACE.reset(token)
 
