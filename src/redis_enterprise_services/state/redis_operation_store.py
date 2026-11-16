@@ -7,8 +7,9 @@ from redis.commands.core import Script
 
 from redis_enterprise_services.exceptions.operation import UnreadableOperationRecordError
 from redis_enterprise_services.operations.operation import Operation
+from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
-from redis_enterprise_services.state.record_expiry import finished_ttl_or_keep_open
+from redis_enterprise_services.state.record_expiry import finished_ttl_or_no_expiry
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
 
@@ -64,10 +65,11 @@ class RedisOperationStore(OperationStore):
             tracking_set_key=self._keys.open_trace_ids(),
             member=operation.trace_id,
             record_json=operation.model_dump_json(),
-            ttl_seconds=finished_ttl_or_keep_open(
+            ttl_seconds=finished_ttl_or_no_expiry(
                 has_ended_cleanly=operation.has_ended_cleanly(),
                 finished_ttl_seconds=self._finished_ttl_seconds,
             ),
+            is_tracked=operation.status is OperationStatus.RUNNING,
         )
         logger.info(msg=f"operation {operation.trace_id} stored as {operation.status.value}")
 

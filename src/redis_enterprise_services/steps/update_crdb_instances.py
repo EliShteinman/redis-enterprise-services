@@ -53,12 +53,14 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         repository: CrdbRepository,
         task_tracker: CrdbTaskTracker,
         target_resolver: ClusterTargetResolver,
-        list_fields: frozenset[str],
+        order_insensitive_fields: frozenset[str],
+        fields_defaulting_to_empty_list: frozenset[str],
     ) -> None:
         self._repository: CrdbRepository = repository
         self._task_tracker: CrdbTaskTracker = task_tracker
         self._target_resolver: ClusterTargetResolver = target_resolver
-        self._list_fields: frozenset[str] = list_fields
+        self._order_insensitive_fields: frozenset[str] = order_insensitive_fields
+        self._fields_defaulting_to_empty_list: frozenset[str] = fields_defaulting_to_empty_list
 
     @property
     def kind(self) -> StepKind:
@@ -131,7 +133,7 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
                 instance_field(instance_id=instance_id, name=name)
                 for instance_id, values in step_input.values_by_instance.items()
                 for name in values
-                if name in self._list_fields
+                if name in self._order_insensitive_fields
             ),
         )
 
@@ -151,7 +153,9 @@ class UpdateCrdbInstancesStep(SagaStep[UpdateCrdbInstancesInput, CrdbInstancesSn
         if instance is None:
             raise IncompleteClusterObjectError(message=f"CRDB {crdb.guid} has no instance {instance_id}")
         unrestorable: list[str] = [
-            name for name in names if name not in instance.db_config and name not in self._list_fields
+            name
+            for name in names
+            if name not in instance.db_config and name not in self._fields_defaulting_to_empty_list
         ]
         if unrestorable:
             raise UnrestorableFieldsError(

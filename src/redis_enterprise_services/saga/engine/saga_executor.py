@@ -76,6 +76,8 @@ class SagaExecutor:
             recorder: StepRecorder = StepRecorder(
                 record_writer=self._record_writer, record=record, step_record=step_record
             )
+            outcome: StepOutcome
+            prepared: PreparedStep | None
             outcome, prepared = self._run_step(step=step, step_results=step_results, recorder=recorder)
             if prepared is not None:
                 prepared_steps.append((prepared, recorder))
