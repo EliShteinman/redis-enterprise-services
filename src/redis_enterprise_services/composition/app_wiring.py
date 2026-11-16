@@ -4,6 +4,7 @@ from redis_enterprise_services.composition.cluster_wiring import ClusterWiring
 from redis_enterprise_services.composition.state_wiring import StateWiring
 from redis_enterprise_services.config.cluster_flattening import configured_clusters
 from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.config.naming_settings import RedisNameRulesSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
@@ -21,13 +22,27 @@ from redis_enterprise_services.planning.availability.listed_name_lookup import L
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
 from redis_enterprise_services.planning.availability.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.cluster_directory import ClusterDirectory
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults, database_defaults_from
+from redis_enterprise_services.planning.database_defaults import (
+    DatabaseDefaults,
+    reject_invalid_defaults_on_any_cluster,
+)
 from redis_enterprise_services.planning.naming.configured_name_rules import configured_name_rules
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.user_names_validator import UserNamesValidator
 from redis_enterprise_services.planning.single_candidate_chooser import SingleCandidateChooser
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.planning.site_cluster_resolver import SiteClusterResolver
+from redis_enterprise_services.planning.step_factories.database_permission_step_factory import (
+    DatabasePermissionStepFactory,
+)
+from redis_enterprise_services.planning.step_factories.database_step_factory import DatabaseStepFactory
+from redis_enterprise_services.planning.step_factories.read_database_step_factory import (
+    ReadDatabaseStepFactory,
+)
+from redis_enterprise_services.planning.step_factories.role_permission_values import RolePermissionValues
+from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
+    UserResourceStepFactory,
+)
 from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.recovery.abandoned_sweep import AbandonedSweep
 from redis_enterprise_services.saga.contract.saga_lock import SagaLock
@@ -54,16 +69,19 @@ class AppWiring:
             heartbeat_store=state_wiring.heartbeat_store
         )
         public_errors: PublicErrors = build_public_errors(settings=settings)
-        clusters: list[ConfiguredCluster] = configured_clusters(tree=settings.clusters)
+        clusters: list[ConfiguredCluster] = configured_clusters(
+            tree=settings.clusters, api_scheme=settings.cluster_api.scheme
+        )
+        cluster_wiring: ClusterWiring = ClusterWiring(
+            settings=settings, clusters=clusters, deadline_polling=deadline_polling
+        )
         self.public_errors: PublicErrors = public_errors
         self.operation_store: OperationStore = state_wiring.operation_store
         self.database_creation: DatabaseCreation = build_database_creation(
             settings=settings,
             clusters=clusters,
             state_wiring=state_wiring,
-            cluster_wiring=ClusterWiring(
-                settings=settings, clusters=clusters, deadline_polling=deadline_polling
-            ),
+            cluster_wiring=cluster_wiring,
             operation_starter=build_operation_starter(
                 state_wiring=state_wiring,
                 task_runner=task_runner,
@@ -74,6 +92,7 @@ class AppWiring:
             sleeper=sleeper,
         )
         self._state_wiring: StateWiring = state_wiring
+        self._cluster_wiring: ClusterWiring = cluster_wiring
         self._task_runner: ThreadPoolTaskRunner = task_runner
         self._operation_heartbeat_thread: PeriodicThread = build_operation_heartbeat_thread(
             settings=settings, operation_heartbeats=operation_heartbeats
@@ -90,6 +109,7 @@ class AppWiring:
         self._abandoned_sweep_thread.stop()
         self._task_runner.close()
         self._operation_heartbeat_thread.stop()
+        self._cluster_wiring.close()
         self._state_wiring.close()
 
 
@@ -152,7 +172,9 @@ def build_database_creation(
             settings=settings,
             resource_naming=user_resource_naming,
             clusters=clusters,
-            database_defaults=database_defaults_from(settings=settings.database_defaults, clusters=clusters),
+            database_defaults=checked_database_defaults(
+                settings=settings.database_defaults, clusters=clusters
+            ),
         ),
         execution=CreationExecution(
             names_check=build_names_check(
@@ -171,6 +193,7 @@ def build_database_creation(
                 resource_naming=user_resource_naming,
                 public_errors=public_errors,
                 database_settings=settings.database,
+                cluster_fields=settings.cluster_api.fields,
             ),
             public_errors=public_errors,
             saga_record_reader=state_wiring.saga_record_store,
@@ -178,6 +201,13 @@ def build_database_creation(
         ),
         operation_starter=operation_starter,
     )
+
+
+def checked_database_defaults(
+    *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
+) -> DatabaseDefaults:
+    reject_invalid_defaults_on_any_cluster(settings=settings, clusters=clusters)
+    return DatabaseDefaults(settings=settings)
 
 
 def build_creation_preparation(
@@ -230,16 +260,24 @@ def build_names_check(
 def build_planner(
     *, settings: Settings, cluster_wiring: ClusterWiring, user_resource_naming: UserResourceNaming
 ) -> SingleSiteCreationPlanner:
+    permission_values: RolePermissionValues = RolePermissionValues(
+        roles_permissions_field=settings.cluster_api.fields.roles_permissions
+    )
     return SingleSiteCreationPlanner(
-        role_management=settings.user_resources.role_management,
-        cluster_fields=settings.cluster_api.fields,
         resource_naming=user_resource_naming,
-        create_database_step=cluster_wiring.steps.create_database,
-        create_acl_step=cluster_wiring.steps.create_acl,
-        create_role_step=cluster_wiring.steps.create_role,
-        create_user_step=cluster_wiring.steps.create_user,
-        update_database_step=cluster_wiring.steps.update_database,
-        read_database_step=cluster_wiring.steps.read_database,
+        database_steps=DatabaseStepFactory(create_database_step=cluster_wiring.steps.create_database),
+        user_resource_steps=UserResourceStepFactory(
+            role_management=settings.user_resources.role_management,
+            create_acl_step=cluster_wiring.steps.create_acl,
+            create_role_step=cluster_wiring.steps.create_role,
+            create_user_step=cluster_wiring.steps.create_user,
+        ),
+        permission_steps=DatabasePermissionStepFactory(
+            update_database_step=cluster_wiring.steps.update_database, permission_values=permission_values
+        ),
+        read_database_steps=ReadDatabaseStepFactory(
+            read_database_step=cluster_wiring.steps.read_database, permission_values=permission_values
+        ),
     )
 
 

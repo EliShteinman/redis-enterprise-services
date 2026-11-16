@@ -1,3 +1,5 @@
+import requests
+
 from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import (
     ClusterTargetResolver,
@@ -19,6 +21,7 @@ from redis_enterprise_services.databases.rest_database_fields_repository import 
 from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
 from redis_enterprise_services.edge.response_reader import EdgeResponseReader
+from redis_enterprise_services.edge.session_without_cookies import session_without_cookies
 from redis_enterprise_services.resources.action_completion_waiter import ActionCompletionWaiter
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder, SpecCreationBody
 from redis_enterprise_services.resources.endpoint_resource_repository import EndpointResourceRepository
@@ -37,7 +40,10 @@ class ClusterWiring:
     def __init__(
         self, *, settings: Settings, clusters: list[ConfiguredCluster], deadline_polling: DeadlinePolling
     ) -> None:
-        cluster_api_caller: EdgeClusterApiCaller = build_cluster_api_caller(settings=settings)
+        self._edge_session: requests.Session = session_without_cookies()
+        cluster_api_caller: EdgeClusterApiCaller = build_cluster_api_caller(
+            settings=settings, edge_session=self._edge_session
+        )
         read_again_polling: ReadAgainPolling = ReadAgainPolling(
             deadline_polling=deadline_polling,
             transient_error_codes=settings.cluster_api.transient_error_codes,
@@ -53,6 +59,9 @@ class ClusterWiring:
             target_resolver=self.target_resolver,
             repositories=self.repositories,
         )
+
+    def close(self) -> None:
+        self._edge_session.close()
 
 
 class ClusterRepositories:
@@ -158,9 +167,10 @@ def build_cluster_repositories(
     )
 
 
-def build_cluster_api_caller(*, settings: Settings) -> EdgeClusterApiCaller:
+def build_cluster_api_caller(*, settings: Settings, edge_session: requests.Session) -> EdgeClusterApiCaller:
     edge_transport: EdgeClient = EdgeClient(
         settings=settings.edge,
+        session=edge_session,
         header_builder=EdgeHeaderBuilder(settings=settings.edge),
         response_reader=EdgeResponseReader(settings=settings.edge),
     )

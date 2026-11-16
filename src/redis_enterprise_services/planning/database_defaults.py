@@ -31,13 +31,12 @@ class DatabaseDefaults:
         )
 
 
-def database_defaults_from(
+def reject_invalid_defaults_on_any_cluster(
     *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
-) -> DatabaseDefaults:
+) -> None:
     reject_invalid_default_values(settings=settings)
     for cluster in clusters:
         reject_invalid_values_on_cluster(settings=settings, cluster=cluster)
-    return DatabaseDefaults(settings=settings)
 
 
 def reject_invalid_values_on_cluster(
