@@ -88,30 +88,20 @@ class ReadCrdbStep(SagaStep[ReadCrdbInput, CrdbConfigSnapshot]):
         stored: dict[str, JsonValue] = without_fields(
             fields=crdb.default_db_config, names=self._secret_fields
         )
-        differing: list[str] = fields_not_holding(
+        raise_if_differing(
+            guid=step_input.guid,
+            differing=self._config_fields_not_holding(stored=stored, expected=step_input.expected_config)
+            + sync_settings_not_holding(crdb=crdb, expected=step_input.expected_settings),
+        )
+        return snapshot_of(crdb=crdb, stored_config=stored, checked_settings=step_input.expected_settings)
+
+    def _config_fields_not_holding(
+        self, *, stored: dict[str, JsonValue], expected: dict[str, JsonValue]
+    ) -> list[str]:
+        return fields_not_holding(
             current=self._comparable(config=stored),
-            expected=self._comparable(
-                config=without_fields(fields=step_input.expected_config, names=self._secret_fields)
-            ),
+            expected=self._comparable(config=without_fields(fields=expected, names=self._secret_fields)),
             order_insensitive_fields=self._order_insensitive_fields,
-        ) + sync_settings_not_holding(crdb=crdb, expected=step_input.expected_settings)
-        if differing:
-            raise IncompleteClusterObjectError(
-                message=f"CRDB {step_input.guid} does not hold what was sent for {differing}"
-            )
-        expected: CrdbCreationSettings = step_input.expected_settings
-        return CrdbConfigSnapshot(
-            default_db_config=stored,
-            causal_consistency=expected.causal_consistency,
-            encryption=expected.encryption,
-            featureset_version=crdb.featureset_version,
-            protocol_version=crdb.protocol_version,
-            instances=[
-                CrdbInstanceSettings(
-                    cluster_url=instance.cluster.url, id=instance.id, compression=expected.compression
-                )
-                for instance in crdb.instances
-            ],
         )
 
     def _comparable(self, *, config: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -130,15 +120,35 @@ def without_item_fields(*, value: JsonValue, names: frozenset[str]) -> JsonValue
     ]
 
 
+def raise_if_differing(*, guid: str, differing: list[str]) -> None:
+    if differing:
+        raise IncompleteClusterObjectError(message=f"CRDB {guid} does not hold what was sent for {differing}")
+
+
+def snapshot_of(
+    *, crdb: Crdb, stored_config: dict[str, JsonValue], checked_settings: CrdbCreationSettings
+) -> CrdbConfigSnapshot:
+    return CrdbConfigSnapshot(
+        default_db_config=stored_config,
+        causal_consistency=checked_settings.causal_consistency,
+        encryption=checked_settings.encryption,
+        featureset_version=crdb.featureset_version,
+        protocol_version=crdb.protocol_version,
+        instances=[
+            CrdbInstanceSettings(
+                cluster_url=instance.cluster.url, id=instance.id, compression=checked_settings.compression
+            )
+            for instance in crdb.instances
+        ],
+    )
+
+
 def sync_settings_not_holding(*, crdb: Crdb, expected: CrdbCreationSettings) -> list[str]:
-    differing: list[str] = [
-        name
-        for name, value in (
-            ("causal_consistency", crdb.causal_consistency),
-            ("encryption", crdb.encryption),
-        )
-        if value != getattr(expected, name)
-    ]
+    held_and_expected: tuple[tuple[str, bool | None, bool], ...] = (
+        ("causal_consistency", crdb.causal_consistency, expected.causal_consistency),
+        ("encryption", crdb.encryption, expected.encryption),
+    )
+    differing: list[str] = [name for name, held, sent in held_and_expected if held != sent]
     return differing + [
         f"instances[{instance.id}].compression"
         for instance in crdb.instances

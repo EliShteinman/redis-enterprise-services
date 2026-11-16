@@ -13,10 +13,14 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
     def __init__(self, *, settings: BackgroundSettings) -> None:
         self._pool: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=settings.max_workers)
 
-    def submit(self, *, task_name: str, task: Callable[[], object]) -> None:
+    def submit(
+        self, *, task_name: str, task: Callable[[], object], on_cancelled: Callable[[], object]
+    ) -> None:
         submitter_context: Context = copy_context()
         future: Future[object] = self._pool.submit(submitter_context.run, task)
-        future.add_done_callback(task_outcome_logger(context=submitter_context, task_name=task_name))
+        future.add_done_callback(
+            task_outcome_handler(context=submitter_context, task_name=task_name, on_cancelled=on_cancelled)
+        )
         logger.info(msg=f"{task_name} is queued to run in the background")
 
     def close(self) -> None:
@@ -26,17 +30,24 @@ class ThreadPoolTaskRunner(BackgroundTaskRunner):
         self._pool.shutdown(wait=True, cancel_futures=True)
 
 
-def task_outcome_logger(*, context: Context, task_name: str) -> Callable[[Future[object]], None]:
-    def log_outcome_in_context(finished_future: Future[object]) -> None:
-        context.run(log_task_outcome, task_name=task_name, future=finished_future)
+def task_outcome_handler(
+    *, context: Context, task_name: str, on_cancelled: Callable[[], object]
+) -> Callable[[Future[object]], None]:
+    def handle_outcome_in_context(ended_future: Future[object]) -> None:
+        if ended_future.cancelled():
+            context.run(report_cancelled_task, task_name=task_name, on_cancelled=on_cancelled)
+            return
+        context.run(log_finished_task, task_name=task_name, future=ended_future)
 
-    return log_outcome_in_context
+    return handle_outcome_in_context
 
 
-def log_task_outcome(*, task_name: str, future: Future[object]) -> None:
-    if future.cancelled():
-        logger.warning(msg=f"{task_name} was cancelled before it started")
-        return
+def report_cancelled_task(*, task_name: str, on_cancelled: Callable[[], object]) -> None:
+    logger.warning(msg=f"{task_name} was cancelled before it started")
+    on_cancelled()
+
+
+def log_finished_task(*, task_name: str, future: Future[object]) -> None:
     error: BaseException | None = future.exception()
     if error is not None:
         logger.critical(msg=f"{task_name} failed in the background", exc_info=error)

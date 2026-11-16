@@ -31,7 +31,7 @@ def test_a_cluster_rejection_keeps_the_cluster_status_and_error_code(
 ) -> None:
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
     transport.send.return_value = ClusterResponse(
-        status_code=409, headers={}, body={"error_code": "name_already_exists"}, cluster_state_id=None
+        status_code=409, body={"error_code": "name_already_exists"}, cluster_state_id=None
     )
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError) as rejection:
@@ -47,9 +47,7 @@ def test_a_cluster_rejection_keeps_the_cluster_status_and_error_code(
 
 def test_a_redirect_answer_is_a_cluster_rejection(cluster_api_settings: ClusterApiSettings) -> None:
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
-    transport.send.return_value = ClusterResponse(
-        status_code=302, headers={}, body=None, cluster_state_id=None
-    )
+    transport.send.return_value = ClusterResponse(status_code=302, body=None, cluster_state_id=None)
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError):
         EdgeClusterApiCaller(edge_transport=transport, settings=cluster_api_settings).send(
@@ -63,7 +61,6 @@ def test_the_cluster_body_stays_out_of_the_rejection_message(
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
     transport.send.return_value = ClusterResponse(
         status_code=400,
-        headers={},
         body={"error_code": "invalid_schema", "description": "the-echoed-value"},
         cluster_state_id=None,
     )
@@ -92,9 +89,7 @@ def test_an_error_on_the_way_to_the_cluster_names_that_cluster(
 
 def test_a_cluster_refusal_names_the_cluster(cluster_api_settings: ClusterApiSettings) -> None:
     transport: MagicMock = create_autospec(spec=EdgeTransport, instance=True)
-    transport.send.return_value = ClusterResponse(
-        status_code=404, headers={}, body=None, cluster_state_id=None
-    )
+    transport.send.return_value = ClusterResponse(status_code=404, body=None, cluster_state_id=None)
 
     with pytest.raises(expected_exception=ClusterRejectedRequestError) as failure:
         EdgeClusterApiCaller(edge_transport=transport, settings=cluster_api_settings).send(
