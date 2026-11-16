@@ -23,6 +23,7 @@ from redis_enterprise_services.exceptions.edge import (
     EdgeOutcomeUnknownError,
     EdgeRejectedRequestError,
     EdgeRejectedResponseError,
+    EdgeUnreachableError,
 )
 
 NETWORK: str = "local"
@@ -150,13 +151,13 @@ def test_a_relay_rejected_response_keeps_the_cluster_status(settings: EdgeSettin
             requests.ConnectionError(
                 MaxRetryError(pool=POOL, url="/", reason=NewConnectionError(CONNECTION, "refused"))
             ),
-            EdgeConnectionFailedError,
+            EdgeUnreachableError,
         ),
         (
             requests.ConnectTimeout(
                 MaxRetryError(pool=POOL, url="/", reason=ConnectTimeoutError("timed out"))
             ),
-            EdgeConnectionFailedError,
+            EdgeUnreachableError,
         ),
         (
             requests.exceptions.SSLError(
@@ -169,7 +170,7 @@ def test_a_relay_rejected_response_keeps_the_cluster_status(settings: EdgeSettin
         (requests.exceptions.InvalidHeader("bad header value"), EdgeRejectedRequestError),
     ],
 )
-def test_a_transport_failure_maps_to_not_sent_connection_failed_or_outcome_unknown(
+def test_a_transport_failure_maps_to_unreachable_rejected_or_outcome_unknown(
     settings: EdgeSettings,
     error: requests.RequestException,
     expected: type[RedisEnterpriseServicesError],
