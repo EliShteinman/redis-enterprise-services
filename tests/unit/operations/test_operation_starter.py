@@ -37,7 +37,7 @@ class OperationStarterHarness:
                     error_kind_by_code={},
                 ),
                 internal_error_message="internal error",
-                unexpected_error_message="unexpected {error_type}: {error}",
+                unexpected_error_message="internal error: unexpected {error_type}",
             ),
         )
 
