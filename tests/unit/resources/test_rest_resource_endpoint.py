@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -18,10 +19,14 @@ TARGET: ClusterTarget = ClusterTarget(
 )
 
 
-def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
+@pytest.fixture
+def settings(config_dir: Path) -> Settings:
+    return load_settings(config_dir=config_dir)
+
+
+def endpoint_answering(*, answer: JsonValue, settings: Settings) -> RestResourceEndpoint:
     cluster_api_caller: MagicMock = create_autospec(spec=ClusterApiCaller, instance=True)
     cluster_api_caller.send.return_value = SuccessfulClusterResponse(body=answer, cluster_state_id=None)
-    settings: Settings = load_settings()
     return RestResourceEndpoint(
         cluster_api_caller=cluster_api_caller,
         settings=settings.user,
@@ -32,17 +37,17 @@ def endpoint_answering(*, answer: JsonValue) -> RestResourceEndpoint:
 ANSWER: dict[str, JsonValue] = {"uid": 6, "name": "app-user", "role_uids": [5], "action_uid": "c7d4bccf"}
 
 
-def test_start_creation_keeps_the_whole_answer() -> None:
-    endpoint: RestResourceEndpoint = endpoint_answering(answer=ANSWER)
+def test_start_creation_keeps_the_whole_answer(settings: Settings) -> None:
+    endpoint: RestResourceEndpoint = endpoint_answering(answer=ANSWER, settings=settings)
 
     created: CreatedResource = endpoint.start_creation(target=TARGET, creation_body={"name": "app-user"})
 
     assert created == CreatedResource(uid=6, name="app-user", action_uid="c7d4bccf", fields=ANSWER)
 
 
-def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
+def test_an_unreadable_answer_names_the_fields_without_their_values(settings: Settings) -> None:
     endpoint: RestResourceEndpoint = endpoint_answering(
-        answer={"name": "db1", "authentication_redis_pass": "s3cret"}
+        answer={"name": "db1", "authentication_redis_pass": "s3cret"}, settings=settings
     )
 
     with pytest.raises(expected_exception=UnreadableClusterResponseError) as unreadable:
@@ -51,15 +56,15 @@ def test_an_unreadable_answer_names_the_fields_without_their_values() -> None:
     assert "s3cret" not in f"{unreadable.value.message} {unreadable.value.__cause__}"
 
 
-def test_a_list_returns_every_object_in_full() -> None:
+def test_a_list_returns_every_object_in_full(settings: Settings) -> None:
     database: dict[str, JsonValue] = {"uid": 1, "name": "orders", "status": "active", "port": 12000}
-    endpoint: RestResourceEndpoint = endpoint_answering(answer=[database])
+    endpoint: RestResourceEndpoint = endpoint_answering(answer=[database], settings=settings)
 
     assert endpoint.list_objects(target=TARGET) == [ClusterObject(uid=1, name="orders", fields=database)]
 
 
-def test_a_deletion_returns_the_whole_answer() -> None:
-    endpoint: RestResourceEndpoint = endpoint_answering(answer={"action_uid": "c7d4bccf"})
+def test_a_deletion_returns_the_whole_answer(settings: Settings) -> None:
+    endpoint: RestResourceEndpoint = endpoint_answering(answer={"action_uid": "c7d4bccf"}, settings=settings)
 
     assert endpoint.start_deletion(target=TARGET, uid=6) == DeletionStarted(
         action_uid="c7d4bccf", fields={"action_uid": "c7d4bccf"}

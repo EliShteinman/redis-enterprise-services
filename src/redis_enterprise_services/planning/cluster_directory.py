@@ -12,8 +12,8 @@ class ClusterDirectory:
 
 def fits_placement(*, cluster: ConfiguredCluster, placement: SitePlacement) -> bool:
     at_site: bool = (
-        cluster.network == placement.network
-        and cluster.environment == placement.environment
+        cluster.environment == placement.environment
+        and cluster.network == placement.network
         and cluster.site == placement.site
     )
     return at_site and is_requested_cluster(cluster=cluster, requested=placement.cluster)
@@ -22,4 +22,4 @@ def fits_placement(*, cluster: ConfiguredCluster, placement: SitePlacement) -> b
 def is_requested_cluster(*, cluster: ConfiguredCluster, requested: str) -> bool:
     if requested == GENERIC_CLUSTER:
         return cluster.type == GENERIC_CLUSTER
-    return cluster.type != GENERIC_CLUSTER and cluster.name == requested
+    return cluster.type != GENERIC_CLUSTER and cluster.fqdn == requested

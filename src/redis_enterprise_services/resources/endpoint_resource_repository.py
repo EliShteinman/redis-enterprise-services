@@ -27,7 +27,7 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
 
     def start_creation(self, *, target: ClusterTarget, spec: TSpec) -> CreatedResource:
         return self._endpoint.start_creation(
-            target=target, creation_body=self._body_builder.creation_body(spec=spec)
+            target=target, creation_body=self._body_builder.creation_body(spec=spec, cluster=target)
         )
 
     def start_deletion(self, *, target: ClusterTarget, uid: int) -> DeletionStarted:
@@ -39,9 +39,9 @@ class EndpointResourceRepository[TSpec: NamedSpec](ResourceRepository[TSpec], Re
     def read_created(self, *, target: ClusterTarget, uid: int) -> CreatedResource:
         return self._endpoint.read_item(target=target, uid=uid)
 
-    def missing_fields(self, *, spec: TSpec, created: CreatedResource) -> list[str]:
+    def missing_fields(self, *, target: ClusterTarget, spec: TSpec, created: CreatedResource) -> list[str]:
         return fields_without_value(
-            sent=self._body_builder.creation_body(spec=spec),
+            sent=self._body_builder.creation_body(spec=spec, cluster=target),
             returned=created.fields,
             unreturned_fields=self._unreturned_fields,
         )

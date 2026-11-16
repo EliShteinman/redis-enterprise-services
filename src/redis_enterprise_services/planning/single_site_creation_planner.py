@@ -70,7 +70,7 @@ class SingleSiteCreationPlanner:
         steps: list[PreparableStep] = self._steps(
             address=address_of(cluster=cluster), database=database, users=users
         )
-        logger.info(msg=f"database {database.name} on {cluster.name} plans {len(steps)} steps")
+        logger.info(msg=f"database {database.name} on {cluster.fqdn} plans {len(steps)} steps")
         return SagaPlan(
             steps=steps,
             lock_keys=creation_lock_keys(
