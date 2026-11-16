@@ -29,7 +29,7 @@ POST /v1/databases/create
 |---|---|---|
 | `DatabaseCreation` | `creation/` | מה שה-route קורא לו: מעביר ל-`OperationStarter.start_once` את ההכנה, שרצה רק אחרי החיפוש לפי trace |
 | `OperationStarter` | `operations/` | הסדר המשותף לכל פקודה: חיפוש לפי trace, הכנה, התחלה אטומית, העברה לרקע (`saga-engine-and-state.md` סעיף 8) |
-| `CreationPreparation` | `creation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
+| `CreationPreparation` | `creation/preparation/` | כל מה שאפשר לבדוק בלי הקלאסטר |
 | `CreationExecution` | `creation/` | הריצה ברקע, עד רשומת הפעולה הסופית |
 | `SingleSiteCreationPlanner` | `planning/` | הבקשה ⇐ תוכנית צעדים ומפתחות נעילה |
 | `CreationOutcomeTranslator` | `creation/` | ה-saga record ⇐ הפעולה: עץ ה-DB, או השגיאה ומה שלא בוטל |
@@ -38,7 +38,7 @@ POST /v1/databases/create
 
 ![שכבת planning](../diagrams/05-layer-planning.drawio.svg)
 
-**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster_wiring.py`, `creation_wiring.py`, `state_wiring.py`, `background_wiring.py`, ולצידם ה-builders הקטנים של כל קבוצה) בונה את כל המחלקות הקונקרטיות. רק `app` ו-`server` מעליה.
+**נקודת ההרכבה:** `composition/` (`app_wiring.py`, `cluster/cluster_wiring.py`, `creation/creation_wiring.py`, `state_wiring.py`, `background_wiring.py`, ולצידם ה-builders הקטנים של כל קבוצה) בונה את כל המחלקות הקונקרטיות. רק `app` ו-`server` מעליה.
 
 ---
 
@@ -170,7 +170,7 @@ POST /v1/databases/create
 
 | מה קרה | הפעולה |
 |---|---|
-| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`created_database_result.py`), `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
+| ה-Saga הצליח | `succeeded` עם עץ ה-DB (`creation/results/created_database_result.py`), `kind: "single_site"` ואובייקט `cluster` אחד: ה-DB מהקריאה האחרונה, היוזר, ה-ACL וה-role מתשובות היצירה שלהם |
 | ה-Saga `rolled_back` או `requires_manual_intervention` | אותו סטטוס, עם `error` של הצעד שעצר (`stopped_at`), ו-`not_rolled_back` |
 | שגיאה של הפרויקט לפני שה-Saga התחיל (נעילה, שם תפוס, שגיאת קלאסטר בבדיקת השמות, שגיאה בבניית התוכנית) | `rejected` עם הקוד הציבורי שלה |
 | שגיאה (של הפרויקט או לא צפויה) אחרי שה-Saga התחיל | יש record ⇐ כמו בסוף רגיל, מתוך ה-record (record שנשמר כ-`running` ⇐ `requires_manual_intervention`). צעד שנעצר בלי שגיאה משלו מקבל את השגיאה שקטעה את הריצה: שגיאה של הפרויקט עם הקוד וההודעה שלה, או שגיאה לא צפויה כ-`internal_error` עם `internal error: unexpected <type>`. record שלא נקרא ⇐ `requires_manual_intervention` עם אותה שגיאה |

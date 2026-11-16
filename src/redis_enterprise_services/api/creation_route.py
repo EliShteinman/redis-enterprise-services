@@ -9,8 +9,8 @@ from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.create_database_request_examples import CREATE_DATABASE_REQUEST_EXAMPLES
 from redis_enterprise_services.api.rejection_openapi_responses import CREATION_ROUTE_REJECTION_RESPONSES
 from redis_enterprise_services.api.traceparent_header import require_traceparent
-from redis_enterprise_services.creation.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
+from redis_enterprise_services.creation.requests.create_database_request import CreateDatabaseRequest
 from redis_enterprise_services.telemetry.trace_id import current_trace_id
 
 router: APIRouter = APIRouter(

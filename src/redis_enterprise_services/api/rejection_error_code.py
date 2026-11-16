@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from typing import Literal
 
-from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 from redis_enterprise_services.exceptions.operation import OperationNotFoundError
 
 type ApiErrorCode = Literal[

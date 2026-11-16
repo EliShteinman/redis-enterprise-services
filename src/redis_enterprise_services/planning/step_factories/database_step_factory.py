@@ -2,7 +2,7 @@ from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.creation_step_keys import DATABASE_STEP_KEY
+from redis_enterprise_services.planning.keys.creation_step_keys import DATABASE_STEP_KEY
 from redis_enterprise_services.planning.step_factories.step_inputs import fixed_input, uid_created_by_step
 from redis_enterprise_services.resources.models import CreatedResource, CreateResourceInput
 from redis_enterprise_services.saga.contract.saga_step import SagaStep

@@ -2,7 +2,7 @@ from redis import Redis
 from redis.backoff import NoBackoff
 from redis.retry import Retry
 
-from redis_enterprise_services.config.state_settings import StateSettings
+from redis_enterprise_services.config.service.state_settings import StateSettings
 
 
 def build_redis_client(*, settings: StateSettings) -> Redis:

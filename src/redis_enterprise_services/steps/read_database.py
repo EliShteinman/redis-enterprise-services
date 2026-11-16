@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsReader
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.new_database import NewDatabase

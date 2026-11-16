@@ -5,7 +5,7 @@ from redis_enterprise_services.cluster.cluster_target_resolver import (
     ConfiguredCredentialsTargetResolver,
 )
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
-from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.composition.cluster_repositories import (
     ClusterRepositories,
@@ -13,9 +13,9 @@ from redis_enterprise_services.composition.cluster_repositories import (
 )
 from redis_enterprise_services.composition.cluster_steps import ClusterSteps, build_cluster_steps
 from redis_enterprise_services.composition.cluster_waiters import build_cluster_waiters
-from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.edge_settings import EdgeSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.service.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder

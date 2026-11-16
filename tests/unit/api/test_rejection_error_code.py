@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import get_args
 
 from redis_enterprise_services.api.rejection_error_code import API_ERROR_CODE_MEANINGS, ApiErrorCode
-from redis_enterprise_services.config.public_error_code import PublicErrorCode
+from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 from redis_enterprise_services.config.settings import load_settings
 
 

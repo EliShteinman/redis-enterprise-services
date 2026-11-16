@@ -1,13 +1,13 @@
 from pydantic import BaseModel, Field
 
 from redis_enterprise_services.api.rejection_error_code import API_ERROR_CODE_MEANINGS, RejectionErrorCode
-from redis_enterprise_services.config.error_kind import ErrorKind
-from redis_enterprise_services.operations.code_meanings import code_meanings_description
-from redis_enterprise_services.operations.is_none import is_none
-from redis_enterprise_services.operations.public_error import (
+from redis_enterprise_services.config.public_errors.error_kind import ErrorKind
+from redis_enterprise_services.operations.errors.code_meanings import code_meanings_description
+from redis_enterprise_services.operations.errors.public_error import (
     ERROR_KIND_DESCRIPTION,
     PUBLIC_ERROR_CODE_DESCRIPTION,
 )
+from redis_enterprise_services.operations.is_none import is_none
 
 REJECTION_ERROR_CODE_DESCRIPTION: str = (
     code_meanings_description(meanings=API_ERROR_CODE_MEANINGS) + ", " + PUBLIC_ERROR_CODE_DESCRIPTION

@@ -4,13 +4,13 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import JsonValue
 
+from redis_enterprise_services.cluster.bodies.json_body import string_field
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
 from redis_enterprise_services.cluster.cluster_url import cluster_url
 from redis_enterprise_services.cluster.edge_transport import EdgeTransport
-from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
-from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
 from redis_enterprise_services.exceptions.cluster import ClusterRejectedRequestError
 

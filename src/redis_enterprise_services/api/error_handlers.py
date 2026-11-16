@@ -18,9 +18,9 @@ from redis_enterprise_services.api.rejection_error_code import (
 )
 from redis_enterprise_services.api.rejection_response import rejection_response
 from redis_enterprise_services.api.service_rejection import ServiceRejection, service_rejection
-from redis_enterprise_services.config.api_settings import ApiSettings
+from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 
 LOCATION_SEPARATOR: str = "."
 

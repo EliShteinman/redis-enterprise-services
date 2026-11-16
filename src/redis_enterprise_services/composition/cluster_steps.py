@@ -2,7 +2,7 @@ from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
 from redis_enterprise_services.composition.cluster_repositories import ClusterRepositories
 from redis_enterprise_services.composition.cluster_waiters import ClusterWaiters
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.roles.models import NewRole
 from redis_enterprise_services.steps.create_resource import CreateResourceStep

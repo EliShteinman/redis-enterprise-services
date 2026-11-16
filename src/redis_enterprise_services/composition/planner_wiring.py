@@ -1,5 +1,6 @@
 from redis_enterprise_services.composition.cluster_steps import ClusterSteps
-from redis_enterprise_services.config.role_management import RoleManagement
+from redis_enterprise_services.config.defaults.role_management import RoleManagement
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.planning.step_factories.database_permission_step_factory import (
     DatabasePermissionStepFactory,
@@ -12,7 +13,6 @@ from redis_enterprise_services.planning.step_factories.role_permission_values im
 from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
     UserResourceStepFactory,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 
 
 def build_single_site_planner(
