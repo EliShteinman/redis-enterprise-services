@@ -4,6 +4,9 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends
 
 from redis_enterprise_services.api.accepted_operation import AcceptedOperation
+from redis_enterprise_services.api.accepted_operation_openapi_response import (
+    ACCEPTED_OPERATION_OPENAPI_RESPONSE,
+)
 from redis_enterprise_services.api.app_state_dependencies import database_creation_from_app_state
 from redis_enterprise_services.api.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.create_database_request_examples import CREATE_DATABASE_REQUEST_EXAMPLES
@@ -24,14 +27,7 @@ router: APIRouter = APIRouter(
     path="/v1/databases/create",
     status_code=HTTPStatus.ACCEPTED,
     response_model=AcceptedOperation,
-    responses={
-        HTTPStatus.ACCEPTED: {
-            "description": "The command is accepted and runs in the background. Its state and result "
-            "are read only from GET /v1/operations/{trace_id}. One trace id means one operation: a repeat "
-            "with the same trace id (the parent id and the body are not compared) starts nothing and gets "
-            "the same answer."
-        }
-    },
+    responses=ACCEPTED_OPERATION_OPENAPI_RESPONSE,
 )
 def start_database_creation_once(
     creation_request: Annotated[

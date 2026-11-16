@@ -9,7 +9,12 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import creation_route, liveness_route, operation_route
+from redis_enterprise_services.api import (
+    crdb_creation_route,
+    creation_route,
+    liveness_route,
+    operation_route,
+)
 from redis_enterprise_services.api.error_handlers import (
     HttpErrorHandler,
     ServiceErrorHandler,
@@ -52,12 +57,14 @@ def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -
     app.state.settings = settings
     app.state.wiring = wiring
     app.state.database_creation = wiring.database_creation
+    app.state.crdb_creation = wiring.crdb_creation
     app.state.operation_store = wiring.operation_store
 
 
 def include_routers(*, app: FastAPI) -> None:
     app.include_router(router=liveness_route.router)
     app.include_router(router=creation_route.router)
+    app.include_router(router=crdb_creation_route.router)
     app.include_router(router=operation_route.router)
 
 

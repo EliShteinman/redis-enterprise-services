@@ -39,27 +39,6 @@ CREATE_DATABASE_REQUEST_EXAMPLES: dict[str, Example] = {
             },
         },
     },
-    "active_active": {
-        "summary": "Active-Active on two sites, with one user",
-        "description": "Fields left out take the service defaults for the target, plus the defaults set "
-        "for Active-Active only. When a default differs between the sites, the request is answered "
-        "configuration_error naming those fields, and sending them explicitly avoids it. All sites must be "
-        "on one network (else mixed_networks), and two sites may not resolve to the same cluster (else "
-        "duplicate_sites).",
-        "value": {
-            "target": {
-                "active_active": True,
-                "sites": [
-                    {"network": "net-a", "site": "dc1", "environment": "PROD", "cluster": "generic"},
-                    {"network": "net-a", "site": "dc2", "environment": "PROD", "cluster": "generic"},
-                ],
-            },
-            "spec": {
-                "database": {"name": "orders", "memory_size": 1073741824},
-                "users": [{"name": "app", "password": "S3cure-Passw0rd", "acl_rule": "+@all ~orders:*"}],
-            },
-        },
-    },
     "snapshot": {
         "summary": "Snapshot persistence with its own rules",
         "description": "snapshot_policy is sent only together with data_persistence snapshot.",
