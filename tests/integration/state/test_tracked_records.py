@@ -4,6 +4,7 @@ from redis import Redis
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
+from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter
@@ -74,3 +75,18 @@ def test_a_running_operation_stays_open_without_expiry(
     store.save(operation=running(trace_id))
 
     assert (is_open(client, keys, trace_id), client.ttl(keys.operation(trace_id=trace_id))) == (True, -1)
+
+
+def test_an_operation_that_needs_manual_intervention_leaves_the_open_set_and_stays_without_expiry(
+    client: Redis, keys: RedisKeys, store: RedisOperationStore, trace_id: str
+) -> None:
+    store.create_if_absent(operation=running(trace_id))
+
+    store.save(
+        operation=Operation.requires_manual_intervention(
+            trace_id=trace_id,
+            error=PublicError(code="internal_error", kind="needs_investigation", message="internal error"),
+        )
+    )
+
+    assert (is_open(client, keys, trace_id), client.ttl(keys.operation(trace_id=trace_id))) == (False, -1)

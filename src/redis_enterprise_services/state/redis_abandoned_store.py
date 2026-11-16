@@ -12,7 +12,7 @@ from redis_enterprise_services.recovery.abandoned_store import AbandonedStore
 from redis_enterprise_services.recovery.finalize_abandoned_result import FinalizeAbandonedResult
 from redis_enterprise_services.recovery.stored_saga import StoredSaga
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord
-from redis_enterprise_services.state.record_expiry import KEEP_OPEN_WITHOUT_EXPIRY, finished_ttl_or_keep_open
+from redis_enterprise_services.state.record_expiry import NO_EXPIRY, finished_ttl_or_no_expiry
 from redis_enterprise_services.state.redis_keys import RedisKeys
 
 logger: logging.Logger = logging.getLogger(name=__name__)
@@ -49,12 +49,12 @@ local saga = redis.call('GET', KEYS[4])
 if (saga or '') ~= ARGV[6] then
     return {SAGA_CHANGED_CODE}
 end
-if ARGV[3] == '{KEEP_OPEN_WITHOUT_EXPIRY}' then
+if ARGV[3] == '{NO_EXPIRY}' then
     redis.call('SET', KEYS[1], ARGV[1])
 else
     redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
-    redis.call('SREM', KEYS[2], ARGV[2])
 end
+redis.call('SREM', KEYS[2], ARGV[2])
 if ARGV[4] ~= '{NO_INTERRUPTED_SAGA}' then
     redis.call('SET', KEYS[4], ARGV[4])
 end
@@ -190,7 +190,7 @@ def finalize_script_args(
     return [
         operation.model_dump_json(),
         operation.trace_id,
-        finished_ttl_or_keep_open(
+        finished_ttl_or_no_expiry(
             has_ended_cleanly=operation.has_ended_cleanly(), finished_ttl_seconds=finished_ttl_seconds
         ),
         NO_INTERRUPTED_SAGA if interrupted_saga is None else interrupted_saga.model_dump_json(),

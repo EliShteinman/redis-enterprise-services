@@ -65,7 +65,8 @@ def step_reading(
                 "https://cluster-a:9443": ClusterCredentials(username="admin", password=SecretStr("secret"))
             },
         ),
-        list_fields=frozenset({"roles_permissions"}),
+        order_insensitive_fields=frozenset({"roles_permissions"}),
+        fields_defaulting_to_empty_list=frozenset({"roles_permissions"}),
     )
     return step, repository, task_waiter
 
