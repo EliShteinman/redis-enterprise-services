@@ -49,10 +49,10 @@ class DatabaseDefaults:
             ) from error
 
     def crdb_settings(
-        self, *, coordinator: ConfiguredCluster, requested: CrdbSpec | None
+        self, *, cluster: ConfiguredCluster, requested: CrdbSpec | None
     ) -> CrdbCreationSettings:
         return crdb_settings_on_cluster(
-            settings=self._settings, cluster=coordinator, requested_values=values_sent_in(requested=requested)
+            settings=self._settings, cluster=cluster, requested_values=values_sent_in(requested=requested)
         )
 
 

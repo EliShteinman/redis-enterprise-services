@@ -241,15 +241,13 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
 
 
 def test_the_crdb_values_of_the_coordinator_beat_the_crdb_defaults() -> None:
-    assert (
-        DEFAULTS.crdb_settings(coordinator=cluster(crdb={"compression": 6}), requested=None).compression == 6
-    )
+    assert DEFAULTS.crdb_settings(cluster=cluster(crdb={"compression": 6}), requested=None).compression == 6
 
 
 def test_a_requested_crdb_value_beats_the_configured_one() -> None:
     assert (
         DEFAULTS.crdb_settings(
-            coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
+            cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
         ).compression
         == 1
     )
@@ -257,7 +255,7 @@ def test_a_requested_crdb_value_beats_the_configured_one() -> None:
 
 def test_a_crdb_field_left_out_of_the_request_comes_from_config() -> None:
     assert DEFAULTS.crdb_settings(
-        coordinator=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
+        cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
     ) == CrdbCreationSettings(causal_consistency=True, encryption=False, compression=6)
 
 

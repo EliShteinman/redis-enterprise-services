@@ -100,7 +100,7 @@ class ActiveActiveCreationPlanner:
 
     def plan(self, *, saga_id: str, clusters: list[ConfiguredCluster], spec: ActiveActiveSpec) -> SagaPlan:
         settings: CrdbCreationSettings = self._database_defaults.crdb_settings(
-            coordinator=coordinator_of(clusters=clusters), requested=spec.crdb
+            cluster=coordinator_of(clusters=clusters), requested=spec.crdb
         )
         steps: list[PreparableStep] = [
             self._crdb_step(saga_id=saga_id, clusters=clusters, database=spec.database, settings=settings),
