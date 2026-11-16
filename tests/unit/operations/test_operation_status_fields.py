@@ -1,11 +1,11 @@
 import pytest
 from pydantic import ValidationError
 
-from redis_enterprise_services.operations.database_result import DatabaseResult
+from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+from redis_enterprise_services.operations.results.database_result import DatabaseResult
 
 ERROR: PublicError = PublicError(code="internal_error", kind="needs_investigation", message="internal error")
 KNOWN_FAILURE: PublicError = PublicError(code="cluster_timeout", kind="known_failure", message="slow")

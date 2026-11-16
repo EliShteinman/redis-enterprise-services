@@ -3,11 +3,11 @@ from collections.abc import Callable
 
 from pydantic import JsonValue
 
-from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
-from redis_enterprise_services.cluster.json_body import required_string_field
+from redis_enterprise_services.cluster.bodies.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster.rejection_kind import is_not_found
-from redis_enterprise_services.config.crdb_settings import CrdbTaskSettings
+from redis_enterprise_services.cluster.waiting.crdb_task_waiter import CrdbTaskWaiter
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbTaskSettings
 from redis_enterprise_services.exceptions.cluster import (
     ClusterRejectedRequestError,
     CrdbTaskFailedError,

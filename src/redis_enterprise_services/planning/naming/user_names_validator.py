@@ -1,8 +1,8 @@
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
 from redis_enterprise_services.planning.naming.name_validator import NameValidator
 from redis_enterprise_services.planning.naming.naming_context import NamingContext
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResources, user_resources
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resources import UserResources, user_resources
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 
 class UserNamesValidator:

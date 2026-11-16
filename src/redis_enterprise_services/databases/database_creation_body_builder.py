@@ -1,7 +1,7 @@
 from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.database_tag import DatabaseTag
+from redis_enterprise_services.config.redis_api.database_tag import DatabaseTag
 from redis_enterprise_services.databases.creation_body import database_creation_body
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder

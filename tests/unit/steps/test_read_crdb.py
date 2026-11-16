@@ -6,7 +6,7 @@ from pydantic import JsonValue, SecretStr
 from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
 from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.crdbs.models import Crdb
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.exceptions.cluster import IncompleteClusterObjectError

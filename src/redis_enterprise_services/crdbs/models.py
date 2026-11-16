@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from redis_enterprise_services.config.base_url import BaseUrl, is_same_url
+from redis_enterprise_services.config.validation.base_url import BaseUrl, is_same_url
 
 
 class CrdbInstanceCluster(BaseModel):

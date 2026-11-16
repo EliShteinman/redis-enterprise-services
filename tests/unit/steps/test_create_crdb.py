@@ -5,10 +5,10 @@ import pytest
 from pydantic import JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ConfiguredCredentialsTargetResolver
-from redis_enterprise_services.cluster.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.models import ClusterAddress
+from redis_enterprise_services.cluster.waiting.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings, CrdbTaskSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings, CrdbTaskSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.crdbs.repository import CrdbRepository
 from redis_enterprise_services.databases.new_database import NewDatabase
