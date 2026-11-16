@@ -49,10 +49,10 @@ class DatabaseDefaults:
             ) from error
 
     def crdb_settings(
-        self, *, coordinator: ConfiguredCluster, requested: CrdbSpec | None
+        self, *, cluster: ConfiguredCluster, requested: CrdbSpec | None
     ) -> CrdbCreationSettings:
         return crdb_settings_on_cluster(
-            settings=self._settings, cluster=coordinator, requested_values=values_sent_in(requested=requested)
+            settings=self._settings, cluster=cluster, requested_values=values_sent_in(requested=requested)
         )
 
 
@@ -62,9 +62,9 @@ def issue_text(*, issue: ErrorDetails) -> str:
     return f"{location}: {cause}" if location else f"{cause}"
 
 
-def database_defaults_from(
+def reject_invalid_defaults_on_any_cluster(
     *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
-) -> DatabaseDefaults:
+) -> None:
     for kind in DatabaseKind:
         defaults: DatabaseKindDefaults = settings.of_kind(kind=kind)
         reject_invalid_default_values_of_kind(defaults=defaults, kind=kind)
@@ -72,7 +72,6 @@ def database_defaults_from(
             reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
     for cluster in clusters:
         crdb_settings_on_cluster(settings=settings, cluster=cluster, requested_values={})
-    return DatabaseDefaults(settings=settings)
 
 
 def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: DatabaseKind) -> None:
