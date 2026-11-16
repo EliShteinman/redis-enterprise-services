@@ -123,6 +123,21 @@ def test_the_config_dir_variable_is_the_mount_path_of_the_config_volume(service_
     assert environment_value(container=service_container, name="RES_CONFIG_DIR") == mount_path
 
 
+def test_the_probes_call_the_liveness_path_of_the_shipped_config(service_container: Manifest) -> None:
+    service_config: Manifest = yaml.safe_load(
+        stream=(CHART_DIR / "files" / "service.yaml").read_text(encoding="utf-8")
+    )
+    probe_paths: set[str] = {
+        service_container[probe]["httpGet"]["path"] for probe in ("livenessProbe", "readinessProbe")
+    }
+    assert probe_paths == {service_config["api"]["liveness_path"]}
+
+
+def test_the_service_is_given_the_liveness_path_the_probes_call(service_container: Manifest) -> None:
+    liveness_path: str = environment_value(container=service_container, name="RES_API__LIVENESS_PATH")
+    assert liveness_path == service_container["livenessProbe"]["httpGet"]["path"]
+
+
 @pytest.mark.parametrize("value", REQUIRED_VALUES)
 def test_rendering_fails_without_a_required_value(value: str, helm: str, chart_dir: Path) -> None:
     rendered: Rendering = render(helm=helm, chart_dir=chart_dir, overrides=(f"{value}=",))

@@ -8,6 +8,7 @@
     "image",
     "imagePullSecrets",
     "containerPort",
+    "livenessPath",
     "service",
     "route",
     "edge",
@@ -58,6 +59,10 @@
     },
     "containerPort": {
       "$ref": "#/definitions/port"
+    },
+    "livenessPath": {
+      "type": "string",
+      "pattern": "^/"
     },
     "service": {
       "type": "object",

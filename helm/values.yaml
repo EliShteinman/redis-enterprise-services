@@ -10,6 +10,8 @@ imagePullSecrets: []
 
 containerPort: 8080
 
+livenessPath: /health
+
 service:
   port: 80
 

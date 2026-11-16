@@ -203,7 +203,8 @@ environment's clusters file and a `helm upgrade`, with no new image.
   `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
   `metrics-redis_enterprise_services.otel-default`. The Elastic user needs to write to them.
   The collector keeps its read position in the log file on a volume limited to `collector.stateSizeLimit` (64Mi).
-- The liveness and readiness probes call `/health`.
+- The liveness and readiness probes call `livenessPath` (`/health`, the `api.liveness_path` of `service.yaml`). The
+  chart passes the same value to the service as `RES_API__LIVENESS_PATH`, so the two cannot differ.
 
 ## Tests, lint and type check
 
