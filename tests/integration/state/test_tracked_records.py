@@ -2,9 +2,9 @@ import pytest
 from redis import Redis
 
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.state.redis_keys import RedisKeys
 from redis_enterprise_services.state.redis_operation_store import RedisOperationStore
 from redis_enterprise_services.state.tracked_record_writer import TrackedRecordWriter

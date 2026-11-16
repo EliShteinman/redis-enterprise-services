@@ -4,14 +4,14 @@ from unittest.mock import ANY, MagicMock, create_autospec
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
@@ -20,21 +20,24 @@ from redis_enterprise_services.exceptions.saga import (
     ResourcesLockedError,
     UnreadableSagaRecordError,
 )
-from redis_enterprise_services.operations.database_result import DatabasePermissionResult, DatabaseResult
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
-from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.results.database_result import (
+    DatabasePermissionResult,
+    DatabaseResult,
+)
 from redis_enterprise_services.planning.availability.chosen_cluster_scope import ChosenClusterScope
 from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
 from redis_enterprise_services.planning.availability.creation_naming import CreationNaming
 from redis_enterprise_services.planning.availability.name_availability import NameAvailability
-from redis_enterprise_services.planning.database_spec import (
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
+from redis_enterprise_services.planning.spec.database_spec import (
     DatabaseSpec,
     DatabaseUserSpec,
 )
-from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepRecord, StepStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
 from redis_enterprise_services.saga.contract.step_kind import StepKind

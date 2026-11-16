@@ -1,8 +1,8 @@
 import pytest
 
+from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
 from redis_enterprise_services.recovery.abandoned_sweep import (
     interrupted_running_saga,
     locks_are_free_after_crash,

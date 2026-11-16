@@ -9,21 +9,21 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.exceptions import HTTPException
 from starlette.types import ExceptionHandler
 
-from redis_enterprise_services.api import creation_route, operation_route
-from redis_enterprise_services.api.error_handlers import (
+from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
+from redis_enterprise_services.api.rejections.error_handlers import (
     HttpErrorHandler,
     ServiceErrorHandler,
     ValidationErrorHandler,
 )
-from redis_enterprise_services.api.liveness_route import liveness_router
-from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
+from redis_enterprise_services.api.routes import creation_route, operation_route
+from redis_enterprise_services.api.routes.liveness_route import liveness_router
 from redis_enterprise_services.composition.app_wiring import AppWiring
-from redis_enterprise_services.config.api_settings import ApiSettings
+from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
 from redis_enterprise_services.logger.quiet import QuietPathsMiddleware
-from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.telemetry.excluded_urls import excluded_urls
 from redis_enterprise_services.telemetry.telemetry_providers import (
     TelemetryProviders,
