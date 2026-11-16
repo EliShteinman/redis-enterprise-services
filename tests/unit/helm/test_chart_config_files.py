@@ -26,6 +26,11 @@ REQUIRED_VALUES: tuple[str, ...] = (
     "secret.ELASTIC_PASSWORD",
 )
 
+URLS_THE_SERVICE_REFUSES: tuple[str, ...] = (
+    "edge.url=https://proxy.prep.example.com/?via=other",
+    "secret.RES_STATE__URL=rediss://user:password@:6379",
+)
+
 type Manifest = dict[str, Any]
 type Rendering = subprocess.CompletedProcess[str]
 
@@ -141,4 +146,10 @@ def test_the_service_is_given_the_liveness_path_the_probes_call(service_containe
 @pytest.mark.parametrize("value", REQUIRED_VALUES)
 def test_rendering_fails_without_a_required_value(value: str, helm: str, chart_dir: Path) -> None:
     rendered: Rendering = render(helm=helm, chart_dir=chart_dir, overrides=(f"{value}=",))
+    assert rendered.returncode != 0
+
+
+@pytest.mark.parametrize("override", URLS_THE_SERVICE_REFUSES)
+def test_rendering_fails_on_a_url_the_service_refuses(override: str, helm: str, chart_dir: Path) -> None:
+    rendered: Rendering = render(helm=helm, chart_dir=chart_dir, overrides=(override,))
     assert rendered.returncode != 0
