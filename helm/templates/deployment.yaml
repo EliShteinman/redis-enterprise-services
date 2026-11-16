@@ -137,5 +137,6 @@ spec:
           configMap:
             name: {{ include "res.fullname" . }}-collector
         - name: collector-state
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: {{ .Values.collector.stateSizeLimit }}
         {{- end }}

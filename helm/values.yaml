@@ -55,6 +55,7 @@ collector:
     endpoint: ""
     username: ""
     insecureSkipVerify: false
+  stateSizeLimit: 64Mi
   resources:
     requests:
       cpu: 50m

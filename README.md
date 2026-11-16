@@ -200,6 +200,7 @@ environment's clusters file and a `helm upgrade`, with no new image.
   own data streams:
   `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
   `metrics-redis_enterprise_services.otel-default`. The Elastic user needs to write to them.
+  The collector keeps its read position in the log file on a volume limited to `collector.stateSizeLimit` (64Mi).
 - The liveness and readiness probes call `/health`.
 
 ## Tests, lint and type check

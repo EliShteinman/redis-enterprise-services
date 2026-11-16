@@ -169,6 +169,7 @@
         "enabled",
         "image",
         "elasticsearch",
+        "stateSizeLimit",
         "resources"
       ],
       "properties": {
@@ -222,6 +223,9 @@
               "type": "boolean"
             }
           }
+        },
+        "stateSizeLimit": {
+          "$ref": "#/definitions/quantity"
         },
         "resources": {
           "$ref": "#/definitions/resources"
