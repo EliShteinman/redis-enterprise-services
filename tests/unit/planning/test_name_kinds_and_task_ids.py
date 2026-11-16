@@ -1,6 +1,6 @@
 from typing import get_args
 
-from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
+from redis_enterprise_services.planning.keys.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.planned.name_kind import NAME_KINDS, NameKind
 
 

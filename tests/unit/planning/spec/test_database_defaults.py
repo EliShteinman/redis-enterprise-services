@@ -11,7 +11,7 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
 from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.crdb_spec import CrdbSpec
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.spec.database_defaults import (
     DatabaseDefaults,
     reject_invalid_defaults_on_any_cluster,

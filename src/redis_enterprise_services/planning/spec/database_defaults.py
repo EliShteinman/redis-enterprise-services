@@ -16,7 +16,7 @@ from redis_enterprise_services.databases.new_database import (
     NewDatabase,
 )
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
-from redis_enterprise_services.planning.crdb_spec import CrdbSpec
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

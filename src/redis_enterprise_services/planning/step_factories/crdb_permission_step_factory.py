@@ -1,7 +1,7 @@
 from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
+from redis_enterprise_services.planning.keys.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.keys.creation_step_keys import PERMISSIONS_STEP_KEY
 from redis_enterprise_services.planning.planned.user_resources import UserResources
 from redis_enterprise_services.planning.step_factories.crdb_step_factory import (

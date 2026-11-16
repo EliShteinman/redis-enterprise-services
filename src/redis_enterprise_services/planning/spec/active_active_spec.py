@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from redis_enterprise_services.planning.crdb_spec import CrdbSpec
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 

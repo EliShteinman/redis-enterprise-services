@@ -4,7 +4,7 @@ from redis_enterprise_services.cluster.models import ClusterAddress
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
+from redis_enterprise_services.planning.keys.crdb_task_ids import crdb_task_id
 from redis_enterprise_services.planning.keys.creation_step_keys import (
     CRDB_STEP_KEY,
     LOCAL_DATABASE_STEP_KEY,
