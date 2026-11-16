@@ -1,8 +1,8 @@
 from collections.abc import Callable
+from typing import Final
 
-from pydantic import BaseModel
 
-
-class PreparedRun(BaseModel):
-    task_name: str
-    task: Callable[[], object]
+class PreparedRun:
+    def __init__(self, *, task_name: str, task: Callable[[], object]) -> None:
+        self.task_name: Final[str] = task_name
+        self.task: Final[Callable[[], object]] = task
