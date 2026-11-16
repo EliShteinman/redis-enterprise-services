@@ -2,13 +2,13 @@ import logging
 
 from pydantic import ConfigDict, JsonValue, TypeAdapter
 
+from redis_enterprise_services.cluster.bodies.cluster_body import parse_cluster_body
+from redis_enterprise_services.cluster.bodies.fields_query_string import fields_query_string
+from redis_enterprise_services.cluster.bodies.json_body import string_field
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
-from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
-from redis_enterprise_services.cluster.fields_query_string import fields_query_string
-from redis_enterprise_services.cluster.json_body import string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.cluster_api_settings import ClusterApiSettings
-from redis_enterprise_services.config.resource_settings import ResourceSettings
+from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.redis_api.resource_settings import ResourceSettings
 from redis_enterprise_services.resources.cluster_object_body import cluster_object, object_body
 from redis_enterprise_services.resources.models import (
     ClusterObject,
