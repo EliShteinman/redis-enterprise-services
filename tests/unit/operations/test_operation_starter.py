@@ -101,6 +101,19 @@ def test_a_failed_submit_stores_the_operation_as_rejected() -> None:
     )
 
 
+def test_an_operation_cancelled_while_it_was_queued_is_stored_as_rejected() -> None:
+    harness: OperationStarterHarness = OperationStarterHarness()
+    harness.start_once()
+
+    harness.task_runner.submit.call_args.kwargs["on_cancelled"]()
+
+    saved_operation: Operation = harness.store.save.call_args.kwargs["operation"]
+    assert (saved_operation.status, saved_operation.error and saved_operation.error.code) == (
+        OperationStatus.REJECTED,
+        "internal_error",
+    )
+
+
 def test_a_started_operation_is_tracked_before_it_is_submitted() -> None:
     harness: OperationStarterHarness = OperationStarterHarness()
     calls: MagicMock = MagicMock()
