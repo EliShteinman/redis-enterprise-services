@@ -5,12 +5,12 @@ import pytest
 from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.cluster.read_again_polling import ReadAgainPolling
-from redis_enterprise_services.cluster.status_polling import StatusPolling
+from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
+from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.database_settings import DatabaseSettings
+from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
+from redis_enterprise_services.config.redis_api.wait_settings import WaitSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.config.wait_settings import WaitSettings
 from redis_enterprise_services.databases.database_fields_repository import DatabaseFieldsReader
 from redis_enterprise_services.databases.models import DatabaseFieldsSnapshot
 from redis_enterprise_services.databases.polling_database_waiter import PollingDatabaseWaiter

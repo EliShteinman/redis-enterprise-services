@@ -2,7 +2,7 @@ from pydantic import SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.crdbs.creation_body import CrdbCreationBody, crdb_creation_body
 
 CREDENTIALS: ClusterCredentials = ClusterCredentials(username="admin", password=SecretStr("secret"))

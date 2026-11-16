@@ -2,7 +2,10 @@ from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redis_enterprise_services.config.crdb_settings import MAX_CRDB_COMPRESSION, MIN_CRDB_COMPRESSION
+from redis_enterprise_services.config.redis_api.crdb_settings import (
+    MAX_CRDB_COMPRESSION,
+    MIN_CRDB_COMPRESSION,
+)
 
 
 class CrdbSpec(BaseModel):

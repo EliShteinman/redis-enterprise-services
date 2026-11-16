@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from redis_enterprise_services.planning.crdb_spec import CrdbSpec
-from redis_enterprise_services.planning.database_spec import DatabaseSpec
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec
 
 
 class ActiveActiveSpec(DatabaseSpec):

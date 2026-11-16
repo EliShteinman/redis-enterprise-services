@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 
 
 class NameCheckScope(Protocol):

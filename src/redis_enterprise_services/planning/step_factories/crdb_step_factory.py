@@ -1,23 +1,23 @@
 from functools import partial
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
-from redis_enterprise_services.planning.cluster_address import address_of
 from redis_enterprise_services.planning.crdb_task_ids import crdb_task_id
-from redis_enterprise_services.planning.creation_step_keys import (
+from redis_enterprise_services.planning.keys.creation_step_keys import (
     CRDB_STEP_KEY,
     LOCAL_DATABASE_STEP_KEY,
     on_site,
 )
+from redis_enterprise_services.planning.placement.cluster_address import address_of
 from redis_enterprise_services.planning.step_factories.step_inputs import fixed_input
 from redis_enterprise_services.saga.contract.saga_step import SagaStep
 from redis_enterprise_services.saga.plan.planned_step import PlannedStep
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
 from redis_enterprise_services.saga.plan.step_results import StepResults
-from redis_enterprise_services.steps.create_crdb import CreateCrdbInput, CreatedCrdb
-from redis_enterprise_services.steps.find_local_crdb_instance import (
+from redis_enterprise_services.steps.crdb.create_crdb import CreateCrdbInput, CreatedCrdb
+from redis_enterprise_services.steps.crdb.find_local_crdb_instance import (
     FindLocalCrdbInstanceInput,
     LocalCrdbInstance,
 )

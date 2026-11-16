@@ -3,12 +3,12 @@ from uuid import UUID
 
 from pydantic import ConfigDict, JsonValue, TypeAdapter
 
+from redis_enterprise_services.cluster.bodies.cluster_body import parse_cluster_body
+from redis_enterprise_services.cluster.bodies.json_body import required_string_field
 from redis_enterprise_services.cluster.cluster_api_caller import ClusterApiCaller
-from redis_enterprise_services.cluster.cluster_body import parse_cluster_body
-from redis_enterprise_services.cluster.json_body import required_string_field
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.http_method import HttpMethod
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings, CrdbSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings, CrdbSettings
 from redis_enterprise_services.crdbs.creation_body import crdb_creation_body
 from redis_enterprise_services.crdbs.models import Crdb, NamedCrdb, instances_change
 from redis_enterprise_services.crdbs.repository import CrdbRepository

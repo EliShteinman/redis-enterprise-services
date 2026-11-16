@@ -1,15 +1,23 @@
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.planning.crdb_coordinator import coordinator_of
-from redis_enterprise_services.planning.creation_step_keys import CRDB_STEP_KEY, PERMISSIONS_STEP_KEY, on_site
-from redis_enterprise_services.planning.database_spec import DatabaseSpec, DatabaseUserSpec
-from redis_enterprise_services.planning.planned_resources import (
+from redis_enterprise_services.planning.keys.creation_step_keys import (
+    CRDB_STEP_KEY,
+    PERMISSIONS_STEP_KEY,
+    on_site,
+)
+from redis_enterprise_services.planning.planned.planned_resources import (
     CRDB_RESOURCE_TYPE,
     PERMISSIONS_RESOURCE_TYPE,
     PlannedResource,
 )
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.planned.user_resources import (
+    UserResource,
+    UserResources,
+    user_resources,
+)
 from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
-from redis_enterprise_services.planning.user_resources import UserResource, UserResources, user_resources
+from redis_enterprise_services.planning.spec.database_spec import DatabaseSpec, DatabaseUserSpec
 
 
 def active_active_planned_resources(

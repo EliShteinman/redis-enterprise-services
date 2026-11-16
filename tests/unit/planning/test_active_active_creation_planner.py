@@ -1,21 +1,22 @@
 from pydantic import BaseModel, JsonValue, SecretStr
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
-from redis_enterprise_services.config.database_defaults_settings import (
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.database_defaults_settings import (
     ActiveActiveDefaults,
     DatabaseDefaultsSettings,
     DatabaseKindDefaults,
 )
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.planning.active_active_creation_planner import ActiveActiveCreationPlanner
 from redis_enterprise_services.planning.active_active_spec import ActiveActiveSpec
 from redis_enterprise_services.planning.crdb_spec import CrdbSpec
-from redis_enterprise_services.planning.database_defaults import DatabaseDefaults
-from redis_enterprise_services.planning.database_spec import DatabaseUserSpec
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
+from redis_enterprise_services.planning.spec.database_spec import DatabaseUserSpec
 from redis_enterprise_services.planning.step_factories.crdb_permission_step_factory import (
     CrdbPermissionStepFactory,
 )
@@ -28,14 +29,13 @@ from redis_enterprise_services.planning.step_factories.role_permission_values im
 from redis_enterprise_services.planning.step_factories.user_resource_step_factory import (
     UserResourceStepFactory,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.resources.models import CreatedResource
 from redis_enterprise_services.saga.contract.keep_result import KeepResult
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.saga_plan import SagaPlan
 from redis_enterprise_services.saga.plan.step_results import StepResults
-from redis_enterprise_services.steps.create_crdb import CreatedCrdb
-from redis_enterprise_services.steps.find_local_crdb_instance import LocalCrdbInstance
+from redis_enterprise_services.steps.crdb.create_crdb import CreatedCrdb
+from redis_enterprise_services.steps.crdb.find_local_crdb_instance import LocalCrdbInstance
 
 NY: str = "redis.ny.example.com"
 TLV: str = "redis.tlv.example.com"

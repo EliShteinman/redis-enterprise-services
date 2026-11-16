@@ -1,7 +1,7 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterAddress
-from redis_enterprise_services.config.role_settings import RoleSettings
+from redis_enterprise_services.config.redis_api.role_settings import RoleSettings
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
 from redis_enterprise_services.roles.creation_body import role_creation_body
 from redis_enterprise_services.roles.models import NewRole

@@ -4,7 +4,7 @@ import requests
 from pydantic import JsonValue
 from requests.structures import CaseInsensitiveDict
 
-from redis_enterprise_services.config.edge_settings import EdgeErrorCodeSettings, EdgeSettings
+from redis_enterprise_services.config.service.edge_settings import EdgeErrorCodeSettings, EdgeSettings
 from redis_enterprise_services.edge.models import ClusterResponse
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.edge import (
