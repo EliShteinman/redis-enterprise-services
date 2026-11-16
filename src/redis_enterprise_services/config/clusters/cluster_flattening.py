@@ -16,7 +16,7 @@ from redis_enterprise_services.config.clusters.level_values import (
     SiteOrClusterValues,
 )
 from redis_enterprise_services.config.validation.base_url import comparable_url
-from redis_enterprise_services.config.validation.repeated_values import reject_repeated
+from redis_enterprise_services.config.validation.reject_repeated import reject_repeated
 
 ENVIRONMENT_OF_TREE_KEY: dict[TreeEnvironment, Environment] = {"dev": "DEV", "prod": "PROD", "test": "TEST"}
 

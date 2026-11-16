@@ -84,6 +84,7 @@ layers = [
     "saga | operations",
     "logger | telemetry | timing | background | liveness",
     "config | exceptions",
+    "sequences",
 ]
 
 [[tool.importlinter.contracts]]

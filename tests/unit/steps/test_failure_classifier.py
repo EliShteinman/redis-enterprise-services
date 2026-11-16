@@ -46,7 +46,7 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         (DuplicateResourceNameError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (UpdateOutcomeUnclearError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (UnrestorableFieldsError(message="m"), FailureCategory.FAILED),
-        (EdgeConnectionFailedError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
+        (EdgeConnectionFailedError(message="m"), FailureCategory.TRANSIENT),
         (EdgeOutcomeUnknownError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
         (EdgeRejectedResponseError(message="m", cluster_status_code=200), FailureCategory.OUTCOME_UNKNOWN),
         (ClusterActionTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
