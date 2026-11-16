@@ -10,7 +10,7 @@ from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
 
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
-from redis_enterprise_services.config.edge_settings import EdgeSettings
+from redis_enterprise_services.config.service.edge_settings import EdgeSettings
 from redis_enterprise_services.config.settings import load_settings
 from redis_enterprise_services.edge.client import EdgeClient
 from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder

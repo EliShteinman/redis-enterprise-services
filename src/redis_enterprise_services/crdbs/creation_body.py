@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, JsonValue
 
 from redis_enterprise_services.cluster.models import ClusterTarget
-from redis_enterprise_services.config.crdb_settings import CrdbCreationSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 
 

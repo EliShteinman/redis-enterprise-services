@@ -1,16 +1,18 @@
 import logging
 
-from redis_enterprise_services.creation.created_crdb_guid import created_crdb_guid_or_none
-from redis_enterprise_services.creation.created_resources import created_uid_or_none
-from redis_enterprise_services.creation.creation_record_reader import CreationRecordReader
-from redis_enterprise_services.operations.active_active_database_result import ActiveActiveDatabaseResult
-from redis_enterprise_services.operations.database_result import DatabaseResult
+from redis_enterprise_services.creation.results.created_crdb_guid import created_crdb_guid_or_none
+from redis_enterprise_services.creation.results.created_resources import created_uid_or_none
+from redis_enterprise_services.creation.results.creation_record_reader import CreationRecordReader
+from redis_enterprise_services.operations.errors.public_error import PublicError
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
-from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.site_planned_resource import SitePlannedResource
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
+from redis_enterprise_services.operations.results.database_result import DatabaseResult
+from redis_enterprise_services.planning.planned.site_planned_resource import SitePlannedResource
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus, StepError, StepRecord
 
 logger: logging.Logger = logging.getLogger(name=__name__)

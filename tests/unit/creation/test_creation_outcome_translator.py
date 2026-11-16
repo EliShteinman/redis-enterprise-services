@@ -3,24 +3,24 @@ from pathlib import Path
 import pytest
 from pydantic import JsonValue, SecretStr
 
-from redis_enterprise_services.config.cluster_credentials_settings import ClusterCredentialsSettings
-from redis_enterprise_services.config.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.operation_settings import OperationSettings
+from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
+from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
+from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import Settings, load_settings
-from redis_enterprise_services.config.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.prepared_creation import PreparedCreation
-from redis_enterprise_services.creation.single_site_record_reader import SingleSiteRecordReader
+from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.results.single_site_record_reader import SingleSiteRecordReader
 from redis_enterprise_services.databases.new_database import NewDatabase
+from redis_enterprise_services.operations.errors.public_error import PublicError
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
-from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.operations.public_errors import PublicErrors
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.database_spec import (
+from redis_enterprise_services.planning.planned.user_resource_naming import UserResourceNaming
+from redis_enterprise_services.planning.spec.database_spec import (
     DatabaseSpec,
     DatabaseUserSpec,
 )
-from redis_enterprise_services.planning.user_resource_naming import UserResourceNaming
 from redis_enterprise_services.saga.contract.saga_record import (
     SagaRecord,
     SagaStatus,
