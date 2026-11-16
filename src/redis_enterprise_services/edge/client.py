@@ -31,7 +31,6 @@ class EdgeClient:
         logger.debug(msg=request_line)
         relay_response: requests.Response = self._post_to_relay(
             network=network,
-            relay_url=self._settings.url,
             headers=self._header_builder.build(request=request, network=network),
             data=encoded_json_body(body=request.body),
             request_line=request_line,
@@ -39,11 +38,11 @@ class EdgeClient:
         return self._response_reader.unwrap_cluster_response(relay_response=relay_response)
 
     def _post_to_relay(
-        self, *, network: str, relay_url: str, headers: dict[str, str], data: bytes | None, request_line: str
+        self, *, network: str, headers: dict[str, str], data: bytes | None, request_line: str
     ) -> requests.Response:
         try:
             return self._session.post(
-                url=relay_url,
+                url=self._settings.url,
                 headers=headers,
                 data=data,
                 timeout=(self._settings.connect_timeout_seconds, self._settings.request_timeout_seconds),
