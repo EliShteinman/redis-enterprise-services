@@ -1,7 +1,7 @@
-from redis_enterprise_services.config.validation.repeated_values import repeated_values
 from redis_enterprise_services.exceptions.saga import InvalidPlanError
 from redis_enterprise_services.saga.contract.step_kind import StepKind
 from redis_enterprise_services.saga.plan.step_protocols import PreparableStep
+from redis_enterprise_services.sequences.repeated_values import repeated_values
 
 KIND_RANK: dict[StepKind, int] = {StepKind.COMPENSATABLE: 0, StepKind.PIVOT: 1, StepKind.RETRIABLE: 2}
 
