@@ -4,7 +4,7 @@ from redis_enterprise_services.config.public_errors.error_kind import UNKNOWN_ER
 from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
-from redis_enterprise_services.operations.public_error import PublicError
+from redis_enterprise_services.operations.errors.public_error import PublicError
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 

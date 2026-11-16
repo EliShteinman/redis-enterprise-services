@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from redis_enterprise_services.config.public_errors.error_kind import NEEDS_INVESTIGATION, ErrorKind
 from redis_enterprise_services.config.public_errors.public_error_code import PublicErrorCode
-from redis_enterprise_services.operations.code_meanings import code_meanings_description
+from redis_enterprise_services.operations.errors.code_meanings import code_meanings_description
 from redis_enterprise_services.operations.is_none import is_none
 
 PUBLIC_ERROR_CODE_MEANINGS: dict[PublicErrorCode, str] = {

@@ -2,8 +2,8 @@ import pytest
 
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.saga import InvalidPlanError
-from redis_enterprise_services.operations.public_error import PublicError
-from redis_enterprise_services.operations.public_errors import PublicErrors
+from redis_enterprise_services.operations.errors.public_error import PublicError
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 
 PUBLIC_ERRORS: PublicErrors = PublicErrors(
     settings=OperationSettings(

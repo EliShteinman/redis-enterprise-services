@@ -6,12 +6,12 @@ from redis_enterprise_services.background.background_task_runner import Backgrou
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.exceptions.planning import InvalidNameError
 from redis_enterprise_services.liveness.operation_heartbeats import OperationHeartbeats
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_starter import OperationStarter
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.prepared_run import PreparedRun
-from redis_enterprise_services.operations.public_errors import PublicErrors
 
 RUNNING_OPERATION: Operation = Operation(trace_id="trace-1")
 
