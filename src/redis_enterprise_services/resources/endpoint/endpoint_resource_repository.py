@@ -3,10 +3,10 @@ from pydantic import JsonValue
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.resources.cluster_object_body import without_fields
 from redis_enterprise_services.resources.creation_body_builder import CreationBodyBuilder
+from redis_enterprise_services.resources.endpoint.resource_endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import ClusterObject, CreatedResource, DeletionStarted
 from redis_enterprise_services.resources.named_spec import NamedSpec
 from redis_enterprise_services.resources.repository import ResourceRepository
-from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.resource_name_lister import ResourceNameLister
 from redis_enterprise_services.resources.resources_named import resources_named
 

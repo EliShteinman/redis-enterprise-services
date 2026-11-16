@@ -9,8 +9,8 @@ from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulCl
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
+from redis_enterprise_services.resources.endpoint.rest_resource_endpoint import RestResourceEndpoint
 from redis_enterprise_services.resources.models import ClusterObject, CreatedResource, DeletionStarted
-from redis_enterprise_services.resources.rest_resource_endpoint import RestResourceEndpoint
 
 TARGET: ClusterTarget = ClusterTarget(
     network="local",

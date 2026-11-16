@@ -10,12 +10,12 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.redis_api.resource_settings import ResourceSettings
 from redis_enterprise_services.resources.cluster_object_body import cluster_object, object_body
+from redis_enterprise_services.resources.endpoint.resource_endpoint import ResourceEndpoint
 from redis_enterprise_services.resources.models import (
     ClusterObject,
     CreatedResource,
     DeletionStarted,
 )
-from redis_enterprise_services.resources.resource_endpoint import ResourceEndpoint
 
 OBJECT_LIST_ADAPTER: TypeAdapter[list[JsonValue]] = TypeAdapter(
     type=list[JsonValue], config=ConfigDict(hide_input_in_errors=True)

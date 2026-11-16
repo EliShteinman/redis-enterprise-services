@@ -1,7 +1,7 @@
 from pydantic import JsonValue
 
 from redis_enterprise_services.resources.cluster_object_body import without_fields
-from redis_enterprise_services.resources.endpoint_resource_repository import fields_without_value
+from redis_enterprise_services.resources.endpoint.endpoint_resource_repository import fields_without_value
 
 SENT: dict[str, JsonValue] = {"name": "app", "password": "p", "role_uids": [5], "email": "a@b"}
 
