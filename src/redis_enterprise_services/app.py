@@ -19,7 +19,6 @@ from redis_enterprise_services.api.middleware.unexpected_error_middleware import
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings
-from redis_enterprise_services.edge.insecure_warnings import silence_insecure_request_warnings
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.logger.configuration import configure_logging
 from redis_enterprise_services.logger.quiet import QuietPathsMiddleware
@@ -45,7 +44,6 @@ def create_app(*, settings: Settings) -> FastAPI:
 
 def configure_process(*, settings: Settings) -> None:
     configure_logging(settings=settings.log)
-    silence_insecure_request_warnings()
 
 
 def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -> None:
