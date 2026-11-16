@@ -50,10 +50,26 @@ curl localhost:8080/v1/operations/4bf92f3577b34da6a3ce929d0e0e4736 \
 Every command needs its own trace id: the same trace id again returns the existing operation (`200`) instead of
 starting a new one. The OpenAPI docs, with request examples, are at `/docs`.
 
+In a container, from the project root:
+
+```bash
+docker build -f docker/Dockerfile -t redis-enterprise-services .
+docker run -p 8080:8080 -e RES_STATE__URL -e RES_STATE__KEY_PREFIX \
+  -e RES_CONFIG_DIR=/etc/redis-enterprise-services \
+  -v "$PWD/helm/files:/etc/redis-enterprise-services:ro" redis-enterprise-services
+```
+
+The image runs `docker/entrypoint.py` as user `10001` in group `0`. No configuration file is built into it: it reads
+the four files from the directory in `RES_CONFIG_DIR`, so mount them there. `RES_CONFIG_DIR` has no default; without it
+the container stops at once with an error that names it. The two `RES_STATE__*` variables are taken here from the
+shell. With `RES_LOG__FILE__ENABLED=true` the service also writes a JSON log to `/app/logs/app.log`, the only
+directory in the image it can write to.
+
 ## Configuration
 
 Settings are in four files in `helm/files/`. The service reads them from the directory its caller passes; there is no
-default. `run_local.py` passes `helm/files`.
+default. `run_local.py` passes `helm/files`. The container passes the directory in `RES_CONFIG_DIR`, which the Helm
+chart sets to the directory it mounts the files into (`mounts.config`).
 
 | File | What | Changed when |
 |---|---|---|
@@ -123,6 +139,35 @@ Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, t
 Logs go to the console, as lines or JSON (`log.console_format`). With `log.file.enabled` they also go to a rotating
 file (`log.file`, JSON by default). Requests to `log.quiet_paths` (`/health`) are left out of the logs below
 `log.quiet_kept_level` (WARNING), and out of the traces and metrics.
+
+## Deployment (Helm)
+
+The chart is in `helm/`. The service is installed once and reaches every cluster through the proxy. `domain` is the
+domain it runs in; it builds the image address `<image.registry>.<domain>/<image.repository>` and the route host
+`<route.name>.<domain>`:
+
+```bash
+helm upgrade --install redis-enterprise-services helm --set domain=<domain> -f <secrets>.yaml
+```
+
+- `domain` must be set; the chart does not render without it.
+- `secret` must hold `RES_STATE__URL` and `RES_STATE__KEY_PREFIX`. They become a Secret that the service reads as
+  environment variables; keep the values file that holds them out of git.
+- `config` holds non-secret `RES_*` overrides for the environment.
+- The four files of `helm/files/` are mounted into one directory, `mounts.config` (`/etc/redis-enterprise-services`),
+  and the chart sets `RES_CONFIG_DIR` to it. `defaults.yaml`, `service.yaml` and `redis_api.yaml` come from a
+  ConfigMap. `clusters.yaml` holds the cluster passwords, so it comes from a Secret (`<release>-clusters`): fill it in
+  at deployment and never commit the filled file. Adding a cluster is an edit there and a `helm upgrade`, with no new
+  image.
+- `terminationGracePeriodSeconds` (600) is a ceiling, the most a rollout waits. On stop the service waits only for the
+  operations that are running and exits as soon as they finish, at once when none is. An operation still running after
+  600 seconds is cut off.
+- `collector.enabled: true` adds an OpenTelemetry Collector sidecar that sends the JSON log file, the traces and the
+  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username, password). The chart then turns on the log
+  file and the telemetry export of the service by itself. Everything from this service goes to its own data streams:
+  `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
+  `metrics-redis_enterprise_services.otel-default`. The Elastic user needs to write to them.
+- The liveness and readiness probes call `/health`.
 
 ## Tests, lint and type check
 
