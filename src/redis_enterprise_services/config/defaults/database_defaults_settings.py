@@ -9,6 +9,7 @@ from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreatio
 class DatabaseKindDefaults(ConfigModel):
     database: dict[str, JsonValue]
     persistence_values: dict[str, dict[str, JsonValue]]
+    sharding_values: dict[str, JsonValue]
 
 
 class ActiveActiveDefaults(DatabaseKindDefaults):
