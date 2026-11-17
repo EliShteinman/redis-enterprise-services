@@ -91,6 +91,7 @@ def test_a_relay_response_without_edge_error_unwraps_to_the_cluster_response(
     argnames=("code", "expected"),
     argvalues=[
         ("invalid_request", EdgeRejectedRequestError),
+        ("unauthorized", EdgeRejectedRequestError),
         ("connection_failed", EdgeConnectionFailedError),
         ("timeout", EdgeOutcomeUnknownError),
         ("response_rejected", EdgeRejectedResponseError),
@@ -120,7 +121,7 @@ def test_a_body_that_is_not_json_without_an_edge_error_code_is_an_unknown_outcom
 
 
 def test_a_cluster_state_id_that_is_not_a_number_is_ignored(settings: EdgeSettings) -> None:
-    headers: dict[str, str] = {settings.headers.cluster_state_id: "abc"}
+    headers: dict[str, str] = {settings.headers.returned_cluster_state_id: "abc"}
     relay_response_value: requests.Response = relay_response(status_code=200, headers=headers)
 
     assert (
