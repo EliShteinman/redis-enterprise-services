@@ -8,6 +8,11 @@ type DataPersistence = Literal["disabled", "snapshot", "aof"]
 
 PERSISTENCE_MODE_BY_FIELD: dict[str, DataPersistence] = {"aof_policy": "aof", "snapshot_policy": "snapshot"}
 
+SHARDING_FIELD: str = "sharding"
+SHARD_KEY_REGEX_FIELD: str = "shard_key_regex"
+SHARDS_COUNT_FIELD: str = "shards_count"
+SINGLE_SHARD: int = 1
+
 UNSET_MEANS_DEFAULT_DESCRIPTION: str = (
     " When omitted or null, the service's configured default for the target applies,"
     " or else Redis's own default."
@@ -59,20 +64,23 @@ class DatabaseOptions(BaseModel):
     )
     sharding: bool | None = Field(
         default=None,
-        description="Split the data across several shards." + UNSET_MEANS_DEFAULT_DESCRIPTION,
+        description="Split the data across several shards. When omitted, shards_count above 1 or "
+        "shard_key_regex turn it on; false is refused together with either of them."
+        + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[False],
     )
     shards_count: int | None = Field(
         default=None,
         ge=1,
         le=512,
-        description="The number of primary shards." + UNSET_MEANS_DEFAULT_DESCRIPTION,
+        description="The number of primary shards. Above 1 turns sharding on."
+        + UNSET_MEANS_DEFAULT_DESCRIPTION,
         examples=[1],
     )
     shard_key_regex: list[ShardKeyRegex] | None = Field(
         default=None,
-        description="Only with sharding: how a key picks its shard, first match wins."
-        + UNSET_MEANS_DEFAULT_DESCRIPTION,
+        description="How a key picks its shard, first match wins. Sending it turns sharding on. "
+        "When the database is sharded and this is omitted, the service's configured rules apply.",
         examples=[[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]],
     )
     data_persistence: DataPersistence | None = Field(
@@ -117,12 +125,12 @@ class DatabaseOptions(BaseModel):
     )
 
     @model_validator(mode="after")
-    def reject_sharding_settings_without_their_rules(self) -> Self:
-        if self.sharding is True and not self.shard_key_regex:
-            raise ValueError("sharding needs shard_key_regex: how a key picks its shard")
-        if self.sharding is not True and (self.shard_key_regex or (self.shards_count or 1) > 1):
+    def reject_sharding_settings_with_sharding_off(self) -> Self:
+        if self.sharding is False and holds_sharding_only_values(
+            shard_key_regex=self.shard_key_regex, shards_count=self.shards_count
+        ):
             raise ValueError(
-                "shard_key_regex and shards_count above 1 are sent only together with sharding true"
+                "shard_key_regex and shards_count above 1 are not sent together with sharding false"
             )
         return self
 
@@ -144,3 +152,7 @@ class NewDatabase(NamedSpec, DatabaseOptions):
     memory_size: PositiveInt = Field(
         description="The memory limit of the database, in bytes.", examples=[1073741824]
     )
+
+
+def holds_sharding_only_values(*, shard_key_regex: object, shards_count: object) -> bool:
+    return bool(shard_key_regex) or (isinstance(shards_count, int) and shards_count > SINGLE_SHARD)
