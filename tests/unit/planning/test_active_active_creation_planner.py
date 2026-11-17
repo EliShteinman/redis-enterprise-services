@@ -79,10 +79,11 @@ PLANNER: ActiveActiveCreationPlanner = ActiveActiveCreationPlanner(
     resource_naming=UserResourceNaming(settings=USER_RESOURCES),
     database_defaults=DatabaseDefaults(
         settings=DatabaseDefaultsSettings(
-            single_site=DatabaseKindDefaults(database={}, persistence_values={}),
+            single_site=DatabaseKindDefaults(database={}, persistence_values={}, sharding_values={}),
             active_active=ActiveActiveDefaults(
                 database={},
                 persistence_values={},
+                sharding_values={},
                 crdb=CrdbCreationSettings(causal_consistency=False, encryption=False, compression=3),
             ),
         )
