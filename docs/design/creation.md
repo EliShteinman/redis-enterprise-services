@@ -64,6 +64,7 @@ POST /v1/databases/create
      persistence_values:
        aof: {aof_policy: appendfsync-every-sec}
        snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
+     sharding_values: {shard_key_regex: [...]}
 
    clusters:
      prod:                                  # סביבה (dev, prod, test)
@@ -101,8 +102,11 @@ POST /v1/databases/create
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` שלו אם הבקשה
      לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
      שלהם, אחרת `422 validation_error`.
-   - **שדות של Sharding:** בקשה ששולחת `sharding: false` מוציאה את `shard_key_regex` ואת `shards_count` מעל 1 שהגיעו
-     מברירות המחדל, כי הם שייכים ל-Sharding בלבד. בקשה שלא שולחת `sharding` מקבלת את כל שדות ה-Sharding מברירות המחדל.
+   - **שדות של Sharding** (`planning/spec/sharding_resolution.py`): `shard_key_regex` ו-`shards_count` מעל 1 שייכים
+     ל-Sharding בלבד. רמה (ברירות המחדל, הסביבה, הרשת, האתר, הקלאסטר, הבקשה) שכותבת `sharding: false` מוציאה אותם
+     מהרמות שמתחתיה. אחרי המיזוג: בלי `sharding`, `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. DB עם Sharding
+     בלי `shard_key_regex` מקבל את `sharding_values`, ו-DB בלי Sharding נשלח עם `shards_count: 1`. `sharding: false` יחד
+     עם אחד מהם באותה רמה ⇐ `422` בבקשה, ועצירה בעלייה בקונפיג. `sharding_values` בלי `shard_key_regex` עוצר את השירות.
    - בעלייה: ערך שלא עובר את `DatabaseOptions` עוצר את השירות. כך גם הערכים שחלים יחד על כל קלאסטר בקונפיג: שתי
      רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
