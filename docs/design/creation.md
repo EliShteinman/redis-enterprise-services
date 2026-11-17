@@ -139,6 +139,8 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
      `data_persistence`. שדות של מצב אחר יוצאים, והשדות של המצב שנבחר מקבלים את `persistence_values` של הסט של אותו סוג אם הבקשה
      לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
      שלהם, אחרת `422 validation_error`.
+   - **שדות של Sharding:** בקשה ששולחת `sharding: false` מוציאה את `shard_key_regex` ואת `shards_count` מעל 1 שהגיעו
+     מברירות המחדל, כי הם שייכים ל-Sharding בלבד. בקשה שלא שולחת `sharding` מקבלת את כל שדות ה-Sharding מברירות המחדל.
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
      קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 
