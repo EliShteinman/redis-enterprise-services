@@ -96,7 +96,7 @@
 | `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | רק יחד עם `data_persistence: snapshot` |
 | `sharding` | bool | בלי ערך: `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. `false` לא יחד עם אף אחד מהם |
 | `shards_count` | int, 1–512 (התיעוד של Redis) | מעל 1 מפעיל Sharding. בלי Sharding נשלח `1` |
-| `shard_key_regex` | list של `{regex}` | מפעיל Sharding. DB עם Sharding בלי השדה מקבל את הכללים של השירות |
+| `shard_key_regex` | list של `{regex}`, לפחות אחד | מפעיל Sharding. DB עם Sharding בלי השדה מקבל את הכללים של השירות |
 | `eviction_policy` | אחד מעשרת הערכים של Redis (`noeviction`, `allkeys-lru`, …) | |
 | `shards_placement` | `dense` / `sparse` | |
 | `proxy_policy` | `single` / `all-master-shards` / `all-nodes` | |
@@ -126,7 +126,8 @@
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
 כך גם `sharding: false` יחד עם `shard_key_regex` או `shards_count` מעל 1. `sharding: false` מכל רמה (ברירות המחדל,
-`clusters.yaml`, הבקשה) מוציא את `shard_key_regex` ואת `shards_count` מעל 1 של הרמות שמתחתיו. ערכים שרק הקלאסטר יכול לבדוק (למשל זיכרון גדול מהקלאסטר, או `version` שלא קיים) נבדקים בקלאסטר, וכשהוא
+`clusters.yaml`, הבקשה) מוציא את `shard_key_regex` ואת `shards_count` מעל 1 של הרמות שמתחתיו, ובקשה עם `shards_count` מעל 1
+או `shard_key_regex` מפעילה Sharding גם מעל ברירת מחדל של `sharding: false`. ערכים שרק הקלאסטר יכול לבדוק (למשל זיכרון גדול מהקלאסטר, או `version` שלא קיים) נבדקים בקלאסטר, וכשהוא
 דוחה, התוצאה היא `rolled_back` עם `cluster_request_failed`.
 
 ### `spec.users[]`

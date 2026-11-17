@@ -13,11 +13,20 @@ from redis_enterprise_services.exceptions.configuration import ConfigurationErro
 def layered_database_values(*, layers: list[dict[str, JsonValue]]) -> dict[str, JsonValue]:
     values: dict[str, JsonValue] = {}
     for layer in layers:
-        below: dict[str, JsonValue] = (
-            values if layer.get(SHARDING_FIELD) is not False else without_sharding_only_values(values=values)
-        )
-        values = {**below, **layer}
+        values = {**fitting_below(values=values, layer=layer), **layer}
     return values
+
+
+def fitting_below(*, values: dict[str, JsonValue], layer: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    if layer.get(SHARDING_FIELD) is False:
+        return without_sharding_only_values(values=values)
+    if SHARDING_FIELD not in layer and asks_for_sharding(values=layer):
+        return without_sharding_off(values=values)
+    return values
+
+
+def without_sharding_off(*, values: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    return {name: value for name, value in values.items() if not (name == SHARDING_FIELD and value is False)}
 
 
 def without_sharding_only_values(*, values: dict[str, JsonValue]) -> dict[str, JsonValue]:
