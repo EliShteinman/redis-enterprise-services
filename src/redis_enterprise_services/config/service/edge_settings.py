@@ -12,6 +12,7 @@ class EdgeHeaderSettings(ConfigModel):
     edge_error_code: str
     cluster_status_code: str
     cluster_state_id: str
+    returned_cluster_state_id: str
     crdb_task_id: str
     result_ttl_seconds: str
     network: str
@@ -19,6 +20,7 @@ class EdgeHeaderSettings(ConfigModel):
 
 class EdgeErrorCodeSettings(ConfigModel):
     invalid_request: str
+    unauthorized: str
     connection_failed: str
     response_rejected: str
 
