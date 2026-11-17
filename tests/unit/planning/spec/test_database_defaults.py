@@ -15,9 +15,12 @@ PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
     "aof": {"aof_policy": "appendfsync-every-sec"},
     "snapshot": {"snapshot_policy": [{"secs": 3600, "writes": 1}]},
 }
+SHARDING_VALUES: dict[str, JsonValue] = {"shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}]}
 DEFAULTS: DatabaseDefaults = DatabaseDefaults(
     settings=DatabaseDefaultsSettings(
-        database={"replication": True, "data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
+        database={"replication": True, "data_persistence": "aof"},
+        persistence_values=PERSISTENCE_VALUES,
+        sharding_values=SHARDING_VALUES,
     )
 )
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
@@ -73,7 +76,10 @@ def test_a_field_sent_as_null_keeps_the_default() -> None:
 def test_defaults_that_are_not_valid_stop_at_startup(values: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         reject_invalid_defaults_on_any_cluster(
-            settings=DatabaseDefaultsSettings(database=values, persistence_values={}), clusters=[]
+            settings=DatabaseDefaultsSettings(
+                database=values, persistence_values={}, sharding_values=SHARDING_VALUES
+            ),
+            clusters=[],
         )
 
 
@@ -116,7 +122,9 @@ def defaults_checked_on(
     *, configured: ConfiguredCluster, database: dict[str, JsonValue] | None = None
 ) -> DatabaseDefaults:
     settings: DatabaseDefaultsSettings = DatabaseDefaultsSettings(
-        database=database or {"data_persistence": "aof"}, persistence_values=PERSISTENCE_VALUES
+        database=database or {"data_persistence": "aof"},
+        persistence_values=PERSISTENCE_VALUES,
+        sharding_values=SHARDING_VALUES,
     )
     reject_invalid_defaults_on_any_cluster(settings=settings, clusters=[configured])
     return DatabaseDefaults(settings=settings)
@@ -160,23 +168,73 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
     assert (filled.data_persistence, filled.aof_policy) == ("disabled", None)
 
 
-SHARDED_DEFAULTS: DatabaseDefaults = DatabaseDefaults(
-    settings=DatabaseDefaultsSettings(
-        database={"sharding": True, "shards_count": 2, "shard_key_regex": [{"regex": "(?<tag>.*)"}]},
-        persistence_values={},
+SHARDED: dict[str, JsonValue] = {
+    "sharding": True,
+    "shards_count": 2,
+    "shard_key_regex": [{"regex": "(?<tag>.*)"}],
+}
+
+
+def filled(*, request: dict[str, JsonValue], database: dict[str, JsonValue] | None = None) -> NewDatabase:
+    defaults: DatabaseDefaults = DatabaseDefaults(
+        settings=DatabaseDefaultsSettings(
+            database=database or {}, persistence_values={}, sharding_values=SHARDING_VALUES
+        )
     )
+    requested: NewDatabase = NewDatabase.model_validate(
+        obj={"name": "orders", "memory_size": 104857600, **request}
+    )
+    return defaults.fill_in(cluster=cluster(), requested=requested)
+
+
+def sharding_of(database: NewDatabase) -> tuple[object, ...]:
+    regex: list[str] | None = (
+        None if database.shard_key_regex is None else [r.regex for r in database.shard_key_regex]
+    )
+    return database.sharding, database.shards_count, regex
+
+
+@pytest.mark.parametrize(
+    argnames=("request_values", "expected"),
+    argvalues=[
+        pytest.param(
+            {"shards_count": 4}, (True, 4, [".*\\{(?<tag>.*)\\}.*"]), id="several shards turn sharding on"
+        ),
+        pytest.param(
+            {"sharding": True}, (True, None, [".*\\{(?<tag>.*)\\}.*"]), id="sharding gets the default rules"
+        ),
+        pytest.param(
+            {"shard_key_regex": [{"regex": "(?<k>.*)"}]},
+            (True, None, ["(?<k>.*)"]),
+            id="own rules turn sharding on",
+        ),
+        pytest.param({"sharding": False}, (False, 1, None), id="sharding off sends one shard"),
+    ],
 )
+def test_a_request_completes_its_sharding_from_the_defaults(
+    request_values: dict[str, JsonValue], expected: tuple[object, ...]
+) -> None:
+    assert sharding_of(filled(request=request_values)) == expected
 
 
-def test_a_request_that_turns_sharding_off_drops_the_sharding_defaults() -> None:
-    requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, sharding=False)
-
-    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(cluster=cluster(), requested=requested)
-
-    assert (filled.sharding, filled.shards_count, filled.shard_key_regex) == (False, None, None)
+def test_a_request_that_turns_sharding_off_drops_the_sharded_defaults() -> None:
+    assert sharding_of(filled(request={"sharding": False}, database=SHARDED)) == (False, 1, None)
 
 
-def test_a_request_that_leaves_sharding_out_keeps_the_sharding_defaults() -> None:
-    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(cluster=cluster(), requested=REQUESTED)
+def test_a_request_that_leaves_sharding_out_keeps_the_sharded_defaults() -> None:
+    assert sharding_of(filled(request={}, database=SHARDED)) == (True, 2, ["(?<tag>.*)"])
 
-    assert (filled.sharding, filled.shards_count) == (True, 2)
+
+def test_a_cluster_that_turns_sharding_off_starts_and_drops_the_sharded_defaults() -> None:
+    configured: ConfiguredCluster = cluster(database={"sharding": False})
+    defaults: DatabaseDefaults = defaults_checked_on(configured=configured, database=SHARDED)
+
+    assert sharding_of(defaults.fill_in(cluster=configured, requested=REQUESTED)) == (False, 1, None)
+
+
+def test_sharding_values_without_rules_stop_at_startup() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        reject_invalid_defaults_on_any_cluster(
+            settings=DatabaseDefaultsSettings(database={}, persistence_values={}, sharding_values={}),
+            clusters=[],
+        )
