@@ -36,9 +36,10 @@ def test_a_persistence_setting_with_its_mode_is_accepted() -> None:
         pytest.param(
             {"sharding": False, "shard_key_regex": [{"regex": "(?<tag>.*)"}]}, id="rules with sharding off"
         ),
+        pytest.param({"sharding": True, "shard_key_regex": []}, id="empty rules"),
     ],
 )
-def test_sharding_settings_with_sharding_off_are_refused(options: dict[str, JsonValue]) -> None:
+def test_sharding_settings_that_cannot_apply_are_refused(options: dict[str, JsonValue]) -> None:
     with pytest.raises(expected_exception=ValidationError):
         DatabaseOptions.model_validate(obj=options)
 

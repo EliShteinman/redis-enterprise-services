@@ -79,6 +79,7 @@ class DatabaseOptions(BaseModel):
     )
     shard_key_regex: list[ShardKeyRegex] | None = Field(
         default=None,
+        min_length=1,
         description="How a key picks its shard, first match wins. Sending it turns sharding on. "
         "When the database is sharded and this is omitted, the service's configured rules apply.",
         examples=[[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]],
