@@ -10,6 +10,7 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
 )
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
     reject_sharding_without_its_rules,
@@ -55,7 +56,10 @@ def merged_default_values(
     *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
     return layered_database_values(
-        layers=[defaults.database, *override_levels_on_cluster(cluster=cluster, kind=kind)]
+        layers=[
+            typed_level_values(values=level)
+            for level in [defaults.database, *override_levels_on_cluster(cluster=cluster, kind=kind)]
+        ]
     )
 
 
