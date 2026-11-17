@@ -36,7 +36,7 @@ def cluster(*, database: dict[str, JsonValue] | None = None) -> ConfiguredCluste
         api_url="https://c1:9443",
         credentials=ClusterCredentialsSettings(username="admin", password=SecretStr("secret")),
         default_user_password=SecretStr("default-user-secret"),
-        database_overrides=database or {},
+        database_override_levels=[database] if database else [],
     )
 
 

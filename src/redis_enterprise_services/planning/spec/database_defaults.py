@@ -38,7 +38,11 @@ class DatabaseDefaults:
 def merged_default_values(
     *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
-    return layered_database_values(layers=[settings.database, cluster.database_overrides])
+    return layered_database_values(layers=[settings.database, override_values_on_cluster(cluster=cluster)])
+
+
+def override_values_on_cluster(*, cluster: ConfiguredCluster) -> dict[str, JsonValue]:
+    return {name: value for level in cluster.database_override_levels for name, value in level.items()}
 
 
 def with_persistence_settings_of_its_mode(
