@@ -15,6 +15,8 @@ database_defaults:
         aof_policy: appendfsync-every-sec
       snapshot:
         snapshot_policy: [{secs: 3600, writes: 1}]
+    sharding_values:
+      shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
   active_active:
     database:
       version: "8.4"
@@ -31,6 +33,8 @@ database_defaults:
         aof_policy: appendfsync-every-sec
       snapshot:
         snapshot_policy: [{secs: 3600, writes: 1}]
+    sharding_values:
+      shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
     crdb:
       causal_consistency: false
       encryption: false
