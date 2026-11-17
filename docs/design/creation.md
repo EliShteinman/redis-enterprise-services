@@ -142,8 +142,9 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
      לא שלחה אותם. ב-`disabled` אין אף אחד מהם. בקשה שולחת `aof_policy` או `snapshot_policy` רק יחד עם ה-`data_persistence`
      שלהם, אחרת `422 validation_error`.
    - **שדות של Sharding** (`planning/spec/sharding_resolution.py`): `shard_key_regex` ו-`shards_count` מעל 1 שייכים
-     ל-Sharding בלבד. רמה (ברירות המחדל, הסביבה, הרשת, האתר, הקלאסטר, הבקשה) שכותבת `sharding: false` מוציאה אותם
-     מהרמות שמתחתיה. אחרי המיזוג: בלי `sharding`, `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. DB עם Sharding
+     ל-Sharding בלבד. כל רמה (ברירות המחדל, הסביבה, הרשת, האתר, הקלאסטר, הבקשה) נכנסת למיזוג בנפרד, לפי הסדר. רמה
+     שכותבת `sharding: false` מוציאה אותם מהרמות שמתחתיה, ורמה ששולחת אחד מהם בלי `sharding` מוציאה את `sharding: false`
+     של הרמות שמתחתיה. אחרי המיזוג: בלי `sharding`, `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. DB עם Sharding
      בלי `shard_key_regex` מקבל את `sharding_values`, ו-DB בלי Sharding נשלח עם `shards_count: 1`. `sharding: false` יחד
      עם אחד מהם באותה רמה ⇐ `422` בבקשה, ועצירה בעלייה בקונפיג. `sharding_values` בלי `shard_key_regex` עוצר את השירות.
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
