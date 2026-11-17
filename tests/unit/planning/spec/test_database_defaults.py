@@ -158,3 +158,25 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
     filled: NewDatabase = defaults.fill_in(cluster=configured, requested=REQUESTED)
 
     assert (filled.data_persistence, filled.aof_policy) == ("disabled", None)
+
+
+SHARDED_DEFAULTS: DatabaseDefaults = DatabaseDefaults(
+    settings=DatabaseDefaultsSettings(
+        database={"sharding": True, "shards_count": 2, "shard_key_regex": [{"regex": "(?<tag>.*)"}]},
+        persistence_values={},
+    )
+)
+
+
+def test_a_request_that_turns_sharding_off_drops_the_sharding_defaults() -> None:
+    requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, sharding=False)
+
+    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(cluster=cluster(), requested=requested)
+
+    assert (filled.sharding, filled.shards_count, filled.shard_key_regex) == (False, None, None)
+
+
+def test_a_request_that_leaves_sharding_out_keeps_the_sharding_defaults() -> None:
+    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(cluster=cluster(), requested=REQUESTED)
+
+    assert (filled.sharding, filled.shards_count) == (True, 2)
