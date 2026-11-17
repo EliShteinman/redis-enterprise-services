@@ -236,23 +236,29 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
     assert (filled.data_persistence, filled.aof_policy) == ("disabled", None)
 
 
-def test_a_request_that_clashes_with_the_defaults_is_a_configuration_error() -> None:
-    sharded: DatabaseDefaults = DatabaseDefaults(
-        settings=defaults_settings(
-            database={
-                "sharding": True,
-                "shards_count": 2,
-                "shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}],
-            }
-        )
+SHARDED_DEFAULTS: DatabaseDefaults = DatabaseDefaults(
+    settings=defaults_settings(
+        database={"sharding": True, "shards_count": 2, "shard_key_regex": [{"regex": "(?<tag>.*)"}]}
+    )
+)
+
+
+def test_a_request_that_turns_sharding_off_drops_the_sharding_defaults() -> None:
+    requested: NewDatabase = NewDatabase(name="orders", memory_size=104857600, sharding=False)
+
+    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(
+        cluster=cluster(), requested=requested, active_active=False
     )
 
-    with pytest.raises(expected_exception=ConfigurationError, match=r"only together with sharding true$"):
-        sharded.fill_in(
-            cluster=cluster(),
-            requested=NewDatabase(name="orders", memory_size=104857600, sharding=False),
-            active_active=False,
-        )
+    assert (filled.sharding, filled.shards_count, filled.shard_key_regex) == (False, None, None)
+
+
+def test_a_request_that_leaves_sharding_out_keeps_the_sharding_defaults() -> None:
+    filled: NewDatabase = SHARDED_DEFAULTS.fill_in(
+        cluster=cluster(), requested=REQUESTED, active_active=False
+    )
+
+    assert (filled.sharding, filled.shards_count) == (True, 2)
 
 
 def test_a_startup_error_names_the_set_of_defaults_it_comes_from() -> None:

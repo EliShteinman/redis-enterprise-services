@@ -81,8 +81,8 @@
 `helm/files/clusters.yaml`, באותם `environment`, `network` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, וב-FQDN
 הקלאסטר מסוג `dedicated` עם ה-FQDN הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
-- בקשה שתקינה לבד, אבל לא תקינה יחד עם ברירות המחדל של הקלאסטר (למשל `sharding: false` מול ברירת מחדל עם
-  `shard_key_regex`) ⇐ `500 configuration_error` עם הסיבה. היום אין ברירת מחדל כזו.
+- בקשה שתקינה לבד, אבל לא תקינה יחד עם ברירות המחדל של הקלאסטר ⇐ `500 configuration_error` עם הסיבה. `sharding: false`
+  לא נכשל כך: הוא מוציא את `shard_key_regex` ואת `shards_count` מעל 1 של ברירות המחדל.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
