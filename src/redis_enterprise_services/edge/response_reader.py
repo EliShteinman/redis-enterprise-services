@@ -44,7 +44,7 @@ class EdgeResponseReader:
             status_code=relay_response.status_code,
             body=self._decoded_body(relay_response=relay_response),
             cluster_state_id=optional_int_header(
-                headers=relay_response.headers, name=self._settings.headers.cluster_state_id
+                headers=relay_response.headers, name=self._settings.headers.returned_cluster_state_id
             ),
         )
 
@@ -84,6 +84,7 @@ def edge_error_type_for(
 ) -> type[RedisEnterpriseServicesError]:
     error_type_by_code: dict[str, type[RedisEnterpriseServicesError]] = {
         codes.invalid_request: EdgeRejectedRequestError,
+        codes.unauthorized: EdgeRejectedRequestError,
         codes.connection_failed: EdgeConnectionFailedError,
         codes.response_rejected: EdgeRejectedResponseError,
     }
