@@ -201,11 +201,11 @@ def sharding_of(database: NewDatabase) -> tuple[object, ...]:
             {"shards_count": 4}, (True, 4, [".*\\{(?<tag>.*)\\}.*"]), id="several shards turn sharding on"
         ),
         pytest.param(
-            {"sharding": True}, (True, None, [".*\\{(?<tag>.*)\\}.*"]), id="sharding gets the default rules"
+            {"sharding": True}, (True, 1, [".*\\{(?<tag>.*)\\}.*"]), id="sharding gets the default rules"
         ),
         pytest.param(
             {"shard_key_regex": [{"regex": "(?<k>.*)"}]},
-            (True, None, ["(?<k>.*)"]),
+            (True, 1, ["(?<k>.*)"]),
             id="own rules turn sharding on",
         ),
         pytest.param({"sharding": False}, (False, 1, None), id="sharding off sends one shard"),
@@ -270,3 +270,67 @@ def test_a_lower_tree_level_turns_sharding_off_under_a_higher_level_that_turns_i
     defaults: DatabaseDefaults = defaults_checked_on(configured=configured, database=UNSHARDED)
 
     assert sharding_of(defaults.fill_in(cluster=configured, requested=REQUESTED)) == (False, 1, None)
+
+
+def leveled_cluster(*levels: dict[str, JsonValue]) -> ConfiguredCluster:
+    return cluster().model_copy(update={"database_override_levels": list(levels)})
+
+
+def filled_on(*, configured: ConfiguredCluster, request: dict[str, JsonValue]) -> NewDatabase:
+    defaults: DatabaseDefaults = defaults_checked_on(configured=configured, database=UNSHARDED)
+    requested: NewDatabase = NewDatabase.model_validate(
+        obj={"name": "orders", "memory_size": 104857600, **request}
+    )
+    return defaults.fill_in(cluster=configured, requested=requested)
+
+
+@pytest.mark.parametrize(
+    argnames=("levels", "request_values", "expected"),
+    argvalues=[
+        pytest.param(
+            ({"shards_count": 4}, {"sharding": False}),
+            {"sharding": True},
+            (True, 1, [".*\\{(?<tag>.*)\\}.*"]),
+            id="dropped shards leave one shard",
+        ),
+        pytest.param(
+            ({"shards_count": 4},), {"shards_count": 1}, (False, 1, None), id="one shard sends sharding off"
+        ),
+        pytest.param(
+            ({"shard_key_regex": None},),
+            {"shards_count": 3},
+            (True, 3, [".*\\{(?<tag>.*)\\}.*"]),
+            id="null rules are unset",
+        ),
+        pytest.param(
+            ({"sharding": "false"},),
+            {"shards_count": 3},
+            (True, 3, [".*\\{(?<tag>.*)\\}.*"]),
+            id="text false is false",
+        ),
+    ],
+)
+def test_every_sharding_setting_is_sent_explicitly(
+    levels: tuple[dict[str, JsonValue], ...],
+    request_values: dict[str, JsonValue],
+    expected: tuple[object, ...],
+) -> None:
+    assert sharding_of(filled_on(configured=leveled_cluster(*levels), request=request_values)) == expected
+
+
+def test_a_level_that_contradicts_itself_stops_startup_even_when_a_lower_level_hides_it() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        defaults_checked_on(
+            configured=leveled_cluster({"sharding": False, "shards_count": 4}, {"sharding": False}),
+            database=UNSHARDED,
+        )
+
+
+def test_sharding_values_that_turn_sharding_off_stop_startup() -> None:
+    with pytest.raises(expected_exception=ConfigurationError):
+        reject_invalid_defaults_on_any_cluster(
+            settings=DatabaseDefaultsSettings(
+                database={}, persistence_values={}, sharding_values={"sharding": False}
+            ),
+            clusters=[],
+        )

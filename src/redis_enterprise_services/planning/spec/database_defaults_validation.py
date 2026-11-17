@@ -31,8 +31,8 @@ def reject_invalid_defaults_on_any_cluster(
 def reject_invalid_values_on_cluster(
     *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
 ) -> None:
-    merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
     try:
+        merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
         reject_persistence_settings_of_another_mode(
             base=settings.database, override=override_values_on_cluster(cluster=cluster)
         )
@@ -56,7 +56,7 @@ def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None
     persistence_defaults: list[dict[str, JsonValue]] = [
         {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in settings.persistence_values.items()
     ]
-    sharded_defaults: dict[str, JsonValue] = {SHARDING_FIELD: True, **settings.sharding_values}
+    sharded_defaults: dict[str, JsonValue] = {**settings.sharding_values, SHARDING_FIELD: True}
     reject_sharding_without_its_rules(values=sharded_defaults)
     for values in [settings.database, *persistence_defaults, sharded_defaults]:
         reject_invalid_options(values=values)

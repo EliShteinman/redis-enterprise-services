@@ -5,6 +5,7 @@ from pydantic import JsonValue
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
+from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
     reject_sharding_without_its_rules,
@@ -38,7 +39,12 @@ class DatabaseDefaults:
 def merged_default_values(
     *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
-    return layered_database_values(layers=[settings.database, *cluster.database_override_levels])
+    return layered_database_values(
+        layers=[
+            typed_level_values(values=level)
+            for level in [settings.database, *cluster.database_override_levels]
+        ]
+    )
 
 
 def override_values_on_cluster(*, cluster: ConfiguredCluster) -> dict[str, JsonValue]:
