@@ -47,13 +47,11 @@ def with_sharding_completed(
     *, values: dict[str, JsonValue], sharding_values: dict[str, JsonValue]
 ) -> dict[str, JsonValue]:
     sharding: JsonValue = values.get(SHARDING_FIELD)
-    if sharding is None and asks_for_sharding(values=values):
-        sharding = True
+    if sharding is None:
+        sharding = asks_for_sharding(values=values)
     if sharding is True:
-        return {**sharding_values, **values, SHARDING_FIELD: True}
-    if sharding is False:
-        return {SHARDS_COUNT_FIELD: SINGLE_SHARD, **values}
-    return values
+        return {SHARDS_COUNT_FIELD: SINGLE_SHARD, **sharding_values, **values, SHARDING_FIELD: True}
+    return {SHARDS_COUNT_FIELD: SINGLE_SHARD, **values, SHARDING_FIELD: False}
 
 
 def asks_for_sharding(*, values: dict[str, JsonValue]) -> bool:
