@@ -79,41 +79,22 @@ def test_the_api_url_of_a_cluster_is_built_from_its_fqdn(fqdn: str, expected: st
     assert only_cluster(tree=a_tree(clusters={fqdn: a_cluster()})).api_url == expected
 
 
-@pytest.mark.parametrize(
-    argnames=("environment", "network", "site", "cluster", "expected"),
-    argvalues=[
-        pytest.param({"version": "7.4"}, {}, {}, {}, "7.4", id="environment"),
-        pytest.param({"version": "7.4"}, {"version": "7.8"}, {}, {}, "7.8", id="network-beats-environment"),
-        pytest.param(
-            {"version": "7.4"}, {"version": "7.8"}, {"version": "8.0"}, {}, "8.0", id="site-beats-network"
-        ),
-        pytest.param(
-            {"version": "7.4"},
-            {"version": "7.8"},
-            {"version": "8.0"},
-            {"version": "8.2"},
-            "8.2",
-            id="cluster-beats-all",
-        ),
-    ],
-)
-def test_the_lowest_level_that_sets_a_database_value_wins(
-    environment: dict[str, JsonValue],
-    network: dict[str, JsonValue],
-    site: dict[str, JsonValue],
-    cluster: dict[str, JsonValue],
-    expected: str,
-) -> None:
+def test_the_database_values_of_every_level_are_kept_in_order_from_the_environment_down() -> None:
     configured: ConfiguredCluster = only_cluster(
         tree=a_tree(
-            environment={"database": environment},
-            network={"database": network},
-            site={"database": site},
-            clusters={"c1.net-a": a_cluster(database=cluster)},
+            environment={"database": {"version": "7.4"}},
+            network={"database": {"version": "7.8"}},
+            site={"database": {"sharding": False}},
+            clusters={"c1.net-a": a_cluster(database={"version": "8.2"})},
         )
     )
 
-    assert configured.database_overrides["version"] == expected
+    assert configured.database_override_levels == [
+        {"version": "7.4"},
+        {"version": "7.8"},
+        {"sharding": False},
+        {"version": "8.2"},
+    ]
 
 
 def test_the_lowest_level_that_sets_a_secret_wins_for_each_secret_on_its_own() -> None:
