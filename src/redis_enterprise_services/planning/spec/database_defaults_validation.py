@@ -6,7 +6,11 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
     DatabaseKind,
     DatabaseKindDefaults,
 )
-from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, DatabaseOptions
+from redis_enterprise_services.databases.new_database import (
+    PERSISTENCE_MODE_BY_FIELD,
+    SHARDING_FIELD,
+    DatabaseOptions,
+)
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.spec.database_defaults import (
     DATA_PERSISTENCE_FIELD,
@@ -14,6 +18,10 @@ from redis_enterprise_services.planning.spec.database_defaults import (
     merged_default_values,
     override_values_on_cluster,
     with_persistence_settings_of_its_mode,
+)
+from redis_enterprise_services.planning.spec.sharding_resolution import (
+    reject_sharding_without_its_rules,
+    with_sharding_completed,
 )
 from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
@@ -45,9 +53,13 @@ def reject_invalid_values_on_cluster(
         reject_persistence_settings_of_another_mode(
             base=defaults.database, override=override_values_on_cluster(cluster=cluster, kind=kind)
         )
+        completed: dict[str, JsonValue] = with_sharding_completed(
+            values=merged, sharding_values=defaults.sharding_values
+        )
+        reject_sharding_without_its_rules(values=completed)
         reject_invalid_options(
             values=with_persistence_settings_of_its_mode(
-                values=merged, persistence_values=defaults.persistence_values
+                values=completed, persistence_values=defaults.persistence_values
             )
         )
     except ConfigurationError as error:
@@ -61,7 +73,9 @@ def reject_invalid_default_values(*, defaults: DatabaseKindDefaults) -> None:
     persistence_defaults: list[dict[str, JsonValue]] = [
         {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in defaults.persistence_values.items()
     ]
-    for values in [defaults.database, *persistence_defaults]:
+    sharded_defaults: dict[str, JsonValue] = {SHARDING_FIELD: True, **defaults.sharding_values}
+    reject_sharding_without_its_rules(values=sharded_defaults)
+    for values in [defaults.database, *persistence_defaults, sharded_defaults]:
         reject_invalid_options(values=values)
 
 
