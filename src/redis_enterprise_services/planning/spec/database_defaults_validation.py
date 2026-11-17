@@ -11,6 +11,7 @@ from redis_enterprise_services.exceptions.configuration import ConfigurationErro
 from redis_enterprise_services.planning.spec.database_defaults import (
     DATA_PERSISTENCE_FIELD,
     merged_default_values,
+    override_values_on_cluster,
     with_persistence_settings_of_its_mode,
 )
 from redis_enterprise_services.planning.spec.sharding_resolution import (
@@ -33,7 +34,7 @@ def reject_invalid_values_on_cluster(
     merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
     try:
         reject_persistence_settings_of_another_mode(
-            base=settings.database, override=cluster.database_overrides
+            base=settings.database, override=override_values_on_cluster(cluster=cluster)
         )
         completed: dict[str, JsonValue] = with_sharding_completed(
             values=merged, sharding_values=settings.sharding_values
