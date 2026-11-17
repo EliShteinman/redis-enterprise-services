@@ -64,14 +64,24 @@ def merged_default_values(
     *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
     return layered_database_values(
-        layers=[defaults.database, override_values_on_cluster(cluster=cluster, kind=kind)]
+        layers=[defaults.database, *override_levels_on_cluster(cluster=cluster, kind=kind)]
     )
 
 
-def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind) -> dict[str, JsonValue]:
+def override_levels_on_cluster(
+    *, cluster: ConfiguredCluster, kind: DatabaseKind
+) -> list[dict[str, JsonValue]]:
     if kind == DatabaseKind.ACTIVE_ACTIVE:
-        return cluster.active_active_database_overrides
-    return cluster.database_overrides
+        return cluster.active_active_database_override_levels
+    return cluster.database_override_levels
+
+
+def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind) -> dict[str, JsonValue]:
+    return {
+        name: value
+        for level in override_levels_on_cluster(cluster=cluster, kind=kind)
+        for name, value in level.items()
+    }
 
 
 def values_sent_in(*, requested: CrdbSpec | None) -> dict[str, JsonValue]:
