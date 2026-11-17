@@ -16,7 +16,7 @@ header של סיסמת ה-DataPower של אותה רשת, ו-header של Host ע
 | # | דרישה |
 |---|---|
 | C0a | כל בקשה נשלחת ל-`edge.url` (ה-NGINX), עם שם הרשת של הקלאסטר ב-header `edge.headers.network` (היום `x-network`). הרשתות הן הרמה השנייה בעץ של `helm/files/clusters.yaml`, והשם נשלח כמו שהוא |
-| C0b | את האימות מול ה-DataPower מוסיף הפרוקסי (ה-NGINX). השירות לא שולח פרטי גישה לחומת האש |
+| C0b | את האימות מול ה-DataPower ואת ה-`authorization` של הגישה ל-cluster-relay מוסיף הפרוקסי (ה-NGINX). השירות לא שולח פרטי גישה לחומת האש או לריליי |
 | C0d | חומת האש לא מחזירה תשובה משלה כשהיא דוחה בקשה: הבקשה פשוט נכשלת. הסיבה בלוגים של חומת האש |
 | C0e | אם הכתובת ב-HTTPS, התעודה נבדקת בבדיקה הרגילה. שגיאת TLS יכולה לקרות גם אחרי שהבקשה נשלחה (חומת האש מפענחת ומצפינה מחדש) |
 | C0f | כש-DataPower או cluster-relay נכשלים או לא עונים בזמן, ה-NGINX עונה בעצמו (`502` או `504`, גוף שאינו JSON, בלי `x-edge-error`). זה צפוי: השירות מתייחס לתשובה כזו כתוצאה לא ידועה, ובודק לפני שהוא ממשיך |
@@ -37,23 +37,24 @@ header של סיסמת ה-DataPower של אותה רשת, ו-header של Host ע
 ```
 POST <edge.url>                                     (ה-NGINX)
 x-network: <רשת>
-x-cluster-method: PUT
-x-cluster-url: https://<cluster>:9443/v1/bdbs/7
-x-cluster-authorization: Basic <credentials>   (המשתמש המנהל של אותו קלאסטר, מ-helm/files/clusters.yaml)
+x-edge-method: PUT
+x-edge-url: https://<cluster>:9443/v1/bdbs/7
+x-target-authorization: Basic <credentials>   (המשתמש המנהל של אותו קלאסטר, מ-helm/files/clusters.yaml)
 traceparent: 00-<trace-id>-<span-id>-<flags>
-content-type: application/json
-cluster-state-id: 155          (אופציונלי)
+x-target-content-type: application/json
+x-target-cluster-state-id: 155          (אופציונלי)
 
 <body, כמו שהוא>
 ```
 
 | # | דרישה | למה |
 |---|---|---|
+| C0 | cluster-relay קורא את `x-edge-method` ואת `x-edge-url` ולא מעביר אותם. כל header שמתחיל ב-`x-target-` מועבר לקלאסטר בלי התחילית (`x-target-authorization` ⇐ `authorization`), ושום header אחר לא מגיע לקלאסטר | הריליי לא יודע איזה header הוסיפו בדרך (NGINX, DataPower), ולכן מעביר רק את מה שסומן |
 | C1 | ה-URL, כולל query string, מועבר לקלאסטר כמו שהוא | שליפות עם `fields` |
 | C2 | ה-body מועבר כמו שהוא | |
 | C3 | `traceparent` ממשיך לקלאסטר | מעקב מקצה לקצה. ה-trace הוא של הבקשה שהגיעה אלינו |
-| C4 | `cluster-state-id` מועבר לקלאסטר כ-request header, אם נשלח | עדכון מותנה של DB. היום: עדכון ההרשאות על ה-DB |
-| C5 | `x-task-id` ו-`x-result-ttl` מועברים לקלאסטר, אם נשלחו | מתוכנן ל-Active-Active: מזהה task של CRDB שאנחנו קובעים. השירות שלנו עוד לא שולח אותם |
+| C4 | `x-target-cluster-state-id` מועבר לקלאסטר כ-`cluster-state-id`, אם נשלח | עדכון מותנה של DB. היום: עדכון ההרשאות על ה-DB |
+| C5 | `x-target-x-task-id` ו-`x-target-x-result-ttl` מועברים לקלאסטר כ-`x-task-id` ו-`x-result-ttl`, אם נשלחו | מתוכנן ל-Active-Active: מזהה task של CRDB שאנחנו קובעים. השירות שלנו עוד לא שולח אותם |
 | C15 | ה-timeout של cluster-relay מול הקלאסטר קצר מה-timeout של ה-NGINX וה-DataPower, וזה קצר מה-timeout שלנו מולם (שלנו: 35 שניות לקריאה, `edge.request_timeout_seconds`, ו-5 שניות להתחברות, `edge.connect_timeout_seconds`) | שירות הקצה עונה ראשון, עם קוד משלו. אחרת ה-`504` של ה-NGINX מסתיר את הקוד של ה-relay, וכל קריאה איטית הופכת לתוצאה לא ידועה. התחברות שלא מצליחה (חומת אש שזורקת בשקט) נכשלת מהר |
 | C16 | תשובה של הקלאסטר שאינה JSON מוחזרת כ-`response_rejected` | השירות שלנו מתייחס לגוף שאינו JSON בלי `x-edge-error` כתוצאה לא ידועה |
 
@@ -63,7 +64,7 @@ cluster-state-id: 155          (אופציונלי)
 
 | # | דרישה | למה |
 |---|---|---|
-| C6 | ה-status, ה-headers וה-body של הקלאסטר מוחזרים בלי שינוי, גם בשגיאה (4xx/5xx) | ההחלטה אצלנו לפי ה-status ולפי `error_code` של הקלאסטר |
+| C6 | ה-status, ה-headers וה-body של הקלאסטר מוחזרים בלי שינוי, גם בשגיאה (4xx/5xx). header של הקלאסטר שמתחיל ב-`x-edge-` לא מוחזר | ההחלטה אצלנו לפי ה-status ולפי `error_code` של הקלאסטר |
 | C7 | `cluster-state-id` מוחזר כ-response header | נדרש לעדכון המותנה הבא |
 | C8 | ה-schema של שירות הקצה מאפשר את כל התשובות שהשירות שלנו צריך | אחרת תשובה תקינה נחסמת. הרשימה בסעיף 5 |
 
@@ -77,14 +78,15 @@ cluster-state-id: 155          (אופציונלי)
 |---|---|
 | C9 | כל תשובה ששירות הקצה יצר בעצמו כוללת `x-edge-error` עם קוד. תשובה מהקלאסטר לעולם לא כוללת אותו |
 | C10 | הקודים מבחינים בין מה שבוודאות לא הגיע לקלאסטר לבין מה שאולי בוצע בו |
-| C11 | ב-`response_rejected` מוחזר גם ה-status המקורי של הקלאסטר, ב-`x-edge-cluster-status` |
+| C11 | ב-`response_rejected` מוחזר גם ה-status המקורי של הקלאסטר, ב-`x-edge-target-status` |
 
 | `x-edge-error` | מתי | הגיע לקלאסטר? | אצלנו | קוד ציבורי |
 |---|---|---|---|---|
 | `invalid_request` | חסר header או header לא תקין | לא | שגיאה שלנו (`edge_rejected_request`). לא מנסים שוב | `internal_error` |
+| `unauthorized` (`401`) | חסר או שגוי ה-`authorization` של הגישה לריליי, שהפרוקסי מוסיף (C0b) | לא | שגיאה בהגדרות הפרוקסי (`edge_rejected_request`). לא מנסים שוב | `internal_error` |
 | `connection_failed` | לא נפתח חיבור לקלאסטר | לא (לא סומכים על זה) | תוצאה לא ידועה: בדיקה בקלאסטר לפני שממשיכים (`edge_connection_failed`) | `cluster_unavailable` |
 | `response_rejected` | הקלאסטר ענה, והתשובה לא עמדה ב-schema | כן | תוצאה לא ידועה (`edge_rejected_response`) | `cluster_unavailable` |
-| כל קוד אחר (למשל `timeout`) | | לא ידוע | תוצאה לא ידועה (`edge_outcome_unknown`) | `cluster_unavailable` |
+| כל קוד אחר (למשל `timeout`, `504`) | | לא ידוע | תוצאה לא ידועה (`edge_outcome_unknown`) | `cluster_unavailable` |
 
 **הגוף של תשובת שגיאה:** השירות לא קורא אותו להחלטה ולא מעתיק אותו להודעה. ההודעה היא ה-status והקוד, למשל
 `the relay answered 502 response_rejected (cluster status 200)`, והגוף המלא נרשם בלוג (WARNING) תחת ה-trace. כך
@@ -101,7 +103,7 @@ cluster-state-id: 155          (אופציונלי)
 ביטול, כמו בכל כישלון ודאי. הבדיקה נכשלה בשגיאה זמנית (`busy`, 5xx, שירות קצה שלא התחבר או לא ענה) ⇐ היא רצה שוב,
 עד `saga.step_retry.attempts` פעמים. כל מקרה אחר (בדיקה שנכשלה בכל הניסיונות, או כל כישלון אחרי הניסיון החוזר של
 הצעד) ⇐ `requires_manual_intervention`, בלי ביטול.
-`x-edge-cluster-status` לא משמש להחלטה.
+`x-edge-target-status` לא משמש להחלטה.
 
 ---
 
@@ -135,7 +137,7 @@ cluster-state-id: 155          (אופציונלי)
 
 | # | דרישה | למה |
 |---|---|---|
-| C12 | שירות הקצה לא רושם ללוג את `x-cluster-authorization` | |
+| C12 | שירות הקצה לא רושם ללוג את `x-target-authorization` | |
 | C13 | שירות הקצה לא רושם ללוג סודות מתוך גוף התשובה, גם ב-failure log | תשובות bdb ו-crdb כוללות `authentication_admin_pass` ו-`authentication_redis_pass` בטקסט גלוי |
 | C14 | שירות הקצה לא רושם ללוג את גוף הבקשה של `POST /v1/bdbs` ו-`POST /v1/users`, ובהמשך גם `POST /v1/crdbs`, `PUT /v1/users` ו-`/v1/users/password` | הם כוללים סיסמאות. ב-`POST /v1/bdbs`: הסיסמה של `default_user` (`authentication_redis_pass`) |
 
