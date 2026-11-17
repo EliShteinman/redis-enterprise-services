@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict
 
 from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.clusters.cluster_fqdn import api_url_of
@@ -88,7 +88,7 @@ def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> Configured
             fqdn=cluster.fqdn,
             setting="default_user_password",
         ),
-        database_overrides=merged(layers=[level.database for level in levels]),
+        database_override_levels=[level.database for level in levels],
     )
 
 
@@ -100,10 +100,3 @@ def required[T](*, value: T | None, fqdn: str, setting: str) -> T:
     if value is None:
         raise ValueError(f"cluster {fqdn} has no {setting}: set it on the cluster or on a level above it")
     return value
-
-
-def merged(*, layers: list[dict[str, JsonValue]]) -> dict[str, JsonValue]:
-    values: dict[str, JsonValue] = {}
-    for layer in layers:
-        values.update(layer)
-    return values
