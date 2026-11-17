@@ -145,7 +145,8 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
      ל-Sharding בלבד. כל רמה (ברירות המחדל, הסביבה, הרשת, האתר, הקלאסטר, הבקשה) נכנסת למיזוג בנפרד, לפי הסדר. רמה
      שכותבת `sharding: false` מוציאה אותם מהרמות שמתחתיה, ורמה ששולחת אחד מהם בלי `sharding` מוציאה את `sharding: false`
      של הרמות שמתחתיה. אחרי המיזוג: בלי `sharding`, `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. DB עם Sharding
-     בלי `shard_key_regex` מקבל את `sharding_values`, ו-DB בלי Sharding נשלח עם `shards_count: 1`. `sharding: false` יחד
+     בלי `shard_key_regex` מקבל את `sharding_values`. `sharding` ו-`shards_count` נשלחים תמיד במפורש (`1` כשאף רמה לא קבעה).
+     כל רמה עוברת קודם את סוגי השדות של ה-DB: `null` נחשב לא נכתב, ו-`"false"` הוא false. `sharding: false` יחד
      עם אחד מהם באותה רמה ⇐ `422` בבקשה, ועצירה בעלייה בקונפיג. `sharding_values` בלי `shard_key_regex` עוצר את השירות.
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
      קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
