@@ -69,8 +69,8 @@ def cluster(
         site="ny",
         type="generic",
         api_url="https://c1:9443",
-        database_overrides=database or {},
-        active_active_database_overrides=active_active_database or {},
+        database_override_levels=[database] if database else [],
+        active_active_database_override_levels=[active_active_database] if active_active_database else [],
         crdb_overrides=crdb or {},
         credentials=ADMIN,
         default_user_password=DEFAULT_USER_PASSWORD,
@@ -346,3 +346,44 @@ def test_a_startup_error_names_the_set_of_defaults_it_comes_from() -> None:
             ),
             clusters=[],
         )
+
+
+UNSHARDED: dict[str, JsonValue] = {"sharding": False, "shards_count": 1}
+
+
+@pytest.mark.parametrize(
+    argnames=("request_values", "expected"),
+    argvalues=[
+        pytest.param({"shards_count": 4}, (True, 4, [".*\\{(?<tag>.*)\\}.*"]), id="several shards"),
+        pytest.param({"shard_key_regex": [{"regex": "(?<k>.*)"}]}, (True, 1, ["(?<k>.*)"]), id="own rules"),
+    ],
+)
+def test_a_request_turns_sharding_on_over_defaults_that_turn_it_off(
+    request_values: dict[str, JsonValue], expected: tuple[object, ...]
+) -> None:
+    assert sharding_of(filled(request=request_values, database=UNSHARDED)) == expected
+
+
+def test_a_cluster_level_with_several_shards_turns_sharding_on_over_defaults_that_turn_it_off() -> None:
+    configured: ConfiguredCluster = cluster(database={"shards_count": 3})
+    defaults: DatabaseDefaults = defaults_checked_on(configured=configured, database=UNSHARDED)
+
+    assert sharding_of(defaults.fill_in(cluster=configured, requested=REQUESTED, active_active=False))[
+        :2
+    ] == (
+        True,
+        3,
+    )
+
+
+def test_a_lower_tree_level_turns_sharding_off_under_a_higher_level_that_turns_it_on() -> None:
+    configured: ConfiguredCluster = cluster().model_copy(
+        update={"database_override_levels": [SHARDED, {}, {}, {"sharding": False}]}
+    )
+    defaults: DatabaseDefaults = defaults_checked_on(configured=configured, database=UNSHARDED)
+
+    assert sharding_of(defaults.fill_in(cluster=configured, requested=REQUESTED, active_active=False)) == (
+        False,
+        1,
+        None,
+    )
