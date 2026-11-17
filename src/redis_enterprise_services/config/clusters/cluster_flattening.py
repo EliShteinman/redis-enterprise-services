@@ -93,8 +93,8 @@ def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> Configured
             fqdn=cluster.fqdn,
             setting="default_user_password",
         ),
-        database_overrides=merged(layers=[level.database for level in levels]),
-        active_active_database_overrides=merged(layers=[level.active_active.database for level in levels]),
+        database_override_levels=[level.database for level in levels],
+        active_active_database_override_levels=[level.active_active.database for level in levels],
         crdb_overrides=merged(layers=[level.active_active.crdb for level in cluster.environment_and_network]),
     )
 
