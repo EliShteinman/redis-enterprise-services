@@ -17,6 +17,9 @@ from redis_enterprise_services.planning.spec.validation_issues import issues_tex
 logger: logging.Logger = logging.getLogger(name=__name__)
 
 DATA_PERSISTENCE_FIELD: str = "data_persistence"
+SHARDING_FIELD: str = "sharding"
+SHARD_KEY_REGEX_FIELD: str = "shard_key_regex"
+SHARDS_COUNT_FIELD: str = "shards_count"
 
 
 class DatabaseDefaults:
@@ -30,7 +33,11 @@ class DatabaseDefaults:
         defaults: DatabaseKindDefaults = self._settings.of_kind(kind=kind)
         values: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
         logger.debug(msg=f"database_defaults.{kind} on cluster {cluster.fqdn}: {values}")
-        values.update(requested.model_dump(exclude_none=True))
+        requested_values: dict[str, JsonValue] = requested.model_dump(exclude_none=True)
+        values = {
+            **defaults_fitting_the_requested_sharding(defaults=values, requested=requested_values),
+            **requested_values,
+        }
         try:
             return NewDatabase.model_validate(
                 obj=with_persistence_settings_of_its_mode(
@@ -90,3 +97,19 @@ def with_persistence_settings_of_its_mode(
     }
     mode_defaults: dict[str, JsonValue] = persistence_values.get(mode, {}) if isinstance(mode, str) else {}
     return {**mode_defaults, **of_this_mode}
+
+
+def defaults_fitting_the_requested_sharding(
+    *, defaults: dict[str, JsonValue], requested: dict[str, JsonValue]
+) -> dict[str, JsonValue]:
+    if requested.get(SHARDING_FIELD) is not False:
+        return defaults
+    return {
+        field: value for field, value in defaults.items() if not is_sharding_only(field=field, value=value)
+    }
+
+
+def is_sharding_only(*, field: str, value: JsonValue) -> bool:
+    if field == SHARD_KEY_REGEX_FIELD:
+        return True
+    return field == SHARDS_COUNT_FIELD and isinstance(value, int) and value > 1
