@@ -48,19 +48,21 @@ edge:
   connect_timeout_seconds: 5
   request_timeout_seconds: 35
   headers:
-    cluster_method: x-cluster-method
-    cluster_url: x-cluster-url
-    cluster_authorization: x-cluster-authorization
-    content_type: content-type
+    cluster_method: x-edge-method
+    cluster_url: x-edge-url
+    cluster_authorization: x-target-authorization
+    content_type: x-target-content-type
     edge_error_code: x-edge-error
-    cluster_status_code: x-edge-cluster-status
-    cluster_state_id: cluster-state-id
-    crdb_task_id: x-task-id
-    result_ttl_seconds: x-result-ttl
+    cluster_status_code: x-edge-target-status
+    cluster_state_id: x-target-cluster-state-id
+    returned_cluster_state_id: cluster-state-id
+    crdb_task_id: x-target-x-task-id
+    result_ttl_seconds: x-target-x-result-ttl
     network: x-network
   request_content_type: application/json
   error_codes:
     invalid_request: invalid_request
+    unauthorized: unauthorized
     connection_failed: connection_failed
     response_rejected: response_rejected
 
