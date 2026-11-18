@@ -7,7 +7,6 @@ database_defaults:
       shards_placement: dense
       proxy_policy: all-master-shards
       sharding: false
-      shards_count: 1
       slave_ha: false
       eviction_policy: volatile-lru
     persistence_values:
@@ -17,6 +16,7 @@ database_defaults:
         snapshot_policy: [{secs: 3600, writes: 1}]
     sharding_values:
       shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
+      shards_count: 2
   active_active:
     database:
       version: "8.4"
@@ -25,7 +25,6 @@ database_defaults:
       shards_placement: dense
       proxy_policy: all-master-shards
       sharding: false
-      shards_count: 1
       slave_ha: false
       eviction_policy: noeviction
     persistence_values:
@@ -35,6 +34,7 @@ database_defaults:
         snapshot_policy: [{secs: 3600, writes: 1}]
     sharding_values:
       shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
+      shards_count: 2
     crdb:
       causal_consistency: false
       encryption: false
