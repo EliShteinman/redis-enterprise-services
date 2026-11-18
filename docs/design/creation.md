@@ -87,7 +87,7 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
        persistence_values:
          aof: {aof_policy: appendfsync-every-sec}
          snapshot: {snapshot_policy: [{secs: 3600, writes: 1}]}
-       sharding_values: {shard_key_regex: [...]}
+       sharding_values: {shard_key_regex: [...], shards_count: 2}
      active_active:
        database: {version: "8.4", replication: true, eviction_policy: noeviction, ...}
        persistence_values: {...}
@@ -145,9 +145,13 @@ POST /v1/databases/create                              (Active-Active: POST /v1/
      ל-Sharding בלבד. כל רמה (ברירות המחדל, הסביבה, הרשת, האתר, הקלאסטר, הבקשה) נכנסת למיזוג בנפרד, לפי הסדר. רמה
      שכותבת `sharding: false` מוציאה אותם מהרמות שמתחתיה, ורמה ששולחת אחד מהם בלי `sharding` מוציאה את `sharding: false`
      של הרמות שמתחתיה. אחרי המיזוג: בלי `sharding`, `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. DB עם Sharding
-     בלי `shard_key_regex` מקבל את `sharding_values`. `sharding` ו-`shards_count` נשלחים תמיד במפורש (`1` כשאף רמה לא קבעה).
-     כל רמה עוברת קודם את סוגי השדות של ה-DB: `null` נחשב לא נכתב, ו-`"false"` הוא false. `sharding: false` יחד
-     עם אחד מהם באותה רמה ⇐ `422` בבקשה, ועצירה בעלייה בקונפיג. `sharding_values` בלי `shard_key_regex` עוצר את השירות.
+     מקבל מ-`sharding_values` את מה שאף רמה לא קבעה: `shard_key_regex`, ו-`shards_count` (`2`, כמו ברירת המחדל של
+     הקלאסטר). DB בלי Sharding נשלח עם `shards_count: 1`. `sharding` ו-`shards_count` נשלחים תמיד במפורש.
+     `shards_count: 1` לא מדליק ולא מכבה Sharding: ה-`sharding` של הרמות עובר כמו שהוא. `sharding: false` יחד עם
+     `shard_key_regex` או `shards_count` מעל 1 באותה רמה ⇐ `422` בבקשה, ועצירה בעלייה בקונפיג. `sharding_values` חייב
+     לכלול `shard_key_regex` ו-`shards_count`, ולא `sharding`, אחרת השירות לא עולה.
+   - כל רמה בקונפיג עוברת קודם את סוגי השדות של ה-DB, לפני המיזוג ולפני כל בדיקה: `null` נחשב לא נכתב, ו-`"false"` הוא
+     false.
    - בעלייה: ערך שלא עובר את `DatabaseOptions` או את הגדרות ה-CRDB עוצר את השירות. כך גם הערכים שחלים יחד על כל
      קלאסטר בקונפיג, בכל אחד משני הסוגים: שתי רמות שכל אחת תקינה לבד ויחד לא, עוצרות את השירות.
 

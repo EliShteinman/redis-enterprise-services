@@ -23,7 +23,10 @@ PERSISTENCE_VALUES: dict[str, dict[str, JsonValue]] = {
     "aof": {"aof_policy": "appendfsync-every-sec"},
     "snapshot": {"snapshot_policy": [{"secs": 3600, "writes": 1}]},
 }
-SHARDING_VALUES: dict[str, JsonValue] = {"shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}]}
+SHARDING_VALUES: dict[str, JsonValue] = {
+    "shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}],
+    "shards_count": 2,
+}
 CRDB: CrdbCreationSettings = CrdbCreationSettings(causal_consistency=False, encryption=False, compression=3)
 REQUESTED: NewDatabase = NewDatabase(name="orders", memory_size=104857600)
 
@@ -273,11 +276,13 @@ def sharding_of(database: NewDatabase) -> tuple[object, ...]:
             {"shards_count": 4}, (True, 4, [".*\\{(?<tag>.*)\\}.*"]), id="several shards turn sharding on"
         ),
         pytest.param(
-            {"sharding": True}, (True, 1, [".*\\{(?<tag>.*)\\}.*"]), id="sharding gets the default rules"
+            {"sharding": True},
+            (True, 2, [".*\\{(?<tag>.*)\\}.*"]),
+            id="sharding gets the default rules and count",
         ),
         pytest.param(
             {"shard_key_regex": [{"regex": "(?<k>.*)"}]},
-            (True, 1, ["(?<k>.*)"]),
+            (True, 2, ["(?<k>.*)"]),
             id="own rules turn sharding on",
         ),
         pytest.param({"sharding": False}, (False, 1, None), id="sharding off sends one shard"),
@@ -308,13 +313,6 @@ def test_a_cluster_that_turns_sharding_off_starts_and_drops_the_sharded_defaults
     )
 
 
-def test_sharding_values_without_rules_stop_at_startup() -> None:
-    with pytest.raises(expected_exception=ConfigurationError):
-        reject_invalid_defaults_on_any_cluster(
-            settings=defaults_settings(database={}, sharding_values={}), clusters=[]
-        )
-
-
 def test_a_startup_error_names_the_set_of_defaults_it_comes_from() -> None:
     with pytest.raises(expected_exception=ConfigurationError, match=r"database_defaults\.active_active"):
         reject_invalid_defaults_on_any_cluster(
@@ -325,14 +323,14 @@ def test_a_startup_error_names_the_set_of_defaults_it_comes_from() -> None:
         )
 
 
-UNSHARDED: dict[str, JsonValue] = {"sharding": False, "shards_count": 1}
+UNSHARDED: dict[str, JsonValue] = {"sharding": False}
 
 
 @pytest.mark.parametrize(
     argnames=("request_values", "expected"),
     argvalues=[
         pytest.param({"shards_count": 4}, (True, 4, [".*\\{(?<tag>.*)\\}.*"]), id="several shards"),
-        pytest.param({"shard_key_regex": [{"regex": "(?<k>.*)"}]}, (True, 1, ["(?<k>.*)"]), id="own rules"),
+        pytest.param({"shard_key_regex": [{"regex": "(?<k>.*)"}]}, (True, 2, ["(?<k>.*)"]), id="own rules"),
     ],
 )
 def test_a_request_turns_sharding_on_over_defaults_that_turn_it_off(
@@ -384,11 +382,17 @@ def filled_on(*, configured: ConfiguredCluster, request: dict[str, JsonValue]) -
         pytest.param(
             ({"shards_count": 4}, {"sharding": False}),
             {"sharding": True},
-            (True, 1, [".*\\{(?<tag>.*)\\}.*"]),
-            id="dropped shards leave one shard",
+            (True, 2, [".*\\{(?<tag>.*)\\}.*"]),
+            id="dropped shards take the count of sharding_values",
         ),
         pytest.param(
             ({"shards_count": 4},), {"shards_count": 1}, (False, 1, None), id="one shard sends sharding off"
+        ),
+        pytest.param(
+            ({"sharding": True, "shards_count": 4},),
+            {"shards_count": 1},
+            (True, 1, [".*\\{(?<tag>.*)\\}.*"]),
+            id="one shard keeps the configured sharding",
         ),
         pytest.param(
             ({"shard_key_regex": None},),
@@ -420,10 +424,22 @@ def test_a_level_that_contradicts_itself_stops_startup_even_when_a_lower_level_h
         )
 
 
-def test_sharding_values_that_turn_sharding_off_stop_startup() -> None:
+@pytest.mark.parametrize(
+    argnames="sharding_values",
+    argvalues=[
+        pytest.param({}, id="nothing"),
+        pytest.param({"shard_key_regex": [{"regex": "(?<tag>.*)"}]}, id="no count"),
+        pytest.param({"shards_count": 2}, id="no rules"),
+        pytest.param({**SHARDING_VALUES, "sharding": False}, id="sharding off"),
+        pytest.param({**SHARDING_VALUES, "sharding": True}, id="sharding on"),
+    ],
+)
+def test_sharding_values_that_do_not_complete_a_sharded_database_stop_startup(
+    sharding_values: dict[str, JsonValue],
+) -> None:
     with pytest.raises(expected_exception=ConfigurationError):
         reject_invalid_defaults_on_any_cluster(
-            settings=defaults_settings(database={}, sharding_values={"sharding": False}),
+            settings=defaults_settings(database={}, sharding_values=sharding_values),
             clusters=[],
         )
 
@@ -441,3 +457,22 @@ def test_active_active_sites_resolve_their_sharding_alike_whatever_their_levels_
     assert sharding_of(
         defaults.fill_in(cluster=dropping, requested=requested, active_active=True)
     ) == sharding_of(defaults.fill_in(cluster=plain, requested=requested, active_active=True))
+
+
+@pytest.mark.parametrize(
+    argnames=("database", "levels"),
+    argvalues=[
+        pytest.param(
+            {"data_persistence": "snapshot"}, ({"aof_policy": None},), id="null policy of another mode"
+        ),
+        pytest.param(
+            {"data_persistence": "aof"},
+            ({"aof_policy": "appendfsync-always"}, {"data_persistence": None}),
+            id="null mode keeps the mode below",
+        ),
+    ],
+)
+def test_persistence_values_left_null_on_a_level_start(
+    database: dict[str, JsonValue], levels: tuple[dict[str, JsonValue], ...]
+) -> None:
+    defaults_checked_on(configured=leveled_cluster(*levels), database=database)
