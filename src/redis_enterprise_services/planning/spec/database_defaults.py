@@ -15,7 +15,6 @@ from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
-    reject_sharding_without_its_rules,
     with_sharding_completed,
 )
 from redis_enterprise_services.planning.spec.validation_issues import issues_text
@@ -41,7 +40,6 @@ class DatabaseDefaults:
             sharding_values=defaults.sharding_values,
         )
         try:
-            reject_sharding_without_its_rules(values=values)
             return NewDatabase.model_validate(
                 obj=with_persistence_settings_of_its_mode(
                     values=values, persistence_values=defaults.persistence_values
@@ -84,7 +82,7 @@ def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind
     return {
         name: value
         for level in override_levels_on_cluster(cluster=cluster, kind=kind)
-        for name, value in level.items()
+        for name, value in typed_level_values(values=level).items()
     }
 
 

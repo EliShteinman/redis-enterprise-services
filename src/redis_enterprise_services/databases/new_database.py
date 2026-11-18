@@ -12,6 +12,9 @@ SHARDING_FIELD: str = "sharding"
 SHARD_KEY_REGEX_FIELD: str = "shard_key_regex"
 SHARDS_COUNT_FIELD: str = "shards_count"
 SINGLE_SHARD: int = 1
+SHARDING_OFF_CONTRADICTION: str = (
+    "shard_key_regex and shards_count above 1 do not go together with sharding false"
+)
 
 UNSET_MEANS_DEFAULT_DESCRIPTION: str = (
     " When omitted or null, the service's configured default for the target applies,"
@@ -127,12 +130,10 @@ class DatabaseOptions(BaseModel):
 
     @model_validator(mode="after")
     def reject_sharding_settings_with_sharding_off(self) -> Self:
-        if self.sharding is False and holds_sharding_only_values(
-            shard_key_regex=self.shard_key_regex, shards_count=self.shards_count
+        if contradicts_sharding_off(
+            sharding=self.sharding, shard_key_regex=self.shard_key_regex, shards_count=self.shards_count
         ):
-            raise ValueError(
-                "shard_key_regex and shards_count above 1 are not sent together with sharding false"
-            )
+            raise ValueError(SHARDING_OFF_CONTRADICTION)
         return self
 
     @model_validator(mode="after")
@@ -152,6 +153,12 @@ class NewDatabase(NamedSpec, DatabaseOptions):
     )
     memory_size: PositiveInt = Field(
         description="The memory limit of the database, in bytes.", examples=[1073741824]
+    )
+
+
+def contradicts_sharding_off(*, sharding: object, shard_key_regex: object, shards_count: object) -> bool:
+    return sharding is False and holds_sharding_only_values(
+        shard_key_regex=shard_key_regex, shards_count=shards_count
     )
 
 
