@@ -217,7 +217,7 @@ route נפרד ליצירת DB אחד על כמה אתרים (CRDB). אין שד
 
 שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות: `database_defaults.active_active.crdb`
 ב-`helm/files/defaults.yaml`, ורק סביבה או רשת ב-`helm/files/clusters.yaml` יכולות לדרוס אותה (לא אתר ולא קלאסטר, כי CRDB
-פרוס על כמה אתרים). ערך שנשלח בבקשה קודם לקונפיג. היום: `causal_consistency: false`, `encryption: false`,
+פרוס על כמה אתרים). כך גם הגדרות ה-DB של Active-Active (`active_active.database`). ערך שנשלח בבקשה קודם לקונפיג. היום: `causal_consistency: false`, `encryption: false`,
 `compression: 3`. ההגדרות נשלחות לקלאסטר תמיד במפורש, וחייבות לצאת זהות לכל האתרים.
 
 ### `spec.database` ו-`spec.users[]`
