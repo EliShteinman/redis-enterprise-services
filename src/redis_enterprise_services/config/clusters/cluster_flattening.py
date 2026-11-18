@@ -11,10 +11,7 @@ from redis_enterprise_services.config.clusters.cluster_tree_entries import (
     EnvironmentEntries,
     TreeEnvironment,
 )
-from redis_enterprise_services.config.clusters.level_values import (
-    EnvironmentOrNetworkValues,
-    SiteOrClusterValues,
-)
+from redis_enterprise_services.config.clusters.level_values import EnvironmentOrNetworkValues, LevelValues
 from redis_enterprise_services.config.validation.base_url import comparable_url
 from redis_enterprise_services.config.validation.reject_repeated import reject_repeated
 
@@ -29,10 +26,10 @@ class ClusterInTree(BaseModel):
     site: str
     fqdn: str
     environment_and_network: list[EnvironmentOrNetworkValues]
-    site_entry: SiteOrClusterValues
+    site_entry: LevelValues
     entry: ClusterEntry
 
-    def levels(self) -> list[EnvironmentOrNetworkValues | SiteOrClusterValues]:
+    def levels(self) -> list[LevelValues]:
         return [*self.environment_and_network, self.site_entry, self.entry]
 
 
@@ -64,7 +61,7 @@ def walk(*, tree: EnvironmentEntries) -> Iterator[ClusterInTree]:
 
 
 def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> ConfiguredCluster:
-    levels: list[EnvironmentOrNetworkValues | SiteOrClusterValues] = cluster.levels()
+    levels: list[LevelValues] = cluster.levels()
     return ConfiguredCluster(
         fqdn=cluster.fqdn,
         environment=cluster.environment,
@@ -94,7 +91,9 @@ def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> Configured
             setting="default_user_password",
         ),
         database_override_levels=[level.database for level in levels],
-        active_active_database_override_levels=[level.active_active.database for level in levels],
+        active_active_database_override_levels=[
+            level.active_active.database for level in cluster.environment_and_network
+        ],
         crdb_overrides=merged(layers=[level.active_active.crdb for level in cluster.environment_and_network]),
     )
 
