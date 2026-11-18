@@ -13,6 +13,7 @@ from redis_enterprise_services.databases.new_database import (
     contradicts_sharding_off,
 )
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
 
 def typed_level_values(*, values: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -28,7 +29,9 @@ def typed_value(*, name: str, value: JsonValue) -> JsonValue:
     try:
         return adapter.dump_python(adapter.validate_python(value), mode="json")
     except ValidationError as error:
-        raise ConfigurationError(message=f"database value {name} is not valid: {error}") from error
+        raise ConfigurationError(
+            message=f"database value {name} is not valid: {issues_text(error=error)}"
+        ) from error
 
 
 @cache

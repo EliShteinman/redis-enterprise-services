@@ -476,3 +476,13 @@ def test_persistence_values_left_null_on_a_level_start(
     database: dict[str, JsonValue], levels: tuple[dict[str, JsonValue], ...]
 ) -> None:
     defaults_checked_on(configured=leveled_cluster(*levels), database=database)
+
+
+def test_a_level_value_of_the_wrong_type_stops_startup_with_a_readable_reason() -> None:
+    with pytest.raises(expected_exception=ConfigurationError) as raised:
+        defaults_checked_on(configured=leveled_cluster({"shards_count": "abc"}))
+
+    assert raised.value.message.endswith(
+        "database value shards_count is not valid: "
+        "Input should be a valid integer, unable to parse string as an integer"
+    )
