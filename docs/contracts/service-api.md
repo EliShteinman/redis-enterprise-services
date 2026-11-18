@@ -95,7 +95,7 @@
 | `aof_policy` | `appendfsync-every-sec` / `appendfsync-always` | רק יחד עם `data_persistence: aof` |
 | `snapshot_policy` | list של `{secs, writes}`, שניהם int חיובי | רק יחד עם `data_persistence: snapshot` |
 | `sharding` | bool | בלי ערך: `shards_count` מעל 1 או `shard_key_regex` מפעילים אותו. `false` לא יחד עם אף אחד מהם |
-| `shards_count` | int, 1–512 (התיעוד של Redis) | מעל 1 מפעיל Sharding. בלי Sharding נשלח `1` |
+| `shards_count` | int, 1–512 (התיעוד של Redis) | מעל 1 מפעיל Sharding. `1` לא מדליק ולא מכבה Sharding. בלי ערך: עם Sharding נשלח המספר של השירות, בלי Sharding נשלח `1` |
 | `shard_key_regex` | list של `{regex}`, לפחות אחד | מפעיל Sharding. DB עם Sharding בלי השדה מקבל את הכללים של השירות |
 | `eviction_policy` | אחד מעשרת הערכים של Redis (`noeviction`, `allkeys-lru`, …) | |
 | `shards_placement` | `dense` / `sparse` | |
@@ -122,6 +122,7 @@
 | `snapshot_policy` | `[{"secs": 3600, "writes": 1}]`, רק כש-`data_persistence` הוא `snapshot` |
 | `shards_placement` | `dense` |
 | `proxy_policy` | `all-master-shards` |
+| `shards_count` | `2`, כמו ברירת המחדל של הקלאסטר, רק כשה-DB עם Sharding. בלי Sharding `1` |
 | `shard_key_regex` | `[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]`, רק כשה-DB עם Sharding |
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
