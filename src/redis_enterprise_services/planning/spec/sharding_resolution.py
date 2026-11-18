@@ -7,7 +7,6 @@ from redis_enterprise_services.databases.new_database import (
     SINGLE_SHARD,
     holds_sharding_only_values,
 )
-from redis_enterprise_services.exceptions.configuration import ConfigurationError
 
 
 def layered_database_values(*, layers: list[dict[str, JsonValue]]) -> dict[str, JsonValue]:
@@ -50,7 +49,7 @@ def with_sharding_completed(
     if sharding is None:
         sharding = asks_for_sharding(values=values)
     if sharding is True:
-        return {SHARDS_COUNT_FIELD: SINGLE_SHARD, **sharding_values, **values, SHARDING_FIELD: True}
+        return {**sharding_values, **values, SHARDING_FIELD: True}
     return {SHARDS_COUNT_FIELD: SINGLE_SHARD, **values, SHARDING_FIELD: False}
 
 
@@ -58,10 +57,3 @@ def asks_for_sharding(*, values: dict[str, JsonValue]) -> bool:
     return holds_sharding_only_values(
         shard_key_regex=values.get(SHARD_KEY_REGEX_FIELD), shards_count=values.get(SHARDS_COUNT_FIELD)
     )
-
-
-def reject_sharding_without_its_rules(*, values: dict[str, JsonValue]) -> None:
-    if values.get(SHARDING_FIELD) is True and not values.get(SHARD_KEY_REGEX_FIELD):
-        raise ConfigurationError(
-            message="a sharded database needs shard_key_regex, and database_defaults.sharding_values has none"
-        )

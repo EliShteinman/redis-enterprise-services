@@ -8,7 +8,6 @@ from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY
 from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
-    reject_sharding_without_its_rules,
     with_sharding_completed,
 )
 
@@ -28,7 +27,6 @@ class DatabaseDefaults:
             values=layered_database_values(layers=[values, requested.model_dump(exclude_none=True)]),
             sharding_values=self._settings.sharding_values,
         )
-        reject_sharding_without_its_rules(values=values)
         return NewDatabase.model_validate(
             obj=with_persistence_settings_of_its_mode(
                 values=values, persistence_values=self._settings.persistence_values
@@ -48,7 +46,11 @@ def merged_default_values(
 
 
 def override_values_on_cluster(*, cluster: ConfiguredCluster) -> dict[str, JsonValue]:
-    return {name: value for level in cluster.database_override_levels for name, value in level.items()}
+    return {
+        name: value
+        for level in cluster.database_override_levels
+        for name, value in typed_level_values(values=level).items()
+    }
 
 
 def with_persistence_settings_of_its_mode(
