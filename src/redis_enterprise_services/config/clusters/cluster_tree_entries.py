@@ -4,17 +4,14 @@ from pydantic import Field, model_validator
 
 from redis_enterprise_services.config.clusters.cluster_fqdn import ClusterFqdn
 from redis_enterprise_services.config.clusters.cluster_inventory import GENERIC_CLUSTER, ClusterType
-from redis_enterprise_services.config.clusters.level_values import (
-    EnvironmentOrNetworkValues,
-    SiteOrClusterValues,
-)
+from redis_enterprise_services.config.clusters.level_values import EnvironmentOrNetworkValues, LevelValues
 
 
-class ClusterEntry(SiteOrClusterValues):
+class ClusterEntry(LevelValues):
     type: ClusterType
 
 
-class SiteEntry(SiteOrClusterValues):
+class SiteEntry(LevelValues):
     clusters: dict[ClusterFqdn, ClusterEntry] = Field(min_length=1)
 
     @model_validator(mode="after")
