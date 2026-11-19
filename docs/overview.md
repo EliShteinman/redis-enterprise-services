@@ -25,7 +25,7 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 | DataPower | בדיקת הבקשות והתשובות מול סכמה, ברשתות B ו-C בלבד. ברשת הראשית A אין DataPower | החברה |
 | cluster-relay | העברת כל קריאה לקלאסטר בתוך רשת היעד, ובדיקת התשובה מול סכמה | פרויקט נפרד |
 | Redis של המצב | saga records, נעילות, תוצאות, heartbeats | Redis Enterprise של צוות אחר |
-| Elastic | לוגים ו-traces מה-OpenTelemetry Collector של השירות ושל כל ריילי. כל השרשרת של הרשת הראשית A (המתאם, השירות, NGINX והריילי של A) שולחת לאותו Elastic. הריילים של B ו-C, מאחורי DataPower, שולחים ל-Elastic אחר. המתאם ישלח את הלוגים שלו ב-Filebeat בהמשך | החברה |
+| Elastic | לוגים ו-traces מה-OpenTelemetry Collector של השירות ושל כל ריילי. כל השרשרת של הרשת הראשית A (המתאם, השירות, NGINX והריילי של A) שולחת לאותו Elastic. כל רשת מאחורי DataPower (B, C, וכל רשת שתתווסף) נפרדת לגמרי, ולכל אחת Elastic משלה, שהריילי שלה שולח אליו. המתאם ישלח את הלוגים שלו ב-Filebeat בהמשך | החברה |
 
 ![הקשר](diagrams/02-context.drawio.svg)
 
