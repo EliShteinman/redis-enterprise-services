@@ -10,8 +10,9 @@ __pycache__/
 build/
 dist/
 
-# Virtual environment
+# Virtual environment and lock file
 .venv/
+uv.lock
 
 # Tools
 .ruff_cache/
@@ -32,3 +33,6 @@ logs/
 
 # Local reference material (not part of the project)
 docs/reference/
+
+# Filled cluster files hold passwords; only clusters.example.yaml is kept
+helm/files/*clusters.yaml
