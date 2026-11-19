@@ -1,0 +1,144 @@
+# redis-enterprise-services: סקירה
+
+נקודת הכניסה למי שבודק את הפרויקט: מה השירות עושה, מה בנוי, מה חסר, ואיפה לקרוא עוד.
+
+---
+
+## 1. מה השירות עושה
+
+השירות מקבל פעולה עסקית אחת על Redis Enterprise, למשל "צור DB עם שלושה יוזרים", ומבצע אותה כרצף של קריאות REST
+לקלאסטר. הביצוע בנוי כ-**Saga**: לכל צעד יש פעולה מפצה, ואם צעד נכשל, מה שכבר נעשה מבוטל בסדר הפוך, והקלאסטר חוזר
+למצב שלפני הבקשה. כשאי אפשר לדעת מה קרה, השירות לא מנחש: הוא עוצר ומסמן את הפעולה לטיפול ידני.
+
+```
+UI + company service -> adapter service -> redis-enterprise-services -> NGINX -> cluster-relay -> clusters   (main network A)
+                                                       |                    NGINX -> DataPower -> cluster-relay -> clusters  (networks B, C)
+                                                       +-> Redis (state, locks, results)
+```
+
+| רכיב | אחריות | בעלות |
+|---|---|---|
+| UI והשירות של החברה | מי מורשה להזמין, תקציב, הצוות האחראי ופרטי ההזמנה | החברה |
+| שירות המתאם | רושם את ההזמנה ב-DB של הצוות, ומתרגם את הטופס הקבוע של החברה (אחד לכל הטכנולוגיות) לחוזה של השירות | של הבעלים, נכתב בתוך החברה (לא בריפו) |
+| **redis-enterprise-services** | פירוק לצעדים, Saga, ביטול, נעילה, מציאת הקלאסטר | הפרויקט הזה |
+| NGINX | ניתוב לפי `x-network` לריילי של הרשת, והוספת ה-authorization לריילי. הלוגים שלו ב-Filebeat | החברה |
+| DataPower | בדיקת הבקשות והתשובות מול סכמה, ברשתות B ו-C בלבד. ברשת הראשית A אין DataPower | החברה |
+| cluster-relay | העברת כל קריאה לקלאסטר בתוך רשת היעד, ובדיקת התשובה מול סכמה | פרויקט נפרד |
+| Redis של המצב | saga records, נעילות, תוצאות, heartbeats | Redis Enterprise של צוות אחר |
+| Elastic | לוגים ו-traces מה-OpenTelemetry Collector של השירות ושל כל ריילי. כל השרשרת של הרשת הראשית A (המתאם, השירות, NGINX והריילי של A) שולחת לאותו Elastic. כל רשת מאחורי DataPower (B, C, וכל רשת שתתווסף) נפרדת לגמרי, ולכל אחת Elastic משלה, שהריילי שלה שולח אליו. המתאם ישלח את הלוגים שלו ב-Filebeat בהמשך | החברה |
+
+![הקשר](diagrams/02-context.drawio.svg)
+
+- **השירות לעולם לא פונה ישירות לקלאסטר.** כל קריאה עוברת דרך NGINX ו-cluster-relay של הרשת, וברשתות B ו-C
+  גם דרך DataPower (`contracts/edge-service.md`). מזהה ה-trace (`traceparent`) עובר לאורך כל השרשרת.
+- **השירות לא בודק הרשאות עסקיות.** הבקשה כבר אושרה ב-UI.
+- **אין ערכים בקוד.** כל ערך בקונפיג, בארבעה קבצים ב-`helm/files/`: `clusters.yaml` (הקלאסטרים), `defaults.yaml`
+  (`database_defaults`, `naming`, `user_resources`), `service.yaml` (השירות עצמו: `server`, `api`, `log`, `telemetry`, `edge`,
+  `state`, `saga`, `background`, `liveness`, `operation`) ו-`redis_api.yaml` (ה-REST API של הקלאסטר: `cluster_api`,
+  `action`, `database`, `acl`, `role`, `user`). השירות קורא אותם מהתיקייה שמעבירים לו (`RES_CONFIG_DIR` בתמונה,
+  ו-`run_local.py` מעביר את `helm/files`), ואין תיקיית ברירת מחדל. הסודות של הקלאסטרים ב-`clusters.yaml`, והגישה
+  ל-Redis של מצב ה-saga רק ממשתני הסביבה `RES_STATE__URL` ו-`RES_STATE__KEY_PREFIX`.
+
+---
+
+## 2. מה בנוי
+
+**יצירת DB באתר אחד, מקצה לקצה.**
+
+- **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
+  `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
+  אותו trace פעמיים לא מריץ פעמיים.
+- **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד (`target.site`, אתר אחד) מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
+  הדריסות של הסביבה, הרשת, האתר והקלאסטר.
+- **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
+  ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר.
+- **בטיחות:**
+  - נעילה על ה-DB ועל היוזרים לכל משך הריצה, ובדיקה תחתיה שכל השמות פנויים.
+  - תוצאה לא ידועה (timeout, שירות קצה שלא ענה) נבדקת בקלאסטר לפני ניסיון חוזר.
+  - ביטול רק אחרי כישלון ודאי. כל השאר ⇐ `requires_manual_intervention`, והנעילה נשארת.
+- **התאוששות:** heartbeat לכל פעולה, וסריקה בכל pod שמסמנת פעולות של pod שנפל.
+- **תוצאה:** עץ ה-DB (`kind: "single_site"`, קלאסטר אחד), שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
+- **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay. הלוג לקונסול כשורה או כ-JSON,
+  ואפשר גם קובץ JSON מתחלף. `/health` לא נכנס ללוגים מתחת ל-WARNING, ולא ל-traces ול-metrics.
+
+**נבדק מול קלאסטר אמיתי:** הצלחה עם הרשאות שנבדקו בחיבור ל-DB, כשל בכל אחד מששת הצעדים שהסתיים בביטול מלא,
+בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5).
+
+---
+
+## 3. מה חסר
+
+פירוט ועיצוב: `design/planned.md`.
+
+| נושא | מה חסר |
+|---|---|
+| בחירת קלאסטר | היום קלאסטר `generic` אחד לכל יעד. בחירה בין כמה לפי מקום (dry_run) |
+| הזדהות | אין הזדהות מול השירות |
+| Active-Active | יצירה, עריכה ומחיקה של CRDB. היצירה ב-route נפרד, `POST /v1/crdbs/create` |
+| מחיקה | מחיקת DB עם היוזרים שלו |
+| עריכה | עריכת DB ועריכת רשימת היוזרים |
+| קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
+| `Location` בתשובת `202` | השירות לא מחזיר כתובת לראוט הסטטוס; שירות הביניים בונה אותה מה-`trace_id` |
+| טיפול ידני | אין כלי. נעשה ב-`redis-cli` (`design/saga-engine-and-state.md` סעיף 10) |
+
+---
+
+## 4. מבנה הקוד
+
+![שכבות הקוד](diagrams/01-layers.drawio.svg)
+
+`src/redis_enterprise_services/`. כיווני הייבוא נאכפים ב-`import-linter` (`pyproject.toml`), מלמעלה למטה. כל שורה
+בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לארבע
+חבילות המשאבים) נמצא ב-`pyproject.toml`.
+
+| שכבה | חבילות | מה יש בה |
+|---|---|---|
+| הרכבה | `server`, `app`, `composition` | הרצת השרת, בניית האפליקציה וכל המחלקות הקונקרטיות |
+| כניסה | `api` | routes, `traceparent`, טיפול בשגיאות |
+| פקודות | `creation` | הכנה, ריצה ברקע, תרגום התוצאה |
+| תכנון | `planning` | בקשה ⇐ קלאסטר, ברירות מחדל, תוכנית צעדים, בדיקת שמות |
+| צעדים, מצב וזיהוי קריסה | `steps`, `state`, `recovery` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis; זיהוי קריסה |
+| משאבים | `databases`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
+| תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
+| מנוע ופעולות | `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה |
+| תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |
+| עזר | `sequences` | פונקציות טהורות על רשימות (`repeated_values`), בלי תלות באף חבילה אחרת |
+
+- המנוע (`saga/`) גנרי: הוא לא מכיר קלאסטר, DB או שירות קצה.
+- המשאבים והתעבורה לא מכירים את ה-Saga.
+- טסטים: `tests/unit/`, על הלוגיקה המרכזית. `tests/integration/` מריץ את סקריפטי ה-Lua מול ה-Redis של ה-saga-state
+  בקלאסטרים המקומיים, ומדלג כשהוא לא זמין. הזרימה המלאה נבדקה ידנית מול הקלאסטרים המקומיים (`design/creation.md` סעיף 5).
+
+---
+
+## 5. איפה לקרוא עוד
+
+| מסמך | מה יש בו |
+|---|---|
+| `README.md` | התקנה, הרצה, קונפיג |
+| `contracts/service-api.md` | ה-API: שדות, תשובות, קודי שגיאה |
+| `contracts/edge-service.md` | מה השירות דורש מ-cluster-relay |
+| `design/creation.md` | איך בקשת יצירה רצה |
+| `design/saga-engine-and-state.md` | המנוע, Redis, heartbeat וזיהוי קריסה, טיפול ידני |
+| `design/database-and-user-model.md` | שדות ה-DB והיוזרים, ומה נשאר בחוץ |
+| `design/redis-rest-api-behaviour.md` | התנהגויות של ה-REST API של הקלאסטר שהעיצוב נשען עליהן |
+| `design/planned.md` | כל מה שלא בנוי, ושאלות פתוחות |
+
+### דיאגרמות
+
+כל הדיאגרמות ב-`docs/diagrams/`, כקבצי `.drawio.svg`: נפתחים כתמונה, ונערכים ב-draw.io.
+
+| דיאגרמה | מה היא מראה |
+|---|---|
+| `01-layers` | כל השכבות, מלמעלה למטה, והגורמים החיצוניים |
+| `02-context` | הארכיטקטורה ברמת השירותים, מלמעלה למטה: מי קורא למי, והטלמטריה. נקודת ההתחלה לכל סוכן חדש |
+| `03`–`09` `layer-*` | כל שכבה מבפנים: מי משתמש בה, מה יש בה, ובמה היא משתמשת |
+| `10-seq-create-single-site`, `11-seq-rollback-single-site` | יצירה מוצלחת, וביטול אחרי כישלון |
+| `12-flow-find-or-start` | קבלה, trace חוזר, נעילה ובדיקת שמות |
+| `13-flow-cluster-and-defaults` | מציאת הקלאסטר וברירות המחדל |
+| `14-flow-failure-classification` | מה המנוע עושה בכל סוג כישלון |
+| `15-state-step`, `16-state-operation` | הסטטוסים של צעד ושל פעולה |
+| `17-flow-heartbeat-and-abandoned-sweep` | heartbeat וזיהוי קריסה |
+| `18-redis-keys` | המפתחות ב-Redis |
+| `19-api-models-create` | מודלי הבקשה והתוצאה |
+| `planned/p1`–`p6` | העיצוב של מה שעוד לא בנוי: Active-Active, מחיקה, עריכה |
