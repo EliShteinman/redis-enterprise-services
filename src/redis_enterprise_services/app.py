@@ -1,0 +1,95 @@
+import asyncio
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import cast
+
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from starlette.exceptions import HTTPException
+from starlette.types import ExceptionHandler
+
+from redis_enterprise_services.api.middleware.unexpected_error_middleware import UnexpectedErrorMiddleware
+from redis_enterprise_services.api.rejections.error_handlers import (
+    HttpErrorHandler,
+    ServiceErrorHandler,
+    ValidationErrorHandler,
+)
+from redis_enterprise_services.api.routes import creation_route, operation_route
+from redis_enterprise_services.api.routes.liveness_route import liveness_router
+from redis_enterprise_services.composition.app_wiring import AppWiring
+from redis_enterprise_services.config.service.api_settings import ApiSettings
+from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.logger.configuration import configure_logging
+from redis_enterprise_services.logger.quiet import QuietPathsMiddleware
+from redis_enterprise_services.operations.errors.public_errors import PublicErrors
+from redis_enterprise_services.telemetry.excluded_urls import excluded_urls
+from redis_enterprise_services.telemetry.telemetry_providers import (
+    TelemetryProviders,
+    build_telemetry_providers,
+)
+
+
+def create_app(*, settings: Settings) -> FastAPI:
+    configure_process(settings=settings)
+    app: FastAPI = FastAPI(title=settings.telemetry.service_name, lifespan=lifespan)
+    wiring: AppWiring = AppWiring(settings=settings)
+    store_in_app_state(app=app, settings=settings, wiring=wiring)
+    add_error_handling(app=app, settings=settings.api, public_errors=wiring.public_errors)
+    include_routers(app=app, liveness_path=settings.api.liveness_path)
+    quiet_paths: frozenset[str] = frozenset({settings.api.liveness_path})
+    FastAPIInstrumentor.instrument_app(app=app, excluded_urls=excluded_urls(paths=quiet_paths))
+    app.add_middleware(middleware_class=QuietPathsMiddleware, paths=quiet_paths)
+    return app
+
+
+def configure_process(*, settings: Settings) -> None:
+    configure_logging(settings=settings.log)
+
+
+def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -> None:
+    app.state.settings = settings
+    app.state.wiring = wiring
+    app.state.database_creation = wiring.database_creation
+    app.state.operation_store = wiring.operation_store
+
+
+def include_routers(*, app: FastAPI, liveness_path: str) -> None:
+    app.include_router(router=liveness_router(path=liveness_path))
+    app.include_router(router=creation_route.router)
+    app.include_router(router=operation_route.router)
+
+
+def add_error_handling(*, app: FastAPI, settings: ApiSettings, public_errors: PublicErrors) -> None:
+    app.add_middleware(middleware_class=UnexpectedErrorMiddleware, public_errors=public_errors)
+    app.add_exception_handler(
+        exc_class_or_status_code=RedisEnterpriseServicesError,
+        handler=cast(ExceptionHandler, ServiceErrorHandler(public_errors=public_errors)),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=RequestValidationError,
+        handler=cast(
+            ExceptionHandler, ValidationErrorHandler(settings=settings, public_errors=public_errors)
+        ),
+    )
+    app.add_exception_handler(
+        exc_class_or_status_code=HTTPException,
+        handler=cast(ExceptionHandler, HttpErrorHandler(public_errors=public_errors)),
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    settings: Settings = app.state.settings
+    wiring: AppWiring = app.state.wiring
+    telemetry: TelemetryProviders = build_telemetry_providers(settings=settings.telemetry)
+    telemetry.install()
+    try:
+        wiring.start()
+        yield
+    finally:
+        try:
+            await asyncio.to_thread(wiring.stop)
+        finally:
+            telemetry.shutdown()
