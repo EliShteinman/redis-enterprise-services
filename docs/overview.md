@@ -11,8 +11,8 @@
 למצב שלפני הבקשה. כשאי אפשר לדעת מה קרה, השירות לא מנחש: הוא עוצר ומסמן את הפעולה לטיפול ידני.
 
 ```
-UI + company service -> adapter service -> redis-enterprise-services -> NGINX -> DataPower -> cluster-relay -> clusters
-                                                       |                    (networks A, B; network C: NGINX -> cluster-relay)
+UI + company service -> adapter service -> redis-enterprise-services -> NGINX -> cluster-relay -> clusters   (main network A)
+                                                       |                    NGINX -> DataPower -> cluster-relay -> clusters  (networks B, C)
                                                        +-> Redis (state, locks, results)
 ```
 
@@ -22,14 +22,14 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 | שירות המתאם | רושם את ההזמנה ב-DB של הצוות, ומתרגם את הטופס הקבוע של החברה (אחד לכל הטכנולוגיות) לחוזה של השירות | של הבעלים, נכתב בתוך החברה (לא בריפו) |
 | **redis-enterprise-services** | פירוק לצעדים, Saga, ביטול, נעילה, מציאת הקלאסטר | הפרויקט הזה |
 | NGINX | ניתוב לפי `x-network` לריילי של הרשת, והוספת ה-authorization לריילי. הלוגים שלו ב-Filebeat | החברה |
-| DataPower | בדיקת הבקשות והתשובות מול סכמה, ברשתות A ו-B בלבד | החברה |
+| DataPower | בדיקת הבקשות והתשובות מול סכמה, ברשתות B ו-C בלבד. ברשת הראשית A אין DataPower | החברה |
 | cluster-relay | העברת כל קריאה לקלאסטר בתוך רשת היעד, ובדיקת התשובה מול סכמה | פרויקט נפרד |
 | Redis של המצב | saga records, נעילות, תוצאות, heartbeats | Redis Enterprise של צוות אחר |
-| Elastic | לוגים ו-traces מה-OpenTelemetry Collector של השירות ושל כל ריילי: אחד לרשת הניהול ולרשת A, אחר לריילים של B ו-C | החברה |
+| Elastic | לוגים ו-traces מה-OpenTelemetry Collector של השירות ושל כל ריילי. כל השרשרת של הרשת הראשית A (המתאם, השירות, NGINX והריילי של A) שולחת לאותו Elastic. הריילים של B ו-C, מאחורי DataPower, שולחים ל-Elastic אחר. המתאם ישלח את הלוגים שלו ב-Filebeat בהמשך | החברה |
 
 ![הקשר](diagrams/02-context.drawio.svg)
 
-- **השירות לעולם לא פונה ישירות לקלאסטר.** כל קריאה עוברת דרך NGINX ו-cluster-relay של הרשת, וברשתות A ו-B
+- **השירות לעולם לא פונה ישירות לקלאסטר.** כל קריאה עוברת דרך NGINX ו-cluster-relay של הרשת, וברשתות B ו-C
   גם דרך DataPower (`contracts/edge-service.md`). מזהה ה-trace (`traceparent`) עובר לאורך כל השרשרת.
 - **השירות לא בודק הרשאות עסקיות.** הבקשה כבר אושרה ב-UI.
 - **אין ערכים בקוד.** כל ערך בקונפיג, בארבעה קבצים ב-`helm/files/`: `clusters.yaml` (הקלאסטרים), `defaults.yaml`
