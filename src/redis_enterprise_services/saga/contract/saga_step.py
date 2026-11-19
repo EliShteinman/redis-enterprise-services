@@ -1,0 +1,23 @@
+from typing import Protocol
+
+from pydantic import BaseModel
+
+from redis_enterprise_services.saga.contract.keep_result import KeepResult
+from redis_enterprise_services.saga.contract.step_kind import StepKind
+
+
+class SagaStep[TInput: BaseModel, TResult: BaseModel](Protocol):
+    @property
+    def kind(self) -> StepKind: ...
+
+    def execute(self, *, step_input: TInput, keep_result: KeepResult[TResult]) -> None: ...
+
+    def find_outcome(
+        self,
+        *,
+        step_input: TInput,
+        kept_result: TResult | None,
+        keep_result_if_none_kept: KeepResult[TResult],
+    ) -> TResult | None: ...
+
+    def compensate(self, *, step_input: TInput, result: TResult) -> None: ...
