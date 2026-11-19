@@ -1,0 +1,44 @@
+from unittest.mock import MagicMock, create_autospec
+
+import pytest
+from redis import Redis
+
+from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
+from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
+from redis_enterprise_services.state.redis_keys import RedisKeys
+from redis_enterprise_services.state.redis_saga_record_store import RedisSagaRecordStore
+
+
+@pytest.mark.parametrize(
+    argnames=("status", "expiry_seconds"),
+    argvalues=[
+        (SagaStatus.SUCCEEDED, 600),
+        (SagaStatus.ROLLED_BACK, 600),
+        (SagaStatus.REQUIRES_MANUAL_INTERVENTION, None),
+        (SagaStatus.RUNNING, None),
+    ],
+)
+def test_only_a_cleanly_ended_saga_is_stored_with_the_expiry(
+    status: SagaStatus, expiry_seconds: int | None
+) -> None:
+    client: MagicMock = create_autospec(spec=Redis, instance=True)
+    store: RedisSagaRecordStore = RedisSagaRecordStore(
+        client=client, keys=RedisKeys(key_prefix="res:"), finished_ttl_seconds=600
+    )
+
+    store.save_final(record=SagaRecord(saga_id="trace-1", status=status, steps=[]))
+
+    assert client.set.call_args.kwargs["ex"] == expiry_seconds
+
+
+def test_an_unreadable_saga_record_raises_a_project_error() -> None:
+    client: MagicMock = create_autospec(spec=Redis, instance=True)
+    client.get.return_value = '{"saga_id": "trace-1"}'
+    store: RedisSagaRecordStore = RedisSagaRecordStore(
+        client=client,
+        keys=RedisKeys(key_prefix="res:"),
+        finished_ttl_seconds=600,
+    )
+
+    with pytest.raises(expected_exception=UnreadableSagaRecordError):
+        store.find(saga_id="trace-1")

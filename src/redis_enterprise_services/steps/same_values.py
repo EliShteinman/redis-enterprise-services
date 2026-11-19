@@ -1,0 +1,44 @@
+import json
+
+from pydantic import JsonValue
+
+
+def same_values(
+    *, current: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
+) -> bool:
+    return current.keys() == expected.keys() and not fields_not_holding(
+        current=current, expected=expected, order_insensitive_fields=order_insensitive_fields
+    )
+
+
+def fields_not_holding(
+    *, current: dict[str, JsonValue], expected: dict[str, JsonValue], order_insensitive_fields: frozenset[str]
+) -> list[str]:
+    return [
+        name
+        for name, expected_value in expected.items()
+        if name not in current
+        or not same_field(
+            current=current[name], expected=expected_value, ignore_order=name in order_insensitive_fields
+        )
+    ]
+
+
+def same_field(*, current: JsonValue, expected: JsonValue, ignore_order: bool) -> bool:
+    if ignore_order and isinstance(current, list) and isinstance(expected, list):
+        return sorted(map(canonical_json, current)) == sorted(map(canonical_json, expected))
+    return canonical_json(current) == canonical_json(expected)
+
+
+def canonical_json(value: JsonValue) -> str:
+    return json.dumps(whole_numbers_as_int(value=value), sort_keys=True)
+
+
+def whole_numbers_as_int(*, value: JsonValue) -> JsonValue:
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [whole_numbers_as_int(value=item) for item in value]
+    if isinstance(value, dict):
+        return {key: whole_numbers_as_int(value=item) for key, item in value.items()}
+    return value
