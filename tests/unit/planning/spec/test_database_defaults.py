@@ -11,6 +11,7 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
 from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import NewDatabase, SnapshotRule
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.spec.database_defaults import DatabaseDefaults
 from redis_enterprise_services.planning.spec.database_defaults_validation import (
     reject_invalid_defaults_on_any_cluster,
@@ -62,6 +63,7 @@ def cluster(
     *,
     database: dict[str, JsonValue] | None = None,
     active_active_database: dict[str, JsonValue] | None = None,
+    crdb: dict[str, JsonValue] | None = None,
 ) -> ConfiguredCluster:
     return ConfiguredCluster(
         fqdn="c1",
@@ -72,6 +74,7 @@ def cluster(
         api_url="https://c1:9443",
         database_override_levels=[database] if database else [],
         active_active_database_override_levels=[active_active_database] if active_active_database else [],
+        crdb_overrides=crdb or {},
         credentials=ADMIN,
         default_user_password=DEFAULT_USER_PASSWORD,
     )
@@ -227,6 +230,7 @@ def test_a_cluster_may_set_the_policy_of_the_default_mode() -> None:
             ),
             id="clash-only-on-active-active",
         ),
+        pytest.param(cluster(crdb={"compression": 9}), id="invalid-crdb-value"),
     ],
 )
 def test_values_on_a_cluster_that_cannot_apply_stop_at_startup(configured: ConfiguredCluster) -> None:
@@ -243,6 +247,25 @@ def test_a_cluster_that_turns_persistence_off_drops_the_default_policy() -> None
     filled: NewDatabase = defaults.fill_in(cluster=configured, requested=REQUESTED, active_active=False)
 
     assert (filled.data_persistence, filled.aof_policy) == ("disabled", None)
+
+
+def test_the_crdb_values_of_the_coordinator_beat_the_crdb_defaults() -> None:
+    assert DEFAULTS.crdb_settings(cluster=cluster(crdb={"compression": 6}), requested=None).compression == 6
+
+
+def test_a_requested_crdb_value_beats_the_configured_one() -> None:
+    assert (
+        DEFAULTS.crdb_settings(
+            cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(compression=1)
+        ).compression
+        == 1
+    )
+
+
+def test_a_crdb_field_left_out_of_the_request_comes_from_config() -> None:
+    assert DEFAULTS.crdb_settings(
+        cluster=cluster(crdb={"compression": 6}), requested=CrdbSpec(causal_consistency=True)
+    ) == CrdbCreationSettings(causal_consistency=True, encryption=False, compression=6)
 
 
 SHARDED: dict[str, JsonValue] = {

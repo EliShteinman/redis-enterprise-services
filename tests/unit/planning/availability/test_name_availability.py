@@ -6,6 +6,7 @@ from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
 from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.exceptions.cluster import UnreadableClusterResponseError
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.lookups.listed_name_lookup import ListedNameLookup
 from redis_enterprise_services.planning.availability.lookups.name_lookups_by_kind import NameLookupsByKind
@@ -123,3 +124,19 @@ def test_a_taken_name_refuses_the_request() -> None:
             database_url_name_pairs={("https://c1", "orders")},
             user_lister=CountingLister(url_name_pairs=set()),
         ).ensure_free(clusters=[C1], requested_names=NAMES)
+
+
+class UnreadableOnC2Lister(CountingLister):
+    def list_objects(self, *, target: ClusterTarget) -> list[ClusterObject]:
+        if target.api_url == C2.api_url:
+            raise UnreadableClusterResponseError(message="the list came back unreadable")
+        return super().list_objects(target=target)
+
+
+def test_a_lookup_that_fails_on_one_site_names_that_site() -> None:
+    with pytest.raises(expected_exception=UnreadableClusterResponseError) as failure:
+        availability(
+            database_url_name_pairs=set(), user_lister=UnreadableOnC2Lister(url_name_pairs=set())
+        ).ensure_free(clusters=[C1, C2], requested_names=NAMES)
+
+    assert failure.value.cluster_url == C2.api_url

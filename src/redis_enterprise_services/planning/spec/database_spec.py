@@ -1,5 +1,5 @@
 import re
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
@@ -71,5 +71,5 @@ class DatabaseSpec(BaseModel):
         "limited to this database. Each name once.",
     )
 
-    def with_database(self, *, database: NewDatabase) -> DatabaseSpec:
+    def with_database(self, *, database: NewDatabase) -> Self:
         return self.model_copy(update={"database": database})

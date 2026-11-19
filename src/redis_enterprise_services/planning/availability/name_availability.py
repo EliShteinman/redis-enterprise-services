@@ -1,8 +1,10 @@
 import logging
 
 from redis_enterprise_services.cluster.cluster_target_resolver import ClusterTargetResolver
+from redis_enterprise_services.cluster.error_cluster_url import with_cluster_url
 from redis_enterprise_services.cluster.models import ClusterTarget
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
 from redis_enterprise_services.planning.availability.lookups.name_lookups_by_kind import NameLookupsByKind
 from redis_enterprise_services.planning.availability.requested_name import RequestedName
@@ -36,9 +38,14 @@ class NameAvailability:
         self, *, cluster: ConfiguredCluster, by_kind: dict[NameKind, set[str]]
     ) -> list[TakenName]:
         target: ClusterTarget = self._target_resolver.target_for(address=address_of(cluster=cluster))
-        return taken_names(
-            cluster_fqdn=cluster.fqdn, existing_by_kind=self._existing_by_kind(target=target, by_kind=by_kind)
-        )
+        try:
+            existing_by_kind: dict[NameKind, set[str]] = self._existing_by_kind(
+                target=target, by_kind=by_kind
+            )
+        except RedisEnterpriseServicesError as error:
+            with_cluster_url(error=error, cluster_url=target.api_url)
+            raise
+        return taken_names(cluster_fqdn=cluster.fqdn, existing_by_kind=existing_by_kind)
 
     def _existing_by_kind(
         self, *, target: ClusterTarget, by_kind: dict[NameKind, set[str]]

@@ -16,6 +16,7 @@ from redis_enterprise_services.databases.new_database import (
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.spec.database_defaults import (
     DATA_PERSISTENCE_FIELD,
+    crdb_settings_on_cluster,
     merged_default_values,
     override_values_on_cluster,
     with_persistence_settings_of_its_mode,
@@ -35,6 +36,8 @@ def reject_invalid_defaults_on_any_cluster(
         reject_invalid_default_values_of_kind(defaults=defaults, kind=kind)
         for cluster in clusters:
             reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
+    for cluster in clusters:
+        crdb_settings_on_cluster(settings=settings, cluster=cluster, requested_values={})
 
 
 def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: DatabaseKind) -> None:

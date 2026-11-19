@@ -8,8 +8,10 @@ from redis_enterprise_services.config.defaults.database_defaults_settings import
     DatabaseKind,
     DatabaseKindDefaults,
 )
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbCreationSettings
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
 from redis_enterprise_services.exceptions.configuration import ConfigurationError
+from redis_enterprise_services.planning.spec.crdb_spec import CrdbSpec
 from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
@@ -49,6 +51,13 @@ class DatabaseDefaults:
                 f"{cluster.fqdn} is not valid: {issues_text(error=error)}"
             ) from error
 
+    def crdb_settings(
+        self, *, cluster: ConfiguredCluster, requested: CrdbSpec | None
+    ) -> CrdbCreationSettings:
+        return crdb_settings_on_cluster(
+            settings=self._settings, cluster=cluster, requested_values=values_sent_in(requested=requested)
+        )
+
 
 def merged_default_values(
     *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
@@ -75,6 +84,24 @@ def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind
         for level in override_levels_on_cluster(cluster=cluster, kind=kind)
         for name, value in typed_level_values(values=level).items()
     }
+
+
+def values_sent_in(*, requested: CrdbSpec | None) -> dict[str, JsonValue]:
+    return {} if requested is None else requested.model_dump(mode="json", exclude_none=True)
+
+
+def crdb_settings_on_cluster(
+    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster, requested_values: dict[str, JsonValue]
+) -> CrdbCreationSettings:
+    try:
+        return CrdbCreationSettings.model_validate(
+            obj={**settings.active_active.crdb.model_dump(), **cluster.crdb_overrides, **requested_values}
+        )
+    except ValidationError as error:
+        raise ConfigurationError(
+            message=f"the request together with the database_defaults.active_active.crdb values of cluster "
+            f"{cluster.fqdn} is not valid: {issues_text(error=error)}"
+        ) from error
 
 
 def with_persistence_settings_of_its_mode(
