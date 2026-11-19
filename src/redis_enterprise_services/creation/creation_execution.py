@@ -3,7 +3,7 @@ from collections.abc import Callable
 from functools import partial
 
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
-from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.planning.creation_saga_planning import CreationSagaPlanning
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.saga import UnreadableSagaRecordError
 from redis_enterprise_services.operations.errors.public_error import PublicError
@@ -12,8 +12,6 @@ from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
-from redis_enterprise_services.planning.availability.creation_names_check import CreationNamesCheck
-from redis_enterprise_services.planning.single_site_creation_planner import SingleSiteCreationPlanner
 from redis_enterprise_services.saga.contract.saga_record import SagaRecord, SagaStatus
 from redis_enterprise_services.saga.contract.saga_record_store import SagaRecordReader
 from redis_enterprise_services.saga.engine.saga_executor import SagaExecutor
@@ -23,36 +21,35 @@ logger: logging.Logger = logging.getLogger(name=__name__)
 UNREADABLE_REMAINING_RESOURCES: None = None
 
 
-class CreationExecution:
+class CreationExecution[TPrepared]:
     def __init__(
         self,
         *,
-        names_check: CreationNamesCheck,
-        planner: SingleSiteCreationPlanner,
+        saga_planning: CreationSagaPlanning[TPrepared],
         saga_executor: SagaExecutor,
-        outcome_translator: CreationOutcomeTranslator,
+        outcome_translator: CreationOutcomeTranslator[TPrepared],
         public_errors: PublicErrors,
         saga_record_reader: SagaRecordReader,
         operation_store: OperationStore,
     ) -> None:
-        self._names_check: CreationNamesCheck = names_check
-        self._planner: SingleSiteCreationPlanner = planner
+        self._saga_planning: CreationSagaPlanning[TPrepared] = saga_planning
         self._saga_executor: SagaExecutor = saga_executor
-        self._outcome_translator: CreationOutcomeTranslator = outcome_translator
+        self._outcome_translator: CreationOutcomeTranslator[TPrepared] = outcome_translator
         self._public_errors: PublicErrors = public_errors
         self._saga_record_reader: SagaRecordReader = saga_record_reader
         self._operation_store: OperationStore = operation_store
 
-    def run_and_save(self, *, trace_id: str, prepared_creation: PreparedCreation) -> Operation:
+    def run_and_save(self, *, trace_id: str, prepared_creation: TPrepared) -> Operation:
         operation: Operation = self._run_saga_and_translate_outcome(
             trace_id=trace_id, prepared_creation=prepared_creation
         )
         self._operation_store.save(operation=operation)
         return operation
 
-    def _run_saga_and_translate_outcome(
-        self, *, trace_id: str, prepared_creation: PreparedCreation
-    ) -> Operation:
+    def _run_saga_and_translate_outcome(self, *, trace_id: str, prepared_creation: TPrepared) -> Operation:
+        fallback_cluster_url: str = self._saga_planning.fallback_cluster_url(
+            prepared_creation=prepared_creation
+        )
         try:
             record: SagaRecord = self._run_saga(trace_id=trace_id, prepared_creation=prepared_creation)
         except RedisEnterpriseServicesError as error:
@@ -63,10 +60,10 @@ class CreationExecution:
                 error_if_not_started=partial(
                     self._public_errors.for_rejection,
                     error=error,
-                    fallback_cluster_url=prepared_creation.cluster.api_url,
+                    fallback_cluster_url=fallback_cluster_url,
                 ),
                 interruption_error=self._public_errors.from_error(
-                    error=error, fallback_cluster_url=prepared_creation.cluster.api_url
+                    error=error, fallback_cluster_url=fallback_cluster_url
                 ),
             )
         except Exception as error:
@@ -86,21 +83,20 @@ class CreationExecution:
             interruption_error=self._public_errors.internal_error(),
         )
 
-    def _run_saga(self, *, trace_id: str, prepared_creation: PreparedCreation) -> SagaRecord:
+    def _run_saga(self, *, trace_id: str, prepared_creation: TPrepared) -> SagaRecord:
         return self._saga_executor.run(
             saga_id=trace_id,
-            plan=self._planner.plan(cluster=prepared_creation.cluster, spec=prepared_creation.spec),
-            check_before_start=partial(self._ensure_names_free, prepared_creation=prepared_creation),
+            plan=self._saga_planning.plan(trace_id=trace_id, prepared_creation=prepared_creation),
+            check_before_start=partial(
+                self._saga_planning.ensure_names_free, prepared_creation=prepared_creation
+            ),
         )
-
-    def _ensure_names_free(self, *, prepared_creation: PreparedCreation) -> None:
-        self._names_check.ensure_free(cluster=prepared_creation.cluster, spec=prepared_creation.spec)
 
     def _operation_after_saga_error(
         self,
         *,
         trace_id: str,
-        prepared_creation: PreparedCreation,
+        prepared_creation: TPrepared,
         saga_error: Exception,
         error_if_not_started: Callable[[], PublicError],
         interruption_error: PublicError,
@@ -127,7 +123,7 @@ class CreationExecution:
         self,
         *,
         trace_id: str,
-        prepared_creation: PreparedCreation,
+        prepared_creation: TPrepared,
         record: SagaRecord,
         interruption_error: PublicError,
     ) -> Operation:
@@ -153,7 +149,7 @@ class CreationExecution:
             )
 
     def _remaining_resources_if_readable(
-        self, *, trace_id: str, prepared_creation: PreparedCreation, record: SagaRecord
+        self, *, trace_id: str, prepared_creation: TPrepared, record: SagaRecord
     ) -> list[RemainingResource] | None:
         try:
             return self._outcome_translator.remaining_resources(

@@ -12,7 +12,11 @@ from redis_enterprise_services.composition.cluster.cluster_repositories import (
     build_cluster_repositories,
 )
 from redis_enterprise_services.composition.cluster.cluster_steps import ClusterSteps, build_cluster_steps
-from redis_enterprise_services.composition.cluster.cluster_waiters import build_cluster_waiters
+from redis_enterprise_services.composition.cluster.cluster_waiters import (
+    ClusterWaiters,
+    build_cluster_waiters,
+)
+from redis_enterprise_services.composition.cluster.crdb_steps import CrdbSteps, build_crdb_steps
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
 from redis_enterprise_services.config.service.edge_settings import EdgeSettings
@@ -39,23 +43,33 @@ class ClusterWiring:
             acl=settings.acl,
             role=settings.role,
             user=settings.user,
+            crdb=settings.crdb,
             clusters=clusters,
             cluster_api_caller=cluster_api_caller,
+        )
+        waiters: ClusterWaiters = build_cluster_waiters(
+            database=settings.database,
+            action=settings.action,
+            crdb_task=settings.crdb.task,
+            status_field=settings.cluster_api.fields.status,
+            cluster_api_caller=cluster_api_caller,
+            read_again_polling=ReadAgainPolling(
+                deadline_polling=deadline_polling,
+                transient_error_codes=settings.cluster_api.transient_error_codes,
+            ),
+            database_fields=self.repositories.database_fields,
         )
         self.steps: ClusterSteps = build_cluster_steps(
             database=settings.database,
             repositories=self.repositories,
-            waiters=build_cluster_waiters(
-                database=settings.database,
-                action=settings.action,
-                status_field=settings.cluster_api.fields.status,
-                cluster_api_caller=cluster_api_caller,
-                read_again_polling=ReadAgainPolling(
-                    deadline_polling=deadline_polling,
-                    transient_error_codes=settings.cluster_api.transient_error_codes,
-                ),
-                database_fields=self.repositories.database_fields,
-            ),
+            waiters=waiters,
+            target_resolver=self.target_resolver,
+        )
+        self.crdb_steps: CrdbSteps = build_crdb_steps(
+            crdb=settings.crdb,
+            database=settings.database,
+            repository=self.repositories.crdb,
+            waiters=waiters,
             target_resolver=self.target_resolver,
         )
 

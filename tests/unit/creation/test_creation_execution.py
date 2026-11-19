@@ -11,7 +11,11 @@ from redis_enterprise_services.config.service.operation_settings import Operatio
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.creation.creation_execution import CreationExecution
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
+from redis_enterprise_services.creation.planning.single_site_creation_saga_planning import (
+    SingleSiteCreationSagaPlanning,
+)
 from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.results.single_site_record_reader import SingleSiteRecordReader
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
 from redis_enterprise_services.exceptions.planning import NameTakenError
@@ -140,19 +144,23 @@ class ExecutionHarness:
         self.planner: MagicMock = create_autospec(spec=SingleSiteCreationPlanner, instance=True)
         self.saga_record_reader: MagicMock = create_autospec(spec=SagaRecordReader, instance=True)
         self.saga_record_reader.find.return_value = None
-        self.execution: CreationExecution = CreationExecution(
-            names_check=CreationNamesCheck(
-                name_check_scope=ChosenClusterScope(),
-                name_availability=self.name_availability,
-                creation_naming=create_autospec(spec=CreationNaming, instance=True),
+        self.execution: CreationExecution[PreparedCreation] = CreationExecution(
+            saga_planning=SingleSiteCreationSagaPlanning(
+                names_check=CreationNamesCheck(
+                    name_check_scope=ChosenClusterScope(),
+                    name_availability=self.name_availability,
+                    creation_naming=create_autospec(spec=CreationNaming, instance=True),
+                ),
+                planner=self.planner,
             ),
-            planner=self.planner,
             saga_executor=self.saga_executor,
             outcome_translator=CreationOutcomeTranslator(
-                resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+                record_reader=SingleSiteRecordReader(
+                    resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+                    database_settings=settings.database,
+                    cluster_fields=settings.cluster_api.fields,
+                ),
                 public_errors=PUBLIC_ERRORS,
-                database_settings=settings.database,
-                cluster_fields=settings.cluster_api.fields,
             ),
             public_errors=PUBLIC_ERRORS,
             saga_record_reader=self.saga_record_reader,

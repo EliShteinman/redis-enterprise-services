@@ -6,6 +6,7 @@ from redis_enterprise_services.config.clusters.cluster_inventory import Configur
 from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.config.service.operation_settings import OperationSettings
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.creation.crdb_creation import CrdbCreation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
 from redis_enterprise_services.operations.operation_store import OperationStore
@@ -34,7 +35,7 @@ class AppWiring:
             public_errors=self.public_errors,
         )
         self.operation_store: OperationStore = self._state_wiring.operation_store
-        self.database_creation: DatabaseCreation = CreationWiring(
+        creation_wiring: CreationWiring = CreationWiring(
             settings=settings,
             clusters=clusters,
             cluster_wiring=self._cluster_wiring,
@@ -42,7 +43,9 @@ class AppWiring:
             background_wiring=self._background_wiring,
             public_errors=self.public_errors,
             sleeper=sleeper,
-        ).database_creation
+        )
+        self.database_creation: DatabaseCreation = creation_wiring.database_creation
+        self.crdb_creation: CrdbCreation = creation_wiring.crdb_creation
 
     def start(self) -> None:
         self._background_wiring.start()

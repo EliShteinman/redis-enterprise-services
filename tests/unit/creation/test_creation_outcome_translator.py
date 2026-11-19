@@ -10,6 +10,7 @@ from redis_enterprise_services.config.service.operation_settings import Operatio
 from redis_enterprise_services.config.settings import Settings, load_settings
 from redis_enterprise_services.creation.creation_outcome_translator import CreationOutcomeTranslator
 from redis_enterprise_services.creation.preparation.prepared_creation import PreparedCreation
+from redis_enterprise_services.creation.results.single_site_record_reader import SingleSiteRecordReader
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.operations.errors.public_error import PublicError
 from redis_enterprise_services.operations.errors.public_errors import PublicErrors
@@ -37,12 +38,14 @@ USER_RESOURCES: UserResourcesSettings = UserResourcesSettings(
 
 
 @pytest.fixture
-def translator(config_dir: Path) -> CreationOutcomeTranslator:
+def translator(config_dir: Path) -> CreationOutcomeTranslator[PreparedCreation]:
     settings: Settings = load_settings(config_dir=config_dir)
     return CreationOutcomeTranslator(
-        resource_naming=UserResourceNaming(settings=USER_RESOURCES),
-        database_settings=settings.database,
-        cluster_fields=settings.cluster_api.fields,
+        record_reader=SingleSiteRecordReader(
+            resource_naming=UserResourceNaming(settings=USER_RESOURCES),
+            database_settings=settings.database,
+            cluster_fields=settings.cluster_api.fields,
+        ),
         public_errors=PublicErrors(
             settings=OperationSettings(
                 public_code_by_internal_code={
@@ -108,7 +111,11 @@ def step_record(
 
 
 def translated_operation(
-    *, translator: CreationOutcomeTranslator, status: SagaStatus, steps: list[StepRecord], stopped_at: str
+    *,
+    translator: CreationOutcomeTranslator[PreparedCreation],
+    status: SagaStatus,
+    steps: list[StepRecord],
+    stopped_at: str,
 ) -> Operation:
     return translator.operation_from_ended_record(
         trace_id="trace-1",
@@ -119,7 +126,7 @@ def translated_operation(
 
 
 def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopped_it(
-    translator: CreationOutcomeTranslator,
+    translator: CreationOutcomeTranslator[PreparedCreation],
 ) -> None:
     operation: Operation = translated_operation(
         translator=translator,
@@ -144,7 +151,7 @@ def test_a_rolled_back_creation_reports_the_cluster_error_of_the_step_that_stopp
 
 
 def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back(
-    translator: CreationOutcomeTranslator,
+    translator: CreationOutcomeTranslator[PreparedCreation],
 ) -> None:
     operation: Operation = translated_operation(
         translator=translator,
@@ -178,7 +185,9 @@ def test_a_creation_that_needs_intervention_lists_what_was_not_rolled_back(
     ]
 
 
-def test_the_permissions_left_behind_report_the_database_uid(translator: CreationOutcomeTranslator) -> None:
+def test_the_permissions_left_behind_report_the_database_uid(
+    translator: CreationOutcomeTranslator[PreparedCreation],
+) -> None:
     operation: Operation = translated_operation(
         translator=translator,
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,
@@ -195,7 +204,9 @@ def test_the_permissions_left_behind_report_the_database_uid(translator: Creatio
     assert operation.not_rolled_back is not None and operation.not_rolled_back[-1].uid == 7
 
 
-def test_an_interrupted_creation_reports_an_internal_error(translator: CreationOutcomeTranslator) -> None:
+def test_an_interrupted_creation_reports_an_internal_error(
+    translator: CreationOutcomeTranslator[PreparedCreation],
+) -> None:
     operation: Operation = translated_operation(
         translator=translator,
         status=SagaStatus.REQUIRES_MANUAL_INTERVENTION,

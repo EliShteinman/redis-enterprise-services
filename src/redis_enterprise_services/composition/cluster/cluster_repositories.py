@@ -2,9 +2,11 @@ from redis_enterprise_services.acls.models import NewAcl
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbSettings
 from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.config.redis_api.resource_settings import ResourceSettings
 from redis_enterprise_services.config.redis_api.role_settings import RoleSettings
+from redis_enterprise_services.crdbs.rest_crdb_repository import RestCrdbRepository
 from redis_enterprise_services.databases.database_creation_body_builder import DatabaseCreationBodyBuilder
 from redis_enterprise_services.databases.new_database import NewDatabase
 from redis_enterprise_services.databases.rest_database_fields_repository import RestDatabaseFieldsRepository
@@ -28,8 +30,12 @@ class ClusterRepositories:
         role: EndpointResourceRepository[NewRole],
         user: EndpointResourceRepository[NewUser],
         database_fields: RestDatabaseFieldsRepository,
+        database_body_builder: DatabaseCreationBodyBuilder,
+        crdb: RestCrdbRepository,
     ) -> None:
         self.database: EndpointResourceRepository[NewDatabase] = database
+        self.database_body_builder: DatabaseCreationBodyBuilder = database_body_builder
+        self.crdb: RestCrdbRepository = crdb
         self.database_fields: RestDatabaseFieldsRepository = database_fields
         self.acl: EndpointResourceRepository[NewAcl] = acl
         self.role: EndpointResourceRepository[NewRole] = role
@@ -43,15 +49,23 @@ def build_cluster_repositories(
     acl: ResourceSettings,
     role: RoleSettings,
     user: ResourceSettings,
+    crdb: CrdbSettings,
     clusters: list[ConfiguredCluster],
     cluster_api_caller: EdgeClusterApiCaller,
 ) -> ClusterRepositories:
+    database_body_builder: DatabaseCreationBodyBuilder = build_database_body_builder(
+        database=database, clusters=clusters
+    )
     return ClusterRepositories(
         database=rest_repository(
             cluster_api_caller=cluster_api_caller,
             cluster_api=cluster_api,
             resource=database,
-            body_builder=build_database_body_builder(database=database, clusters=clusters),
+            body_builder=database_body_builder,
+        ),
+        database_body_builder=database_body_builder,
+        crdb=RestCrdbRepository(
+            cluster_api_caller=cluster_api_caller, database_body_builder=database_body_builder, settings=crdb
         ),
         acl=rest_repository(
             cluster_api_caller=cluster_api_caller,

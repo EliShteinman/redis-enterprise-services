@@ -1,24 +1,35 @@
 from redis_enterprise_services.cluster.edge_cluster_api_caller import EdgeClusterApiCaller
+from redis_enterprise_services.cluster.waiting.crdb_task_waiter import CrdbTaskWaiter
 from redis_enterprise_services.cluster.waiting.polling_action_waiter import PollingActionWaiter
 from redis_enterprise_services.cluster.waiting.read_again_polling import ReadAgainPolling
 from redis_enterprise_services.cluster.waiting.status_polling import StatusPolling
 from redis_enterprise_services.config.redis_api.action_settings import ActionSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbTaskSettings
 from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.databases.polling_database_waiter import PollingDatabaseWaiter
 from redis_enterprise_services.databases.rest_database_fields_repository import RestDatabaseFieldsRepository
 from redis_enterprise_services.resources.action_completion_waiter import ActionCompletionWaiter
+from redis_enterprise_services.steps.crdb.crdb_task_tracker import CrdbTaskTracker
 
 
 class ClusterWaiters:
-    def __init__(self, *, database: PollingDatabaseWaiter, action_completion: ActionCompletionWaiter) -> None:
+    def __init__(
+        self,
+        *,
+        database: PollingDatabaseWaiter,
+        action_completion: ActionCompletionWaiter,
+        crdb_task_tracker: CrdbTaskTracker,
+    ) -> None:
         self.database: PollingDatabaseWaiter = database
         self.action_completion: ActionCompletionWaiter = action_completion
+        self.crdb_task_tracker: CrdbTaskTracker = crdb_task_tracker
 
 
 def build_cluster_waiters(
     *,
     database: DatabaseSettings,
     action: ActionSettings,
+    crdb_task: CrdbTaskSettings,
     status_field: str,
     cluster_api_caller: EdgeClusterApiCaller,
     read_again_polling: ReadAgainPolling,
@@ -38,5 +49,12 @@ def build_cluster_waiters(
             action_waiter=PollingActionWaiter(
                 cluster_api_caller=cluster_api_caller, status_polling=status_polling, settings=action
             )
+        ),
+        crdb_task_tracker=CrdbTaskTracker(
+            task_waiter=CrdbTaskWaiter(
+                cluster_api_caller=cluster_api_caller, status_polling=status_polling, settings=crdb_task
+            ),
+            settings=crdb_task,
+            status_field=status_field,
         ),
     )
