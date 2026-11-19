@@ -44,3 +44,7 @@ def comparable_url(*, url: str) -> str:
         raise ValueError(f"a URL with scheme {scheme!r} and no port cannot be compared")
     port: int = DEFAULT_PORT_BY_SCHEME[scheme] if parts.port is None else parts.port
     return f"{scheme}://{(parts.hostname or '').lower()}:{port}{parts.path}"
+
+
+def is_same_url(*, url: str, other_url: str) -> bool:
+    return comparable_url(url=url) == comparable_url(url=other_url)
