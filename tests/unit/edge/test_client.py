@@ -1,0 +1,207 @@
+import io
+from pathlib import Path
+from unittest.mock import Mock, create_autospec
+
+import pytest
+import requests
+from pydantic import SecretStr
+from urllib3.connection import HTTPConnection
+from urllib3.connectionpool import ConnectionPool
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, NewConnectionError, ProtocolError, SSLError
+
+from redis_enterprise_services.cluster_access.cluster_credentials import ClusterCredentials
+from redis_enterprise_services.config.service.edge_settings import EdgeSettings
+from redis_enterprise_services.config.settings import load_settings
+from redis_enterprise_services.edge.client import EdgeClient
+from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
+from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
+from redis_enterprise_services.edge.response_reader import EdgeResponseReader
+from redis_enterprise_services.exceptions.base import RedisEnterpriseServicesError
+from redis_enterprise_services.exceptions.edge import (
+    EdgeConnectionFailedError,
+    EdgeError,
+    EdgeOutcomeUnknownError,
+    EdgeRejectedRequestError,
+    EdgeRejectedResponseError,
+    EdgeUnreachableError,
+)
+
+NETWORK: str = "local"
+POOL: ConnectionPool = create_autospec(spec=ConnectionPool, instance=True)
+CONNECTION: HTTPConnection = create_autospec(spec=HTTPConnection, instance=True)
+REQUEST: ClusterRequest = ClusterRequest(
+    method="GET",
+    url="https://cluster.local:9443/v1/bdbs/1",
+    credentials=ClusterCredentials(username="admin", password=SecretStr("secret")),
+)
+
+
+@pytest.fixture
+def settings(config_dir: Path) -> EdgeSettings:
+    return load_settings(config_dir=config_dir).edge
+
+
+def relay_response(*, status_code: int, headers: dict[str, str], body: bytes = b"{}") -> requests.Response:
+    response: requests.Response = requests.Response()
+    response.status_code = status_code
+    response.headers.update(headers)
+    response.raw = io.BytesIO(initial_bytes=body)
+    return response
+
+
+def session_answering(*, relay_outcome: requests.Response | requests.RequestException) -> Mock:
+    session: Mock = Mock(spec=requests.Session)
+    if isinstance(relay_outcome, requests.RequestException):
+        session.post.side_effect = relay_outcome
+    else:
+        session.post.return_value = relay_outcome
+    return session
+
+
+def edge_client(*, settings: EdgeSettings, session: requests.Session) -> EdgeClient:
+    return EdgeClient(
+        settings=settings,
+        session=session,
+        header_builder=EdgeHeaderBuilder(settings=settings),
+        response_reader=EdgeResponseReader(settings=settings),
+    )
+
+
+def send_through_relay_answering(
+    *, settings: EdgeSettings, relay_outcome: requests.Response | requests.RequestException
+) -> ClusterResponse:
+    return edge_client(settings=settings, session=session_answering(relay_outcome=relay_outcome)).send(
+        network=NETWORK, request=REQUEST
+    )
+
+
+@pytest.mark.parametrize(argnames="status_code", argvalues=[200, 404])
+def test_a_relay_response_without_edge_error_unwraps_to_the_cluster_response(
+    settings: EdgeSettings, status_code: int
+) -> None:
+    relay_response_value: requests.Response = relay_response(status_code=status_code, headers={})
+
+    assert (
+        send_through_relay_answering(settings=settings, relay_outcome=relay_response_value).status_code
+        == status_code
+    )
+
+
+@pytest.mark.parametrize(
+    argnames=("code", "expected"),
+    argvalues=[
+        ("invalid_request", EdgeRejectedRequestError),
+        ("unauthorized", EdgeRejectedRequestError),
+        ("connection_failed", EdgeConnectionFailedError),
+        ("timeout", EdgeOutcomeUnknownError),
+        ("response_rejected", EdgeRejectedResponseError),
+        ("internal_error", EdgeOutcomeUnknownError),
+    ],
+)
+def test_an_edge_error_code_maps_to_its_edge_error(
+    settings: EdgeSettings, code: str, expected: type[EdgeError]
+) -> None:
+    relay_response_value: requests.Response = relay_response(
+        status_code=502, headers={settings.headers.edge_error_code: code}
+    )
+
+    with pytest.raises(expected_exception=expected):
+        send_through_relay_answering(settings=settings, relay_outcome=relay_response_value)
+
+
+def test_a_body_that_is_not_json_without_an_edge_error_code_is_an_unknown_outcome(
+    settings: EdgeSettings,
+) -> None:
+    gateway_page: requests.Response = relay_response(
+        status_code=504, headers={}, body=b"<html>timeout</html>"
+    )
+
+    with pytest.raises(expected_exception=EdgeOutcomeUnknownError):
+        send_through_relay_answering(settings=settings, relay_outcome=gateway_page)
+
+
+def test_a_cluster_state_id_that_is_not_a_number_is_ignored(settings: EdgeSettings) -> None:
+    headers: dict[str, str] = {settings.headers.returned_cluster_state_id: "abc"}
+    relay_response_value: requests.Response = relay_response(status_code=200, headers=headers)
+
+    assert (
+        send_through_relay_answering(settings=settings, relay_outcome=relay_response_value).cluster_state_id
+        is None
+    )
+
+
+def test_a_relay_rejected_response_keeps_the_cluster_status(settings: EdgeSettings) -> None:
+    headers: dict[str, str] = {
+        settings.headers.edge_error_code: settings.error_codes.response_rejected,
+        settings.headers.cluster_status_code: "201",
+    }
+
+    with pytest.raises(expected_exception=EdgeRejectedResponseError) as rejected_response:
+        send_through_relay_answering(
+            settings=settings,
+            relay_outcome=relay_response(status_code=502, headers=headers),
+        )
+
+    assert rejected_response.value.cluster_status_code == 201
+
+
+@pytest.mark.parametrize(
+    argnames=("error", "expected"),
+    argvalues=[
+        (
+            requests.ConnectionError(
+                MaxRetryError(pool=POOL, url="/", reason=NewConnectionError(CONNECTION, "refused"))
+            ),
+            EdgeUnreachableError,
+        ),
+        (
+            requests.ConnectTimeout(
+                MaxRetryError(pool=POOL, url="/", reason=ConnectTimeoutError("timed out"))
+            ),
+            EdgeUnreachableError,
+        ),
+        (
+            requests.exceptions.SSLError(
+                MaxRetryError(pool=POOL, url="/", reason=SSLError("eof after sending"))
+            ),
+            EdgeOutcomeUnknownError,
+        ),
+        (requests.ConnectionError(ProtocolError("connection aborted")), EdgeOutcomeUnknownError),
+        (requests.ReadTimeout("read timed out"), EdgeOutcomeUnknownError),
+        (requests.exceptions.InvalidHeader("bad header value"), EdgeRejectedRequestError),
+    ],
+)
+def test_a_transport_failure_maps_to_unreachable_rejected_or_outcome_unknown(
+    settings: EdgeSettings,
+    error: requests.RequestException,
+    expected: type[RedisEnterpriseServicesError],
+) -> None:
+    with pytest.raises(expected_exception=expected):
+        send_through_relay_answering(settings=settings, relay_outcome=error)
+
+
+def test_every_call_goes_to_the_one_nginx_address_with_the_network_in_a_header(
+    settings: EdgeSettings,
+) -> None:
+    session: Mock = session_answering(relay_outcome=relay_response(status_code=200, headers={}))
+
+    edge_client(settings=settings, session=session).send(network=NETWORK, request=REQUEST)
+
+    [posted] = session.post.call_args_list
+    assert (posted.kwargs["url"], posted.kwargs["headers"].get(settings.headers.network)) == (
+        settings.url,
+        NETWORK,
+    )
+
+
+def test_the_relay_body_stays_out_of_the_error_message(settings: EdgeSettings) -> None:
+    rejected: requests.Response = relay_response(
+        status_code=502,
+        headers={settings.headers.edge_error_code: settings.error_codes.response_rejected},
+        body=b'{"error": "response_rejected", "reason": ["the-relay-explanation"]}',
+    )
+
+    with pytest.raises(expected_exception=EdgeRejectedResponseError) as error:
+        send_through_relay_answering(settings=settings, relay_outcome=rejected)
+
+    assert "the-relay-explanation" not in error.value.message

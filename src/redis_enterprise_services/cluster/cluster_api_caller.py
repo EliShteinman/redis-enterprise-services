@@ -1,0 +1,19 @@
+from typing import Protocol
+
+from pydantic import JsonValue
+
+from redis_enterprise_services.cluster.models import ClusterTarget, SuccessfulClusterResponse
+from redis_enterprise_services.cluster_access.http_method import HttpMethod
+
+
+class ClusterApiCaller(Protocol):
+    def send(
+        self,
+        *,
+        target: ClusterTarget,
+        method: HttpMethod,
+        path: str,
+        query_string: str | None = None,
+        body: JsonValue | None = None,
+        cluster_state_id: int | None = None,
+    ) -> SuccessfulClusterResponse: ...

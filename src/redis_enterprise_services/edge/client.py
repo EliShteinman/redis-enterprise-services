@@ -1,0 +1,53 @@
+import logging
+
+import requests
+
+from redis_enterprise_services.config.service.edge_settings import EdgeSettings
+from redis_enterprise_services.edge.encoding import encoded_json_body
+from redis_enterprise_services.edge.header_builder import EdgeHeaderBuilder
+from redis_enterprise_services.edge.models import ClusterRequest, ClusterResponse
+from redis_enterprise_services.edge.response_reader import EdgeResponseReader
+from redis_enterprise_services.edge.transport_errors import edge_error_for_transport_failure
+
+logger: logging.Logger = logging.getLogger(name=__name__)
+
+
+class EdgeClient:
+    def __init__(
+        self,
+        *,
+        settings: EdgeSettings,
+        session: requests.Session,
+        header_builder: EdgeHeaderBuilder,
+        response_reader: EdgeResponseReader,
+    ) -> None:
+        self._settings: EdgeSettings = settings
+        self._session: requests.Session = session
+        self._header_builder: EdgeHeaderBuilder = header_builder
+        self._response_reader: EdgeResponseReader = response_reader
+
+    def send(self, *, network: str, request: ClusterRequest) -> ClusterResponse:
+        request_line: str = f"{request.method} {request.url} through {network}"
+        logger.debug(msg=request_line)
+        relay_response: requests.Response = self._post_to_relay(
+            network=network,
+            headers=self._header_builder.build(request=request, network=network),
+            data=encoded_json_body(body=request.body),
+            request_line=request_line,
+        )
+        return self._response_reader.unwrap_cluster_response(relay_response=relay_response)
+
+    def _post_to_relay(
+        self, *, network: str, headers: dict[str, str], data: bytes | None, request_line: str
+    ) -> requests.Response:
+        try:
+            return self._session.post(
+                url=self._settings.url,
+                headers=headers,
+                data=data,
+                timeout=(self._settings.connect_timeout_seconds, self._settings.request_timeout_seconds),
+                allow_redirects=False,
+            )
+        except requests.RequestException as error:
+            logger.warning(msg=f"{request_line} failed: {error!r}")
+            raise edge_error_for_transport_failure(network=network, error=error) from error
