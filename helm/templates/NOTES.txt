@@ -1,0 +1,4 @@
+redis-enterprise-services is deployed as {{ include "res.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+Its address for the adapter:
+  oc --namespace {{ .Release.Namespace }} get route {{ include "res.fullname" . }} -o jsonpath='{.spec.host}'

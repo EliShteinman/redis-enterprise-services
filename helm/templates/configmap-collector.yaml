@@ -1,0 +1,75 @@
+{{- if .Values.collector.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "res.fullname" . }}-collector
+  labels:
+    {{- include "res.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    extensions:
+      file_storage:
+        directory: /var/lib/otelcol/file_storage
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 127.0.0.1:4318
+      file_log:
+        include:
+          - {{ .Values.mounts.logs }}/app.log
+        start_at: beginning
+        storage: file_storage
+        operators:
+          - type: json_parser
+            timestamp:
+              parse_from: attributes.timestamp
+              layout_type: gotime
+              layout: "2006-01-02T15:04:05.000-07:00"
+            severity:
+              parse_from: attributes.level
+          - type: trace_parser
+            trace_id:
+              parse_from: attributes.trace_id
+            span_id:
+              parse_from: attributes.span_id
+          - type: move
+            from: attributes.message
+            to: body
+    processors:
+      resource:
+        attributes:
+          - key: service.name
+            value: {{ .Chart.Name }}
+            action: upsert
+          - key: data_stream.dataset
+            value: {{ .Chart.Name | replace "-" "_" }}
+            action: upsert
+      batch: {}
+    exporters:
+      elasticsearch:
+        endpoints:
+          - ${env:ELASTIC_ENDPOINT}
+        user: ${env:ELASTIC_USERNAME}
+        password: ${env:ELASTIC_PASSWORD}
+        tls:
+          insecure_skip_verify: {{ .Values.collector.elasticsearch.insecureSkipVerify }}
+    service:
+      extensions: [file_storage]
+      telemetry:
+        metrics:
+          level: none
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [resource, batch]
+          exporters: [elasticsearch]
+        metrics:
+          receivers: [otlp]
+          processors: [resource, batch]
+          exporters: [elasticsearch]
+        logs:
+          receivers: [file_log]
+          processors: [resource, batch]
+          exporters: [elasticsearch]
+{{- end }}

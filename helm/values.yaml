@@ -1,0 +1,73 @@
+replicaCount: 1
+
+image:
+  registry: ""
+  repository: redis-enterprise-services
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+containerPort: 8080
+
+livenessPath: /health
+
+service:
+  port: 80
+
+route:
+  host: ""
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+edge:
+  url: ""
+
+files:
+  clusters.yaml: ""
+  defaults.yaml: defaults.yaml
+  service.yaml: service.yaml
+  redis_api.yaml: redis_api.yaml
+
+mounts:
+  config: /etc/redis-enterprise-services
+  logs: /app/logs
+
+logsSizeLimit: 512Mi
+
+terminationGracePeriodSeconds: 600
+
+config:
+  RES_LOG__LEVEL: INFO
+  RES_LOG__CONSOLE_FORMAT: json
+
+secret:
+  RES_STATE__URL: ""
+  RES_STATE__KEY_PREFIX: ""
+  ELASTIC_PASSWORD: ""
+
+collector:
+  enabled: false
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: "0.164.0"
+    pullPolicy: IfNotPresent
+  elasticsearch:
+    endpoint: ""
+    username: ""
+    insecureSkipVerify: false
+  stateSizeLimit: 64Mi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

@@ -50,10 +50,26 @@ curl localhost:8080/v1/operations/4bf92f3577b34da6a3ce929d0e0e4736 \
 Every command needs its own trace id: the same trace id again returns the existing operation (`200`) instead of
 starting a new one. The OpenAPI docs, with request examples, are at `/docs`.
 
+In a container, from the project root:
+
+```bash
+docker build -f docker/Dockerfile -t redis-enterprise-services .
+docker run -p 8080:8080 -e RES_STATE__URL -e RES_STATE__KEY_PREFIX \
+  -e RES_CONFIG_DIR=/etc/redis-enterprise-services \
+  -v "$PWD/helm/files:/etc/redis-enterprise-services:ro" redis-enterprise-services
+```
+
+The image runs `docker/entrypoint.py` as user `10001` in group `0`. No configuration file is built into it: it reads
+the four files from the directory in `RES_CONFIG_DIR`, so mount them there. `RES_CONFIG_DIR` has no default; without it
+the container stops at once with an error that names it. The two `RES_STATE__*` variables are taken here from the
+shell. With `RES_LOG__FILE__ENABLED=true` the service also writes a JSON log to `/app/logs/app.log`, the only
+directory in the image it can write to.
+
 ## Configuration
 
 Settings are in four files in `helm/files/`. The service reads them from the directory its caller passes; there is no
-default. `run_local.py` passes `helm/files`.
+default. `run_local.py` passes `helm/files`. The container passes the directory in `RES_CONFIG_DIR`, which the Helm
+chart sets to the directory it mounts the files into (`mounts.config`).
 
 | File | What | Changed when |
 |---|---|---|
@@ -124,6 +140,71 @@ Traces and metrics are sent over OTLP when `telemetry.export_enabled` is true, t
 Logs go to the console, as lines or JSON (`log.console_format`). With `log.file.enabled` they also go to a rotating
 file (`log.file`, JSON by default). Requests to `api.liveness_path` (`/health`) are left out of the logs below
 `log.quiet_kept_level` (WARNING), and out of the traces and metrics.
+
+## Deployment (Helm)
+
+The chart is in `helm/`. The service is installed once per environment and reaches every cluster through the proxy.
+
+- `helm/values.yaml` is the structure of the chart. The values that differ per environment are empty there and
+  required: an install without one of them fails and names it.
+- `helm/my-values.yaml` is a filled example of one environment (PREP), with a comment on every field. Copy it per
+  environment and fill it in.
+
+```bash
+helm upgrade --install redis-enterprise-services helm -f helm/my-values.yaml -f <secrets>.yaml
+```
+
+What to fill:
+
+| Value | What |
+|---|---|
+| `image.registry` | the registry host the images are pulled from, with its repository path when there is one; the image is `<image.registry>/<image.repository>:<image.tag>` |
+| `image.tag` | the image tag; empty means the `appVersion` of `Chart.yaml` |
+| `imagePullSecrets` | the pull secrets of the namespace that open the registry (`- name: <secret>`); `[]` when none is needed |
+| `route.host` | the full host name the adapter calls the service at |
+| `edge.url` | the URL of the proxy; the service gets it as `RES_EDGE__URL` |
+| `files` | for each of the four files the service reads, the name of the file in `helm/files/` that is mounted under it |
+| `secret.RES_STATE__URL`, `secret.RES_STATE__KEY_PREFIX` | the access to the Redis that keeps the saga state |
+| `secret.ELASTIC_PASSWORD` | the password of the collector's Elasticsearch user, required when `collector.enabled` is true |
+| `collector.enabled`, `collector.elasticsearch` | the sidecar and the Elasticsearch it sends to (endpoint, username) |
+| `config` | non-secret `RES_*` overrides for the environment |
+
+- Every key of `secret` goes into the Secret of the release. Keep the real values out of git: in a second values file
+  that is not committed, as above, or with `--set-string`.
+- The routing header names (`x-network` and the others) are fixed in `helm/files/service.yaml`; they are not values.
+- The four files are mounted into one directory, `mounts.config` (`/etc/redis-enterprise-services`), and the chart
+  sets `RES_CONFIG_DIR` to it. `defaults.yaml`, `service.yaml` and `redis_api.yaml` come from a ConfigMap. The file
+  mapped to `clusters.yaml` holds the cluster passwords, so it comes from a Secret (`<release>-clusters`).
+
+To add the files of an environment, put them in `helm/files/` under their own names and map them in the values file
+of that environment:
+
+```yaml
+files:
+  clusters.yaml: prod-clusters.yaml
+  defaults.yaml: defaults.yaml
+  service.yaml: service.yaml
+  redis_api.yaml: redis_api.yaml
+```
+
+`helm/files/clusters.example.yaml` is the explained example with placeholders; a filled clusters file holds passwords and
+is never committed. A name that is not a file in `helm/files/` fails the install. Adding a cluster is an edit of the
+environment's clusters file and a `helm upgrade`, with no new image.
+
+- `terminationGracePeriodSeconds` (600) is a ceiling, the most a rollout waits. On stop the service waits only for the
+  operations that are running and exits as soon as they finish, at once when none is. An operation still running after
+  600 seconds is cut off.
+- `collector.enabled: true` adds an OpenTelemetry Collector sidecar that sends the JSON log file, the traces and the
+  metrics to Elasticsearch (`collector.elasticsearch`: endpoint, username; `secret.ELASTIC_PASSWORD`). It runs as a
+  native sidecar (an init container with `restartPolicy: Always`, Kubernetes 1.29 or later): it starts before the
+  service and stops after it, so it keeps sending the logs while the service waits for its operations. The chart then
+  turns on the log file and the telemetry export of the service by itself. Everything from this service goes to its
+  own data streams:
+  `logs-redis_enterprise_services.otel-default`, `traces-redis_enterprise_services.otel-default` and
+  `metrics-redis_enterprise_services.otel-default`. The Elastic user needs to write to them.
+  The collector keeps its read position in the log file on a volume limited to `collector.stateSizeLimit` (64Mi).
+- The liveness and readiness probes call `livenessPath` (`/health`, the `api.liveness_path` of `service.yaml`). The
+  chart passes the same value to the service as `RES_API__LIVENESS_PATH`, so the two cannot differ.
 
 ## Tests, lint and type check
 

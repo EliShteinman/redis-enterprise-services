@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "res.fullname" . }}-files
+  labels:
+    {{- include "res.labels" . | nindent 4 }}
+data:
+  {{- range $name, $_ := .Values.files }}
+  {{- if ne $name (include "res.clustersFile" $) }}
+  {{ $name }}: |
+    {{- include "res.mappedFile" (dict "root" $ "name" $name) | nindent 4 }}
+  {{- end }}
+  {{- end }}

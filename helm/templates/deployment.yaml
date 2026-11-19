@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "res.fullname" . }}
+  labels:
+    {{- include "res.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "res.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/files: {{ include (print $.Template.BasePath "/configmap-files.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/clusters: {{ include (print $.Template.BasePath "/secret-clusters.yaml") . | sha256sum }}
+        checksum/collector: {{ include (print $.Template.BasePath "/configmap-collector.yaml") . | sha256sum }}
+      labels:
+        {{- include "res.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.collector.enabled }}
+      initContainers:
+        - name: collector
+          image: {{ include "res.collectorImage" . | quote }}
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          restartPolicy: Always
+          args: ["--config=/etc/otelcol/config.yaml"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: ELASTIC_ENDPOINT
+              value: {{ required "collector.elasticsearch.endpoint is required when collector.enabled is true" .Values.collector.elasticsearch.endpoint | quote }}
+            - name: ELASTIC_USERNAME
+              value: {{ required "collector.elasticsearch.username is required when collector.enabled is true" .Values.collector.elasticsearch.username | quote }}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "res.fullname" . }}
+                  key: ELASTIC_PASSWORD
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: collector
+              mountPath: /etc/otelcol
+              readOnly: true
+            - name: collector-state
+              mountPath: /var/lib/otelcol/file_storage
+            - name: logs
+              mountPath: {{ .Values.mounts.logs }}
+              readOnly: true
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "res.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "res.fullname" . }}
+          env:
+            {{- range $key, $value := .Values.secret }}
+            {{- if and $value (hasPrefix "RES_" $key) }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "res.fullname" $ }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            - name: RES_EDGE__URL
+              value: {{ required "edge.url is required: the URL of the proxy that every call to a cluster goes through" .Values.edge.url | quote }}
+            - name: RES_CONFIG_DIR
+              value: {{ .Values.mounts.config | quote }}
+            - name: RES_SERVER__PORT
+              value: {{ .Values.containerPort | quote }}
+            - name: RES_API__LIVENESS_PATH
+              value: {{ .Values.livenessPath | quote }}
+            - name: RES_LOG__FILE__PATH
+              value: {{ printf "%s/app.log" .Values.mounts.logs | quote }}
+          {{- if .Values.collector.enabled }}
+            - name: RES_LOG__FILE__ENABLED
+              value: "true"
+            - name: RES_LOG__FILE__FORMAT
+              value: json
+            - name: RES_TELEMETRY__EXPORT_ENABLED
+              value: "true"
+            - name: RES_TELEMETRY__OTLP_ENDPOINT
+              value: http://127.0.0.1:4318
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessPath }}
+              port: http
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.livenessPath }}
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.mounts.config }}
+              readOnly: true
+            - name: logs
+              mountPath: {{ .Values.mounts.logs }}
+      volumes:
+        - name: config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "res.fullname" . }}-files
+              - secret:
+                  name: {{ include "res.fullname" . }}-clusters
+        - name: logs
+          emptyDir:
+            sizeLimit: {{ .Values.logsSizeLimit }}
+        {{- if .Values.collector.enabled }}
+        - name: collector
+          configMap:
+            name: {{ include "res.fullname" . }}-collector
+        - name: collector-state
+          emptyDir:
+            sizeLimit: {{ .Values.collector.stateSizeLimit }}
+        {{- end }}

@@ -1,0 +1,59 @@
+# A filled example of one environment (PREP): every value that changes between environments.
+# Copy it per environment, fill it in, and install with:
+#   helm upgrade --install <release> helm -f helm/my-values.yaml
+# Keep the real values of `secret` out of git (a second -f file or --set-string).
+
+image:
+  # The registry host the images are pulled from, with its repository path when there is one.
+  registry: artifactory.prep.example.com
+  # The image tag to deploy. Left empty, the appVersion of Chart.yaml is used.
+  tag: "0.1.0"
+
+# The pull secrets of the namespace that open the registry. Leave [] when the registry needs none.
+imagePullSecrets:
+  - name: artifactory-pull
+
+route:
+  # The full host name the adapter calls the service at.
+  host: redis-enterprise-services.apps.prep.example.com
+
+edge:
+  # The URL of the proxy that every call to a cluster goes through.
+  url: https://proxy.prep.example.com/
+
+# The file in helm/files/ mounted under each name the service reads.
+files:
+  # The clusters of this environment with their passwords, for example prep-clusters.yaml.
+  # clusters.example.yaml is the explained example with FILL-IN placeholders.
+  clusters.yaml: clusters.example.yaml
+  # The database and user defaults.
+  defaults.yaml: defaults.yaml
+  # How the service runs.
+  service.yaml: service.yaml
+  # How the Redis Enterprise REST API is called.
+  redis_api.yaml: redis_api.yaml
+
+# Non-secret RES_* overrides of this environment.
+config:
+  # DEBUG, INFO, WARNING, ERROR or CRITICAL.
+  RES_LOG__LEVEL: INFO
+
+# Every key here goes into the Secret of the release.
+secret:
+  # The connection string of the Redis that keeps the saga state, with its user and password.
+  RES_STATE__URL: rediss://FILL-IN-USER:FILL-IN-PASSWORD@state.prep.example.com:6379
+  # The key prefix the Redis user of the service may write under.
+  RES_STATE__KEY_PREFIX: "res:"
+  # The password of collector.elasticsearch.username. Needed only when collector.enabled is true.
+  ELASTIC_PASSWORD: FILL-IN-ELASTIC-PASSWORD
+
+collector:
+  # true adds the sidecar that sends the logs, traces and metrics to Elasticsearch.
+  enabled: true
+  elasticsearch:
+    # The URL of the Elasticsearch of this environment.
+    endpoint: https://elastic.prep.example.com:9200
+    # The Elasticsearch user that may write to the data streams of the service.
+    username: redis-enterprise-services
+    # true only when the Elasticsearch certificate cannot be verified.
+    insecureSkipVerify: false

@@ -1,0 +1,433 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "redis-enterprise-services values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "replicaCount",
+    "image",
+    "imagePullSecrets",
+    "containerPort",
+    "livenessPath",
+    "service",
+    "route",
+    "edge",
+    "files",
+    "mounts",
+    "logsSizeLimit",
+    "terminationGracePeriodSeconds",
+    "config",
+    "secret",
+    "collector",
+    "resources"
+  ],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry",
+        "repository",
+        "tag",
+        "pullPolicy"
+      ],
+      "properties": {
+        "registry": {
+          "$ref": "#/definitions/registry"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+([._/:-][a-z0-9]+)*$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "containerPort": {
+      "$ref": "#/definitions/port"
+    },
+    "livenessPath": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "port"
+      ],
+      "properties": {
+        "port": {
+          "$ref": "#/definitions/port"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "tls"
+      ],
+      "properties": {
+        "host": {
+          "$ref": "#/definitions/dnsSubdomain"
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "termination",
+            "insecureEdgeTerminationPolicy"
+          ],
+          "properties": {
+            "termination": {
+              "type": "string",
+              "enum": [
+                "edge"
+              ]
+            },
+            "insecureEdgeTerminationPolicy": {
+              "type": "string",
+              "enum": [
+                "None",
+                "Allow",
+                "Redirect"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "mounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config",
+        "logs"
+      ],
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/absolutePath"
+        },
+        "logs": {
+          "$ref": "#/definitions/absolutePath"
+        }
+      }
+    },
+    "logsSizeLimit": {
+      "$ref": "#/definitions/quantity"
+    },
+    "terminationGracePeriodSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "config": {
+      "$ref": "#/definitions/environment"
+    },
+    "secret": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "RES_STATE__URL",
+        "RES_STATE__KEY_PREFIX"
+      ],
+      "patternProperties": {
+        "^RES_[A-Za-z0-9_]+$": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "properties": {
+        "RES_STATE__URL": {
+          "if": {
+            "minLength": 1
+          },
+          "then": {
+            "pattern": "^rediss?://([^/\\s?#]*@)?(\\[[^\\]/\\s?#@]+\\]|[^/\\s?#@:\\[\\]]+)(:(0*([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)?([/?#][^\\s]*)?$"
+          }
+        },
+        "RES_STATE__KEY_PREFIX": {},
+        "ELASTIC_PASSWORD": {
+          "type": "string"
+        }
+      }
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "image",
+        "elasticsearch",
+        "stateSizeLimit",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+([._/:-][a-z0-9]+)*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "elasticsearch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "endpoint",
+            "username",
+            "insecureSkipVerify"
+          ],
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "pattern": "^(https?://[^\\s]+)?$"
+            },
+            "username": {
+              "type": "string"
+            },
+            "insecureSkipVerify": {
+              "type": "boolean"
+            }
+          }
+        },
+        "stateSizeLimit": {
+          "$ref": "#/definitions/quantity"
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        }
+      }
+    },
+    "resources": {
+      "$ref": "#/definitions/resources"
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/dnsSubdomain"
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "$ref": "#/definitions/url"
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clusters.yaml",
+        "defaults.yaml",
+        "service.yaml",
+        "redis_api.yaml"
+      ],
+      "properties": {
+        "clusters.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "defaults.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "service.yaml": {
+          "$ref": "#/definitions/fileName"
+        },
+        "redis_api.yaml": {
+          "$ref": "#/definitions/fileName"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^/[^\\s]*$"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|Ki|Mi|Gi)?$"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^RES_[A-Za-z0-9_]+$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "limits"
+      ],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        }
+      }
+    },
+    "dnsSubdomain": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+      }
+    },
+    "registry": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*(:[0-9]{1,5})?(/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+      }
+    },
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^https?://([^/\\s?#]*@)?(\\[[^\\]/\\s?#@]+\\]|[^/\\s?#@:\\[\\]]+)(:(0*([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)?(/[^\\s?#]*)?$"
+      }
+    },
+    "fileName": {
+      "type": "string",
+      "minLength": 1,
+      "if": {
+        "minLength": 1
+      },
+      "then": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.yaml$"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "collector": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "collector": {
+        "properties": {
+          "elasticsearch": {
+            "properties": {
+              "endpoint": {
+                "minLength": 1
+              },
+              "username": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "secret": {
+        "required": [
+          "ELASTIC_PASSWORD"
+        ],
+        "properties": {
+          "ELASTIC_PASSWORD": {
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
