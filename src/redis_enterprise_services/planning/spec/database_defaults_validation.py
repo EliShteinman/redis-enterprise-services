@@ -1,7 +1,11 @@
 from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
+from redis_enterprise_services.config.defaults.database_defaults_settings import (
+    DatabaseDefaultsSettings,
+    DatabaseKind,
+    DatabaseKindDefaults,
+)
 from redis_enterprise_services.databases.new_database import (
     PERSISTENCE_MODE_BY_FIELD,
     SHARD_KEY_REGEX_FIELD,
@@ -20,47 +24,57 @@ from redis_enterprise_services.planning.spec.database_level_values import typed_
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     with_sharding_completed,
 )
+from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
 
 def reject_invalid_defaults_on_any_cluster(
     *, settings: DatabaseDefaultsSettings, clusters: list[ConfiguredCluster]
 ) -> None:
-    reject_invalid_default_values(settings=settings)
-    for cluster in clusters:
-        reject_invalid_values_on_cluster(settings=settings, cluster=cluster)
+    for kind in DatabaseKind:
+        defaults: DatabaseKindDefaults = settings.of_kind(kind=kind)
+        reject_invalid_default_values_of_kind(defaults=defaults, kind=kind)
+        for cluster in clusters:
+            reject_invalid_values_on_cluster(defaults=defaults, kind=kind, cluster=cluster)
+
+
+def reject_invalid_default_values_of_kind(*, defaults: DatabaseKindDefaults, kind: DatabaseKind) -> None:
+    try:
+        reject_invalid_default_values(defaults=defaults)
+    except ConfigurationError as error:
+        raise ConfigurationError(message=f"database_defaults.{kind}: {error.message}") from error
 
 
 def reject_invalid_values_on_cluster(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> None:
     try:
-        merged: dict[str, JsonValue] = merged_default_values(settings=settings, cluster=cluster)
+        merged: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
         reject_persistence_settings_of_another_mode(
-            base=typed_level_values(values=settings.database),
-            override=override_values_on_cluster(cluster=cluster),
+            base=typed_level_values(values=defaults.database),
+            override=override_values_on_cluster(cluster=cluster, kind=kind),
         )
         completed: dict[str, JsonValue] = with_sharding_completed(
-            values=merged, sharding_values=settings.sharding_values
+            values=merged, sharding_values=defaults.sharding_values
         )
         reject_invalid_options(
             values=with_persistence_settings_of_its_mode(
-                values=completed, persistence_values=settings.persistence_values
+                values=completed, persistence_values=defaults.persistence_values
             )
         )
     except ConfigurationError as error:
         raise ConfigurationError(
-            message=f"the database_defaults values that apply together on cluster {cluster.fqdn}: "
+            message=f"the database_defaults.{kind} values that apply together on cluster {cluster.fqdn}: "
             f"{error.message}"
         ) from error
 
 
-def reject_invalid_default_values(*, settings: DatabaseDefaultsSettings) -> None:
+def reject_invalid_default_values(*, defaults: DatabaseKindDefaults) -> None:
     persistence_defaults: list[dict[str, JsonValue]] = [
-        {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in settings.persistence_values.items()
+        {DATA_PERSISTENCE_FIELD: mode, **values} for mode, values in defaults.persistence_values.items()
     ]
-    reject_sharding_values_that_do_not_complete_sharding(sharding_values=settings.sharding_values)
-    sharded_defaults: dict[str, JsonValue] = {**settings.sharding_values, SHARDING_FIELD: True}
-    for values in [settings.database, *persistence_defaults, sharded_defaults]:
+    reject_sharding_values_that_do_not_complete_sharding(sharding_values=defaults.sharding_values)
+    sharded_defaults: dict[str, JsonValue] = {**defaults.sharding_values, SHARDING_FIELD: True}
+    for values in [defaults.database, *persistence_defaults, sharded_defaults]:
         reject_invalid_options(values=values)
 
 
@@ -94,5 +108,5 @@ def reject_invalid_options(*, values: dict[str, JsonValue]) -> None:
         DatabaseOptions.model_validate(obj=values)
     except ValidationError as error:
         raise ConfigurationError(
-            message=f"database defaults {sorted(values)} are not valid: {error}"
+            message=f"database defaults {sorted(values)} are not valid: {issues_text(error=error)}"
         ) from error

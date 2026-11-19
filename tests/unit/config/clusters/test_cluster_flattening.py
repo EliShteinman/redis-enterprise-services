@@ -127,9 +127,65 @@ def test_a_cluster_without_a_value_it_needs_on_any_level_is_refused(missing: str
         configured_clusters(tree=tree, api_scheme=API_SCHEME)
 
 
+def test_active_active_values_apply_only_to_active_active() -> None:
+    configured: ConfiguredCluster = only_cluster(
+        tree=a_tree(network={"active_active": {"database": {"eviction_policy": "noeviction"}}})
+    )
+
+    assert (configured.database_override_levels, configured.active_active_database_override_levels) == (
+        [{}, {}, {}, {}],
+        [{}, {"eviction_policy": "noeviction"}],
+    )
+
+
+def test_a_single_site_value_on_any_level_never_reaches_active_active() -> None:
+    configured: ConfiguredCluster = only_cluster(
+        tree=a_tree(
+            environment={"active_active": {"database": {"eviction_policy": "noeviction"}}},
+            clusters={
+                "c1.net-a": a_cluster(database={"eviction_policy": "allkeys-lru", "replication": False})
+            },
+        )
+    )
+
+    assert configured.active_active_database_override_levels == [{"eviction_policy": "noeviction"}, {}]
+
+
+def test_crdb_values_of_the_network_beat_those_of_the_environment() -> None:
+    configured: ConfiguredCluster = only_cluster(
+        tree=a_tree(
+            environment={"active_active": {"crdb": {"compression": 1, "encryption": True}}},
+            network={"active_active": {"crdb": {"compression": 4}}},
+        )
+    )
+
+    assert configured.crdb_overrides == {"compression": 4, "encryption": True}
+
+
+@pytest.mark.parametrize(
+    argnames="active_active",
+    argvalues=[
+        pytest.param({"crdb": {"compression": 6}}, id="crdb"),
+        pytest.param({"database": {"sharding": True}}, id="database"),
+    ],
+)
+def test_active_active_values_on_a_site_are_refused_when_the_config_loads(
+    active_active: dict[str, JsonValue],
+) -> None:
+    with pytest.raises(expected_exception=ValidationError, match="active_active"):
+        a_tree(site={"active_active": active_active})
+
+
 @pytest.mark.parametrize(
     argnames="clusters",
     argvalues=[
+        pytest.param(
+            {"c1.net-a": a_cluster(active_active={"crdb": {"compression": 1}})}, id="crdb-on-a-cluster"
+        ),
+        pytest.param(
+            {"c1.net-a": a_cluster(active_active={"database": {"sharding": True}})},
+            id="active-active-database-on-a-cluster",
+        ),
         pytest.param({"generic": a_cluster(type="dedicated")}, id="dedicated-at-the-generic-fqdn"),
         pytest.param({"https://c1.net-a": a_cluster()}, id="url-instead-of-fqdn"),
         pytest.param({"c1.net-a": a_cluster(site="dc1")}, id="unknown-setting"),

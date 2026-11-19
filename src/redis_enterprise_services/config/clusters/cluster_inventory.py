@@ -23,3 +23,5 @@ class ConfiguredCluster(ConfigModel):
     credentials: ClusterCredentialsSettings
     default_user_password: SecretStr = Field(min_length=1)
     database_override_levels: list[dict[str, JsonValue]] = Field(default_factory=list)
+    active_active_database_override_levels: list[dict[str, JsonValue]] = Field(default_factory=list)
+    crdb_overrides: dict[str, JsonValue] = Field(default_factory=dict)

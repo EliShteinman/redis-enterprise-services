@@ -1,18 +1,44 @@
 database_defaults:
-  database:
-    version: "8.4"
-    replication: true
-    data_persistence: aof
-    shards_placement: dense
-    proxy_policy: all-master-shards
-  persistence_values:
-    aof:
-      aof_policy: appendfsync-every-sec
-    snapshot:
-      snapshot_policy: [{secs: 3600, writes: 1}]
-  sharding_values:
-    shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
-    shards_count: 2
+  single_site:
+    database:
+      version: "8.4"
+      replication: true
+      data_persistence: aof
+      shards_placement: dense
+      proxy_policy: all-master-shards
+      sharding: false
+      slave_ha: false
+      eviction_policy: volatile-lru
+    persistence_values:
+      aof:
+        aof_policy: appendfsync-every-sec
+      snapshot:
+        snapshot_policy: [{secs: 3600, writes: 1}]
+    sharding_values:
+      shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
+      shards_count: 2
+  active_active:
+    database:
+      version: "8.4"
+      replication: true
+      data_persistence: aof
+      shards_placement: dense
+      proxy_policy: all-master-shards
+      sharding: false
+      slave_ha: false
+      eviction_policy: noeviction
+    persistence_values:
+      aof:
+        aof_policy: appendfsync-every-sec
+      snapshot:
+        snapshot_policy: [{secs: 3600, writes: 1}]
+    sharding_values:
+      shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
+      shards_count: 2
+    crdb:
+      causal_consistency: false
+      encryption: false
+      compression: 3
 
 naming:
   database:

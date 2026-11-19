@@ -48,10 +48,35 @@ database:
   creation_failed_status: creation-failed
   order_insensitive_fields:
     - roles_permissions
+  fields_defaulting_to_empty_list:
+    - roles_permissions
   default_tags: []
   wait:
     poll_interval_seconds: 1
     timeout_seconds: 120
+
+crdb:
+  collection_path: /v1/crdbs
+  item_path: /v1/crdbs/{uid}
+  list_field: crdbs
+  cluster_added_item_fields:
+    - isSystem
+  task:
+    item_path: /v1/crdb_tasks/{uid}
+    id_field: id
+    completed_status: finished
+    failed_statuses:
+      - failed
+      - canceled
+    result_ttl_seconds: 86400
+    guid_field: crdb_guid
+    existing_task_error_code: job_exists
+    errors_field: errors
+    error_cluster_field: cluster_name
+    error_code_field: error_code
+    wait:
+      poll_interval_seconds: 2
+      timeout_seconds: 600
 
 acl:
   collection_path: /v1/redis_acls

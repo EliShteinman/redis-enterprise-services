@@ -18,6 +18,7 @@ from redis_enterprise_services.config.defaults.naming_settings import NamingSett
 from redis_enterprise_services.config.defaults.user_resources_settings import UserResourcesSettings
 from redis_enterprise_services.config.redis_api.action_settings import ActionSettings
 from redis_enterprise_services.config.redis_api.cluster_api_settings import ClusterApiSettings
+from redis_enterprise_services.config.redis_api.crdb_settings import CrdbSettings
 from redis_enterprise_services.config.redis_api.database_settings import DatabaseSettings
 from redis_enterprise_services.config.redis_api.resource_settings import ResourceSettings
 from redis_enterprise_services.config.redis_api.role_settings import RoleSettings
@@ -48,6 +49,7 @@ class Settings(BaseSettings):
     telemetry: TelemetrySettings
     edge: EdgeSettings
     action: ActionSettings
+    crdb: CrdbSettings
     acl: ResourceSettings
     cluster_api: ClusterApiSettings
     database: DatabaseSettings

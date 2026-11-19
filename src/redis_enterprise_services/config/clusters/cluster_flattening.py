@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from redis_enterprise_services.config.clusters.cluster_credentials_settings import ClusterCredentialsSettings
 from redis_enterprise_services.config.clusters.cluster_fqdn import api_url_of
@@ -11,7 +11,7 @@ from redis_enterprise_services.config.clusters.cluster_tree_entries import (
     EnvironmentEntries,
     TreeEnvironment,
 )
-from redis_enterprise_services.config.clusters.level_values import LevelValues
+from redis_enterprise_services.config.clusters.level_values import EnvironmentOrNetworkValues, LevelValues
 from redis_enterprise_services.config.validation.base_url import comparable_url
 from redis_enterprise_services.config.validation.reject_repeated import reject_repeated
 
@@ -25,11 +25,12 @@ class ClusterInTree(BaseModel):
     network: str
     site: str
     fqdn: str
-    levels_above: list[LevelValues]
+    environment_and_network: list[EnvironmentOrNetworkValues]
+    site_entry: LevelValues
     entry: ClusterEntry
 
     def levels(self) -> list[LevelValues]:
-        return [*self.levels_above, self.entry]
+        return [*self.environment_and_network, self.site_entry, self.entry]
 
 
 def configured_clusters(*, tree: EnvironmentEntries, api_scheme: str) -> list[ConfiguredCluster]:
@@ -53,7 +54,8 @@ def walk(*, tree: EnvironmentEntries) -> Iterator[ClusterInTree]:
                         network=network_name,
                         site=site_name,
                         fqdn=fqdn,
-                        levels_above=[environment, network, site],
+                        environment_and_network=[environment, network],
+                        site_entry=site,
                         entry=entry,
                     )
 
@@ -89,6 +91,10 @@ def configured_cluster(*, cluster: ClusterInTree, api_scheme: str) -> Configured
             setting="default_user_password",
         ),
         database_override_levels=[level.database for level in levels],
+        active_active_database_override_levels=[
+            level.active_active.database for level in cluster.environment_and_network
+        ],
+        crdb_overrides=merged(layers=[level.active_active.crdb for level in cluster.environment_and_network]),
     )
 
 
@@ -100,3 +106,10 @@ def required[T](*, value: T | None, fqdn: str, setting: str) -> T:
     if value is None:
         raise ValueError(f"cluster {fqdn} has no {setting}: set it on the cluster or on a level above it")
     return value
+
+
+def merged(*, layers: list[dict[str, JsonValue]]) -> dict[str, JsonValue]:
+    values: dict[str, JsonValue] = {}
+    for layer in layers:
+        values.update(layer)
+    return values

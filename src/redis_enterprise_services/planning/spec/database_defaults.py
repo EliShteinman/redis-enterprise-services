@@ -1,15 +1,21 @@
 import logging
 
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 
 from redis_enterprise_services.config.clusters.cluster_inventory import ConfiguredCluster
-from redis_enterprise_services.config.defaults.database_defaults_settings import DatabaseDefaultsSettings
+from redis_enterprise_services.config.defaults.database_defaults_settings import (
+    DatabaseDefaultsSettings,
+    DatabaseKind,
+    DatabaseKindDefaults,
+)
 from redis_enterprise_services.databases.new_database import PERSISTENCE_MODE_BY_FIELD, NewDatabase
+from redis_enterprise_services.exceptions.configuration import ConfigurationError
 from redis_enterprise_services.planning.spec.database_level_values import typed_level_values
 from redis_enterprise_services.planning.spec.sharding_resolution import (
     layered_database_values,
     with_sharding_completed,
 )
+from redis_enterprise_services.planning.spec.validation_issues import issues_text
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -20,35 +26,53 @@ class DatabaseDefaults:
     def __init__(self, *, settings: DatabaseDefaultsSettings) -> None:
         self._settings: DatabaseDefaultsSettings = settings
 
-    def fill_in(self, *, cluster: ConfiguredCluster, requested: NewDatabase) -> NewDatabase:
-        values: dict[str, JsonValue] = merged_default_values(settings=self._settings, cluster=cluster)
-        logger.debug(msg=f"database_defaults on cluster {cluster.fqdn}: {values}")
+    def fill_in(
+        self, *, cluster: ConfiguredCluster, requested: NewDatabase, active_active: bool
+    ) -> NewDatabase:
+        kind: DatabaseKind = DatabaseKind.of(active_active=active_active)
+        defaults: DatabaseKindDefaults = self._settings.of_kind(kind=kind)
+        values: dict[str, JsonValue] = merged_default_values(defaults=defaults, kind=kind, cluster=cluster)
+        logger.debug(msg=f"database_defaults.{kind} on cluster {cluster.fqdn}: {values}")
         values = with_sharding_completed(
             values=layered_database_values(layers=[values, requested.model_dump(exclude_none=True)]),
-            sharding_values=self._settings.sharding_values,
+            sharding_values=defaults.sharding_values,
         )
-        return NewDatabase.model_validate(
-            obj=with_persistence_settings_of_its_mode(
-                values=values, persistence_values=self._settings.persistence_values
+        try:
+            return NewDatabase.model_validate(
+                obj=with_persistence_settings_of_its_mode(
+                    values=values, persistence_values=defaults.persistence_values
+                )
             )
-        )
+        except ValidationError as error:
+            raise ConfigurationError(
+                message=f"the request together with the database_defaults.{kind} values of cluster "
+                f"{cluster.fqdn} is not valid: {issues_text(error=error)}"
+            ) from error
 
 
 def merged_default_values(
-    *, settings: DatabaseDefaultsSettings, cluster: ConfiguredCluster
+    *, defaults: DatabaseKindDefaults, kind: DatabaseKind, cluster: ConfiguredCluster
 ) -> dict[str, JsonValue]:
     return layered_database_values(
         layers=[
             typed_level_values(values=level)
-            for level in [settings.database, *cluster.database_override_levels]
+            for level in [defaults.database, *override_levels_on_cluster(cluster=cluster, kind=kind)]
         ]
     )
 
 
-def override_values_on_cluster(*, cluster: ConfiguredCluster) -> dict[str, JsonValue]:
+def override_levels_on_cluster(
+    *, cluster: ConfiguredCluster, kind: DatabaseKind
+) -> list[dict[str, JsonValue]]:
+    if kind == DatabaseKind.ACTIVE_ACTIVE:
+        return cluster.active_active_database_override_levels
+    return cluster.database_override_levels
+
+
+def override_values_on_cluster(*, cluster: ConfiguredCluster, kind: DatabaseKind) -> dict[str, JsonValue]:
     return {
         name: value
-        for level in cluster.database_override_levels
+        for level in override_levels_on_cluster(cluster=cluster, kind=kind)
         for name, value in typed_level_values(values=level).items()
     }
 
