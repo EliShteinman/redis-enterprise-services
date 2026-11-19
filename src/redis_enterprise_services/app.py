@@ -15,7 +15,7 @@ from redis_enterprise_services.api.rejections.error_handlers import (
     ServiceErrorHandler,
     ValidationErrorHandler,
 )
-from redis_enterprise_services.api.routes import creation_route, operation_route
+from redis_enterprise_services.api.routes import crdb_creation_route, creation_route, operation_route
 from redis_enterprise_services.api.routes.liveness_route import liveness_router
 from redis_enterprise_services.composition.app_wiring import AppWiring
 from redis_enterprise_services.config.service.api_settings import ApiSettings
@@ -52,12 +52,14 @@ def store_in_app_state(*, app: FastAPI, settings: Settings, wiring: AppWiring) -
     app.state.settings = settings
     app.state.wiring = wiring
     app.state.database_creation = wiring.database_creation
+    app.state.crdb_creation = wiring.crdb_creation
     app.state.operation_store = wiring.operation_store
 
 
 def include_routers(*, app: FastAPI, liveness_path: str) -> None:
     app.include_router(router=liveness_router(path=liveness_path))
     app.include_router(router=creation_route.router)
+    app.include_router(router=crdb_creation_route.router)
     app.include_router(router=operation_route.router)
 
 

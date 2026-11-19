@@ -4,12 +4,17 @@ from fastapi import Request
 
 from redis_enterprise_services.config.service.api_settings import ApiSettings
 from redis_enterprise_services.config.settings import Settings
+from redis_enterprise_services.creation.crdb_creation import CrdbCreation
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
 from redis_enterprise_services.operations.operation_store import OperationStore
 
 
 def database_creation_from_app_state(request: Request) -> DatabaseCreation:
     return cast(DatabaseCreation, request.app.state.database_creation)
+
+
+def crdb_creation_from_app_state(request: Request) -> CrdbCreation:
+    return cast(CrdbCreation, request.app.state.crdb_creation)
 
 
 def operation_store_from_app_state(request: Request) -> OperationStore:

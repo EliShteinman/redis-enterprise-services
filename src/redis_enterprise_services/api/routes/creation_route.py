@@ -11,6 +11,9 @@ from redis_enterprise_services.api.request_examples.create_database_request_exam
     CREATE_DATABASE_REQUEST_EXAMPLES,
 )
 from redis_enterprise_services.api.routes.accepted_operation import AcceptedOperation
+from redis_enterprise_services.api.routes.accepted_operation_openapi_response import (
+    ACCEPTED_OPERATION_OPENAPI_RESPONSE,
+)
 from redis_enterprise_services.api.routes.command_route import COMMAND_ROUTE_TAG
 from redis_enterprise_services.api.tracing.traceparent_header import require_traceparent
 from redis_enterprise_services.creation.database_creation import DatabaseCreation
@@ -28,14 +31,7 @@ router: APIRouter = APIRouter(
     path="/v1/databases/create",
     status_code=HTTPStatus.ACCEPTED,
     response_model=AcceptedOperation,
-    responses={
-        HTTPStatus.ACCEPTED: {
-            "description": "The command is accepted and runs in the background. Its state and result "
-            "are read only from GET /v1/operations/{trace_id}. One trace id means one operation: a repeat "
-            "with the same trace id (the parent id and the body are not compared) starts nothing and gets "
-            "the same answer."
-        }
-    },
+    responses=ACCEPTED_OPERATION_OPENAPI_RESPONSE,
 )
 def start_database_creation_once(
     creation_request: Annotated[
