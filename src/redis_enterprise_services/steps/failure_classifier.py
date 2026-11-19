@@ -4,6 +4,9 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
+    CrdbTaskFailedError,
+    CrdbTaskIdMismatchError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
@@ -19,15 +22,19 @@ from redis_enterprise_services.exceptions.edge import (
     EdgeUnansweredError,
     EdgeUnreachableError,
 )
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory, FailureClassifier
 
 REQUIRES_MANUAL_INTERVENTION_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
+    CrdbTaskIdMismatchError,
     DuplicateResourceNameError,
+    StepNeedsManualInterventionError,
     UpdateOutcomeUnclearError,
 )
 
 CLUSTER_REPORTED_FAILURE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     ClusterActionFailedError,
+    CrdbTaskFailedError,
     DatabaseCreationFailedError,
     IncompleteClusterObjectError,
 )
@@ -48,6 +55,7 @@ TRANSIENT_LOOKUP_EDGE_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
 OUTCOME_UNKNOWN_ERRORS: tuple[type[RedisEnterpriseServicesError], ...] = (
     EdgeUnansweredError,
     ClusterActionTimeoutError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseDeletionTimeoutError,
     UnreadableClusterResponseError,

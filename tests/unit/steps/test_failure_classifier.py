@@ -5,6 +5,9 @@ from redis_enterprise_services.exceptions.cluster import (
     ClusterActionFailedError,
     ClusterActionTimeoutError,
     ClusterRejectedRequestError,
+    CrdbTaskFailedError,
+    CrdbTaskIdMismatchError,
+    CrdbTaskTimeoutError,
     DatabaseActivationTimeoutError,
     DatabaseCreationFailedError,
     DatabaseDeletionTimeoutError,
@@ -20,6 +23,7 @@ from redis_enterprise_services.exceptions.edge import (
     EdgeRejectedResponseError,
     EdgeUnreachableError,
 )
+from redis_enterprise_services.exceptions.saga import StepNeedsManualInterventionError
 from redis_enterprise_services.saga.contract.failure import FailureCategory
 from redis_enterprise_services.steps.failure_classifier import ClusterFailureClassifier
 
@@ -46,6 +50,8 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         (DatabaseCreationFailedError(message="m"), FailureCategory.FAILED),
         (DuplicateResourceNameError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (UpdateOutcomeUnclearError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
+        (CrdbTaskIdMismatchError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
+        (StepNeedsManualInterventionError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (UnrestorableFieldsError(message="m"), FailureCategory.FAILED),
         (EdgeUnreachableError(message="m"), FailureCategory.TRANSIENT),
         (EdgeConnectionFailedError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
@@ -55,6 +61,8 @@ CLASSIFIER: ClusterFailureClassifier = ClusterFailureClassifier(transient_error_
         (DatabaseActivationTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
         (DatabaseDeletionTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
         (UnreadableClusterResponseError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
+        (CrdbTaskFailedError(message="m", cluster_error_code="db_create_failed"), FailureCategory.FAILED),
+        (CrdbTaskTimeoutError(message="m"), FailureCategory.OUTCOME_UNKNOWN),
     ],
 )
 def test_a_step_error_gets_its_failure_category(
@@ -68,6 +76,8 @@ def test_a_step_error_gets_its_failure_category(
     argvalues=[
         (DuplicateResourceNameError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (UpdateOutcomeUnclearError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
+        (CrdbTaskIdMismatchError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
+        (StepNeedsManualInterventionError(message="m"), FailureCategory.REQUIRES_MANUAL_INTERVENTION),
         (ClusterActionFailedError(message="m"), FailureCategory.FAILED),
         (DatabaseCreationFailedError(message="m"), FailureCategory.FAILED),
         (EdgeOutcomeUnknownError(message="m"), FailureCategory.TRANSIENT),
