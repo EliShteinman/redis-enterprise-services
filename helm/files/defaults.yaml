@@ -1,0 +1,35 @@
+database_defaults:
+  database:
+    version: "8.4"
+    replication: true
+    data_persistence: aof
+    shards_placement: dense
+    proxy_policy: all-master-shards
+  persistence_values:
+    aof:
+      aof_policy: appendfsync-every-sec
+    snapshot:
+      snapshot_policy: [{secs: 3600, writes: 1}]
+  sharding_values:
+    shard_key_regex: [{regex: ".*\\{(?<tag>.*)\\}.*"}, {regex: "(?<tag>.*)"}]
+    shards_count: 2
+
+naming:
+  database:
+    pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+    max_length: 20
+  redis:
+    database:
+      pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"
+      max_length: 64
+    user:
+      pattern: "^[ !#-%'-;=?-~]+$"
+      max_length: 255
+    acl_and_role:
+      pattern: "^[a-zA-Z0-9_ ()\\[\\]@,.;#-]+$"
+      max_length: 255
+
+user_resources:
+  acl_name_template: "{database}-{user}-acl"
+  role_name_template: "{database}-{user}-role"
+  role_management: db_viewer
