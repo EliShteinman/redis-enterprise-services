@@ -63,10 +63,10 @@ class CreationExecution:
                 error_if_not_started=partial(
                     self._public_errors.for_rejection,
                     error=error,
-                    cluster_url=prepared_creation.cluster.api_url,
+                    fallback_cluster_url=prepared_creation.cluster.api_url,
                 ),
                 interruption_error=self._public_errors.from_error(
-                    error=error, cluster_url=prepared_creation.cluster.api_url
+                    error=error, fallback_cluster_url=prepared_creation.cluster.api_url
                 ),
             )
         except Exception as error:

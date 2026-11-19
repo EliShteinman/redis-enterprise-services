@@ -12,6 +12,9 @@ from redis_enterprise_services.operations.operation_status import (
     OperationStatus,
 )
 from redis_enterprise_services.operations.remaining_resource import RemainingResource
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
 from redis_enterprise_services.operations.results.database_result import DatabaseResult
 
 
@@ -32,8 +35,9 @@ class Operation(BaseModel):
         "operation (the database exists, but database is null).",
         examples=["succeeded"],
     )
-    database: DatabaseResult | None = Field(
+    database: DatabaseResult | ActiveActiveDatabaseResult | None = Field(
         default=None,
+        discriminator="kind",
         description="The database as the cluster reported it when the operation ended, when it succeeded. "
         "Otherwise null.",
     )

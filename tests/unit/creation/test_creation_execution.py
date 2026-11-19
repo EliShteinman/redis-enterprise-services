@@ -24,6 +24,9 @@ from redis_enterprise_services.operations.errors.public_errors import PublicErro
 from redis_enterprise_services.operations.operation import Operation
 from redis_enterprise_services.operations.operation_status import OperationStatus
 from redis_enterprise_services.operations.operation_store import OperationStore
+from redis_enterprise_services.operations.results.active_active_database_result import (
+    ActiveActiveDatabaseResult,
+)
 from redis_enterprise_services.operations.results.database_result import (
     DatabasePermissionResult,
     DatabaseResult,
@@ -168,8 +171,8 @@ def harness(config_dir: Path) -> ExecutionHarness:
 @pytest.fixture
 def created(harness: ExecutionHarness) -> DatabaseResult:
     harness.saga_executor.run.return_value = saga_record_with_every_step_done(status=SagaStatus.SUCCEEDED)
-    database: DatabaseResult | None = harness.run_and_save().database
-    assert database is not None
+    database: DatabaseResult | ActiveActiveDatabaseResult | None = harness.run_and_save().database
+    assert isinstance(database, DatabaseResult)
     return database
 
 
