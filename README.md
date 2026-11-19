@@ -1,7 +1,7 @@
 # redis-enterprise-services
 
 Creates Redis Enterprise databases with their users, as a saga: each operation fully succeeds, rolls back, or stops
-for manual intervention. Today: single-site creation. Planned: Active-Active, edit, delete. What exists and what is
+for manual intervention. Today: single-site and Active-Active creation. Planned: edit, delete. What exists and what is
 missing: `docs/overview.md`.
 
 ## Requirements

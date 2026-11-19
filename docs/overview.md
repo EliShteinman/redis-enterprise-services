@@ -43,26 +43,32 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 
 ## 2. מה בנוי
 
-**יצירת DB באתר אחד, מקצה לקצה.**
+**יצירת DB, באתר אחד או Active-Active על כמה אתרים, מקצה לקצה.**
 
-- **ממשק:** (`contracts/service-api.md`) `POST /v1/databases/create` מחזיר `202`, והריצה ברקע.
+- **ממשק:** (`contracts/service-api.md`) route לכל סוג: `POST /v1/databases/create` לאתר אחד ו-`POST /v1/crdbs/create`
+  ל-Active-Active. שניהם מחזירים `202`, והריצה ברקע.
   `GET /v1/operations/{trace_id}` מחזיר את המצב. `traceparent` (W3C) חובה, וה-trace id שבו מזהה את הפעולה.
   אותו trace פעמיים לא מריץ פעמיים.
 - **הכנה:** בדיקת שם, מציאת הקלאסטר לפי היעד (`target.site`, אתר אחד) מ-`helm/files/clusters.yaml`, וברירות מחדל מ-`helm/files/defaults.yaml` עם
   הדריסות של הסביבה, הרשת, האתר והקלאסטר.
+  ב-Active-Active (`target.sites`, אתר אחד או יותר): כל אתר נמצא באותה דרך, ברירות המחדל מהסט `active_active` (לכל סוג סט מלא
+  משלו, עם הדריסות של אותו סוג), והגדרות ה-CRDB מהבקשה (`spec.crdb`) או מהקונפיג. כל האתרים באותה רשת, על קלאסטרים
+  שונים, ועם אותן הגדרות.
 - **צעדים:** קודם ה-DB, אחריו לכל יוזר ACL, role ו-user, אחר כך קישור ההרשאות על ה-DB, ובסוף קריאת ה-DB המלא
-  ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר.
+  ובדיקה שהוא מחזיק את מה שנשלח. כל צעד מחכה לסיום הפעולה בקלאסטר. ב-Active-Active: קודם CRDB אחד, אחריו לכל אתר היוזרים על ה-DB המקומי, ובסוף PATCH אחד של ההרשאות
+  (`design/creation.md`, סעיף 6).
 - **בטיחות:**
   - נעילה על ה-DB ועל היוזרים לכל משך הריצה, ובדיקה תחתיה שכל השמות פנויים.
   - תוצאה לא ידועה (timeout, שירות קצה שלא ענה) נבדקת בקלאסטר לפני ניסיון חוזר.
   - ביטול רק אחרי כישלון ודאי. כל השאר ⇐ `requires_manual_intervention`, והנעילה נשארת.
 - **התאוששות:** heartbeat לכל פעולה, וסריקה בכל pod שמסמנת פעולות של pod שנפל.
-- **תוצאה:** עץ ה-DB (`kind: "single_site"`, קלאסטר אחד), שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
+- **תוצאה:** עץ ה-DB (`kind: "single_site"` עם קלאסטר אחד, או `kind: "active_active"` עם ה-CRDB וענף לכל קלאסטר), שכל ערך בו נקרא מהקלאסטר (endpoints, הגדרות, הרשאות עם ה-uids), או קוד שגיאה ציבורי, הקלאסטר וקוד השגיאה שלו, ורשימה של מה שלא בוטל.
 - **תצפית:** traces ו-metrics ב-OpenTelemetry, וה-trace ממשיך ללוגים ול-cluster-relay. הלוג לקונסול כשורה או כ-JSON,
   ואפשר גם קובץ JSON מתחלף. `/health` לא נכנס ללוגים מתחת ל-WARNING, ולא ל-traces ול-metrics.
 
 **נבדק מול קלאסטר אמיתי:** הצלחה עם הרשאות שנבדקו בחיבור ל-DB, כשל בכל אחד מששת הצעדים שהסתיים בביטול מלא,
-בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5).
+בקשות במקביל, אותו trace, וקריסה באמצע ריצה (`design/creation.md` סעיף 5). Active-Active על שני אתרים ועל אתר
+אחד, ו-ACL שנדחה שביטל הכל כולל ה-CRDB (`design/creation.md` סעיף 6).
 
 ---
 
@@ -74,7 +80,7 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 |---|---|
 | בחירת קלאסטר | היום קלאסטר `generic` אחד לכל יעד. בחירה בין כמה לפי מקום (dry_run) |
 | הזדהות | אין הזדהות מול השירות |
-| Active-Active | יצירה, עריכה ומחיקה של CRDB. היצירה ב-route נפרד, `POST /v1/crdbs/create` |
+| Active-Active | עריכה ומחיקה של CRDB, והסרה והוספה של אתר (היצירה בנויה) |
 | מחיקה | מחיקת DB עם היוזרים שלו |
 | עריכה | עריכת DB ועריכת רשימת היוזרים |
 | קריאה ישירה לקלאסטר | route שמעביר בקשה כמו שהיא |
@@ -88,7 +94,7 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 ![שכבות הקוד](diagrams/01-layers.drawio.svg)
 
 `src/redis_enterprise_services/`. כיווני הייבוא נאכפים ב-`import-linter` (`pyproject.toml`), מלמעלה למטה. כל שורה
-בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לארבע
+בטבלה מקבצת כמה שכבות. הסדר המדויק בתוך שורה (למשל `recovery` מתחת ל-`steps` ו-`state`, ו-`resources` מתחת לחמש
 חבילות המשאבים) נמצא ב-`pyproject.toml`.
 
 | שכבה | חבילות | מה יש בה |
@@ -98,7 +104,7 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 | פקודות | `creation` | הכנה, ריצה ברקע, תרגום התוצאה |
 | תכנון | `planning` | בקשה ⇐ קלאסטר, ברירות מחדל, תוכנית צעדים, בדיקת שמות |
 | צעדים, מצב וזיהוי קריסה | `steps`, `state`, `recovery` | צעדי ה-Saga מול הקלאסטר; המימושים ב-Redis; זיהוי קריסה |
-| משאבים | `databases`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
+| משאבים | `databases`, `crdbs`, `acls`, `roles`, `users`, `resources` | repository לכל סוג משאב |
 | תעבורה | `cluster`, `edge`, `cluster_access` | קריאה ל-REST של הקלאסטר דרך cluster-relay |
 | מנוע ופעולות | `saga`, `operations` | מנוע ה-Saga, רשומת הפעולה |
 | תשתית | `logger`, `telemetry`, `timing`, `background`, `liveness`, `config`, `exceptions` | |
@@ -141,4 +147,5 @@ UI + company service -> adapter service -> redis-enterprise-services -> NGINX ->
 | `17-flow-heartbeat-and-abandoned-sweep` | heartbeat וזיהוי קריסה |
 | `18-redis-keys` | המפתחות ב-Redis |
 | `19-api-models-create` | מודלי הבקשה והתוצאה |
-| `planned/p1`–`p6` | העיצוב של מה שעוד לא בנוי: Active-Active, מחיקה, עריכה |
+| `20-seq-create-active-active` | יצירת Active-Active |
+| `planned/p2`–`p6` | העיצוב של מה שעוד לא בנוי: מחיקה, עריכה |

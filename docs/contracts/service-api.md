@@ -3,7 +3,7 @@
 ה-API ש-redis-enterprise-services חושף לשירות הביניים: מה נשלח לכל route ומה חוזר. אותו חוזה מתואר גם ב-OpenAPI של
 השירות (`/docs`), עם תיאור ודוגמה לכל שדה.
 
-**בנוי היום:** יצירת DB באתר אחד ושאילתת סטטוס. **מתוכנן:** סעיף 7.
+**בנוי היום:** יצירת DB באתר אחד, יצירת DB ב-Active-Active (route נפרד, סעיף 3א) ושאילתת סטטוס. **מתוכנן:** סעיף 7.
 
 ---
 
@@ -21,7 +21,8 @@
 | route | |
 |---|---|
 | `POST /v1/databases/create` | יצירת DB באתר אחד |
-| `GET /v1/operations/{trace_id}` | סטטוס ותוצאה של פעולה |
+| `POST /v1/crdbs/create` | יצירת DB ב-Active-Active (סעיף 3א) |
+| `GET /v1/operations/{trace_id}` | סטטוס ותוצאה של פעולה, משני הסוגים |
 | `GET /health` | `200 {"status": "ok"}`. בלי `traceparent` |
 
 ---
@@ -80,6 +81,8 @@
 `helm/files/clusters.yaml`, באותם `environment`, `network` ו-`site`: ב-`generic` קלאסטר מסוג `generic`, וב-FQDN
 הקלאסטר מסוג `dedicated` עם ה-FQDN הזה. מכאן כל השלבים עובדים עם כתובת הקלאסטר.
 - אין קלאסטר מתאים ⇐ `422 no_matching_cluster`.
+- בקשה שתקינה לבד, אבל לא תקינה יחד עם ברירות המחדל של הקלאסטר ⇐ `500 configuration_error` עם הסיבה. `sharding: false`
+  לא נכשל כך: הוא מוציא את `shard_key_regex` ואת `shards_count` מעל 1 של ברירות המחדל.
 - ב-`generic` צריך להיות בדיוק קלאסטר אחד מתאים. יותר מאחד ⇐ `500 configuration_error`. בחירה בין כמה קלאסטרים
   מתוכננת (סעיף 7).
 
@@ -110,8 +113,10 @@
 ב-`error.message`.
 
 **ברירות מחדל:** שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות ליעד (`helm/files/defaults.yaml`).
-סביבה, רשת, אתר או קלאסטר ב-`helm/files/clusters.yaml` יכולים לדרוס כל ערך.
-אם אין לשירות ברירת מחדל לשדה, ה-DB נוצר עם ברירת המחדל של Redis. היום:
+השירות שולח במפורש כל הגדרה שחשובה לו, גם כשהיא שווה לברירת המחדל של Redis, כדי ששינוי של Redis, או ברירת מחדל שונה
+ל-DB ול-CRDB, לא ישנו התנהגות בלי תכנון. יש שני סטים מלאים זה לצד זה, `single_site` ו-`active_active` (ערכים וערכי
+מצב שמירה), ושום ערך של סט אחד לא חל על הסוג השני. סביבה, רשת, אתר או קלאסטר ב-`helm/files/clusters.yaml` יכולים
+לדרוס כל ערך, לכל סוג בנפרד. היום, בשני הסטים אותו ערך, אלא אם השורה אומרת אחרת:
 
 | שדה | ברירת מחדל |
 |---|---|
@@ -122,8 +127,11 @@
 | `snapshot_policy` | `[{"secs": 3600, "writes": 1}]`, רק כש-`data_persistence` הוא `snapshot` |
 | `shards_placement` | `dense` |
 | `proxy_policy` | `all-master-shards` |
+| `sharding` | `false` |
 | `shards_count` | `2`, כמו ברירת המחדל של הקלאסטר, רק כשה-DB עם Sharding. בלי Sharding `1` |
 | `shard_key_regex` | `[{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}]`, רק כשה-DB עם Sharding |
+| `slave_ha` | `false` |
+| `eviction_policy` | `volatile-lru`, וב-Active-Active `noeviction` (מה ש-Redis נותן לכל סוג, נשלח במפורש) |
 
 `aof_policy` או `snapshot_policy` שנשלחים בבקשה בלי `data_persistence` של אותו מצב ⇐ `422` מיד, לפני שמתחילה ריצה.
 כך גם `sharding: false` יחד עם `shard_key_regex` או `shards_count` מעל 1. `sharding: false` מכל רמה (ברירות המחדל,
@@ -146,14 +154,82 @@
 2. לכל יוזר: ACL בשם `{db}-{user}-acl` עם ה-`acl_rule` שלו, role בשם `{db}-{user}-role`, והיוזר עם ה-role.
 3. קישור כל role ל-ACL שלו על ה-DB.
 
-לפני שמשהו נוצר, השירות בודק בקלאסטר שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. שם תפוס ⇐ `rejected`
-עם `name_taken`.
+לפני שמשהו נוצר, השירות בודק בכל קלאסטר של הבקשה שכל השמות האלה פנויים: ה-DB, היוזרים, ה-ACLs וה-roles. בכל
+יצירה, גם באתר בודד, שם ה-DB נבדק גם מול שמות ה-CRDBs. שם תפוס באתר כלשהו ⇐ `rejected` עם `name_taken`.
 
 **אם צעד נכשל בוודאות,** כל מה שכבר נוצר נמחק בסדר הפוך, וההרשאות על ה-DB חוזרות לערכים הקודמים. התוצאה
 `rolled_back`.
 
 **אם לא ידוע אם צעד בוצע** (למשל timeout מול הקלאסטר), השירות בודק בקלאסטר. אם הוא לא יכול לקבוע מה קרה, הוא לא
 מבטל כלום, והתוצאה `requires_manual_intervention`. כך גם כשביטול נכשל.
+
+## 3א. יצירת Active-Active: `POST /v1/crdbs/create`
+
+route נפרד ליצירת DB אחד על כמה אתרים (CRDB). אין שדה שבוחר סוג: ה-route קובע. הריצה (סעיף 2), הקבלה, הכישלון
+והסטטוסים (סעיף 4), שאילתת הסטטוס (סעיף 5) והשגיאות (סעיף 6) זהים ליצירה באתר אחד, חוץ ממה שכתוב כאן.
+
+```json
+{
+  "target": {
+    "sites": [
+      {"environment": "PROD", "network": "net-a", "site": "NY", "cluster": "generic"},
+      {"environment": "PROD", "network": "net-a", "site": "TLV", "cluster": "generic"}
+    ]
+  },
+  "spec": {
+    "crdb": {"causal_consistency": false, "encryption": false, "compression": 3},
+    "database": {"name": "orders", "memory_size": 1073741824},
+    "users": [
+      {"name": "app", "password": "…", "acl_rule": "+@all ~orders:*"}
+    ]
+  }
+}
+```
+
+### `target`
+
+| שדה | סוג | חובה | הערה |
+|---|---|---|---|
+| `sites` | list | ✅ | אחד או יותר, כולם באותה `network` ועל קלאסטרים שונים. השירות לא מגביל את המספר; הקלאסטר מגביל את `id` של instance ל-31, ויותר מזה לא נבדק. האתר הראשון מתאם את היצירה |
+| `sites[]` | object | ✅ | אותו אובייקט כמו `target.site` בסעיף 3: `environment`, `network`, `site`, `cluster` |
+
+כל אתר מתורגם לקלאסטר כמו בסעיף 3, עם אותן שגיאות (`no_matching_cluster`, `configuration_error`). בנוסף:
+- אתרים ביותר מ-`network` אחת ⇐ `422 mixed_networks`. סביבה מעורבת לא נבדקת.
+- שני אתרים שמתורגמים לאותו קלאסטר ⇐ `422 duplicate_sites`. שני קלאסטרים שונים עם אותו FQDN או אותו host,
+  או עם סיסמה שונה ל-`default_user`, ⇐ `500 configuration_error`: הטעות בקונפיג של הקלאסטרים, לא בבקשה.
+- ברירות מחדל שנותנות הגדרות שונות לאתרים שונים, של ה-DB או של ה-CRDB ⇐ `500 configuration_error`, לפני ששום דבר נוצר.
+  ההודעה מונה את השדות השונים. זה קורה בעיקר כשהבקשה מערבבת סביבות (למשל אתר DEV ואתר PROD באותה רשת, ש-`replication`
+  שלהם שונה): הטעות בבקשה, אבל הקוד `configuration_error` (`known_failure`). שליחת השדות שבהודעה במפורש בבקשה עוקפת
+  את זה. כשמצב השמירה שונה, ההודעה לא מונה את `aof_policy` ו-`snapshot_policy` (הם לא נשלחים יחד), אלא את `data_persistence`
+  ואת שאר השדות השונים.
+
+`mixed_networks` ו-`duplicate_sites` חוזרים רק מה-route הזה.
+
+### `spec.crdb`
+
+ההגדרות של ה-CRDB עצמו. האובייקט לא חובה, וכל שדה בו לא חובה.
+
+| שדה | סוג | חובה | הערה |
+|---|---|---|---|
+| `causal_consistency` | bool | | |
+| `encryption` | bool | | |
+| `compression` | int, 0–6 | | ערך אחד לכל ה-instances |
+
+שדה שלא נשלח, או נשלח כ-`null`, מקבל את ברירת המחדל של השירות: `database_defaults.active_active.crdb`
+ב-`helm/files/defaults.yaml`, ורק סביבה או רשת ב-`helm/files/clusters.yaml` יכולות לדרוס אותה (לא אתר ולא קלאסטר, כי CRDB
+פרוס על כמה אתרים). כך גם הגדרות ה-DB של Active-Active (`active_active.database`). ערך שנשלח בבקשה קודם לקונפיג. היום: `causal_consistency: false`, `encryption: false`,
+`compression: 3`. ההגדרות נשלחות לקלאסטר תמיד במפורש, וחייבות לצאת זהות לכל האתרים.
+
+### `spec.database` ו-`spec.users[]`
+
+אותם מודלים ואותם כללים כמו בסעיף 3. ברירות המחדל של ה-DB מהסט `active_active`.
+
+### מה נוצר בקלאסטרים
+
+CRDB אחד עם DB מקומי בכל אתר, היוזרים, ה-ACLs וה-roles בכל אתר (כל role מוגבל ל-DB המקומי של האתר
+שלו), וכשיש יוזרים, PATCH אחד ל-CRDB שקושר בכל אתר כל role ל-ACL שלו. ל-`default_user` אותה סיסמה בכל האתרים.
+
+בדיקת השמות הפנויים, הביטול וההתערבות הידנית כמו בסעיף 3, על כל הקלאסטרים של הבקשה.
 
 ---
 
@@ -199,7 +275,7 @@
 
 כל ערך של ה-DB, של היוזר, של ה-ACL ושל ה-role נקרא מהקלאסטר. אין ערך שמגיע מהבקשה, חוץ מהסיסמה: הקלאסטר אף פעם לא מחזיר סיסמה,
 ולכן חוזרת הסיסמה שהקלאסטר קיבל כשיצר את היוזר. `cluster` (ה-FQDN של הקלאסטר), `cluster_url`, `environment`, `network` ו-`site` מגיעים
-מהקונפיג. `kind` הוא תמיד `single_site`.
+מהקונפיג. ביצירה באתר אחד `kind` הוא תמיד `single_site`.
 
 | שדה | הערה |
 |---|---|
@@ -211,6 +287,58 @@
 | `cluster.db.db_uid` | ה-uid של ה-DB בקלאסטר |
 | `cluster.db.settings` | כל שדות מודל היצירה (`spec.database`), כפי שה-DB שמר אותם אחרי שהפך ל-active |
 | `cluster.db.permissions[]` | לכל יוזר: היוזר, ה-ACL וה-role שלו, שנוצרים ונמחקים יחד, כל אחד עם ה-uid שלו. הקישור role ↔ ACL שלהם נבדק ב-DB שנקרא בסוף |
+
+### הצלחה ב-Active-Active
+
+אותה מעטפת, ו-`database` עם `kind: "active_active"` (מקוצר: השדות של כל ענף כמו למעלה):
+
+```json
+{
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "status": "succeeded",
+  "database": {
+    "kind": "active_active",
+    "name": "orders",
+    "memory_size": 1073741824,
+    "crdb": {
+      "guid": "d71cefce-4e31-41fd-b654-37cbb2f39a01",
+      "causal_consistency": false,
+      "encryption": false,
+      "featureset_version": 12,
+      "protocol_version": 1,
+      "default_db_config": {"name": "orders", "memory_size": 1073741824, "replication": true, "eviction_policy": "noeviction", "default_user": true, "tags": ["…"], "port": 12000, "tls_mode": "disabled", "…": "…"}
+    },
+    "clusters": [
+      {"cluster": "cluster-a.net-a", "cluster_url": "https://cluster-a.net-a:9443", "environment": "PROD", "network": "net-a", "site": "NY",
+       "instance_id": 1, "compression": 3,
+       "access": {"endpoints": ["…"]}, "db": {"db_uid": 7, "settings": {"…": "…"}, "permissions": ["…"]}},
+      {"cluster": "cluster-b.net-a", "cluster_url": "https://cluster-b.net-a:9443", "environment": "PROD", "network": "net-a", "site": "TLV",
+       "instance_id": 2, "compression": 3,
+       "access": {"endpoints": ["…"]}, "db": {"db_uid": 4, "settings": {"…": "…"}, "permissions": ["…"]}}
+    ]
+  }
+}
+```
+
+כל ענף מגיע מה-DB המקומי באותו אתר, עם היוזר, ה-ACL וה-role שנוצרו בו. `kind` הוא תמיד `active_active`.
+
+| שדה | הערה |
+|---|---|
+| `database.kind` | סוג ה-DB. ב-route הזה תמיד `active_active` |
+| `database.name`, `database.memory_size` | כפי שה-DB שמר אותם |
+| `database.crdb` | ההגדרות של ה-CRDB עצמו, כפי שהוא שמר אותן |
+| `crdb.guid` | ה-guid של ה-CRDB |
+| `crdb.causal_consistency`, `crdb.encryption` | כמו שנשלחו: הם נבדקים, וערך אחר מבטל את היצירה |
+| `crdb.featureset_version`, `crdb.protocol_version` | נקבעים ב-Redis. `null` כשהקלאסטר לא החזיר אותם |
+| `crdb.default_db_config` | כל מה שהשירות שלח, בלי סיסמאות, ועוד השדות שהקלאסטר ממלא בעצמו (`port`, `module_list`, `tls_mode`, ו-`isSystem` בכל tag) |
+| `database.clusters[]` | ענף לכל קלאסטר, לפי סדר ה-`sites` בבקשה |
+| `clusters[].instance_id` | ה-`id` של ה-instance של ה-CRDB בקלאסטר הזה. השירות מתאים instance לענף לפי `cluster_url`, כשהוא משווה בלי רישיות ועם הפורט ברירת המחדל של הסכמה, ובודק שכל instance שייך לאחד הענפים |
+| `clusters[].compression` | של ה-instance, כמו שנשלח: נבדק, וערך אחר מבטל את היצירה |
+| שאר השדות של `clusters[]` | אותו ענף כמו `database.cluster` באתר אחד: `cluster`, `cluster_url`, `environment`, `network`, `site`, `access`, `db` |
+
+**איזה סוג חזר:** `GET /v1/operations/{trace_id}` מחזיר פעולה משני ה-routes. בהצלחה, `database.kind` אומר איזה מבנה
+חזר: `single_site` עם `cluster`, או `active_active` עם `crdb` ו-`clusters[]`. כל עוד אין הצלחה `database` הוא `null`,
+ושאר הגוף זהה בשני הסוגים.
 
 **מאיפה הערכים:** כל אובייקט חייב לחזור מלא כבר בתשובה ליצירה שלו: כל שדה שנשלח חוזר עם ערך. השדות שהקלאסטר אף
 פעם לא מחזיר מוגדרים בקונפיג (`unreturned_fields`, היום רק סיסמת היוזר). אחרי עדכון ההרשאות, צעד אחרון קורא את ה-DB
@@ -282,9 +410,10 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. שגיא�
 | שדה | הערה |
 |---|---|
 | `cluster_url` | כתובת ה-API של הקלאסטר |
-| `resource_type` | `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
-| `name` | שם המשאב. ב-`permissions`: שם ה-DB |
-| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB |
+| `resource_type` | `crdb` (ה-Active-Active עצמו, עם ה-DBs המקומיים; רק אחרי `POST /v1/crdbs/create`), `database`, `acl`, `role`, `user` או `permissions` (הקישור של roles ל-ACLs על ה-DB) |
+| `crdb_guid` | חסר כשהוא ריק. רק אחרי `POST /v1/crdbs/create`, ב-`crdb` וב-`permissions` של Active-Active: ה-guid של ה-CRDB. ב-`crdb` חסר כשלא ידוע אם ה-CRDB נוצר. פריט `crdb`, ופריט `permissions` של Active-Active (שמכסה את כל האתרים), מדווחים על הקלאסטר המתאם (האתר הראשון) |
+| `name` | שם המשאב. ב-`permissions` וב-`crdb`: שם ה-DB |
+| `uid` | ה-uid בקלאסטר, או `null` כשלא ידוע אם המשאב נוצר. ב-`permissions`: ה-uid של ה-DB. ב-`crdb` וב-`permissions` של Active-Active תמיד `null`: מה שמזהה אותם הוא `crdb_guid` |
 | `last_error` | `"<code>: <message>"` של השגיאה האחרונה (של הביטול אם נכשל, אחרת של הצעד), או `null` |
 
 ---
@@ -315,7 +444,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. שגיא�
 ## 6. שגיאות
 
 תשובה מיידית עם שגיאה:
-- **בפקודה** (`POST /v1/databases/create`): בנויה כמו כישלון בסטטוס, `{"trace_id", "status": "rejected", "database": null, "error"}`,
+- **בפקודה** (`POST /v1/databases/create` או `POST /v1/crdbs/create`): בנויה כמו כישלון בסטטוס, `{"trace_id", "status": "rejected", "database": null, "error"}`,
   כי הפקודה נדחתה ושום דבר לא השתנה.
 - **בכל השאר** (שאילתת הסטטוס, כתובת לא קיימת, method שגוי): `{"trace_id", "error"}`, בלי `status`, כי אין פעולה שנדחתה.
   `trace_id` הוא של הבקשה עצמה: מה-`traceparent`, או, בלי `traceparent` תקין, של ה-trace שהשירות פתח לבקשה.
@@ -331,21 +460,23 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. שגיא�
 | `validation_error` | `customer_fixable` | מיד, `422` | הבקשה לא עומדת בחוזה |
 | `invalid_name` | `customer_fixable` | מיד, `422` | שם ה-DB לא עומד בכללי השמות |
 | `no_matching_cluster` | `customer_fixable` | מיד, `422` | אין קלאסטר שמתאים ליעד |
+| `mixed_networks` | `customer_fixable` | מיד, `422` | רק ב-`POST /v1/crdbs/create`: אתרים ביותר מרשת אחת |
+| `duplicate_sites` | `customer_fixable` | מיד, `422` | רק ב-`POST /v1/crdbs/create`: שני אתרים שמתורגמים לאותו קלאסטר |
 | `not_found` | `needs_investigation` | מיד, `404` | כתובת לא קיימת |
 | `operation_not_found` | `known_failure` | מיד, `404` | `trace_id` לא מוכר, או שהתוצאה שלו כבר פגה |
 | `method_not_allowed` | `needs_investigation` | מיד, `405` | method שהכתובת לא מקבלת |
 | `http_error` | `needs_investigation` | מיד, עם ה-status של ה-HTTP | שגיאת HTTP אחרת של ה-framework, שאין לה קוד משלה |
 | `configuration_error` | `known_failure` | מיד `500`, או בסטטוס | בעיה בקונפיג של השירות, למשל כמה קלאסטרים `generic` לאותו יעד. בסטטוס רק כרשת ביטחון: רשת בלי ריליי נדחית כבר בעלייה |
 | `internal_error` | `needs_investigation` | מיד `500`, או בסטטוס | שגיאה לא צפויה, או שגיאה פנימית בלי קוד ציבורי משלה. שגיאה לא צפויה (שאף טיפול לא תפס): `message` הוא `internal error: unexpected <type>`, גם מיד וגם בסטטוס (חוץ מכשל בהעברה לרקע, שנשמר עם ה-`message` הקבוע). שגיאה פנימית מוכרת: מיד `message` קבוע (`internal error`); בסטטוס, ה-`message` של השגיאה שעצרה (של הצעד, או של השגיאה שקטעה את הריצה כשלצעד אין שגיאה משלו, גם כשה-record לא נקרא); אחרי קריסה, ה-`message` הקבוע. הפרטים בלוג לפי `trace_id` |
-| `name_taken` | `customer_fixable` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס בקלאסטר |
-| `resources_locked` | `known_failure` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באותו קלאסטר, לא הסתיימה תוך 30 שניות |
-| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
+| `name_taken` | `customer_fixable` | בסטטוס, `rejected` | שם של DB, יוזר, ACL או role תפוס באחד הקלאסטרים, או שם ה-DB תפוס על ידי CRDB |
+| `resources_locked` | `known_failure` | בסטטוס, `rejected` | פעולה אחרת על אותו DB או אותם יוזרים, באחד הקלאסטרים של הבקשה, לא הסתיימה תוך 30 שניות |
+| `cluster_request_failed` | `known_failure` | בסטטוס | הקלאסטר דחה בקשה, DB הגיע ל-`creation-failed`, פעולה בקלאסטר הסתיימה ב-`failed`, `cancelled` או `aborted`, task של CRDB הסתיים ב-`failed` או `canceled` (ההודעה מונה כל אתר שנכשל לפי ה-host של ה-`cluster_url` שלו; `cluster_url` הוא הקלאסטר המתאם, ו-`cluster_error_code` מופיע רק כשהמתאם עצמו נכשל), או אובייקט שנקרא מהקלאסטר לא מחזיק את מה שנשלח או נקבע (`incomplete_cluster_object`) |
 | `cluster_unavailable` | `known_failure` | בסטטוס | הקלאסטר או שירות הקצה לא זמינים, או שהתשובה לא קריאה |
-| `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active` |
+| `cluster_timeout` | `known_failure` | בסטטוס | הקלאסטר לא סיים פעולה בזמן, למשל DB שלא הגיע ל-`active`, או task של CRDB שעוד רץ (הוא עוד עלול להסתיים) |
 
 אלה הקודים היחידים שחוזרים. בסכמה הם רשימות סגורות (`enum`): ב-`error` של הסטטוס `PublicErrorCode`, כלומר כל
 הקודים חוץ מחמשת הקודים של ה-API (`validation_error`, `not_found`, `operation_not_found`, `method_not_allowed`,
-`http_error`); בפועל `invalid_name` ו-`no_matching_cluster` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
+`http_error`); בפועל `invalid_name`, `no_matching_cluster`, `mixed_networks` ו-`duplicate_sites` חוזרים רק מיד. ב-`error` של התשובה המיידית הרשימה כוללת
 את כל הקודים. שגיאה פנימית אחרת חוזרת כ-`internal_error`. המיפוי מהקודים הפנימיים ב-`helm/files/service.yaml`.
 
 ---
@@ -358,6 +489,7 @@ action שנכשל נרשם בלוג של השירות תחת ה-trace. שגיא�
 |---|---|
 | בחירת קלאסטר | ב-`generic` השירות יבחר קלאסטר שיש בו מקום מבין כמה. קוד חדש `insufficient_resources` |
 | הזדהות | `Authorization` בכל route, אחרת `401 unauthenticated` |
+| Active-Active: עריכה, מחיקה, הוספה והסרה של אתר | היצירה בנויה (סעיף 3א). כל השאר ב-routes משלו |
 | Active-Active | route נפרד, `POST /v1/crdbs/create`, עם `target: {sites: [...]}`. היצירה באתר אחד לא משתנה. בתוצאה `kind: "active_active"`, אובייקט `crdb` ו-`clusters[]` עם ענף לכל קלאסטר. סטטוס חדש, `pending_cleanup`, כשהיצירה נקטעה וניקוי האתרים עוד רץ. הוא לא סופי |
 | `Location` בתשובת `202` | כותרת לראוט הסטטוס: בסיס הכתובת מהקונפיג, והנתיב מהשירות |
 | עריכה ומחיקה: היעד | יעד לכל סוג, מהתוצאה של היצירה, שונה מה-`target` של יצירה. באתר אחד: `target: {cluster_url, db_uid}`. ב-Active-Active: `target: {crdb_guid, clusters}` |

@@ -26,7 +26,7 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 | יצירה ועדכון של DB | `status` חוזר ל-`active` (בדרך: `pending`, `active-change-pending`). התשובה כוללת `action_uid`. 1–6 שניות |
 | מחיקת DB | `delete-pending`, ואז `404`. כשנייה עד 4 שניות |
 | ACL, role, user | אם יש `action_uid`, `GET /v1/actions/{uid}` עד `completed` (או `failed`, `cancelled`, `aborted`) |
-| CRDB | `GET /v1/crdb_tasks/{id}` עד `finished` או `failed`. ב-`failed`: `errors` עם `cluster_name` |
+| CRDB | `GET /v1/crdb_tasks/{id}` עד `finished`, `failed` או `canceled` (נצפה בהקלטות). ב-`failed`: `errors` עם `cluster_name` |
 
 בלי ההמתנה הצעד הבא נדחה: `PUT` ל-bdb מיד אחרי מחיקת role נדחה ב-`409 busy`, ו-`PUT` בזמן `active-change-pending`
 נדחה ב-`409 db_busy`. שניהם זמניים.
@@ -119,15 +119,32 @@ cluster-relay. מה בנוי ומה מתוכנן: `creation.md`, `planned.md`.
 
 - הבקשה ליצירה כוללת לכל קלאסטר URL, FQDN (`name`) ופרטי גישה. התשובה כוללת סיסמאות לכל instance.
 - `X-Task-ID` חייב להיות UUID תקני (גרסאות 1–5); ערך אחר ⇐ `400`. אותו `X-Task-ID` פעמיים ⇐ `406 job_exists`, ולא
-  נוצר CRDB שני. תוצאת task נשמרת 500 שניות כברירת מחדל, ולכן שולחים `X-Result-TTL` ארוך יותר. אם ה-task כבר לא
-  שמור, מאתרים לפי שם ב-`GET /v1/crdbs`.
+  נוצר CRDB שני. תוצאת task נשמרת 500 שניות כברירת מחדל, ולכן שולחים `X-Result-TTL` ארוך יותר (24 שעות).
+  אחרי שהתוצאה פגה, `GET /v1/crdb_tasks/{id}` עונה `404` כמו ל-task שלא הגיע. שמות CRDB כפולים מותרים, ולכן שם לא
+  מזהה CRDB. איך השירות משתמש בזה: `creation.md` סעיף 6.
 - את ה-`guid` הקלאסטר מייצר. אפשר לקבוע אותו ביצירה, אבל לא משתמשים בזה.
 - dry_run: `dry_run=true` בלבד (`dry_run=1` נדחה). התשובה תמיד `200` עם task `queued`, והתוצאה רק ב-task. הוא בודק
   בכל אתר מקום, פורט ופרטי גישה. כשכמה אתרים בעייתיים, מדווח רק הראשון.
-- יצירה שנכשלת באתר אחד (בשלב הבדיקה) לא משאירה כלום באף אתר.
+- יצירה שנכשלת באתר אחד (בשלב הבדיקה) לא משאירה כלום באף אתר. נבדק שוב ב-8.2.0-25: פורט תפוס רק ב-cluster2 ⇐ task
+  `failed` עם `errors: [{cluster_name: cluster2.local, error_code: db_create_failed}]`, וב-cluster1 לא נשאר CRDB או bdb.
+- **שמות כפולים מותרים:** CRDB שני עם אותו שם נוצר בהצלחה, כמו ב-bdb.
+- **`default_db_config` מחזיק רק מה שנשלח:** בדיוק השדות שנשלחו ביצירה, ועוד `module_list`, `port` ו-`tls_mode` שהקלאסטר
+  מוסיף. ערך ברירת מחדל שלא נשלח לא מופיע בו, אף שה-bdb המקומי מחזיק אותו (כ-172 שדות). `version` נשלח `8.4` ונשמר
+  ב-bdb כ-`8.4.0`. לכל tag הקלאסטר מוסיף `isSystem: false`.
+- `PATCH` ל-`default_db_config` משנה רק את השדות שנשלחו, ומגיע ל-bdb בכל אתר. שדה שלא נשלח ביצירה ונוסף ב-`PATCH`
+  נשאר ב-`default_db_config` מאז.
+- `PUT` ל-bdb מקומי משנה רק אותו: `default_db_config` והאתרים האחרים נשארים עם הערך הקודם, ושום דבר לא מתריע.
+- **הוספה והסרה של אתר:** `POST /v1/crdbs/{guid}/updates` עם `{"add_instances": [<instance>]}` או
+  `{"remove_instances": {"instances": [<id>]}}` (התיעוד אומר רשימה, וזה נדחה ב-`400`), עם task. מקבל `?dry_run=true`.
+  `id` של instance הוא עד 31. ההסרה מחכה שהסנכרון יעביר לאתרים האחרים כל מה שהאתר קיבל, ולכן בלי קישורי סנכרון
+  (`replication_links` ריק ב-`health_report`) היא לא מסתיימת.
+- **cancel של שינוי מבנה באמצע:** ביטול של הסרת אתר השאיר CRDB שאי אפשר למחוק. `delete_crdb` נתקע על `posted`, ביטול
+  בכוח עבר, אבל המחיקה החוזרת נכשלה ב-`busy` ו-`PUT /v1/crdbs/{guid}/purge` נכשל ב-`DB ... does not exist`.
+- `GET /v1/crdb_tasks` מחזיר `{"tasks": [...]}`. `PATCH` שגוי ⇐ `400` עם `error_code: null`. cancel ל-task שהסתיים ⇐
+  `406 invalid_input`. CRDB שנמחק ⇐ `404 not_found`.
 - אתר שנופל באמצע יצירה: ה-task נשאר `started` בלי הגבלה, באתרים התקינים כבר יש bdb מקומי, וה-CRDB לא מופיע ב-
   `GET /v1/crdbs`. `POST /v1/crdb_tasks/{id}/actions/cancel` נכנס לתוקף כשהאתר חוזר, וה-bdb החלקי נמחק. בלי cancel
-  היצירה מסתיימת. לא משתמשים ב-`force`, כי הוא עלול לשבור את ה-CRDB.
+  היצירה מסתיימת. השירות לא שולח cancel בכלל (`creation.md` סעיף 6), וגם `force` עלול לשבור את ה-CRDB.
 - מחיקה: `DELETE /v1/crdbs/{guid}` עם task. כ-10 שניות.
 - `GET /v1/crdbs` מחזיר `{"crdbs": [...]}`.
 - ה-uid של ה-bdb המקומי ידוע רק לקלאסטר עצמו: `local_databases` או `instances[].db_uid` של `GET /v1/crdbs/{guid}`
